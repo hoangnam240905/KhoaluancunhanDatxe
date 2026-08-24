@@ -1,0 +1,55 @@
+﻿@inject CustomerWeb.Services.AuthSession Auth
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Cho thue xe</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/CustomerWeb.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-dark bg-primary mb-3">
+            <div class="container">
+                <a class="navbar-brand fw-bold" asp-page="/Index">Car Rental</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="nav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item"><a class="nav-link" asp-page="/Index">Trang chu</a></li>
+                        @if (Auth.IsLoggedIn)
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Bookings/Index">Don cua toi</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Bookings/Create">Dat xe</a></li>
+                        }
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (Auth.IsLoggedIn)
+                        {
+                            <li class="nav-item"><span class="nav-link">@Auth.FullName</span></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Account/Logout">Dang xuat</a></li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-page="/Account/Login">Dang nhap</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-page="/Account/Register">Dang ky</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container pb-4">
+        <main role="main">@RenderBody()</main>
+    </div>
+    <footer class="border-top py-3 text-muted text-center">
+        <small>&copy; 2026 - He thong cho thue xe du lich</small>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

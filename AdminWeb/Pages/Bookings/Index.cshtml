@@ -1,0 +1,35 @@
+@page
+@model AdminWeb.Pages.Bookings.IndexModel
+@{ ViewData["Title"] = "Quan ly don dat"; }
+<h2 class="mb-3">Quan ly don dat xe</h2>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<div class="mb-3">
+    <a asp-page="Index" class="btn btn-sm btn-outline-secondary">Tat ca</a>
+    <a asp-page="Index" asp-route-status="Pending" class="btn btn-sm btn-outline-warning">Pending</a>
+    <a asp-page="Index" asp-route-status="Confirmed" class="btn btn-sm btn-outline-primary">Confirmed</a>
+    <a asp-page="Index" asp-route-status="Completed" class="btn btn-sm btn-outline-success">Completed</a>
+</div>
+<table class="table table-hover">
+    <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th>Tuyen</th><th>Tien</th><th>Trang thai</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var b in Model.Bookings)
+    {
+        <tr>
+            <td>#@b.BookingId</td>
+            <td>@b.CustomerName</td>
+            <td>@b.VehicleTypeName</td>
+            <td>@b.PickupAddress → @b.DropoffAddress</td>
+            <td>@b.TotalAmount.ToString("N0")</td>
+            <td><span class="badge bg-secondary">@b.Status</span></td>
+            <td>
+                @if (b.Status is "Pending" or "Confirmed")
+                {
+                    <form method="post" asp-page-handler="Cancel" asp-route-id="@b.BookingId" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Huy</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

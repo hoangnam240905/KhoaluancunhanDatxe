@@ -1,0 +1,13 @@
+﻿@page
+@model AdminWeb.Pages.IndexModel
+@{ ViewData["Title"] = "Dashboard"; }
+<h2 class="mb-4">Dashboard Admin</h2>
+<div class="row g-3">
+    <div class="col-md-4"><div class="card text-bg-primary"><div class="card-body"><h5>Xe trong he thong</h5><p class="display-6 mb-0">@Model.VehicleCount</p></div></div></div>
+    <div class="col-md-4"><div class="card text-bg-success"><div class="card-body"><h5>Tong don dat</h5><p class="display-6 mb-0">@Model.BookingCount</p></div></div></div>
+    <div class="col-md-4"><div class="card text-bg-warning"><div class="card-body"><h5>Don cho xu ly</h5><p class="display-6 mb-0">@Model.PendingCount</p></div></div></div>
+</div>
+<div class="mt-4">
+    <a asp-page="/Vehicles/Index" class="btn btn-outline-primary me-2">Quan ly xe</a>
+    <a asp-page="/Bookings/Index" class="btn btn-outline-secondary">Quan ly don dat</a>
+</div>

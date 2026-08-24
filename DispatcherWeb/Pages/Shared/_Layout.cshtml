@@ -1,0 +1,27 @@
+﻿@inject DispatcherWeb.Services.AuthSession Auth
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Dieu phoi</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @if (Auth.IsLoggedIn)
+    {
+        <nav class="navbar navbar-dark bg-warning mb-3">
+            <div class="container">
+                <a class="navbar-brand text-dark fw-bold" asp-page="/Index">Dieu phoi</a>
+                <div>
+                    <span class="text-dark">@Auth.FullName</span>
+                    <a class="btn btn-sm btn-outline-dark ms-2" asp-page="/Account/Logout">Dang xuat</a>
+                </div>
+            </div>
+        </nav>
+    }
+    <div class="container pb-4">@RenderBody()</div>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

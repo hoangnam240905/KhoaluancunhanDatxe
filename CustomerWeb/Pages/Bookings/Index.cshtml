@@ -1,0 +1,52 @@
+@page
+@model CustomerWeb.Pages.Bookings.IndexModel
+@{
+    ViewData["Title"] = "Don dat xe cua toi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Don dat xe cua toi</h2>
+    <a asp-page="Create" class="btn btn-primary">Dat xe moi</a>
+</div>
+
+@if (!Model.Bookings.Any())
+{
+    <div class="alert alert-info">Ban chua co don dat xe nao.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Ma</th>
+                    <th>Loai xe</th>
+                    <th>Tuyen</th>
+                    <th>Thoi gian</th>
+                    <th>Tong tien</th>
+                    <th>Trang thai</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Bookings)
+                {
+                    <tr>
+                        <td>#@b.BookingId</td>
+                        <td>@b.VehicleTypeName</td>
+                        <td>@b.PickupAddress → @b.DropoffAddress</td>
+                        <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@b.TotalAmount.ToString("N0") VND</td>
+                        <td><span class="badge bg-secondary">@b.Status</span></td>
+                        <td>
+                            @if (b.Status == "Completed")
+                            {
+                                <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Danh gia</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

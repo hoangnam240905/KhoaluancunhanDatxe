@@ -1,0 +1,93 @@
+@page "/Customer/Bookings"
+@model PortalWeb.Pages.Customer.Bookings.IndexModel
+@{ ViewData["Title"] = "Don cua toi"; }
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+        <h2>Don dat xe cua toi</h2>
+        <p>Xem chi tiet chuyen di va thong tin tai xe duoc phan cong</p>
+    </div>
+    <a asp-page="/Customer/Bookings/Create" class="btn btn-primary">+ Dat xe moi</a>
+</div>
+
+@if (!Model.Bookings.Any())
+{
+    <div class="modern-card p-5 text-center text-muted">Ban chua co don dat xe nao.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var b in Model.Bookings)
+        {
+            <div class="col-12">
+                <div class="modern-card booking-detail-card p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <div class="fw-bold fs-5">#@b.BookingId · @b.VehicleTypeName</div>
+                            <div class="text-muted small">Tao luc @b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                        <span class="badge bg-secondary badge-status">@b.Status</span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="detail-label">Tuyen di</div>
+                            <div class="fw-semibold">@b.PickupAddress → @b.DropoffAddress</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="detail-label">Thoi gian</div>
+                            <div>@b.StartDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                            <div class="small text-muted">den @b.EndDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="detail-label">Cuoc phi</div>
+                            <div class="fw-bold text-primary">@b.TotalAmount.ToString("N0") VND</div>
+                            @if (b.EstimatedDistance is not null)
+                            {
+                                <div class="small text-muted">~@b.EstimatedDistance km</div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(b.Notes))
+                    {
+                        <div class="mt-3">
+                            <div class="detail-label">Ghi chu</div>
+                            <div>@b.Notes</div>
+                        </div>
+                    }
+
+                    <div class="driver-box mt-4">
+                        @if (b.Assignment is null)
+                        {
+                            <div class="text-muted">
+                                <strong>Tai xe:</strong> Chua phan cong — doi dieu phoi xac nhan.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <div class="detail-label">Tai xe</div>
+                                    <div class="fw-bold">@b.Assignment.DriverName</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="detail-label">So dien thoai</div>
+                                    <div>@(string.IsNullOrWhiteSpace(b.Assignment.DriverPhone) ? "—" : b.Assignment.DriverPhone)</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="detail-label">Bien so xe</div>
+                                    <div class="fw-semibold">@b.Assignment.LicensePlate</div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="detail-label">TT phan cong</div>
+                                    <span class="badge bg-info text-dark">@b.Assignment.Status</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

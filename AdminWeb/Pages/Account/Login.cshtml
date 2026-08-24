@@ -1,0 +1,25 @@
+@page
+@model AdminWeb.Pages.Account.LoginModel
+@{ ViewData["Title"] = "Admin - Dang nhap"; }
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h3 class="mb-3">Admin Panel</h3>
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input asp-for="Input.Email" class="form-control" placeholder="admin@carrental.vn" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mat khau</label>
+                        <input asp-for="Input.Password" type="password" class="form-control" />
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100">Dang nhap</button>
+                </form>
+                <p class="small text-muted mt-2 mb-0">Demo: admin@carrental.vn / Password123!</p>
+            </div>
+        </div>
+    </div>
+</div>

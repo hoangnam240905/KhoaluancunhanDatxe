@@ -1,0 +1,13 @@
+@page "/Admin/Vehicles/Create"
+@model PortalWeb.Pages.Admin.Vehicles.CreateModel
+@{ ViewData["Title"] = "Them xe"; }
+<h2 class="mb-3">Them xe</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Loai xe</label><select asp-for="Input.TypeId" class="form-select">@foreach (var t in Model.VehicleTypes) { <option value="@t.TypeId">@t.TypeName</option> }</select></div>
+    <div class="col-md-6"><label class="form-label">Bien so</label><input asp-for="Input.LicensePlate" class="form-control" /></div>
+    <div class="col-md-4"><label class="form-label">Hang</label><input asp-for="Input.Brand" class="form-control" /></div>
+    <div class="col-md-4"><label class="form-label">Model</label><input asp-for="Input.Model" class="form-control" /></div>
+    <div class="col-md-4"><label class="form-label">Nam</label><input asp-for="Input.Year" class="form-control" type="number" /></div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Luu</button></div>
+</form>

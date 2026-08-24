@@ -1,0 +1,316 @@
+﻿@page
+@model PortalWeb.Pages.IndexModel
+@{
+    ViewData["Title"] = "Trang chu";
+    ViewData["FullBleed"] = true;
+}
+
+<!-- Hero -->
+<section class="landing-hero">
+    <div class="hero-media" aria-hidden="true">
+        <img src="~/images/hero-car.jpg" alt="" class="hero-photo" asp-append-version="true" />
+        <div class="hero-overlay"></div>
+    </div>
+    <div class="container position-relative">
+        <div class="row align-items-center g-4 py-5">
+            <div class="col-lg-7 text-white">
+                @if (Model.IsCustomer)
+                {
+                    <span class="hero-badge">Xin chao, @Model.UserName!</span>
+                }
+                else
+                {
+                    <span class="hero-badge">He thong cho thue xe du lich truc tuyen</span>
+                }
+                <h1 class="hero-title">Di moi noi,<br />thue xe tron goi</h1>
+                <p class="hero-lead">
+                    Car Rental System giup ban dat xe du lich tu 4 den 16 cho voi tai xe chuyen nghiep.
+                    Chon tuyen di pho bien, xem gia ro rang va dat xe online chi vai phut.
+                </p>
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    @if (Model.IsCustomer)
+                    {
+                        <a href="#bang-gia" class="btn btn-light btn-lg rounded-pill px-4">Dat xe ngay</a>
+                        <a asp-page="/Customer/Bookings/Index" class="btn btn-outline-light btn-lg rounded-pill px-4">Don cua toi</a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-4">Dang ky mien phi</a>
+                        <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-4">Dang nhap</a>
+                    }
+                    <a href="#tuyen-di" class="btn btn-outline-light btn-lg rounded-pill px-4">Xem tuyen pho bien</a>
+                </div>
+                <div class="hero-stats row g-3 mt-5">
+                    <div class="col-4"><div class="stat-num">4+</div><div class="stat-label">Loai xe</div></div>
+                    <div class="col-4"><div class="stat-num">6+</div><div class="stat-label">Tuyen pho bien</div></div>
+                    <div class="col-4"><div class="stat-num">24/7</div><div class="stat-label">Dat xe online</div></div>
+                </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block">
+                <div class="hero-card-preview">
+                    <div class="preview-route">TP.HCM → Vung Tau</div>
+                    <div class="preview-detail">120 km · 1 ngay · SUV 7 cho</div>
+                    <div class="preview-price">Tu 1.200.000 VND</div>
+                    <div class="preview-tags">
+                        <span>Tai xe kem theo</span><span>Bao gia ro</span><span>Dat online</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Gioi thieu -->
+<section id="gioi-thieu" class="landing-section">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="section-tag">Ve chung toi</span>
+                <h2 class="section-title">He thong cho thue xe du lich truc tuyen</h2>
+                <p class="text-muted">
+                    Car Rental System la nen tang dat xe du lich danh cho khach le, gia dinh va doan the.
+                    He thong ket noi khach hang, bo phan dieu phoi, tai xe va quan tri — giup quy trinh
+                    tu dat xe den hoan thanh chuyen di dien ra minh bach, nhanh chong.
+                </p>
+                <ul class="about-list">
+                    <li>Website dat xe & theo doi don truc tuyen</li>
+                    <li>Ung dung di dong cho khach hang va tai xe</li>
+                    <li>Dieu phoi phan cong tai xe, xe tu dong</li>
+                    <li>Quan tri doi xe, don dat, bao cao tap trung</li>
+                </ul>
+            </div>
+            <div class="col-lg-6">
+                <div class="about-photo-wrap mb-3">
+                    <img src="~/images/about-fleet.jpg" alt="Doi xe du lich" class="about-photo" asp-append-version="true" />
+                </div>
+                <div class="modern-card p-4">
+                    <h5 class="fw-bold mb-3">Ai su dung he thong?</h5>
+                    <div class="role-grid">
+                        <div class="role-item"><span>👤</span><strong>Khach hang</strong><small>Dat xe, theo doi, danh gia</small></div>
+                        <div class="role-item"><span>📋</span><strong>Dieu phoi</strong><small>Xac nhan & phan cong chuyen</small></div>
+                        <div class="role-item"><span>🚕</span><strong>Tai xe</strong><small>Nhan chuyen qua app</small></div>
+                        <div class="role-item"><span>⚙️</span><strong>Quan tri</strong><small>Quan ly xe & don dat</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Tuyen pho bien -->
+<section id="tuyen-di" class="landing-section bg-white">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="section-tag">Goi y hanh trinh</span>
+            <h2 class="section-title">Cac tuyen duong di pho bien</h2>
+            <p class="text-muted mx-auto section-subtitle">Goi y loai xe va chi phi uoc tinh — ban co the tuy chinh theo nhu cau</p>
+        </div>
+        <div class="row g-4">
+            @foreach (var route in Model.PopularRoutes)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="route-card h-100">
+                        <div class="route-photo-wrap">
+                            <img src="@route.ImageUrl" alt="@route.Title" class="route-photo" loading="lazy" />
+                        </div>
+                        <div class="route-body">
+                            <h5 class="fw-bold">@route.Title</h5>
+                            <p class="route-path">@route.From → @route.To</p>
+                            <p class="small text-muted flex-grow-1">@route.Description</p>
+                            <div class="route-meta">
+                                <span>@route.DistanceKm km</span>
+                                <span>@route.Duration</span>
+                                <span>@route.SuggestedVehicle</span>
+                            </div>
+                            <div class="route-price">Tu @route.EstimatedPrice.ToString("N0") VND</div>
+                            @if (Model.IsCustomer)
+                            {
+                                <a asp-page="/Customer/Bookings/Create"
+                                   asp-route-typeId="@route.VehicleTypeId"
+                                   asp-route-pickup="@route.From"
+                                   asp-route-dropoff="@route.To"
+                                   asp-route-distance="@route.DistanceKm"
+                                   class="btn btn-primary btn-sm mt-2">Dat tuyen nay</a>
+                            }
+                            else
+                            {
+                                <a asp-page="/Account/Login" class="btn btn-outline-primary btn-sm mt-2">Dang nhap de dat</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- Tinh nang -->
+<section id="tinh-nang" class="landing-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="section-tag">Tai sao chon chung toi</span>
+            <h2 class="section-title">Uu diem noi bat</h2>
+        </div>
+        <div class="row g-4">
+            @foreach (var f in Model.Features)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="feature-card h-100">
+                        <div class="feature-icon">@f.Icon</div>
+                        <h6 class="fw-bold">@f.Title</h6>
+                        <p class="small text-muted mb-0">@f.Description</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- Quy trinh -->
+<section id="quy-trinh" class="landing-section bg-white">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="section-tag">Quy trinh dat xe</span>
+            <h2 class="section-title">Dat xe chi 4 buoc</h2>
+        </div>
+        <div class="row g-4">
+            @foreach (var step in Model.BookingSteps)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="step-card text-center h-100">
+                        <div class="step-num">@step.Step</div>
+                        <h6 class="fw-bold">@step.Title</h6>
+                        <p class="small text-muted mb-0">@step.Description</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- Bang gia xe -->
+<section id="bang-gia" class="landing-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="section-tag">Bang gia</span>
+            <h2 class="section-title">Chon loai xe phu hop</h2>
+            <p class="text-muted">Gia tham khao — tinh cu the theo ngay va quang duong</p>
+        </div>
+        @if (!Model.VehicleTypes.Any())
+        {
+            <div class="alert alert-warning text-center">Dang tai bang gia... Hay dam bao Backend dang chay.</div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var t in Model.VehicleTypes)
+                {
+                    <div class="col-md-6 col-lg-3">
+                        <div class="modern-card p-4 h-100 d-flex flex-column">
+                            <span class="badge bg-primary-subtle text-primary badge-status mb-2">@t.SeatCapacity cho</span>
+                            <h5 class="fw-bold">@t.TypeName</h5>
+                            <p class="text-muted small flex-grow-1">@t.Description</p>
+                            <div class="mb-3">
+                                <div class="fw-bold text-primary fs-5">@t.PricePerDay.ToString("N0") <span class="fs-6 fw-normal text-muted">VND/ngay</span></div>
+                                <div class="small text-muted">@t.PricePerKm.ToString("N0") VND/km</div>
+                            </div>
+                            @if (Model.IsCustomer)
+                            {
+                                <a asp-page="/Customer/Bookings/Create" asp-route-typeId="@t.TypeId" class="btn btn-primary w-100 rounded-pill">Dat xe</a>
+                            }
+                            else
+                            {
+                                <a asp-page="/Account/Register" class="btn btn-outline-primary w-100 rounded-pill">Dang ky de dat</a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<!-- FAQ -->
+<section id="ho-tro" class="landing-section bg-white">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-lg-5">
+                <span class="section-tag">Ho tro</span>
+                <h2 class="section-title">Cau hoi thuong gap</h2>
+                <p class="text-muted">Lien he hotline <strong>1900 xxxx</strong> hoac email <strong>support@carrental.vn</strong></p>
+                @if (!Model.IsLoggedIn)
+                {
+                    <a asp-page="/Account/Register" class="btn btn-primary rounded-pill px-4 mt-2">Bat dau dat xe</a>
+                }
+            </div>
+            <div class="col-lg-7">
+                <div class="accordion" id="faqAccordion">
+                    @for (var i = 0; i < Model.FaqItems.Count; i++)
+                    {
+                        var parts = Model.FaqItems[i].Split(" — ", 2);
+                        <div class="accordion-item border-0 mb-2 rounded overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button @(i > 0 ? "collapsed" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#faq@(i)">
+                                    @(parts.Length > 0 ? parts[0] : Model.FaqItems[i])
+                                </button>
+                            </h2>
+                            <div id="faq@(i)" class="accordion-collapse collapse @(i == 0 ? "show" : "")" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body text-muted small">
+                                    @(parts.Length > 1 ? parts[1] : "")
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="landing-cta">
+    <div class="container text-center text-white py-5">
+        <h2 class="fw-bold mb-3">San sang cho chuyen di tiep theo?</h2>
+        <p class="mb-4 opacity-75">Dang ky tai khoan mien phi va dat xe trong vai phut</p>
+        @if (Model.IsCustomer)
+        {
+            <a asp-page="/Customer/Bookings/Create" class="btn btn-light btn-lg rounded-pill px-5">Dat xe ngay</a>
+        }
+        else
+        {
+            <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-5 me-2">Dang ky</a>
+            <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-5">Dang nhap</a>
+        }
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="landing-footer">
+    <div class="container py-5">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <h5 class="fw-bold text-white">🚗 Car Rental System</h5>
+                <p class="small">He thong cho thue xe du lich truc tuyen — Do an CNTT KLCN108</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-white-50">Lien ket</h6>
+                <ul class="footer-links">
+                    <li><a href="#gioi-thieu">Gioi thieu</a></li>
+                    <li><a href="#tuyen-di">Tuyen pho bien</a></li>
+                    <li><a href="#bang-gia">Bang gia xe</a></li>
+                    <li><a asp-page="/Account/Login">Dang nhap</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-white-50">Lien he</h6>
+                <ul class="footer-links">
+                    <li>📍 TP. Ho Chi Minh, Viet Nam</li>
+                    <li>📞 1900 xxxx</li>
+                    <li>✉️ support@carrental.vn</li>
+                </ul>
+            </div>
+        </div>
+        <hr class="border-secondary my-4" />
+        <p class="small text-center text-white-50 mb-0">&copy; 2026 Car Rental System. All rights reserved.</p>
+    </div>
+</footer>

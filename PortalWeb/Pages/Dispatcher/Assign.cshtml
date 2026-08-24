@@ -1,0 +1,11 @@
+@page "/Dispatcher/Assign/{id:int}"
+@model PortalWeb.Pages.Dispatcher.AssignModel
+@{ ViewData["Title"] = "Phan cong"; }
+<h2 class="mb-3">Phan cong don #@Model.Booking?.BookingId</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="col-md-6">
+    <div class="mb-3"><label class="form-label">Tai xe</label><select asp-for="Input.DriverId" class="form-select">@foreach (var d in Model.Drivers) { <option value="@d.DriverId">@d.FullName</option> }</select></div>
+    <div class="mb-3"><label class="form-label">Xe</label><select asp-for="Input.VehicleId" class="form-select">@foreach (var v in Model.Vehicles) { <option value="@v.VehicleId">@v.LicensePlate - @v.TypeName</option> }</select></div>
+    <button type="submit" class="btn btn-primary">Phan cong</button>
+    <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lai</a>
+</form>

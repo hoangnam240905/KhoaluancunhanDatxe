@@ -1,0 +1,36 @@
+@page "{id:int}"
+@model CustomerWeb.Pages.Bookings.ReviewModel
+@{
+    ViewData["Title"] = "Danh gia chuyen di";
+}
+
+<h2 class="mb-4">Danh gia don #@Model.BookingId</h2>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+    <a asp-page="Index" class="btn btn-primary">Quay lai danh sach</a>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+    <form method="post" class="col-md-6">
+        <div class="mb-3">
+            <label asp-for="Input.Rating" class="form-label">Diem (1-5 sao)</label>
+            <select asp-for="Input.Rating" class="form-select">
+                @for (byte i = 5; i >= 1; i--)
+                {
+                    <option value="@i">@i sao</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.Comment" class="form-label">Nhan xet</label>
+            <textarea asp-for="Input.Comment" class="form-control" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-warning">Gui danh gia</button>
+    </form>
+}

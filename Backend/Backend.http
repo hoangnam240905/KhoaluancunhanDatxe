@@ -1,0 +1,34 @@
+@Backend_HostAddress = http://localhost:5199
+@token = {{login.response.body.token}}
+
+### Login Admin
+# @name login
+POST {{Backend_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@carrental.vn",
+  "password": "Password123!"
+}
+
+### Get vehicle types
+GET {{Backend_HostAddress}}/api/vehicle-types
+
+### Get bookings (can Authorization)
+GET {{Backend_HostAddress}}/api/bookings
+Authorization: Bearer {{token}}
+
+### Create booking (Customer token)
+POST {{Backend_HostAddress}}/api/bookings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "vehicleTypeId": 1,
+  "pickupAddress": "TP.HCM",
+  "dropoffAddress": "Vung Tau",
+  "startDate": "2026-09-10T06:00:00",
+  "endDate": "2026-09-10T20:00:00",
+  "estimatedDistance": 120,
+  "notes": "Di Vung Tau trong ngay"
+}

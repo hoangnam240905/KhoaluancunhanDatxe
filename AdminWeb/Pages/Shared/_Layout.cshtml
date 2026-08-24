@@ -1,0 +1,30 @@
+﻿@inject AdminWeb.Services.AuthSession Auth
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @if (Auth.IsLoggedIn)
+    {
+        <nav class="navbar navbar-dark bg-dark mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-page="/Index">Admin Panel</a>
+                <div>
+                    <a class="nav-link d-inline text-white" asp-page="/Vehicles/Index">Xe</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Bookings/Index">Don dat</a>
+                    <span class="text-white-50 ms-2">@Auth.FullName</span>
+                    <a class="btn btn-sm btn-outline-light ms-2" asp-page="/Account/Logout">Dang xuat</a>
+                </div>
+            </div>
+        </nav>
+    }
+    <div class="container pb-4">@RenderBody()</div>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

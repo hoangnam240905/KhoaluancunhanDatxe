@@ -1,0 +1,49 @@
+﻿@page
+@model CustomerWeb.Pages.IndexModel
+@{
+    ViewData["Title"] = "Cho thue xe du lich";
+}
+
+<div class="hero mb-4 p-4 rounded text-white" style="background: linear-gradient(135deg, #0d6efd, #6610f2);">
+    <h1 class="display-6">He thong cho thue xe du lich</h1>
+    <p class="mb-0">Chon loai xe phu hop va dat chuyen di cua ban.</p>
+</div>
+
+@if (Model.IsLoggedIn)
+{
+    <div class="alert alert-success">Xin chao, <strong>@Model.CustomerName</strong>!</div>
+}
+
+<div class="row g-4">
+    @foreach (var type in Model.VehicleTypes)
+    {
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">@type.TypeName</h5>
+                    <p class="text-muted small mb-2">@type.SeatCapacity cho</p>
+                    <p class="card-text">@type.Description</p>
+                    <ul class="list-unstyled small">
+                        <li><strong>@type.PricePerDay.ToString("N0")</strong> VND/ngay</li>
+                        <li><strong>@type.PricePerKm.ToString("N0")</strong> VND/km</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-white border-0">
+                    @if (Model.IsLoggedIn)
+                    {
+                        <a asp-page="/Bookings/Create" asp-route-typeId="@type.TypeId" class="btn btn-primary w-100">Dat xe</a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Account/Login" asp-route-returnUrl="/Bookings/Create?typeId=@type.TypeId" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (!Model.VehicleTypes.Any())
+{
+    <div class="alert alert-warning mt-4">Khong co loai xe nao. Hay kiem tra Backend dang chay tai port 5199.</div>
+}

@@ -1,0 +1,13 @@
+@page "/Admin/Vehicles"
+@model PortalWeb.Pages.Admin.Vehicles.IndexModel
+@{ ViewData["Title"] = "Quan ly xe"; }
+<div class="d-flex justify-content-between mb-3"><h2>Quan ly xe</h2><a asp-page="Create" class="btn btn-primary">Them xe</a></div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<table class="table table-striped">
+    <thead><tr><th>Bien so</th><th>Loai</th><th>Hang</th><th>Trang thai</th><th></th></tr></thead>
+    <tbody>@foreach (var v in Model.Vehicles) {
+        <tr><td>@v.LicensePlate</td><td>@v.TypeName</td><td>@v.Brand @v.Model</td><td>@v.Status</td>
+        <td><a asp-page="Edit" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-primary">Sua</a>
+        <form method="post" asp-page-handler="Delete" asp-route-id="@v.VehicleId" class="d-inline"><button class="btn btn-sm btn-outline-danger">Xoa</button></form></td></tr>
+    }</tbody>
+</table>

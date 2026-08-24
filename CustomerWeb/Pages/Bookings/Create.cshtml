@@ -1,0 +1,60 @@
+@page
+@model CustomerWeb.Pages.Bookings.CreateModel
+@{
+    ViewData["Title"] = "Dat xe";
+}
+
+<h2 class="mb-4">Dat xe</h2>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form method="post" class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="Input.VehicleTypeId" class="form-label">Loai xe</label>
+        <select asp-for="Input.VehicleTypeId" class="form-select">
+            @foreach (var type in Model.VehicleTypes)
+            {
+                <option value="@type.TypeId">@type.TypeName - @type.PricePerDay.ToString("N0") VND/ngay</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.EstimatedDistance" class="form-label">Quang duong uoc tinh (km)</label>
+        <input asp-for="Input.EstimatedDistance" class="form-control" type="number" step="0.1" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.PickupAddress" class="form-label">Diem don</label>
+        <input asp-for="Input.PickupAddress" class="form-control" placeholder="TP.HCM" />
+        <span asp-validation-for="Input.PickupAddress" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.DropoffAddress" class="form-label">Diem tra</label>
+        <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vung Tau" />
+        <span asp-validation-for="Input.DropoffAddress" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.StartDate" class="form-label">Ngay gio bat dau</label>
+        <input asp-for="Input.StartDate" class="form-control" type="datetime-local"
+               value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Input.EndDate" class="form-label">Ngay gio ket thuc</label>
+        <input asp-for="Input.EndDate" class="form-control" type="datetime-local"
+               value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+    </div>
+    <div class="col-12">
+        <label asp-for="Input.Notes" class="form-label">Ghi chu</label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Gui yeu cau dat xe</button>
+        <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Quay lai</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
