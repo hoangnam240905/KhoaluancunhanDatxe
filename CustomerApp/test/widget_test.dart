@@ -4,7 +4,7 @@ import 'package:customer_app/main.dart';
 
 void main() {
   testWidgets('App starts', (WidgetTester tester) async {
-    await tester.pumpWidget(const CustomerApp());
+    await tester.pumpWidget(const CarRentalApp());
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 }

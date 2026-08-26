@@ -1,0 +1,1104 @@
+==================================================
+HƯỚNG DẪN CHẠY CAR RENTAL SYSTEM
+==================================================
+
+File này dựa 100% trên source code trong repository.
+Mục nào không xác định được sẽ ghi: "Chưa xác định được từ source code".
+
+Remote Git:
+https://github.com/hoangnam240905/KhoaluancunhanDatxe.git
+
+Thư mục gốc:
+D:\DoAnCuNhan\CarRentalSystem
+
+Lưu ý: Source mặc định dùng SQLite (`Backend/appsettings.json`). README.md đã bổ sung chức năng theo source và PortalWeb; chi tiết lệnh/port vẫn lấy từ file này.
+
+==================================================
+1. TỔNG QUAN REPOSITORY
+--------------------------------------------------
+
+Hệ thống cho thuê xe du lịch trực tuyến (đồ án CNTT-KLCN108).
+
+Gồm:
+- 1 Backend API (ASP.NET Core)
+- 2 ứng dụng Flutter (CustomerApp, DriverApp)
+- 4 website Razor Pages (PortalWeb, AdminWeb, CustomerWeb, DispatcherWeb)
+- 1 thư mục script SQL Server (Database/) — không bắt buộc khi chạy mặc định
+
+Phụ thuộc:
+- Mọi app/web gọi Backend qua HTTP.
+- Backend đọc database (mặc định SQLite file carrental.db).
+- Website không kết nối database trực tiếp.
+- CustomerApp và DriverApp không phụ thuộc nhau.
+- Phải chạy Backend trước khi chạy app hoặc web.
+
+Tối thiểu để demo:
+Backend + (PortalWeb hoặc CustomerApp).
+
+==================================================
+2. DANH SÁCH PROJECT
+--------------------------------------------------
+
+1) Backend/       — REST API + JWT + EF Core
+2) CustomerApp/   — Flutter: khách hàng và tài xế (RoleRouter)
+3) DriverApp/     — Flutter: chỉ tài xế
+4) PortalWeb/     — Web tổng hợp Customer / Admin / Dispatcher
+5) AdminWeb/      — Web Admin riêng
+6) CustomerWeb/   — Web khách hàng riêng
+7) DispatcherWeb/ — Web điều phối riêng
+8) Database/      — Script SQL Server (không phải app chạy)
+
+Không có trong repository:
+- File .sln / .slnx được commit
+- Swagger UI (không dùng UseSwagger / UseSwaggerUI)
+- File SQLite carrental.db được commit (tạo lúc chạy Backend)
+- package.json / Node.js
+- Dockerfile
+
+==================================================
+2.1. CHỨC NĂNG CỦA TỪNG THÀNH PHẦN
+--------------------------------------------------
+(Chỉ liệt kê chức năng có trong source. Không bịa.)
+
+A) LUỒNG TỔNG
+
+Người dùng
+    ↓
+PortalWeb  /  CustomerApp  /  DriverApp  /  (AdminWeb, CustomerWeb, DispatcherWeb — web riêng, không còn login riêng)
+    ↓
+Backend API  (http://localhost:5199)
+    ↓
+Database  (mặc định SQLite carrental.db)
+
+Role (từ source):
+
+Admin
+    → PortalWeb /Account/Login (RoleRoutes.HomeFor → /Admin)
+    → khu Admin trên PortalWeb (hoặc AdminWeb nếu đã có cookie riêng)
+
+Dispatcher
+    → PortalWeb /Account/Login (→ /Dispatcher)
+    → khu Dispatcher trên PortalWeb (hoặc DispatcherWeb nếu đã có cookie riêng)
+
+Customer
+    → PortalWeb / CustomerApp / CustomerWeb
+    → chức năng khách hàng
+
+Driver
+    → DriverApp, hoặc CustomerApp (RoleRouter case 'Driver' → DriverTripsScreen)
+    → chức năng tài xế
+    → KHÔNG có khu vực Driver trên PortalWeb (role khác Customer/Admin/Dispatcher → /Account/Login)
+
+B) CUSTOMER APP  (CustomerApp/lib/)
+
+Nguồn: screens/, services/api_service.dart, navigation/role_router.dart, data/portal_content.dart, models/, main.dart
+
+Khách hàng (role Customer):
+- Màn hình chờ / khôi phục phiên (SplashScreen, SharedPreferences)
+- Đăng ký tài khoản (register_screen.dart → POST /api/auth/register)
+- Đăng nhập (login_screen.dart → POST /api/auth/login)
+- Đăng xuất
+- Xem trang chủ: loại xe từ API, tuyến phổ biến / tính năng / bước đặt xe / FAQ tĩnh (portal_content.dart, không phải API)
+- Xem thông tin loại xe (giá/ngày, giá/km, số chỗ) — getVehicleTypes(); KHÔNG gọi /api/vehicles
+- Tạo đơn thuê xe (create_booking_screen.dart)
+- Đặt theo tuyến phổ biến (điền sẵn điểm đón/trả, khoảng cách)
+- Xem danh sách đơn thuê (bookings_screen.dart)
+- Xem chi tiết đơn (bottom sheet: tuyến, thời gian, cước, ghi chú, tài xế/xe nếu đã phân công)
+- Theo dõi trạng thái đơn (hiển thị field Status)
+- RoleRouter: Admin/Dispatcher bị từ chối trên app
+
+Tài xế trên cùng app (RoleRouter + driver_trips_screen.dart):
+- Xem danh sách chuyến được phân công (GET /api/drivers/me/trips)
+- Xem thông tin chuyến trên thẻ danh sách (không có màn hình chi tiết riêng)
+- Nhận chuyến / Bắt đầu / Hoàn thành
+- Cập nhật trạng thái tài xế: Available, Busy, Offline
+- Đăng xuất
+
+Không có trong CustomerApp source:
+- Đánh giá chuyến/đơn (không có Review)
+- Xem danh sách xe theo biển số (/api/vehicles)
+- Thanh toán
+
+C) DRIVER APP  (DriverApp/lib/)
+
+Nguồn: screens/login_screen.dart, screens/trips_screen.dart, services/api_service.dart, main.dart
+
+- Khôi phục phiên nếu role Driver còn hạn JWT
+- Đăng nhập tài xế (chỉ chấp nhận role Driver)
+- Đăng xuất
+- Xem danh sách chuyến được phân công
+- Xem thông tin chuyến trên danh sách (khách, tuyến, thời gian, trạng thái, biển số nếu có)
+- Nhận chuyến (Assigned)
+- Bắt đầu chuyến (Assigned hoặc InProgress)
+- Hoàn thành chuyến (InProgress)
+- Cập nhật trạng thái: Available / Busy / Offline
+
+Không có trong DriverApp source:
+- Đăng ký
+- Đặt xe / xem loại xe
+- Đánh giá
+
+D) PORTAL WEB  (cổng đăng nhập web duy nhất — :5180)
+
+Nguồn: Pages/, Services/CarRentalApiClient.cs, Services/AuthSession.cs (RoleRoutes), Program.cs
+
+AUTHENTICATION:
+- Đăng nhập chung (Pages/Account/Login → POST /api/auth/login)
+- Đăng ký khách hàng (Pages/Account/Register → POST /api/auth/register)
+- Đăng xuất
+- Role routing: Admin → /Admin, Dispatcher → /Dispatcher, Customer → /, khác → /Account/Login
+- Cookie: CarRentalPortalAuth (không chia sẻ với AdminWeb/CustomerWeb/DispatcherWeb)
+
+CUSTOMER:
+- Trang chủ: loại xe từ API; tuyến phổ biến, tính năng, bước đặt, FAQ tĩnh (PortalContent)
+- Đặt xe (Pages/Customer/Bookings/Create)
+- Xem danh sách + chi tiết đơn trên cùng trang (tuyến, thời gian, cước, tài xế/xe nếu đã gán)
+- /Customer/Index chỉ redirect /#bang-gia
+- Không có trang Đánh giá trên PortalWeb (CarRentalApiClient có CreateReviewAsync nhưng không có Page gọi)
+
+ADMIN:
+- Dashboard: đếm xe, tổng đơn, đơn Pending
+- Danh sách / thêm / sửa / xóa xe
+- Xem đơn (lọc status query)
+- Hủy đơn (PATCH status Cancelled)
+
+DISPATCHER:
+- Xem đơn Pending và Confirmed
+- Xác nhận đơn (POST /api/dispatch/bookings/{id}/confirm)
+- Phân công tài xế + xe (Assign: DriverId, VehicleId; danh sách driver/xe Available)
+
+Driver: không có khu vực web trên PortalWeb.
+
+E) ADMIN WEB  (:5258) — web Admin riêng
+
+Nguồn: Pages/Index, Pages/Vehicles/*, Pages/Bookings/Index, Pages/Account/Logout
+- KHÔNG còn trang Login riêng (đã xóa Pages/Account/Login.*)
+- Chưa đăng nhập → redirect http://localhost:5180/Account/Login
+- Cookie riêng CarRentalAdminAuth (đăng nhập PortalWeb không tự login site này)
+- Đăng xuất (xóa cookie local, rồi chuyển PortalWeb login)
+- Dashboard: số xe, số đơn, số Pending
+- Quản lý xe: danh sách, thêm, sửa, xóa
+- Xem đơn; hủy đơn (Cancelled)
+
+F) DISPATCHER WEB  (:5206) — web điều phối riêng
+
+Nguồn: Pages/Index, Pages/Assign, Pages/Account/Logout
+- KHÔNG còn Login riêng; chưa login → http://localhost:5180/Account/Login
+- Cookie riêng CarRentalDispatcherAuth
+- Đăng xuất → PortalWeb login
+- Xem đơn Pending; xác nhận đơn
+- Xem đơn Confirmed; phân công tài xế + xe
+
+G) CUSTOMER WEB  (:5162) — web khách hàng riêng
+
+Nguồn: Pages/Index, Pages/Bookings/*, Pages/Account/Register, Pages/Account/Logout
+- KHÔNG còn Login riêng; link/redirect login → http://localhost:5180/Account/Login
+- Register vẫn còn (Pages/Account/Register): đăng ký rồi ghi cookie local CarRentalAuth
+- Đăng xuất → trang chủ CustomerWeb
+- Trang chủ: xem loại xe + giá (API vehicle-types)
+- Đặt xe; xem danh sách đơn
+- Đánh giá đơn khi Status == Completed (Pages/Bookings/Review)
+
+H) BACKEND / API
+
+Nguồn: Controllers/, Services/
+
+AUTH:
+- Đăng nhập JWT (POST /api/auth/login)
+- Đăng ký khách hàng (POST /api/auth/register)
+- Lấy hồ sơ người dùng hiện tại (GET /api/auth/me) — có trong AuthController; không thấy app/web nào gọi trong source
+
+VEHICLES:
+- Xem loại xe (GET /api/vehicle-types, public)
+- Xem danh sách xe / chi tiết xe (GET /api/vehicles, GET /api/vehicles/{id}, public)
+- Thêm / sửa / xóa xe (Admin)
+
+Không có API tạo/sửa/xóa loại xe.
+
+BOOKINGS:
+- Tạo đơn (Customer)
+- Xem danh sách / chi tiết đơn (Customer thấy đơn mình; Admin/Dispatcher thấy tất cả)
+- Cập nhật trạng thái đơn (Admin, Dispatcher — PATCH /api/bookings/{id}/status)
+- Đánh giá đơn (Customer — POST /api/bookings/{id}/reviews)
+
+DISPATCH:
+- Xác nhận đơn
+- Phân công tài xế + xe
+
+DRIVERS:
+- Danh sách tài xế (Admin, Dispatcher)
+- Chuyến của tài xế đang đăng nhập
+- Cập nhật trạng thái tài xế
+- Nhận / bắt đầu / hoàn thành chuyến
+
+Không có PaymentsController. Bảng Payments có trong DB/Entities/DbSeeder; không có API thanh toán.
+
+I) DATABASE
+
+Nguồn: Backend/Entities, Backend/Data/CarRentalDbContext.cs, Database/02_CreateTables.sql, DbSeeder.cs
+
+Có:
+- Roles, Users (tài khoản)
+- Customers, Drivers
+- VehicleTypes, Vehicles
+- Bookings
+- TripAssignments (phân công tài xế + xe cho đơn)
+- BookingStatusHistory
+- Payments (lưu/seed; không có API)
+- Reviews
+
+Không có trong source:
+- RefreshToken
+- DriverVehicle (quan hệ xe-tài xế nằm ở TripAssignments)
+
+==================================================
+Hết mục 2.1
+==================================================
+
+==================================================
+3. YÊU CẦU MÔI TRƯỜNG
+--------------------------------------------------
+
+A) .NET SDK
+   - Tất cả file .csproj: TargetFramework = net10.0
+   - Đã kiểm tra trên máy viết file này: dotnet --version = 10.0.400
+   - Cần .NET SDK 10.x
+
+B) Flutter / Dart
+   - CustomerApp/pubspec.yaml và DriverApp/pubspec.yaml: sdk: ^3.11.1
+   - Đã kiểm tra trên máy viết file này:
+     Flutter 3.41.4 (stable)
+     Dart 3.11.1
+   - Project KHÔNG pin version Flutter trong repo.
+     Cần Flutter tương thích Dart >= 3.11.1
+
+C) Android (nếu chạy app trên emulator/điện thoại)
+   - JDK: CustomerApp/android/app/build.gradle.kts dùng JavaVersion.VERSION_17
+     DriverApp/android/app/build.gradle.kts cũng dùng JavaVersion.VERSION_17
+   - Android SDK: CustomerApp/android/local.properties có sdk.dir (đường dẫn local từng máy)
+   - Android Studio: Chưa xác định được từ source code
+   - minSdk / targetSdk số cụ thể: Chưa xác định được từ source code
+     (app dùng flutter.minSdkVersion / flutter.targetSdkVersion)
+
+D) Database
+   - Mặc định: SQLite (Backend/appsettings.json: DatabaseProvider = Sqlite)
+   - Tùy chọn: SQL Server (Program.cs hỗ trợ DatabaseProvider = SqlServer)
+   - SSMS/sqlcmd chỉ cần nếu dùng SQL Server + script trong Database/
+
+E) IDE
+   - Visual Studio: Chưa xác định được version bắt buộc từ source code
+     (cần VS hỗ trợ .NET 10 nếu dùng Visual Studio)
+   - VS Code / Cursor: dùng được
+   - Không bắt buộc Visual Studio nếu dùng `dotnet run`
+
+F) Không cần
+   - Node.js / npm
+   - Docker
+
+==================================================
+4. CUSTOMER APP
+--------------------------------------------------
+
+Đường dẫn: CustomerApp/
+Framework: Flutter (package name: customer_app)
+Entry point: CustomerApp/lib/main.dart
+ApplicationId Android: com.carrental.customer_app
+
+Dependencies (CustomerApp/pubspec.yaml):
+- flutter (sdk)
+- cupertino_icons: ^1.0.8
+- http: ^1.2.2
+- shared_preferences: ^2.3.3
+- intl: ^0.20.2
+- Dart SDK: ^3.11.1
+
+Phải chạy Backend trước (port 5199).
+
+Lệnh cài đặt:
+
+  cd CustomerApp
+  flutter pub get
+
+Lệnh chạy:
+
+  flutter devices
+  flutter run
+
+API URL:
+- File: CustomerApp/lib/config/api_config.dart
+- Biến: ApiConfig.baseUrl
+- Giá trị hiện tại: http://10.0.2.2:5199
+- Comment trong file: Android emulator dùng 10.0.2.2; Windows/Chrome dùng http://localhost:5199
+
+Port: không có port riêng (app gọi Backend 5199)
+
+Database: không kết nối DB. Chỉ gọi API.
+
+Cấu hình cần thay đổi:
+- Android Emulator: KHÔNG bắt buộc sửa (đã là 10.0.2.2)
+- Chrome / Windows / iOS Simulator: đổi baseUrl thành http://localhost:5199
+- Điện thoại thật: đổi thành http://<IP-LAN-máy-chạy-Backend>:5199
+  IP LAN cụ thể: Chưa xác định được từ source code
+
+Lưu ý Android:
+- CustomerApp/android/app/build.gradle.kts lọc ABI x86_64
+- Phù hợp emulator x86_64
+- Điện thoại ARM có thể không chạy với cấu hình này
+
+Script Windows (không bắt buộc, chỉ có ở CustomerApp):
+- CustomerApp/run_android.ps1
+- CustomerApp/setup_build_junction.ps1
+- Dùng khi build bị Windows file-lock / antivirus
+- Script chuyển thư mục build sang C:\Temp\carrental-customer-build
+
+Tài khoản demo (hiện trên màn hình Login):
+- Khách hàng: customer1@gmail.com
+- Tài xế:     driver1@carrental.vn
+- Mật khẩu:   Password123!
+
+CustomerApp đăng nhập được Customer và Driver.
+Admin / Dispatcher bị từ chối trên app (RoleRouter).
+
+==================================================
+5. DRIVER APP
+--------------------------------------------------
+
+Đường dẫn: DriverApp/
+Framework: Flutter (package name: driver_app)
+Entry point: DriverApp/lib/main.dart
+ApplicationId Android: com.carrental.driver_app
+
+Dependencies (DriverApp/pubspec.yaml):
+- flutter (sdk)
+- cupertino_icons: ^1.0.8
+- http: ^1.2.2
+- shared_preferences: ^2.3.3
+- intl: ^0.20.2
+- Dart SDK: ^3.11.1
+
+Phải chạy Backend trước (port 5199).
+
+Lệnh cài đặt:
+
+  cd DriverApp
+  flutter pub get
+
+Lệnh chạy:
+
+  flutter devices
+  flutter run
+
+API URL:
+- File: DriverApp/lib/config/api_config.dart
+- Biến: ApiConfig.baseUrl
+- Giá trị hiện tại: http://10.0.2.2:5199
+- Comment trong file: Android emulator dùng 10.0.2.2; Windows/Chrome dùng http://localhost:5199
+
+Port: không có port riêng
+
+Database: không kết nối DB. Chỉ gọi API.
+
+Cấu hình cần thay đổi: giống CustomerApp (10.0.2.2 / localhost / IP LAN).
+
+DriverApp/android/app/build.gradle.kts KHÔNG lọc ABI x86_64
+(khác CustomerApp).
+
+Không có run_android.ps1 trong DriverApp.
+
+Tài khoản demo (đã điền sẵn trên Login):
+- Email:    driver1@carrental.vn
+- Mật khẩu: Password123!
+- App chỉ chấp nhận role Driver.
+
+==================================================
+6. ADMIN / WEB
+--------------------------------------------------
+
+Đường dẫn: AdminWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: AdminWeb/Program.cs
+Project: AdminWeb/AdminWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd AdminWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (AdminWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5258
+- Profile https: https://localhost:7008 và http://localhost:5258
+
+API URL:
+- File: AdminWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+- AdminWeb/appsettings.Development.json không ghi đè ApiBaseUrl
+
+Database: không kết nối DB. Gọi Backend qua CarRentalApiClient.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: KHÔNG còn Pages/Account/Login. Chưa login → http://localhost:5180/Account/Login
+Chức năng còn lại: xem mục 2.1.E (dashboard, xe, đơn, hủy đơn, logout).
+
+==================================================
+7. DISPATCHER / WEB
+--------------------------------------------------
+
+Đường dẫn: DispatcherWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: DispatcherWeb/Program.cs
+Project: DispatcherWeb/DispatcherWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd DispatcherWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (DispatcherWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5206
+- Profile https: https://localhost:7278 và http://localhost:5206
+
+API URL:
+- File: DispatcherWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: KHÔNG còn Pages/Account/Login. Chưa login → http://localhost:5180/Account/Login
+Chức năng còn lại: xem mục 2.1.F (xác nhận đơn, phân công tài xế + xe, logout).
+
+==================================================
+8. CUSTOMER / WEB
+--------------------------------------------------
+
+Đường dẫn: CustomerWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: CustomerWeb/Program.cs
+Project: CustomerWeb/CustomerWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd CustomerWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (CustomerWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5162
+- Profile https: https://localhost:7280 và http://localhost:5162
+
+API URL:
+- File: CustomerWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: KHÔNG còn Pages/Account/Login. Link/redirect → http://localhost:5180/Account/Login
+Đăng ký: vẫn còn Pages/Account/Register (ghi cookie local sau khi đăng ký).
+Chức năng: xem mục 2.1.G (loại xe, đặt xe, xem đơn, đánh giá đơn Completed).
+
+==================================================
+9. PORTAL / WEB
+--------------------------------------------------
+
+Đường dẫn: PortalWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: PortalWeb/Program.cs
+Project: PortalWeb/PortalWeb.csproj
+
+Đây là website tổng hợp (Customer + Admin + Dispatcher) và CỔNG ĐĂNG NHẬP WEB DUY NHẤT.
+URL login: http://localhost:5180/Account/Login
+Khuyên dùng nếu chỉ muốn chạy một web.
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd PortalWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (PortalWeb/Properties/launchSettings.json):
+- Chỉ có profile "PortalWeb": http://localhost:5180
+- Không có profile https trong launchSettings.json
+
+API URL:
+- File: PortalWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+- Đọc tại PortalWeb/Program.cs (HttpClient.BaseAddress)
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Chức năng chi tiết: mục 2.1.D
+- Auth: đăng nhập, đăng ký, đăng xuất, role routing
+- Customer: trang chủ, đặt xe, xem đơn (không có UI đánh giá trên PortalWeb)
+- Admin: dashboard, CRUD xe, xem/hủy đơn
+- Dispatcher: xác nhận đơn, phân công tài xế + xe
+
+Không bắt buộc chạy đồng thời AdminWeb / CustomerWeb / DispatcherWeb khi đã chạy PortalWeb.
+
+==================================================
+10. BACKEND / API
+--------------------------------------------------
+
+Đường dẫn: Backend/
+Framework: ASP.NET Core Web API
+TargetFramework: net10.0
+Project chính: Backend/Backend.csproj
+Entry point: Backend/Program.cs
+
+NuGet (Backend/Backend.csproj):
+- BCrypt.Net-Next 4.2.0
+- Microsoft.AspNetCore.Authentication.JwtBearer 10.0.11
+- Microsoft.AspNetCore.OpenApi 10.0.3
+- Microsoft.EntityFrameworkCore.Sqlite 10.0.11
+- Microsoft.EntityFrameworkCore.SqlServer 10.0.11
+
+Lệnh cài đặt:
+
+  cd Backend
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL:
+- Backend/appsettings.json: "Urls": "http://localhost:5199"
+- Backend/Properties/launchSettings.json:
+  + Profile "Backend" (đầu tiên): http://localhost:5199
+    launchBrowser true, launchUrl api/vehicle-types
+  + Profile "http": http://localhost:5199
+  + Profile "https": https://localhost:7068 và http://localhost:5199
+
+API URL mặc định:
+http://localhost:5199
+
+Kiểm tra nhanh:
+http://localhost:5199/api/vehicle-types
+
+OpenAPI (khi ASPNETCORE_ENVIRONMENT=Development):
+http://localhost:5199/openapi/v1.json
+
+Không có Swagger UI trong source.
+Chỉ có app.MapOpenApi() trong Backend/Program.cs.
+
+Khi chạy, Backend sẽ:
+1. Đọc DatabaseProvider (mặc định Sqlite)
+2. db.Database.EnsureCreated()
+3. DbSeeder.Seed(db) nếu chưa có Roles
+
+Không cần EF Core Migration.
+Không cần tạo database thủ công nếu dùng SQLite.
+
+Tài khoản seed (Backend/Data/DbSeeder.cs).
+Mật khẩu Password123! lấy từ màn hình Login app/web và comment Database/03_SeedData.sql
+(DbSeeder dùng cùng bcrypt hash với script SQL):
+
+- admin@carrental.vn           (Admin)
+- dispatcher@carrental.vn      (Dispatcher)
+- customer1@gmail.com          (Customer)
+- customer2@gmail.com          (Customer)
+- driver1@carrental.vn         (Driver)
+- driver2@carrental.vn         (Driver)
+- driver3@carrental.vn         (Driver)
+
+Endpoint (từ Controllers):
+- POST /api/auth/login
+- POST /api/auth/register
+- GET  /api/auth/me
+- GET  /api/vehicle-types
+- GET  /api/vehicles
+- GET  /api/vehicles/{id}
+- POST /api/vehicles
+- PUT  /api/vehicles/{id}
+- DELETE /api/vehicles/{id}
+- GET  /api/bookings
+- GET  /api/bookings/{id}
+- POST /api/bookings
+- POST /api/bookings/{id}/reviews
+- PATCH /api/bookings/{id}/status
+- POST /api/dispatch/bookings/{id}/confirm
+- POST /api/dispatch/bookings/{id}/assign
+- GET  /api/drivers
+- GET  /api/drivers/me/trips
+- PATCH /api/drivers/me/status
+- POST /api/drivers/trips/{assignmentId}/accept
+- POST /api/drivers/trips/{assignmentId}/start
+- POST /api/drivers/trips/{assignmentId}/complete
+
+==================================================
+11. DATABASE
+--------------------------------------------------
+
+Mặc định khi chạy Backend: SQLite.
+
+File cấu hình:
+- Backend/appsettings.json
+- Backend/appsettings.Development.json
+
+Giá trị hiện tại:
+- DatabaseProvider: Sqlite
+- ConnectionStrings:DefaultConnection: Data Source=carrental.db
+
+File SQLite:
+- Tên: carrental.db
+- Tạo tự động khi chạy Backend (EnsureCreated)
+- Vị trí: thư mục làm việc khi chạy `dotnet run` (thường là Backend/)
+- Không cần tạo thủ công
+- Không có EF Core Migration trong repository
+- Không được commit trong git
+
+Không cần chạy script SQL nếu dùng mặc định SQLite.
+Dữ liệu mẫu: Backend/Data/DbSeeder.cs
+
+--------------------------------------------------
+Tùy chọn SQL Server (KHÔNG bắt buộc)
+--------------------------------------------------
+
+Thư mục Database/:
+1. Database/01_CreateDatabase.sql  → tạo database CarRentalDB (COLLATE Vietnamese_CI_AS)
+2. Database/02_CreateTables.sql    → tạo bảng, FK, index
+3. Database/03_SeedData.sql        → dữ liệu mẫu
+
+Nếu muốn dùng SQL Server:
+1. Cài SQL Server + SSMS hoặc sqlcmd
+2. Chạy 3 script theo thứ tự 01 → 02 → 03
+3. Sửa Backend/appsettings.json:
+   - DatabaseProvider: "SqlServer"
+   - DefaultConnection: connection string SQL Server
+4. Connection string SQL Server mẫu: Chưa xác định được từ source code
+   (appsettings đang để SQLite)
+
+Cách nhanh nhất cho thành viên mới: giữ Sqlite, chỉ `dotnet run` ở Backend.
+
+==================================================
+12. API CONFIGURATION
+--------------------------------------------------
+
+CustomerApp:
+- CustomerApp/lib/config/api_config.dart
+- ApiConfig.baseUrl = http://10.0.2.2:5199
+
+DriverApp:
+- DriverApp/lib/config/api_config.dart
+- ApiConfig.baseUrl = http://10.0.2.2:5199
+
+PortalWeb:
+- PortalWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+AdminWeb:
+- AdminWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+CustomerWeb:
+- CustomerWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+DispatcherWeb:
+- DispatcherWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+Backend:
+- HTTP: http://localhost:5199
+- HTTPS (profile https): https://localhost:7068
+- OpenAPI: http://localhost:5199/openapi/v1.json (Development)
+
+Địa chỉ tìm thấy trong source:
+- localhost
+- 10.0.2.2
+- Port: 5199, 7068, 5180, 5258, 7008, 5162, 7280, 5206, 7278
+- 127.0.0.1: không có trong cấu hình API
+- IP LAN cố định: không có trong source
+
+Android Emulator:
+- Dùng 10.0.2.2 thay localhost
+- CustomerApp và DriverApp đã cấu hình sẵn 10.0.2.2
+
+Khi nào thành viên mới BẮT BUỘC sửa:
+1. Flutter trên Chrome/Windows/iOS: đổi 10.0.2.2 → localhost
+2. Flutter trên điện thoại thật: đổi 10.0.2.2 → IP LAN máy Backend
+3. Backend không chạy port 5199: sửa Urls/launchSettings và mọi ApiBaseUrl/baseUrl
+4. Muốn SQL Server: sửa DatabaseProvider + DefaultConnection
+
+==================================================
+13. THỨ TỰ CHẠY TOÀN BỘ HỆ THỐNG
+--------------------------------------------------
+
+1. Database
+   - SQLite mặc định: KHÔNG cần bước này. Backend tự tạo carrental.db.
+   - SQL Server: chạy Database/01 → 02 → 03, rồi sửa appsettings.
+
+2. Backend / API
+   cd Backend
+   dotnet restore
+   dotnet run
+   Kiểm tra: http://localhost:5199/api/vehicle-types
+
+3. Web (chọn 1 hoặc nhiều, mỗi cái một terminal)
+   - PortalWeb:     cd PortalWeb     && dotnet run  → http://localhost:5180
+   - AdminWeb:      cd AdminWeb      && dotnet run  → http://localhost:5258
+   - CustomerWeb:   cd CustomerWeb   && dotnet run  → http://localhost:5162
+   - DispatcherWeb: cd DispatcherWeb && dotnet run  → http://localhost:5206
+
+4. Customer App
+   cd CustomerApp
+   flutter pub get
+   flutter run
+   (cần emulator/device; nếu Android Emulator thì giữ 10.0.2.2)
+
+5. Driver App
+   cd DriverApp
+   flutter pub get
+   flutter run
+
+Không bắt buộc chạy cả 4 website.
+Không bắt buộc chạy cả 2 Flutter app.
+
+==================================================
+14. QUICK START
+--------------------------------------------------
+
+Giả sử đang ở thư mục gốc CarRentalSystem.
+
+---- BACKEND (bắt buộc, chạy trước) ----
+
+cd Backend
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5199/api/vehicle-types
+http://localhost:5199/openapi/v1.json
+
+---- PORTAL WEB (khuyên dùng) ----
+
+Terminal mới:
+
+cd PortalWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5180
+
+---- ADMIN WEB (tùy chọn) ----
+
+cd AdminWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5258
+
+---- CUSTOMER WEB (tùy chọn) ----
+
+cd CustomerWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5162
+
+---- DISPATCHER WEB (tùy chọn) ----
+
+cd DispatcherWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5206
+
+---- CUSTOMER APP ----
+
+Terminal mới. Bật Android Emulator nếu muốn chạy Android.
+
+cd CustomerApp
+flutter pub get
+flutter devices
+flutter run
+
+Nếu chạy trên Chrome/Windows (không phải Android Emulator):
+sửa CustomerApp/lib/config/api_config.dart
+ApiConfig.baseUrl = http://localhost:5199
+
+---- DRIVER APP ----
+
+cd DriverApp
+flutter pub get
+flutter devices
+flutter run
+
+Tài khoản thử nhanh:
+Admin:      admin@carrental.vn / Password123!
+Dispatcher: dispatcher@carrental.vn / Password123!
+Customer:   customer1@gmail.com / Password123!
+Driver:     driver1@carrental.vn / Password123!
+
+==================================================
+15. KIỂM TRA SAU KHI CHẠY
+--------------------------------------------------
+
+Backend:
+- Terminal lắng nghe http://localhost:5199
+- http://localhost:5199/api/vehicle-types trả JSON danh sách loại xe
+- Lần chạy đầu: file carrental.db xuất hiện ở thư mục chạy Backend
+
+OpenAPI:
+- http://localhost:5199/openapi/v1.json khi Environment = Development
+- Không có trang Swagger UI
+
+Database:
+- SQLite: có carrental.db sau khi Backend start
+- SQL Server: chỉ kiểm nếu đã đổi provider
+
+Web:
+- PortalWeb:     http://localhost:5180
+- AdminWeb:      http://localhost:5258
+- CustomerWeb:   http://localhost:5162
+- DispatcherWeb: http://localhost:5206
+- Đăng nhập được bằng tài khoản seed
+- Nếu web không load dữ liệu: kiểm tra Backend còn chạy ở 5199
+
+Emulator / Device:
+
+  flutter devices
+
+- Cần ít nhất 1 device
+- Trên máy viết file này, `flutter devices` thấy: Windows, Chrome, Edge
+  (không thấy Android emulator tại thời điểm kiểm tra)
+- Muốn chạy Android: bật emulator rồi chạy lại flutter devices
+
+App:
+- CustomerApp: splash → trang chủ / login
+- Đặt xe cần Backend đang chạy
+- Lỗi mạng: sai baseUrl (10.0.2.2 vs localhost vs IP LAN)
+
+==================================================
+16. CÁC LỖI THƯỜNG GẶP
+--------------------------------------------------
+
+Chỉ ghi lỗi liên quan đến project thực tế.
+
+1) flutter pub get thất bại
+   Nguyên nhân: chưa cài Flutter, hoặc Dart < 3.11.1 (pubspec yêu cầu sdk: ^3.11.1)
+   Xử lý: cài Flutter, chạy `flutter doctor`, kiểm tra `dart --version`
+
+2) flutter run không thấy Android device
+   Nguyên nhân: chưa bật emulator / chưa cắm điện thoại
+   Xử lý:
+     flutter devices
+     Android Studio → Device Manager → Start emulator
+   Ghi chú: máy kiểm tra file này có Windows/Chrome/Edge, chưa có Android emulator.
+
+3) App không gọi được API (Android Emulator)
+   Nguyên nhân: Backend chưa chạy, hoặc đã đổi baseUrl thành localhost
+   Xử lý: chạy Backend port 5199; giữ baseUrl = http://10.0.2.2:5199
+
+4) App không gọi được API (Chrome / Windows)
+   Nguyên nhân: baseUrl đang là 10.0.2.2 (chỉ đúng cho Android Emulator)
+   Xử lý: sửa api_config.dart thành http://localhost:5199
+
+5) App trên điện thoại thật không gọi được API
+   Nguyên nhân: 10.0.2.2 không phải IP máy thật
+   Xử lý: đổi baseUrl thành http://<IP-LAN-máy-Backend>:5199
+          cùng Wi-Fi; tường lửa Windows cho phép port 5199
+
+6) Port 5199 bị chiếm
+   Nguyên nhân: Backend cũ còn chạy, hoặc process khác dùng 5199
+   Xử lý: đóng process cũ, hoặc đổi Urls rồi cập nhật mọi ApiBaseUrl/baseUrl
+
+7) dotnet run / restore lỗi thiếu SDK
+   Nguyên nhân: chưa cài .NET 10 SDK (csproj TargetFramework = net10.0)
+   Xử lý: cài .NET 10 SDK, kiểm tra `dotnet --version`
+
+8) Web chạy nhưng không load dữ liệu
+   Nguyên nhân: Backend chưa chạy, hoặc ApiBaseUrl sai
+   Xử lý: chạy Backend trước; giữ ApiBaseUrl = http://localhost:5199
+
+9) Database SQLite không tạo
+   Nguyên nhân: Backend crash trước EnsureCreated, hoặc không quyền ghi thư mục
+   Xử lý: chạy `dotnet run` từ thư mục Backend, xem log
+          Không cần tạo file .db thủ công
+
+10) Chuyển SQL Server thất bại
+    Nguyên nhân: vẫn để DatabaseProvider = Sqlite; connection string sai;
+                 chưa chạy script Database/
+    Xử lý: chỉ làm nếu thật sự cần SQL Server.
+           Chạy 01 → 02 → 03. Sửa DatabaseProvider = SqlServer và DefaultConnection.
+
+11) Flutter Android build lỗi Gradle / CMake / file lock (Windows)
+    Nguyên nhân: antivirus khóa file build (repo đã có script)
+    Xử lý (chỉ CustomerApp):
+      cd CustomerApp
+      powershell -ExecutionPolicy Bypass -File .\run_android.ps1
+    Hoặc:
+      powershell -ExecutionPolicy Bypass -File .\setup_build_junction.ps1
+
+12) CustomerApp cài lên điện thoại ARM thất bại
+    Nguyên nhân: android/app/build.gradle.kts có abiFilters.add("x86_64")
+    Xử lý: dùng emulator x86_64, hoặc sửa abiFilters cho đúng kiến trúc máy
+           (cấu hình Android hiện tại, không phải lỗi Flutter SDK)
+
+13) flutter clean khi build hỏng
+      cd CustomerApp
+      flutter clean
+      flutter pub get
+      flutter run
+    Làm tương tự với DriverApp.
+
+14) HTTPS redirection
+    Backend/Program.cs có app.UseHttpsRedirection()
+    Client đang dùng http://localhost:5199
+    Nếu gặp redirect/SSL: dùng URL HTTP port 5199 như cấu hình hiện tại.
+
+15) dotnet restore Backend cảnh báo NU1903
+    Đã quan sát khi restore Backend: warning Microsoft.OpenApi (gói kéo theo OpenApi 10.0.3)
+    Restore vẫn thành công (exit code 0). Không chặn chạy.
+    Không tự ý đổi package version trừ khi được giao.
+
+==================================================
+17. GIT WORKFLOW
+--------------------------------------------------
+
+Clone:
+
+  git clone https://github.com/hoangnam240905/KhoaluancunhanDatxe.git
+  cd KhoaluancunhanDatxe
+
+(Tên thư mục clone theo tên repo GitHub. Nếu clone vào tên khác, cd vào thư mục đó.)
+
+Trước khi làm:
+
+  git pull
+
+Sau khi sửa:
+
+  git add .
+  git commit -m "mô tả thay đổi"
+  git push
+
+Không commit:
+- build/
+- .dart_tool/
+- .flutter-plugins
+- .flutter-plugins-dependencies
+- bin/ và obj/ của .NET
+- .vs/
+- pubspec.lock (đang nằm trong .gitignore)
+- carrental.db
+- .env, file chứa password / JWT key nếu copy ra ngoài
+- android/local.properties (đường dẫn SDK từng máy)
+
+.gitignore hiện tại đã loại:
+.vs/, **/bin/, **/obj/, **/.dart_tool/, **/build/,
+**/.flutter-plugins, **/.flutter-plugins-dependencies,
+**/pubspec.lock, .env
+
+Lưu ý:
+- Backend/appsettings.json có Jwt:Key trong source.
+- Không sửa key nếu không được giao.
+
+==================================================
+PHỤ LỤC A — ENTRY POINT
+--------------------------------------------------
+
+CustomerApp:    CustomerApp/lib/main.dart
+DriverApp:      DriverApp/lib/main.dart
+Backend:        Backend/Program.cs
+PortalWeb:      PortalWeb/Program.cs
+AdminWeb:       AdminWeb/Program.cs
+CustomerWeb:    CustomerWeb/Program.cs
+DispatcherWeb:  DispatcherWeb/Program.cs
+
+==================================================
+PHỤ LỤC B — CẤU HÌNH BẮT BUỘC VỚI THÀNH VIÊN MỚI
+--------------------------------------------------
+
+THƯỜNG KHÔNG CẦN SỬA nếu:
+- Chạy Backend bằng `dotnet run` (port 5199)
+- Dùng SQLite mặc định
+- Chạy Flutter app trên Android Emulator
+- Mở web bằng localhost
+
+CẦN SỬA nếu:
+- Flutter app chạy trên Chrome/Windows/iOS: đổi 10.0.2.2 → localhost
+- Flutter app chạy trên điện thoại thật: đổi 10.0.2.2 → IP LAN
+- Backend đổi port: sửa Urls + toàn bộ ApiBaseUrl/baseUrl
+- Dùng SQL Server: sửa DatabaseProvider + DefaultConnection
+
+==================================================
+PHỤ LỤC C — CHƯA XÁC ĐỊNH ĐƯỢC TỪ SOURCE CODE
+--------------------------------------------------
+
+- Version Android Studio bắt buộc
+- Version Visual Studio bắt buộc
+- Version Flutter được pin trong project (chỉ có Dart SDK ^3.11.1)
+- minSdk / targetSdk số cụ thể
+- IP LAN để điện thoại thật gọi Backend
+- Connection string SQL Server mẫu
+- Swagger UI URL (project không dùng Swagger UI)
+
+==================================================
+PHỤ LỤC D — LỆNH ĐÃ KIỂM TRA KHI VIẾT FILE NÀY
+--------------------------------------------------
+
+Đã chạy thành công (exit code 0):
+- flutter --version
+- dart --version
+- dotnet --version
+- git remote get-url origin
+- Test-Path các file entry point / config / SQL
+- flutter devices
+- flutter pub get (CustomerApp, DriverApp)
+- dotnet restore (Backend, AdminWeb, CustomerWeb, DispatcherWeb, PortalWeb)
+
+Chưa chạy trong lần kiểm tra này:
+- flutter run
+- flutter test
+- flutter analyze
+- dart format
+- dotnet run / dotnet build
+- Không tuyên bố app/web/API "chạy thành công" vì chưa chạy các lệnh trên.
+
+==================================================
+HẾT FILE HƯỚNG DẪN
+==================================================

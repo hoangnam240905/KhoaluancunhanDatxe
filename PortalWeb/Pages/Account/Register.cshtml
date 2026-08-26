@@ -1,15 +1,15 @@
 @page
 @model PortalWeb.Pages.Account.RegisterModel
 @{
-    ViewData["Title"] = "Dang ky";
+    ViewData["Title"] = "Đăng ký";
     Layout = "_LayoutAuth";
 }
 
 <div class="auth-card">
     <div class="auth-card-header">
         <div class="auth-logo">✨</div>
-        <h1 class="h4 fw-bold mb-1">Tao tai khoan</h1>
-        <p class="text-muted small mb-0">Dang ky de dat xe du lich</p>
+        <h1 class="h4 fw-bold mb-1">Tạo tài khoản</h1>
+        <p class="text-muted small mb-0">Đăng ký để đặt xe du lịch</p>
     </div>
     <div class="auth-card-body">
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -19,8 +19,8 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <form method="post">
             <div class="mb-3">
-                <label asp-for="Input.FullName" class="form-label">Ho ten</label>
-                <input asp-for="Input.FullName" class="form-control" placeholder="Nguyen Van A" />
+                <label asp-for="Input.FullName" class="form-label">Họ tên</label>
+                <input asp-for="Input.FullName" class="form-control" placeholder="Nguyễn Văn A" />
                 <span asp-validation-for="Input.FullName" class="field-validation-error"></span>
             </div>
             <div class="mb-3">
@@ -29,28 +29,28 @@
                 <span asp-validation-for="Input.Email" class="field-validation-error"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label">Mat khau</label>
+                <label asp-for="Input.Password" class="form-label">Mật khẩu</label>
                 <div class="input-group">
                     <input asp-for="Input.Password" id="register-password" type="password" class="form-control" placeholder="••••••••" autocomplete="new-password" />
-                    <button type="button" class="btn btn-toggle-password" aria-label="Hien mat khau">
-                        <span class="toggle-label">Hien</span>
+                    <button type="button" class="btn btn-toggle-password" aria-label="Hiện mật khẩu">
+                        <span class="toggle-label">Hiện</span>
                     </button>
                 </div>
                 <span asp-validation-for="Input.Password" class="field-validation-error"></span>
                 <ul class="password-rules list-unstyled mt-2 mb-0">
-                    <li id="rule-length">It nhat 8 ky tu</li>
-                    <li id="rule-upper">Co it nhat 1 chu hoa (A-Z)</li>
-                    <li id="rule-special">Co it nhat 1 ky tu dac biet (!&#64;#$...)</li>
+                    <li id="rule-length">Ít nhất 8 ký tự</li>
+                    <li id="rule-upper">Có ít nhất 1 chữ hoa (A-Z)</li>
+                    <li id="rule-special">Có ít nhất 1 ký tự đặc biệt (!&#64;#$...)</li>
                 </ul>
             </div>
             <div class="mb-3">
-                <label asp-for="Input.Phone" class="form-label">So dien thoai</label>
+                <label asp-for="Input.Phone" class="form-label">Số điện thoại</label>
                 <input asp-for="Input.Phone" class="form-control" placeholder="09xxxxxxxx" />
             </div>
-            <button type="submit" class="btn btn-primary w-100">Dang ky</button>
+            <button type="submit" class="btn btn-primary w-100">Đăng ký</button>
         </form>
         <p class="text-center mt-3 mb-0 small">
-            Da co tai khoan? <a asp-page="/Account/Login" class="fw-semibold">Dang nhap</a>
+            Đã có tài khoản? <a asp-page="/Account/Login" class="fw-semibold">Đăng nhập</a>
         </p>
     </div>
 </div>

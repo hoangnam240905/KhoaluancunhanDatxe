@@ -25,20 +25,20 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             if (!string.IsNullOrEmpty(error?.Message)) return error.Message;
         }
         catch { }
-        return $"Loi API ({(int)response.StatusCode})";
+        return $"Lỗi API ({(int)response.StatusCode})";
     }
 
     public async Task<(AuthResponse? Data, string? Error)> LoginAsync(LoginRequest request)
     {
         var response = await http.PostAsJsonAsync("/api/auth/login", request);
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Dang nhap that bai.");
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đăng nhập thất bại.");
         return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
     }
 
     public async Task<(AuthResponse? Data, string? Error)> RegisterAsync(RegisterCustomerRequest request)
     {
         var response = await http.PostAsJsonAsync("/api/auth/register", request);
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Dang ky that bai.");
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đăng ký thất bại.");
         return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
     }
 
@@ -101,7 +101,7 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         using var httpRequest = CreateRequest(HttpMethod.Post, "/api/bookings");
         httpRequest.Content = JsonContent.Create(request);
         var response = await http.SendAsync(httpRequest);
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Dat xe that bai.");
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đặt xe thất bại.");
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 

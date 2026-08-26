@@ -13,7 +13,7 @@ class DriverApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Car Rental - Tai xe',
+      title: 'Car Rental - Tài xế',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange), useMaterial3: true),
       home: const SplashScreen(),
     );

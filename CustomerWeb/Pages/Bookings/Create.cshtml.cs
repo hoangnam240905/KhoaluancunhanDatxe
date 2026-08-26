@@ -37,7 +37,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int? typeId)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login", new { returnUrl = $"/Bookings/Create?typeId={typeId}" });
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (typeId.HasValue) Input.VehicleTypeId = typeId.Value;
@@ -48,7 +48,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (!ModelState.IsValid) return Page();

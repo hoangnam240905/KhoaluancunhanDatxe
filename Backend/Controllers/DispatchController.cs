@@ -17,7 +17,7 @@ public class DispatchController(DispatchService dispatchService) : ControllerBas
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await dispatchService.ConfirmBookingAsync(id, userId);
-        return booking is null ? BadRequest(new { message = "Khong the xac nhan don." }) : Ok(booking);
+        return booking is null ? BadRequest(new { message = "Không thể xác nhận đơn." }) : Ok(booking);
     }
 
     [HttpPost("bookings/{id:int}/assign")]
@@ -25,6 +25,6 @@ public class DispatchController(DispatchService dispatchService) : ControllerBas
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await dispatchService.AssignTripAsync(id, request, userId);
-        return booking is null ? BadRequest(new { message = "Khong the phan cong chuyen di." }) : Ok(booking);
+        return booking is null ? BadRequest(new { message = "Không thể phân công chuyến đi." }) : Ok(booking);
     }
 }

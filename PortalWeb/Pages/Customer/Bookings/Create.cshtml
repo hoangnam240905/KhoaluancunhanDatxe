@@ -1,10 +1,10 @@
 @page "/Customer/Bookings/Create"
 @model PortalWeb.Pages.Customer.Bookings.CreateModel
-@{ ViewData["Title"] = "Dat xe"; }
+@{ ViewData["Title"] = "Đặt xe"; }
 
 <div class="page-header">
-    <h2>Dat xe</h2>
-    <p>Dien thong tin chuyen di cua ban</p>
+    <h2>Đặt xe</h2>
+    <p>Điền thông tin chuyến đi của bạn</p>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -15,38 +15,38 @@
 <div class="modern-card p-4 col-lg-8">
     <form method="post" class="row g-3">
         <div class="col-md-6">
-            <label asp-for="Input.VehicleTypeId" class="form-label">Loai xe</label>
+            <label asp-for="Input.VehicleTypeId" class="form-label">Loại xe</label>
             <select asp-for="Input.VehicleTypeId" class="form-select">
                 @foreach (var t in Model.VehicleTypes) { <option value="@t.TypeId">@t.TypeName</option> }
             </select>
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.EstimatedDistance" class="form-label">Km uoc tinh</label>
+            <label asp-for="Input.EstimatedDistance" class="form-label">Km ước tính</label>
             <input asp-for="Input.EstimatedDistance" class="form-control" type="number" step="0.1" />
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.PickupAddress" class="form-label">Diem don</label>
+            <label asp-for="Input.PickupAddress" class="form-label">Điểm đón</label>
             <input asp-for="Input.PickupAddress" class="form-control" placeholder="TP.HCM" />
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.DropoffAddress" class="form-label">Diem tra</label>
-            <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vung Tau" />
+            <label asp-for="Input.DropoffAddress" class="form-label">Điểm trả</label>
+            <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vũng Tàu" />
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.StartDate" class="form-label">Bat dau</label>
+            <label asp-for="Input.StartDate" class="form-label">Bắt đầu</label>
             <input asp-for="Input.StartDate" class="form-control" type="datetime-local" value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.EndDate" class="form-label">Ket thuc</label>
+            <label asp-for="Input.EndDate" class="form-label">Kết thúc</label>
             <input asp-for="Input.EndDate" class="form-control" type="datetime-local" value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
         </div>
         <div class="col-12">
-            <label asp-for="Input.Notes" class="form-label">Ghi chu</label>
+            <label asp-for="Input.Notes" class="form-label">Ghi chú</label>
             <textarea asp-for="Input.Notes" class="form-control" rows="2"></textarea>
         </div>
         <div class="col-12">
-            <button type="submit" class="btn btn-primary px-4">Gui yeu cau dat xe</button>
-            <a asp-page="/Customer/Index" class="btn btn-outline-secondary ms-2">Quay lai</a>
+            <button type="submit" class="btn btn-primary px-4">Gửi yêu cầu đặt xe</button>
+            <a asp-page="/Customer/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
         </div>
     </form>
 </div>

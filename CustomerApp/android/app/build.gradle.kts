@@ -20,14 +20,16 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.carrental.customer_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Emulator only: clear Flutter's default multi-ABI list first
+        ndk {
+            abiFilters.clear()
+            abiFilters.add("x86_64")
+        }
     }
 
     buildTypes {
@@ -41,4 +43,34 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Emulator-only ABI + serialize CMake to avoid Windows file-lock races on timing logs.
+afterEvaluate {
+    android.defaultConfig.ndk.abiFilters.clear()
+    android.defaultConfig.ndk.abiFilters.add("x86_64")
+
+    val cmakeRelated = tasks.matching {
+        val n = it.name
+        n.startsWith("configureCMake") || n.startsWith("buildCMake") || n.startsWith("externalNativeBuild")
+    }
+
+    cmakeRelated.configureEach {
+        val n = name
+        if (!n.contains("x86_64", ignoreCase = true)) {
+            enabled = false
+            return@configureEach
+        }
+        // Soften lock races: ensure log folder exists before CMake metadata runs
+        doFirst {
+            val cxxLogs = file("${project.layout.buildDirectory.get().asFile}/intermediates/cxx")
+            cxxLogs.mkdirs()
+        }
+    }
+
+    // Force strict ordering among remaining CMake tasks
+    val enabledCmake = cmakeRelated.filter { it.enabled }.toList()
+    for (i in 1 until enabledCmake.size) {
+        enabledCmake[i].mustRunAfter(enabledCmake[i - 1])
+    }
 }

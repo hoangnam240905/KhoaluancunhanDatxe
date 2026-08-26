@@ -54,6 +54,6 @@ public class VehiclesController(VehicleService vehicleService) : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var deleted = await vehicleService.DeleteVehicleAsync(id);
-        return deleted ? NoContent() : BadRequest(new { message = "Khong the xoa xe da duoc su dung." });
+        return deleted ? NoContent() : BadRequest(new { message = "Không thể xóa xe đã được sử dụng." });
     }
 }

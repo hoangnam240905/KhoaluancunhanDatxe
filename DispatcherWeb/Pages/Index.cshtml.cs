@@ -13,7 +13,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         PendingBookings = await api.GetBookingsAsync("Pending");
         ConfirmedBookings = await api.GetBookingsAsync("Confirmed");
         return Page();
@@ -21,7 +21,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnPostConfirmAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         var (_, error) = await api.ConfirmBookingAsync(id);
         Message = error ?? "Da xac nhan don.";
         PendingBookings = await api.GetBookingsAsync("Pending");

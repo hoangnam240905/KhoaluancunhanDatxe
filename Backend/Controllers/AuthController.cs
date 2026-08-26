@@ -14,14 +14,14 @@ public class AuthController(AuthService authService) : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var result = await authService.LoginAsync(request);
-        return result is null ? Unauthorized(new { message = "Email hoac mat khau khong dung." }) : Ok(result);
+        return result is null ? Unauthorized(new { message = "Email hoặc mật khẩu không đúng." }) : Ok(result);
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterCustomerRequest request)
     {
         var result = await authService.RegisterCustomerAsync(request);
-        return result is null ? BadRequest(new { message = "Email da ton tai hoac du lieu khong hop le." }) : Ok(result);
+        return result is null ? BadRequest(new { message = "Email đã tồn tại hoặc dữ liệu không hợp lệ." }) : Ok(result);
     }
 
     [Authorize]

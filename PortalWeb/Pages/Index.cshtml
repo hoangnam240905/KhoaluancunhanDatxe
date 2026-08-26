@@ -1,7 +1,7 @@
-﻿@page
+@page
 @model PortalWeb.Pages.IndexModel
 @{
-    ViewData["Title"] = "Trang chu";
+    ViewData["Title"] = "Trang chủ";
     ViewData["FullBleed"] = true;
 }
 
@@ -16,43 +16,43 @@
             <div class="col-lg-7 text-white">
                 @if (Model.IsCustomer)
                 {
-                    <span class="hero-badge">Xin chao, @Model.UserName!</span>
+                    <span class="hero-badge">Xin chào, @Model.UserName!</span>
                 }
                 else
                 {
-                    <span class="hero-badge">He thong cho thue xe du lich truc tuyen</span>
+                    <span class="hero-badge">Hệ thống cho thuê xe du lịch trực tuyến</span>
                 }
-                <h1 class="hero-title">Di moi noi,<br />thue xe tron goi</h1>
+                <h1 class="hero-title">Đi mọi nơi,<br />thuê xe trọn gói</h1>
                 <p class="hero-lead">
-                    Car Rental System giup ban dat xe du lich tu 4 den 16 cho voi tai xe chuyen nghiep.
-                    Chon tuyen di pho bien, xem gia ro rang va dat xe online chi vai phut.
+                    Car Rental System giúp bạn đặt xe du lịch từ 4 đến 16 chỗ với tài xế chuyên nghiệp.
+                    Chọn tuyến đi phổ biến, xem giá rõ ràng và đặt xe online chỉ vài phút.
                 </p>
                 <div class="d-flex flex-wrap gap-2 mt-4">
                     @if (Model.IsCustomer)
                     {
-                        <a href="#bang-gia" class="btn btn-light btn-lg rounded-pill px-4">Dat xe ngay</a>
-                        <a asp-page="/Customer/Bookings/Index" class="btn btn-outline-light btn-lg rounded-pill px-4">Don cua toi</a>
+                        <a href="#bang-gia" class="btn btn-light btn-lg rounded-pill px-4">Đặt xe ngay</a>
+                        <a asp-page="/Customer/Bookings/Index" class="btn btn-outline-light btn-lg rounded-pill px-4">Đơn của tôi</a>
                     }
                     else
                     {
-                        <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-4">Dang ky mien phi</a>
-                        <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-4">Dang nhap</a>
+                        <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-4">Đăng ký miễn phí</a>
+                        <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-4">Đăng nhập</a>
                     }
-                    <a href="#tuyen-di" class="btn btn-outline-light btn-lg rounded-pill px-4">Xem tuyen pho bien</a>
+                    <a href="#tuyen-di" class="btn btn-outline-light btn-lg rounded-pill px-4">Xem tuyến phổ biến</a>
                 </div>
                 <div class="hero-stats row g-3 mt-5">
-                    <div class="col-4"><div class="stat-num">4+</div><div class="stat-label">Loai xe</div></div>
-                    <div class="col-4"><div class="stat-num">6+</div><div class="stat-label">Tuyen pho bien</div></div>
-                    <div class="col-4"><div class="stat-num">24/7</div><div class="stat-label">Dat xe online</div></div>
+                    <div class="col-4"><div class="stat-num">4+</div><div class="stat-label">Loại xe</div></div>
+                    <div class="col-4"><div class="stat-num">6+</div><div class="stat-label">Tuyến phổ biến</div></div>
+                    <div class="col-4"><div class="stat-num">24/7</div><div class="stat-label">Đặt xe online</div></div>
                 </div>
             </div>
             <div class="col-lg-5 d-none d-lg-block">
                 <div class="hero-card-preview">
-                    <div class="preview-route">TP.HCM → Vung Tau</div>
-                    <div class="preview-detail">120 km · 1 ngay · SUV 7 cho</div>
-                    <div class="preview-price">Tu 1.200.000 VND</div>
+                    <div class="preview-route">TP.HCM → Vũng Tàu</div>
+                    <div class="preview-detail">120 km · 1 ngày · SUV 7 chỗ</div>
+                    <div class="preview-price">Từ 1.200.000 VND</div>
                     <div class="preview-tags">
-                        <span>Tai xe kem theo</span><span>Bao gia ro</span><span>Dat online</span>
+                        <span>Tài xế kèm theo</span><span>Báo giá rõ</span><span>Đặt online</span>
                     </div>
                 </div>
             </div>
@@ -60,36 +60,36 @@
     </div>
 </section>
 
-<!-- Gioi thieu -->
+<!-- Giới thiệu -->
 <section id="gioi-thieu" class="landing-section">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="section-tag">Ve chung toi</span>
-                <h2 class="section-title">He thong cho thue xe du lich truc tuyen</h2>
+                <span class="section-tag">Về chúng tôi</span>
+                <h2 class="section-title">Hệ thống cho thuê xe du lịch trực tuyến</h2>
                 <p class="text-muted">
-                    Car Rental System la nen tang dat xe du lich danh cho khach le, gia dinh va doan the.
-                    He thong ket noi khach hang, bo phan dieu phoi, tai xe va quan tri — giup quy trinh
-                    tu dat xe den hoan thanh chuyen di dien ra minh bach, nhanh chong.
+                    Car Rental System là nền tảng đặt xe du lịch dành cho khách lẻ, gia đình và đoàn thể.
+                    Hệ thống kết nối khách hàng, bộ phận điều phối, tài xế và quản trị — giúp quy trình
+                    từ đặt xe đến hoàn thành chuyến đi diễn ra minh bạch, nhanh chóng.
                 </p>
                 <ul class="about-list">
-                    <li>Website dat xe & theo doi don truc tuyen</li>
-                    <li>Ung dung di dong cho khach hang va tai xe</li>
-                    <li>Dieu phoi phan cong tai xe, xe tu dong</li>
-                    <li>Quan tri doi xe, don dat, bao cao tap trung</li>
+                    <li>Website đặt xe & theo dõi đơn trực tuyến</li>
+                    <li>Ứng dụng di động cho khách hàng và tài xế</li>
+                    <li>Điều phối phân công tài xế, xe tự động</li>
+                    <li>Quản trị đội xe, đơn đặt, báo cáo tập trung</li>
                 </ul>
             </div>
             <div class="col-lg-6">
                 <div class="about-photo-wrap mb-3">
-                    <img src="~/images/about-fleet.jpg" alt="Doi xe du lich" class="about-photo" asp-append-version="true" />
+                    <img src="~/images/about-fleet.jpg" alt="Đội xe du lịch" class="about-photo" asp-append-version="true" />
                 </div>
                 <div class="modern-card p-4">
-                    <h5 class="fw-bold mb-3">Ai su dung he thong?</h5>
+                    <h5 class="fw-bold mb-3">Ai sử dụng hệ thống?</h5>
                     <div class="role-grid">
-                        <div class="role-item"><span>👤</span><strong>Khach hang</strong><small>Dat xe, theo doi, danh gia</small></div>
-                        <div class="role-item"><span>📋</span><strong>Dieu phoi</strong><small>Xac nhan & phan cong chuyen</small></div>
-                        <div class="role-item"><span>🚕</span><strong>Tai xe</strong><small>Nhan chuyen qua app</small></div>
-                        <div class="role-item"><span>⚙️</span><strong>Quan tri</strong><small>Quan ly xe & don dat</small></div>
+                        <div class="role-item"><span>👤</span><strong>Khách hàng</strong><small>Đặt xe, theo dõi, đánh giá</small></div>
+                        <div class="role-item"><span>📋</span><strong>Điều phối</strong><small>Xác nhận & phân công chuyến</small></div>
+                        <div class="role-item"><span>🚕</span><strong>Tài xế</strong><small>Nhận chuyến qua app</small></div>
+                        <div class="role-item"><span>⚙️</span><strong>Quản trị</strong><small>Quản lý xe & đơn đặt</small></div>
                     </div>
                 </div>
             </div>
@@ -97,13 +97,13 @@
     </div>
 </section>
 
-<!-- Tuyen pho bien -->
+<!-- Tuyến phổ biến -->
 <section id="tuyen-di" class="landing-section bg-white">
     <div class="container">
         <div class="text-center mb-5">
             <span class="section-tag">Goi y hanh trinh</span>
-            <h2 class="section-title">Cac tuyen duong di pho bien</h2>
-            <p class="text-muted mx-auto section-subtitle">Goi y loai xe va chi phi uoc tinh — ban co the tuy chinh theo nhu cau</p>
+            <h2 class="section-title">Các tuyến đường đi phổ biến</h2>
+            <p class="text-muted mx-auto section-subtitle">Gợi ý loại xe và chi phí ước tính — bạn có thể tùy chỉnh theo nhu cầu</p>
         </div>
         <div class="row g-4">
             @foreach (var route in Model.PopularRoutes)
@@ -122,7 +122,7 @@
                                 <span>@route.Duration</span>
                                 <span>@route.SuggestedVehicle</span>
                             </div>
-                            <div class="route-price">Tu @route.EstimatedPrice.ToString("N0") VND</div>
+                            <div class="route-price">Từ @route.EstimatedPrice.ToString("N0") VND</div>
                             @if (Model.IsCustomer)
                             {
                                 <a asp-page="/Customer/Bookings/Create"
@@ -130,11 +130,11 @@
                                    asp-route-pickup="@route.From"
                                    asp-route-dropoff="@route.To"
                                    asp-route-distance="@route.DistanceKm"
-                                   class="btn btn-primary btn-sm mt-2">Dat tuyen nay</a>
+                                   class="btn btn-primary btn-sm mt-2">Đặt tuyến này</a>
                             }
                             else
                             {
-                                <a asp-page="/Account/Login" class="btn btn-outline-primary btn-sm mt-2">Dang nhap de dat</a>
+                                <a asp-page="/Account/Login" class="btn btn-outline-primary btn-sm mt-2">Đăng nhập để đặt</a>
                             }
                         </div>
                     </div>
@@ -148,8 +148,8 @@
 <section id="tinh-nang" class="landing-section">
     <div class="container">
         <div class="text-center mb-5">
-            <span class="section-tag">Tai sao chon chung toi</span>
-            <h2 class="section-title">Uu diem noi bat</h2>
+            <span class="section-tag">Tại sao chọn chúng tôi</span>
+            <h2 class="section-title">Ưu điểm nổi bật</h2>
         </div>
         <div class="row g-4">
             @foreach (var f in Model.Features)
@@ -166,12 +166,12 @@
     </div>
 </section>
 
-<!-- Quy trinh -->
+<!-- Quy trình -->
 <section id="quy-trinh" class="landing-section bg-white">
     <div class="container">
         <div class="text-center mb-5">
-            <span class="section-tag">Quy trinh dat xe</span>
-            <h2 class="section-title">Dat xe chi 4 buoc</h2>
+            <span class="section-tag">Quy trình đặt xe</span>
+            <h2 class="section-title">Đặt xe chỉ 4 bước</h2>
         </div>
         <div class="row g-4">
             @foreach (var step in Model.BookingSteps)
@@ -188,17 +188,17 @@
     </div>
 </section>
 
-<!-- Bang gia xe -->
+<!-- Bảng giá xe -->
 <section id="bang-gia" class="landing-section">
     <div class="container">
         <div class="text-center mb-5">
-            <span class="section-tag">Bang gia</span>
-            <h2 class="section-title">Chon loai xe phu hop</h2>
-            <p class="text-muted">Gia tham khao — tinh cu the theo ngay va quang duong</p>
+            <span class="section-tag">Bảng giá</span>
+            <h2 class="section-title">Chọn loại xe phù hợp</h2>
+            <p class="text-muted">Giá tham khảo — tính cụ thể theo ngày và quãng đường</p>
         </div>
         @if (!Model.VehicleTypes.Any())
         {
-            <div class="alert alert-warning text-center">Dang tai bang gia... Hay dam bao Backend dang chay.</div>
+            <div class="alert alert-warning text-center">Đang tải bảng giá... Hãy đảm bảo Backend đang chạy.</div>
         }
         else
         {
@@ -207,20 +207,20 @@
                 {
                     <div class="col-md-6 col-lg-3">
                         <div class="modern-card p-4 h-100 d-flex flex-column">
-                            <span class="badge bg-primary-subtle text-primary badge-status mb-2">@t.SeatCapacity cho</span>
+                            <span class="badge bg-primary-subtle text-primary badge-status mb-2">@t.SeatCapacity chỗ</span>
                             <h5 class="fw-bold">@t.TypeName</h5>
                             <p class="text-muted small flex-grow-1">@t.Description</p>
                             <div class="mb-3">
-                                <div class="fw-bold text-primary fs-5">@t.PricePerDay.ToString("N0") <span class="fs-6 fw-normal text-muted">VND/ngay</span></div>
+                                <div class="fw-bold text-primary fs-5">@t.PricePerDay.ToString("N0") <span class="fs-6 fw-normal text-muted">VND/ngày</span></div>
                                 <div class="small text-muted">@t.PricePerKm.ToString("N0") VND/km</div>
                             </div>
                             @if (Model.IsCustomer)
                             {
-                                <a asp-page="/Customer/Bookings/Create" asp-route-typeId="@t.TypeId" class="btn btn-primary w-100 rounded-pill">Dat xe</a>
+                                <a asp-page="/Customer/Bookings/Create" asp-route-typeId="@t.TypeId" class="btn btn-primary w-100 rounded-pill">Đặt xe</a>
                             }
                             else
                             {
-                                <a asp-page="/Account/Register" class="btn btn-outline-primary w-100 rounded-pill">Dang ky de dat</a>
+                                <a asp-page="/Account/Register" class="btn btn-outline-primary w-100 rounded-pill">Đăng ký để đặt</a>
                             }
                         </div>
                     </div>
@@ -235,12 +235,12 @@
     <div class="container">
         <div class="row g-5">
             <div class="col-lg-5">
-                <span class="section-tag">Ho tro</span>
-                <h2 class="section-title">Cau hoi thuong gap</h2>
-                <p class="text-muted">Lien he hotline <strong>1900 xxxx</strong> hoac email <strong>support@carrental.vn</strong></p>
+                <span class="section-tag">Hỗ trợ</span>
+                <h2 class="section-title">Câu hỏi thường gặp</h2>
+                <p class="text-muted">Liên hệ hotline <strong>1900 xxxx</strong> hoặc email <strong>support@carrental.vn</strong></p>
                 @if (!Model.IsLoggedIn)
                 {
-                    <a asp-page="/Account/Register" class="btn btn-primary rounded-pill px-4 mt-2">Bat dau dat xe</a>
+                    <a asp-page="/Account/Register" class="btn btn-primary rounded-pill px-4 mt-2">Bắt đầu đặt xe</a>
                 }
             </div>
             <div class="col-lg-7">
@@ -270,16 +270,16 @@
 <!-- CTA -->
 <section class="landing-cta">
     <div class="container text-center text-white py-5">
-        <h2 class="fw-bold mb-3">San sang cho chuyen di tiep theo?</h2>
-        <p class="mb-4 opacity-75">Dang ky tai khoan mien phi va dat xe trong vai phut</p>
+        <h2 class="fw-bold mb-3">Sẵn sàng cho chuyến đi tiếp theo?</h2>
+        <p class="mb-4 opacity-75">Đăng ký tài khoản miễn phí và đặt xe trong vài phút</p>
         @if (Model.IsCustomer)
         {
-            <a asp-page="/Customer/Bookings/Create" class="btn btn-light btn-lg rounded-pill px-5">Dat xe ngay</a>
+            <a asp-page="/Customer/Bookings/Create" class="btn btn-light btn-lg rounded-pill px-5">Đặt xe ngay</a>
         }
         else
         {
-            <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-5 me-2">Dang ky</a>
-            <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-5">Dang nhap</a>
+            <a asp-page="/Account/Register" class="btn btn-light btn-lg rounded-pill px-5 me-2">Đăng ký</a>
+            <a asp-page="/Account/Login" class="btn btn-outline-light btn-lg rounded-pill px-5">Đăng nhập</a>
         }
     </div>
 </section>
@@ -290,21 +290,21 @@
         <div class="row g-4">
             <div class="col-md-4">
                 <h5 class="fw-bold text-white">🚗 Car Rental System</h5>
-                <p class="small">He thong cho thue xe du lich truc tuyen — Do an CNTT KLCN108</p>
+                <p class="small">Hệ thống cho thuê xe du lịch trực tuyến — Đồ án CNTT KLCN108</p>
             </div>
             <div class="col-md-4">
-                <h6 class="text-white-50">Lien ket</h6>
+                <h6 class="text-white-50">Liên kết</h6>
                 <ul class="footer-links">
-                    <li><a href="#gioi-thieu">Gioi thieu</a></li>
-                    <li><a href="#tuyen-di">Tuyen pho bien</a></li>
-                    <li><a href="#bang-gia">Bang gia xe</a></li>
-                    <li><a asp-page="/Account/Login">Dang nhap</a></li>
+                    <li><a href="#gioi-thieu">Giới thiệu</a></li>
+                    <li><a href="#tuyen-di">Tuyến phổ biến</a></li>
+                    <li><a href="#bang-gia">Bảng giá xe</a></li>
+                    <li><a asp-page="/Account/Login">Đăng nhập</a></li>
                 </ul>
             </div>
             <div class="col-md-4">
-                <h6 class="text-white-50">Lien he</h6>
+                <h6 class="text-white-50">Liên hệ</h6>
                 <ul class="footer-links">
-                    <li>📍 TP. Ho Chi Minh, Viet Nam</li>
+                    <li>📍 TP. Hồ Chí Minh, Việt Nam</li>
                     <li>📞 1900 xxxx</li>
                     <li>✉️ support@carrental.vn</li>
                 </ul>

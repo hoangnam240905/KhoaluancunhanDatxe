@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../screens/driver_trips_screen.dart';
 import '../screens/home_screen.dart';
 
-/// Dieu huong sau dang nhap/dang ky theo role (giong PortalWeb).
+/// Điều hướng sau đăng nhập/đăng ký theo vai trò (giống PortalWeb).
 class RoleRouter {
   static Widget homeFor(ApiService api, AuthResponse auth) {
     switch (auth.role) {
@@ -20,7 +20,7 @@ class RoleRouter {
   static void goHome(BuildContext context, ApiService api, AuthResponse auth) {
     if (auth.role != 'Customer' && auth.role != 'Driver') {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Role ${auth.role} chi dung tren Web Portal.')),
+        SnackBar(content: Text('Vai trò ${auth.role} chỉ dùng trên Web Portal.')),
       );
       return;
     }
@@ -32,6 +32,6 @@ class RoleRouter {
 
   static String? mobileRoleError(String role) {
     if (role == 'Customer' || role == 'Driver') return null;
-    return 'Tai khoan $role chi dang nhap tren Web. App chi ho tro Khach hang / Tai xe.';
+    return 'Tài khoản $role chỉ đăng nhập trên Web. App chỉ hỗ trợ Khách hàng / Tài xế.';
   }
 }

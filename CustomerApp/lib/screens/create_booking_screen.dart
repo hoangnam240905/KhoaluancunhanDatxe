@@ -35,7 +35,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   void initState() {
     super.initState();
     _pickup = TextEditingController(text: widget.pickup ?? 'TP.HCM');
-    _dropoff = TextEditingController(text: widget.dropoff ?? 'Vung Tau');
+    _dropoff = TextEditingController(text: widget.dropoff ?? 'Vũng Tàu');
     _distance = TextEditingController(text: (widget.distanceKm ?? 120).toStringAsFixed(0));
   }
 
@@ -61,7 +61,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dat xe thanh cong!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đặt xe thành công!')));
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -83,7 +83,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4FF),
       appBar: AppBar(
-        title: Text('Dat ${widget.vehicleType.typeName}'),
+        title: Text('Đặt ${widget.vehicleType.typeName}'),
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
       ),
@@ -98,13 +98,13 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(controller: _pickup, decoration: _dec('Diem don')),
+                  TextField(controller: _pickup, decoration: _dec('Điểm đón')),
                   const SizedBox(height: 12),
-                  TextField(controller: _dropoff, decoration: _dec('Diem tra')),
+                  TextField(controller: _dropoff, decoration: _dec('Điểm trả')),
                   const SizedBox(height: 12),
-                  TextField(controller: _distance, keyboardType: TextInputType.number, decoration: _dec('Km uoc tinh')),
+                  TextField(controller: _distance, keyboardType: TextInputType.number, decoration: _dec('Km ước tính')),
                   const SizedBox(height: 12),
-                  TextField(controller: _notes, maxLines: 2, decoration: _dec('Ghi chu')),
+                  TextField(controller: _notes, maxLines: 2, decoration: _dec('Ghi chú')),
                   const SizedBox(height: 20),
                   FilledButton(
                     style: FilledButton.styleFrom(
@@ -115,7 +115,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                     onPressed: _loading ? null : _submit,
                     child: _loading
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Gui yeu cau dat xe'),
+                        : const Text('Gửi yêu cầu đặt xe'),
                   ),
                 ],
               ),

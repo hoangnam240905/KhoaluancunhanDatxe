@@ -22,7 +22,7 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         var bookings = await api.GetBookingsAsync("Confirmed");
         Booking = bookings.FirstOrDefault(b => b.BookingId == id);
         if (Booking is null) return NotFound();
@@ -35,7 +35,7 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         var bookings = await api.GetBookingsAsync("Confirmed");
         Booking = bookings.FirstOrDefault(b => b.BookingId == id);
         Drivers = await api.GetDriversAsync("Available");

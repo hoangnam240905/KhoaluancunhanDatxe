@@ -38,7 +38,7 @@ class _TripsScreenState extends State<TripsScreen> {
       await widget.api.updateStatus(status);
       setState(() => _driverStatus = status);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trang thai: $status')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trạng thái: $status')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -66,7 +66,7 @@ class _TripsScreenState extends State<TripsScreen> {
     final fmt = DateFormat('dd/MM/yyyy HH:mm');
     return Scaffold(
       appBar: AppBar(
-        title: Text('Xin chao, ${widget.userName}'),
+        title: Text('Xin chào, ${widget.userName}'),
         actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _logout)],
       ),
       body: Column(
@@ -75,10 +75,10 @@ class _TripsScreenState extends State<TripsScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                const Text('Trang thai: '),
-                ChoiceChip(label: const Text('San sang'), selected: _driverStatus == 'Available', onSelected: (_) => _setStatus('Available')),
+                const Text('Trạng thái: '),
+                ChoiceChip(label: const Text('Sẵn sàng'), selected: _driverStatus == 'Available', onSelected: (_) => _setStatus('Available')),
                 const SizedBox(width: 8),
-                ChoiceChip(label: const Text('Ban'), selected: _driverStatus == 'Busy', onSelected: (_) => _setStatus('Busy')),
+                ChoiceChip(label: const Text('Bận'), selected: _driverStatus == 'Busy', onSelected: (_) => _setStatus('Busy')),
                 const SizedBox(width: 8),
                 ChoiceChip(label: const Text('Offline'), selected: _driverStatus == 'Offline', onSelected: (_) => _setStatus('Offline')),
               ],
@@ -90,7 +90,7 @@ class _TripsScreenState extends State<TripsScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: _trips.isEmpty
-                        ? ListView(children: const [SizedBox(height: 120), Center(child: Text('Chua co chuyen nao'))])
+                        ? ListView(children: const [SizedBox(height: 120), Center(child: Text('Chưa có chuyến nào'))])
                         : ListView.builder(
                             itemCount: _trips.length,
                             itemBuilder: (context, i) {
@@ -104,20 +104,20 @@ class _TripsScreenState extends State<TripsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text('#${t.bookingId} - ${t.vehicleTypeName}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Khach: ${t.customerName}'),
+                                      Text('Khách: ${t.customerName}'),
                                       Text('${t.pickupAddress} → ${t.dropoffAddress}'),
                                       Text(fmt.format(t.startDate)),
-                                      Text('Trang thai: ${t.status}'),
+                                      Text('Trạng thái: ${t.status}'),
                                       if (t.assignment != null) Text('Xe: ${t.assignment!.licensePlate}'),
                                       if (aid != null) ...[
                                         const SizedBox(height: 8),
                                         Wrap(spacing: 8, children: [
                                           if (t.status == 'Assigned')
-                                            FilledButton(onPressed: () => _action(() => widget.api.acceptTrip(aid)), child: const Text('Nhan chuyen')),
+                                            FilledButton(onPressed: () => _action(() => widget.api.acceptTrip(aid)), child: const Text('Nhận chuyến')),
                                           if (t.status == 'Assigned' || t.status == 'InProgress')
-                                            FilledButton(onPressed: () => _action(() => widget.api.startTrip(aid)), child: const Text('Bat dau')),
+                                            FilledButton(onPressed: () => _action(() => widget.api.startTrip(aid)), child: const Text('Bắt đầu')),
                                           if (t.status == 'InProgress')
-                                            FilledButton(onPressed: () => _action(() => widget.api.completeTrip(aid)), child: const Text('Hoan thanh')),
+                                            FilledButton(onPressed: () => _action(() => widget.api.completeTrip(aid)), child: const Text('Hoàn thành')),
                                         ]),
                                       ],
                                     ],

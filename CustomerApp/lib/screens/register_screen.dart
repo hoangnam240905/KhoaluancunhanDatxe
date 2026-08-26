@@ -35,11 +35,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (_fullName.text.trim().isEmpty || _email.text.trim().isEmpty) {
-      setState(() => _error = 'Vui long nhap ho ten va email.');
+      setState(() => _error = 'Vui lòng nhập họ tên và email.');
       return;
     }
     if (!_passwordOk) {
-      setState(() => _error = 'Mat khau chua du manh (8 ky tu, chu hoa, ky tu dac biet).');
+      setState(() => _error = 'Mật khẩu chưa đủ mạnh (8 ký tự, chữ hoa, ký tự đặc biệt).');
       return;
     }
 
@@ -103,12 +103,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Tao tai khoan',
+                          'Tạo tài khoản',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
-                          'Dang ky de dat xe du lich',
+                          'Đăng ký để đặt xe du lịch',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
@@ -127,7 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextField(
                           controller: _fullName,
                           decoration: InputDecoration(
-                            labelText: 'Ho ten',
+                            labelText: 'Họ tên',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
@@ -146,7 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: !_showPassword,
                           onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
-                            labelText: 'Mat khau',
+                            labelText: 'Mật khẩu',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             suffixIcon: IconButton(
                               icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
@@ -155,15 +155,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _rule(_lenOk, 'It nhat 8 ky tu'),
-                        _rule(_upperOk, 'Co it nhat 1 chu hoa (A-Z)'),
-                        _rule(_specialOk, 'Co it nhat 1 ky tu dac biet (!@#\$...)'),
+                        _rule(_lenOk, 'Ít nhất 8 ký tự'),
+                        _rule(_upperOk, 'Có ít nhất 1 chữ hoa (A-Z)'),
+                        _rule(_specialOk, 'Có ít nhất 1 ký tự đặc biệt (!@#\$...)'),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _phone,
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            labelText: 'So dien thoai',
+                            labelText: 'Số điện thoại',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
@@ -181,11 +181,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('Dang ky'),
+                              : const Text('Đăng ký'),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Da co tai khoan? Dang nhap'),
+                          child: const Text('Đã có tài khoản? Đăng nhập'),
                         ),
                       ],
                     ),

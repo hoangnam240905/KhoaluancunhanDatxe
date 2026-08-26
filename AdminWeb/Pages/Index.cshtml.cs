@@ -12,7 +12,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         var vehicles = await api.GetVehiclesAsync();
         var bookings = await api.GetBookingsAsync();
         VehicleCount = vehicles.Count;

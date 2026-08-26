@@ -1,10 +1,10 @@
 @page "/Dispatcher"
 @model PortalWeb.Pages.Dispatcher.IndexModel
-@{ ViewData["Title"] = "Dieu phoi"; }
+@{ ViewData["Title"] = "Điều phối"; }
 
 <div class="page-header">
-    <h2>Bang dieu phoi</h2>
-    <p>Xac nhan don dat va phan cong chuyen di</p>
+    <h2>Bảng điều phối</h2>
+    <p>Xác nhận đơn đặt và phân công chuyến đi</p>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.Message))
@@ -13,16 +13,16 @@
 }
 
 <div class="modern-card p-4 mb-4">
-    <h5 class="fw-bold text-warning mb-3">Don cho xac nhan (@Model.PendingBookings.Count)</h5>
+    <h5 class="fw-bold text-warning mb-3">Đơn chờ xác nhận (@Model.PendingBookings.Count)</h5>
     @if (!Model.PendingBookings.Any())
     {
-        <p class="text-muted mb-0">Khong co don pending.</p>
+        <p class="text-muted mb-0">Không có đơn pending.</p>
     }
     else
     {
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead><tr><th>Ma</th><th>Khach</th><th>Tuyen</th><th></th></tr></thead>
+                <thead><tr><th>Mã</th><th>Khách</th><th>Tuyen</th><th></th></tr></thead>
                 <tbody>
                 @foreach (var b in Model.PendingBookings)
                 {
@@ -32,7 +32,7 @@
                         <td>@b.PickupAddress → @b.DropoffAddress</td>
                         <td>
                             <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Xac nhan</button>
+                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Xác nhận</button>
                             </form>
                         </td>
                     </tr>
@@ -44,16 +44,16 @@
 </div>
 
 <div class="modern-card p-4">
-    <h5 class="fw-bold text-primary mb-3">Don can phan cong (@Model.ConfirmedBookings.Count)</h5>
+    <h5 class="fw-bold text-primary mb-3">Đơn cần phân công (@Model.ConfirmedBookings.Count)</h5>
     @if (!Model.ConfirmedBookings.Any())
     {
-        <p class="text-muted mb-0">Khong co don can phan cong.</p>
+        <p class="text-muted mb-0">Không có đơn cần phân công.</p>
     }
     else
     {
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th></th></tr></thead>
+                <thead><tr><th>Mã</th><th>Khách</th><th>Loại xe</th><th></th></tr></thead>
                 <tbody>
                 @foreach (var b in Model.ConfirmedBookings)
                 {
@@ -61,7 +61,7 @@
                         <td class="fw-semibold">#@b.BookingId</td>
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
-                        <td><a asp-page="/Dispatcher/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-primary rounded-pill px-3">Phan cong</a></td>
+                        <td><a asp-page="/Dispatcher/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-primary rounded-pill px-3">Phân công</a></td>
                     </tr>
                 }
                 </tbody>

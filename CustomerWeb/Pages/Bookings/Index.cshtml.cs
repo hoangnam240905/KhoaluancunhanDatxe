@@ -11,7 +11,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login", new { returnUrl = "/Bookings" });
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         Bookings = await api.GetBookingsAsync();
         return Page();

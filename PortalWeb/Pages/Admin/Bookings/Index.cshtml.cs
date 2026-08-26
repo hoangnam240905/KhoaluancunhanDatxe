@@ -22,7 +22,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var denied = RequireRole(auth, "Admin");
         if (denied is not null) return denied;
         var (_, error) = await api.UpdateBookingStatusAsync(id, "Cancelled", "Admin huy");
-        Message = error ?? "Da huy don.";
+        Message = error ?? "Đã hủy đơn.";
         Bookings = await api.GetBookingsAsync();
         return Page();
     }

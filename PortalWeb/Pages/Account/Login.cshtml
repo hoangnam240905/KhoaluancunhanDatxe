@@ -1,7 +1,7 @@
 @page
 @model PortalWeb.Pages.Account.LoginModel
 @{
-    ViewData["Title"] = "Dang nhap";
+    ViewData["Title"] = "Đăng nhập";
     Layout = "_LayoutAuth";
 }
 
@@ -9,7 +9,7 @@
     <div class="auth-card-header">
         <div class="auth-logo">🚗</div>
         <h1 class="h4 fw-bold mb-1">Car Rental System</h1>
-        <p class="text-muted small mb-0">Dang nhap theo vai tro cua ban</p>
+        <p class="text-muted small mb-0">Đăng nhập theo vai trò của bạn</p>
     </div>
     <div class="auth-card-body">
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -22,25 +22,25 @@
                 <input asp-for="Input.Email" class="form-control" placeholder="email@example.com" autocomplete="username" />
             </div>
             <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label">Mat khau</label>
+                <label asp-for="Input.Password" class="form-label">Mật khẩu</label>
                 <div class="input-group">
                     <input asp-for="Input.Password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
-                    <button type="button" class="btn btn-toggle-password" aria-label="Hien mat khau">
-                        <span class="toggle-label">Hien</span>
+                    <button type="button" class="btn btn-toggle-password" aria-label="Hiện mật khẩu">
+                        <span class="toggle-label">Hiện</span>
                     </button>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100 mt-2">Dang nhap</button>
+            <button type="submit" class="btn btn-primary w-100 mt-2">Đăng nhập</button>
         </form>
         <div class="demo-box mt-4">
             <strong>Demo:</strong><br />
             Admin: <code>admin@carrental.vn</code><br />
-            Dieu phoi: <code>dispatcher@carrental.vn</code><br />
-            Khach hang: <code>customer1@gmail.com</code><br />
-            Mat khau: <code>Password123!</code>
+            Điều phối: <code>dispatcher@carrental.vn</code><br />
+            Khách hàng: <code>customer1@gmail.com</code><br />
+            Mật khẩu: <code>Password123!</code>
         </div>
         <p class="text-center mt-3 mb-0 small">
-            Chua co tai khoan? <a asp-page="/Account/Register" class="fw-semibold">Dang ky ngay</a>
+            Chưa có tài khoản? <a asp-page="/Account/Register" class="fw-semibold">Đăng ký ngay</a>
         </p>
     </div>
 </div>

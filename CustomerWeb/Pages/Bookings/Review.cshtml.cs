@@ -25,14 +25,14 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public IActionResult OnGet(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         BookingId = id;
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         BookingId = id;
         if (!ModelState.IsValid) return Page();

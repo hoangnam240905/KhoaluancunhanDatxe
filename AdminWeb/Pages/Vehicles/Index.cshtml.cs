@@ -12,14 +12,14 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         Vehicles = await api.GetVehiclesAsync();
         return Page();
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         var (ok, error) = await api.DeleteVehicleAsync(id);
         Message = ok ? "Da xoa xe." : error;
         Vehicles = await api.GetVehiclesAsync();

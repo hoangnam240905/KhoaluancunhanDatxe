@@ -16,11 +16,18 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
     try {
       final auth = await _api.login(_email.text.trim(), _password.text);
-      if (auth.role != 'Driver') throw Exception('Tai khoan khong phai tai xe');
+      if (auth.role != 'Driver') throw Exception('Tài khoản không phải tài xế');
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => TripsScreen(api: _api, userName: auth.fullName)),
@@ -44,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
               const Icon(Icons.local_taxi, size: 64, color: Colors.orange),
               const SizedBox(height: 16),
-              Text('Tai xe', style: Theme.of(context).textTheme.headlineMedium),
+              Text('Tài xế', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 32),
               if (_error != null) ...[
                 Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -52,11 +59,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
               const SizedBox(height: 12),
-              TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Mat khau', border: OutlineInputBorder())),
+              TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Mật khẩu', border: OutlineInputBorder())),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _loading ? null : _login,
-                child: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Dang nhap'),
+                child: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Đăng nhập'),
               ),
               const SizedBox(height: 12),
               const Text('Demo: driver1@carrental.vn / Password123!', style: TextStyle(fontSize: 12, color: Colors.grey)),

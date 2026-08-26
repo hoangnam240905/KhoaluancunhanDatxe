@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
-                          'Dang nhap khach hang / tai xe',
+                          'Đăng nhập khách hàng / tài xế',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _password,
                           obscureText: !_showPassword,
                           decoration: InputDecoration(
-                            labelText: 'Mat khau',
+                            labelText: 'Mật khẩu',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             suffixIcon: IconButton(
                               icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
@@ -136,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : const Text('Dang nhap'),
+                              : const Text('Đăng nhập'),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
@@ -148,11 +148,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     MaterialPageRoute(builder: (_) => const RegisterScreen()),
                                   );
                                 },
-                          child: const Text('Chua co tai khoan? Dang ky'),
+                          child: const Text('Chưa có tài khoản? Đăng ký'),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Quay lai trang chu'),
+                          child: const Text('Quay lại trang chủ'),
                         ),
                         const SizedBox(height: 8),
                         const Text(

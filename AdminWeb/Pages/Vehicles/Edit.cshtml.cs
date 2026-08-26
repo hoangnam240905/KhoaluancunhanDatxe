@@ -27,7 +27,7 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         VehicleId = id;
         VehicleTypes = await api.GetVehicleTypesAsync();
         var vehicle = await api.GetVehicleAsync(id);
@@ -43,7 +43,7 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnPostAsync(int id)
     {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         VehicleId = id;
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (!ModelState.IsValid) return Page();

@@ -13,20 +13,20 @@ public class RegisterModel(CarRentalApiClient api, AuthSession auth) : RolePageM
 
     public class InputModel
     {
-        [Required(ErrorMessage = "Vui long nhap ho ten.")]
-        [Display(Name = "Ho ten")]
+        [Required(ErrorMessage = "Vui lòng nhập họ tên.")]
+        [Display(Name = "Họ tên")]
         public string FullName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Vui long nhap email.")]
-        [EmailAddress(ErrorMessage = "Email khong hop le.")]
+        [Required(ErrorMessage = "Vui lòng nhập email.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Vui long nhap mat khau.")]
+        [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
         [StrongPassword]
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
 
-        [Display(Name = "So dien thoai")]
+        [Display(Name = "Số điện thoại")]
         public string? Phone { get; set; }
     }
 

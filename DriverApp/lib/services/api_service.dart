@@ -63,9 +63,9 @@ class ApiService {
   String _errorMessage(http.Response response) {
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return body['message'] as String? ?? 'Loi ${response.statusCode}';
+      return body['message'] as String? ?? 'Lỗi ${response.statusCode}';
     } catch (_) {
-      return 'Loi ${response.statusCode}';
+      return 'Lỗi ${response.statusCode}';
     }
   }
 

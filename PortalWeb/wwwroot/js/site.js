@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-toggle-password').forEach(btn => {
         btn.addEventListener('click', () => {
             const group = btn.closest('.input-group');
@@ -6,8 +6,8 @@
             if (!input) return;
             const show = input.type === 'password';
             input.type = show ? 'text' : 'password';
-            btn.setAttribute('aria-label', show ? 'An mat khau' : 'Hien mat khau');
-            btn.querySelector('.toggle-label').textContent = show ? 'An' : 'Hien';
+            btn.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+            btn.querySelector('.toggle-label').textContent = show ? 'Ẩn' : 'Hiện';
         });
     });
 

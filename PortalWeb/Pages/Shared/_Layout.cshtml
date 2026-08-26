@@ -1,4 +1,4 @@
-﻿@inject PortalWeb.Services.AuthSession Auth
+@inject PortalWeb.Services.AuthSession Auth
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -19,35 +19,35 @@
             <ul class="navbar-nav me-auto">
                 @if (Auth.Role == "Customer" || !Auth.IsLoggedIn)
                 {
-                    <li class="nav-item"><a class="nav-link" href="/#gioi-thieu">Gioi thieu</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#tuyen-di">Tuyen di</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#bang-gia">Bang gia</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#gioi-thieu">Giới thiệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#tuyen-di">Tuyến đi</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#bang-gia">Bảng giá</a></li>
                 }
                 @if (Auth.IsLoggedIn && Auth.Role == "Customer")
                 {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Customer/Bookings/Index">Don cua toi</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Customer/Bookings/Index">Đơn của tôi</a></li>
                 }
                 @if (Auth.Role == "Admin")
                 {
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Index">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Vehicles/Index">Xe</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Bookings/Index">Don dat</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Bookings/Index">Đơn đặt</a></li>
                 }
                 @if (Auth.Role == "Dispatcher")
                 {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Dispatcher/Index">Dieu phoi</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Dispatcher/Index">Điều phối</a></li>
                 }
             </ul>
             <ul class="navbar-nav align-items-sm-center gap-sm-2">
                 @if (Auth.IsLoggedIn)
                 {
                     <li class="nav-item"><span class="navbar-text text-white-50 small">@Auth.FullName</span></li>
-                    <li class="nav-item"><a class="btn btn-sm btn-outline-light rounded-pill px-3" asp-page="/Account/Logout">Dang xuat</a></li>
+                    <li class="nav-item"><a class="btn btn-sm btn-outline-light rounded-pill px-3" asp-page="/Account/Logout">Đăng xuất</a></li>
                 }
                 else
                 {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Account/Login">Dang nhap</a></li>
-                    <li class="nav-item"><a class="btn btn-sm btn-light rounded-pill px-3" asp-page="/Account/Register">Dang ky</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Account/Login">Đăng nhập</a></li>
+                    <li class="nav-item"><a class="btn btn-sm btn-light rounded-pill px-3" asp-page="/Account/Register">Đăng ký</a></li>
                 }
             </ul>
         </div>

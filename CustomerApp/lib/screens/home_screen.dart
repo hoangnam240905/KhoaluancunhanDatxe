@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final type = _findType(route.vehicleTypeId);
       if (type == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chua tai duoc loai xe. Kiem tra Backend.')),
+          const SnackBar(content: Text('Chưa tải được loại xe. Kiểm tra Backend.')),
         );
         return;
       }
@@ -122,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (widget.isLoggedIn) ...[
                   IconButton(
                     icon: const Icon(Icons.list_alt),
-                    tooltip: 'Don cua toi',
+                    tooltip: 'Đơn của tôi',
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => BookingsScreen(api: widget.api)),
@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       context,
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     ),
-                    child: const Text('Dang nhap', style: TextStyle(color: Colors.white)),
+                    child: const Text('Đăng nhập', style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ],
@@ -153,12 +153,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.isLoggedIn ? 'Xin chao, ${widget.userName}!' : 'Car Rental System',
+                        widget.isLoggedIn ? 'Xin chào, ${widget.userName}!' : 'Car Rental System',
                         style: const TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Di moi noi,\nthue xe tron goi',
+                        'Đi mọi nơi,\nthuê xe trọn gói',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 28,
@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Dat xe 4-16 cho voi tai xe chuyen nghiep',
+                        'Đặt xe 4-16 chỗ với tài xế chuyên nghiệp',
                         style: TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ],
@@ -188,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               backgroundColor: const Color(0xFF2563EB),
               icon: const Icon(Icons.add),
-              label: const Text('Dat xe'),
+              label: const Text('Đặt xe'),
             )
           : FloatingActionButton.extended(
               onPressed: () => Navigator.push(
@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               backgroundColor: const Color(0xFF2563EB),
               icon: const Icon(Icons.login),
-              label: const Text('Dang nhap de dat'),
+              label: const Text('Đăng nhập để đặt'),
             ),
     );
   }
@@ -208,11 +208,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Tuyen pho bien', 'Goi y hanh trinh hot'),
+          _sectionTitle('Tuyến phổ biến', 'Gợi ý hành trình hot'),
           const SizedBox(height: 12),
           ...PortalContent.popularRoutes.map(_routeCard),
           const SizedBox(height: 28),
-          _sectionTitle('Bang gia xe', 'Chon loai xe phu hop'),
+          _sectionTitle('Bảng giá xe', 'Chọn loại xe phù hợp'),
           const SizedBox(height: 12),
           if (_loading)
             const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
@@ -224,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(_error!, textAlign: TextAlign.center),
                     const SizedBox(height: 8),
-                    FilledButton(onPressed: _load, child: const Text('Thu lai')),
+                    FilledButton(onPressed: _load, child: const Text('Thử lại')),
                   ],
                 ),
               ),
@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
           else
             ..._types.map(_vehicleCard),
           const SizedBox(height: 28),
-          _sectionTitle('Uu diem', 'Tai sao chon chung toi'),
+          _sectionTitle('Ưu điểm', 'Tại sao chọn chúng tôi'),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: PortalContent.features.map(_featureCard).toList(),
           ),
           const SizedBox(height: 28),
-          _sectionTitle('Quy trinh', 'Dat xe chi 4 buoc'),
+          _sectionTitle('Quy trình', 'Đặt xe chỉ 4 bước'),
           const SizedBox(height: 12),
           ...PortalContent.steps.map(_stepCard),
           const SizedBox(height: 28),
@@ -258,12 +258,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 const Text(
-                  'San sang cho chuyen di?',
+                  'Sẵn sàng cho chuyến đi?',
                   style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Dat xe online trong vai phut',
+                  'Đặt xe online trong vài phút',
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 16),
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                     }
                   },
-                  child: Text(widget.isLoggedIn ? 'Dat xe ngay' : 'Dang nhap / Dang ky'),
+                  child: Text(widget.isLoggedIn ? 'Đặt xe ngay' : 'Đăng nhập / Đăng ký'),
                 ),
               ],
             ),
@@ -341,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Tu ${_money(route.estimatedPrice)} VND',
+                    'Từ ${_money(route.estimatedPrice)} VND',
                     style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
                   ),
                 ),
@@ -351,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: const Color(0xFF2563EB),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
-                  child: Text(widget.isLoggedIn ? 'Dat tuyen' : 'Dang nhap'),
+                  child: Text(widget.isLoggedIn ? 'Đặt tuyến' : 'Đăng nhập'),
                 ),
               ],
             ),
@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(type.typeName, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(
-          '${type.seatCapacity} cho\n${_money(type.pricePerDay)} VND/ngay · ${_money(type.pricePerKm)} VND/km',
+          '${type.seatCapacity} chỗ\n${_money(type.pricePerDay)} VND/ngày · ${_money(type.pricePerKm)} VND/km',
         ),
         isThreeLine: true,
         trailing: const Icon(Icons.chevron_right, color: Color(0xFF2563EB)),

@@ -49,7 +49,7 @@ public class BookingsController(BookingService bookingService) : ControllerBase
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await bookingService.CreateBookingAsync(userId, request);
         return booking is null
-            ? BadRequest(new { message = "Du lieu dat xe khong hop le." })
+            ? BadRequest(new { message = "Dữ liệu đặt xe không hợp lệ." })
             : CreatedAtAction(nameof(GetById), new { id = booking.BookingId }, booking);
     }
 
@@ -59,7 +59,7 @@ public class BookingsController(BookingService bookingService) : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var review = await bookingService.CreateReviewAsync(id, userId, request);
-        return review is null ? BadRequest(new { message = "Khong the danh gia don nay." }) : Ok(review);
+        return review is null ? BadRequest(new { message = "Không thể đánh giá đơn này." }) : Ok(review);
     }
 
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model CustomerWeb.Pages.IndexModel
 @{
     ViewData["Title"] = "Cho thue xe du lich";
@@ -35,7 +35,7 @@
                     }
                     else
                     {
-                        <a asp-page="/Account/Login" asp-route-returnUrl="/Bookings/Create?typeId=@type.TypeId" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
+                        <a href="http://localhost:5180/Account/Login" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
                     }
                 </div>
             </div>

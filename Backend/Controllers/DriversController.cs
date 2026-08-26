@@ -40,7 +40,7 @@ public class DriversController(DriverService driverService) : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var ok = await driverService.AcceptTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Da nhan chuyen." }) : BadRequest();
+        return ok ? Ok(new { message = "Đã nhận chuyến." }) : BadRequest();
     }
 
     [Authorize(Roles = RoleNames.Driver)]
@@ -49,7 +49,7 @@ public class DriversController(DriverService driverService) : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var ok = await driverService.StartTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Da bat dau chuyen." }) : BadRequest();
+        return ok ? Ok(new { message = "Đã bắt đầu chuyến." }) : BadRequest();
     }
 
     [Authorize(Roles = RoleNames.Driver)]
@@ -58,6 +58,6 @@ public class DriversController(DriverService driverService) : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var ok = await driverService.CompleteTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Da hoan thanh chuyen." }) : BadRequest();
+        return ok ? Ok(new { message = "Đã hoàn thành chuyến." }) : BadRequest();
     }
 }

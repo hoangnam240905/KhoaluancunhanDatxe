@@ -68,22 +68,22 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 const SizedBox(height: 6),
                 Chip(label: Text(b.status)),
                 const SizedBox(height: 12),
-                _row('Tuyen', '${b.pickupAddress} → ${b.dropoffAddress}'),
-                _row('Bat dau', fmt.format(b.startDate.toLocal())),
-                _row('Ket thuc', fmt.format(b.endDate.toLocal())),
-                _row('Cuoc phi', '${money.format(b.totalAmount)} VND'),
-                if (b.notes != null && b.notes!.isNotEmpty) _row('Ghi chu', b.notes!),
+                _row('Tuyến', '${b.pickupAddress} → ${b.dropoffAddress}'),
+                _row('Bắt đầu', fmt.format(b.startDate.toLocal())),
+                _row('Kết thúc', fmt.format(b.endDate.toLocal())),
+                _row('Cước phí', '${money.format(b.totalAmount)} VND'),
+                if (b.notes != null && b.notes!.isNotEmpty) _row('Ghi chú', b.notes!),
                 const Divider(height: 28),
-                const Text('Tai xe phan cong', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('Tài xế phân công', style: TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 if (a == null)
-                  const Text('Chua phan cong — doi dieu phoi xac nhan.',
+                  const Text('Chưa phân công — đợi điều phối xác nhận.',
                       style: TextStyle(color: Color(0xFF64748B)))
                 else ...[
-                  _row('Ho ten', a.driverName),
-                  _row('So dien thoai', (a.driverPhone == null || a.driverPhone!.isEmpty) ? '—' : a.driverPhone!),
-                  _row('Bien so xe', a.licensePlate),
-                  _row('Trang thai', a.status),
+                  _row('Họ tên', a.driverName),
+                  _row('Số điện thoại', (a.driverPhone == null || a.driverPhone!.isEmpty) ? '—' : a.driverPhone!),
+                  _row('Biển số xe', a.licensePlate),
+                  _row('Trạng thái', a.status),
                 ],
               ],
             ),
@@ -116,7 +116,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4FF),
       appBar: AppBar(
-        title: const Text('Don cua toi'),
+        title: const Text('Đơn của tôi'),
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
       ),
@@ -128,12 +128,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   ? ListView(children: [
                       const SizedBox(height: 80),
                       Center(child: Text(_error!)),
-                      Center(child: TextButton(onPressed: _load, child: const Text('Thu lai'))),
+                      Center(child: TextButton(onPressed: _load, child: const Text('Thử lại'))),
                     ])
                   : _bookings.isEmpty
                       ? ListView(children: const [
                           SizedBox(height: 120),
-                          Center(child: Text('Chua co don dat xe')),
+                          Center(child: Text('Chưa có đơn đặt xe')),
                         ])
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
@@ -141,8 +141,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           itemBuilder: (context, i) {
                             final b = _bookings[i];
                             final driverLine = b.assignment == null
-                                ? 'Tai xe: chua phan cong'
-                                : 'Tai xe: ${b.assignment!.driverName} · ${b.assignment!.licensePlate}';
+                                ? 'Tài xế: chưa phân công'
+                                : 'Tài xế: ${b.assignment!.driverName} · ${b.assignment!.licensePlate}';
                             return Card(
                               margin: const EdgeInsets.only(bottom: 10),
                               elevation: 0,

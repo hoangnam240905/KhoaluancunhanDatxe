@@ -24,7 +24,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
         var (_, error) = await api.ConfirmBookingAsync(id);
-        Message = error ?? "Da xac nhan.";
+        Message = error ?? "Đã xác nhận.";
         PendingBookings = await api.GetBookingsAsync("Pending");
         ConfirmedBookings = await api.GetBookingsAsync("Confirmed");
         return Page();

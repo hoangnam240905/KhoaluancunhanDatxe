@@ -38,7 +38,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
       await widget.api.updateDriverStatus(status);
       setState(() => _driverStatus = status);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trang thai: $status')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trạng thái: $status')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,7 +75,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tai xe · ${widget.userName}'),
+        title: Text('Tài xế · ${widget.userName}'),
         backgroundColor: const Color(0xFFEA580C),
         foregroundColor: Colors.white,
         actions: [
@@ -94,14 +94,14 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text('Trang thai:', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Trạng thái:', style: TextStyle(fontWeight: FontWeight.w600)),
                 ChoiceChip(
-                  label: const Text('San sang'),
+                  label: const Text('Sẵn sàng'),
                   selected: _driverStatus == 'Available',
                   onSelected: (_) => _setStatus('Available'),
                 ),
                 ChoiceChip(
-                  label: const Text('Ban'),
+                  label: const Text('Bận'),
                   selected: _driverStatus == 'Busy',
                   onSelected: (_) => _setStatus('Busy'),
                 ),
@@ -122,7 +122,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                         ? ListView(
                             children: const [
                               SizedBox(height: 120),
-                              Center(child: Text('Chua co chuyen nao')),
+                              Center(child: Text('Chưa có chuyến nào')),
                             ],
                           )
                         : ListView.builder(
@@ -143,11 +143,11 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       const SizedBox(height: 6),
-                                      Text('Khach: ${t.customerName}'),
+                                      Text('Khách: ${t.customerName}'),
                                       Text('${t.pickupAddress} → ${t.dropoffAddress}'),
                                       Text(fmt.format(t.startDate.toLocal())),
-                                      Text('Cuoc: ${money.format(t.totalAmount)}'),
-                                      Text('Trang thai: ${t.status}'),
+                                      Text('Cước: ${money.format(t.totalAmount)}'),
+                                      Text('Trạng thái: ${t.status}'),
                                       if (t.assignment != null) Text('Xe: ${t.assignment!.licensePlate}'),
                                       if (aid != null) ...[
                                         const SizedBox(height: 10),
@@ -158,18 +158,18 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                               FilledButton(
                                                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEA580C)),
                                                 onPressed: () => _action(() => widget.api.acceptTrip(aid)),
-                                                child: const Text('Nhan chuyen'),
+                                                child: const Text('Nhận chuyến'),
                                               ),
                                             if (t.status == 'Assigned' || t.status == 'InProgress')
                                               FilledButton(
                                                 onPressed: () => _action(() => widget.api.startTrip(aid)),
-                                                child: const Text('Bat dau'),
+                                                child: const Text('Bắt đầu'),
                                               ),
                                             if (t.status == 'InProgress')
                                               FilledButton(
                                                 style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
                                                 onPressed: () => _action(() => widget.api.completeTrip(aid)),
-                                                child: const Text('Hoan thanh'),
+                                                child: const Text('Hoàn thành'),
                                               ),
                                           ],
                                         ),
