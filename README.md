@@ -2,145 +2,113 @@
 
 Hệ thống cho thuê xe du lịch trực tuyến — đồ án CNTT-KLCN108.
 
-Hướng dẫn chạy chi tiết (port, lệnh, SQLite/SQL Server, emulator): xem `HUONG_DAN_CHAY_PROJECT.txt`.
-File đó dựa trên source; mục không xác định được sẽ ghi rõ.
+Trạng thái source **đến PHASE 3.6.3** (giá theo hình thức thuê, quote, cọc, kiểm xe, `FinalAmount`, `BookingFee`). Chi tiết phase: `Tuan 3.md`. Lệnh/port/emulator: `HUONG_DAN_CHAY_PROJECT.txt`.
 
 ## Cấu trúc project
 
 | Thư mục | Vai trò |
 |---------|---------|
-| Backend/ | REST API + JWT + EF Core (mặc định SQLite) |
-| PortalWeb/ | Web tổng hợp + **cổng đăng nhập web duy nhất** (`:5180`) |
-| AdminWeb/ | Web Admin riêng (`:5258`) — không còn login riêng |
-| DispatcherWeb/ | Web điều phối riêng (`:5206`) — không còn login riêng |
-| CustomerWeb/ | Web khách hàng riêng (`:5162`) — không còn login riêng; vẫn có Register |
+| Backend/ | REST API + JWT + EF Core (mặc định SQLite `carrental.db`) |
+| Backend.Tests/ | xunit: giá chốt, phí, quy tắc kiểm xe |
+| PortalWeb/ | Web tổng hợp + **cổng đăng nhập web chính** (`:5180`) |
+| AdminWeb/ | Web Admin (`:5258`) — không có login riêng; redirect PortalWeb |
+| DispatcherWeb/ | Web điều phối (`:5206`) — **có login riêng** (role Dispatcher) |
+| CustomerWeb/ | Web khách (`:5162`) — login qua PortalWeb; vẫn có Register |
 | CustomerApp/ | Flutter: khách hàng và tài xế (`RoleRouter`) |
 | DriverApp/ | Flutter: chỉ tài xế |
-| Database/ | Script SQL Server (không bắt buộc khi chạy SQLite mặc định) |
+| Database/ | Script SQL Server (không bắt buộc khi chạy SQLite) |
 
-README cũ mô tả database chính là SQL Server và thiếu PortalWeb. **Source hiện tại:** `Backend/appsettings.json` dùng `DatabaseProvider: Sqlite` và `Data Source=carrental.db`. PortalWeb tồn tại trong repo.
+Mặc định: `Backend/appsettings.json` → `DatabaseProvider: Sqlite`, `Data Source=carrental.db`. Không dùng EF Migration (`EnsureCreated` + `ALTER`/`CREATE TABLE IF NOT EXISTS`).
 
 ## Bảng tổng hợp chức năng (từ source)
 
 | Thành phần | Vai trò | Chức năng chính |
 |------------|---------|-----------------|
-| CustomerApp | Khách hàng; tài xế nếu RoleRouter | Đăng ký/đăng nhập/đăng xuất; xem loại xe và tuyến tĩnh; đặt xe; xem/chi tiết đơn; tài xế: chuyến, nhận/bắt đầu/hoàn thành, đổi trạng thái. Không có đánh giá, không gọi `/api/vehicles`. |
-| DriverApp | Tài xế | Đăng nhập/đăng xuất; danh sách chuyến; nhận/bắt đầu/hoàn thành; đổi trạng thái. Không có đăng ký. |
-| PortalWeb | Web tổng hợp + login | Login/register/logout + route theo role. Customer: trang chủ, đặt xe, xem đơn. Admin: dashboard, CRUD xe, xem/hủy đơn. Dispatcher: xác nhận đơn, phân công tài xế+xe. Không có khu Driver; không có UI đánh giá. |
-| AdminWeb | Quản trị (site riêng) | Dashboard, CRUD xe, xem/hủy đơn, logout. Login → PortalWeb. |
-| DispatcherWeb | Điều phối (site riêng) | Xác nhận đơn, phân công tài xế+xe, logout. Login → PortalWeb. |
-| CustomerWeb | Khách hàng (site riêng) | Register (cookie local); xem loại xe; đặt xe; xem đơn; đánh giá đơn Completed. Login → PortalWeb. |
-| Backend | REST API | Auth JWT; loại xe/xe; đơn; đánh giá; điều phối; tài xế/chuyến. Không có API thanh toán. |
-| Database | Lưu trữ | Roles/Users, Customers, Drivers, VehicleTypes, Vehicles, Bookings, TripAssignments, BookingStatusHistory, Payments, Reviews. Không có RefreshToken / DriverVehicle. |
-
-Chi tiết từng mục: `HUONG_DAN_CHAY_PROJECT.txt` mục **2.1**.
+| CustomerApp | Khách; tài xế nếu RoleRouter | Đăng ký/đăng nhập; chọn WithDriver/SelfDrive; **quote** rồi đặt xe; đơn; **thanh toán cọc**; đánh giá WithDriver Completed; tài xế: chuyến, nhận/bắt đầu/hoàn thành (không gửi km). Admin/Dispatcher bị từ chối trên app. |
+| DriverApp | Tài xế | Đăng nhập; danh sách + chi tiết chuyến; nhận/bắt đầu/hoàn thành (body trống); trạng thái Available/Busy/Offline. Không đăng ký, không đặt xe, không cọc. |
+| PortalWeb | Web tổng hợp + login | Login/register/logout + route theo role. Customer: trang chủ, đặt xe (có hình thức), xem đơn. Admin: dashboard, CRUD xe, xem/hủy đơn. Dispatcher: xác nhận, gán xe (SelfDrive không tài xế), **giao xe / hoàn thành trả xe** SelfDrive. Không UI quote, không UI cọc, không UI phí/km. |
+| AdminWeb | Quản trị (site riêng) | Dashboard, CRUD xe, xem/hủy đơn, logout. Chưa login → PortalWeb. |
+| DispatcherWeb | Điều phối (site riêng) | Login Dispatcher; xác nhận; phân công; giao/trả xe SelfDrive. |
+| CustomerWeb | Khách (site riêng) | Register (cookie local); loại xe; đặt xe (có hình thức); xem đơn; đánh giá Completed (API cần TripAssignment). Login → PortalWeb. Không quote UI, không cọc. |
+| Backend | REST API | Auth JWT; xe; đơn + **quote**; đánh giá; điều phối + handover/complete SelfDrive; tài xế/chuyến; **Payment Deposit**; inspection + fee **nội bộ** lúc complete. Không mark-paid, không gateway, không CRUD phí/inspection công khai. |
+| Database | Lưu trữ | Roles/Users, Customers, Drivers, VehicleTypes, Vehicles, Bookings (snapshot + `FinalAmount` + `RentalMode`), TripAssignments, BookingStatusHistory, Payments (`PaymentType`), Reviews, **VehicleInspections**, **BookingFees**. Không RefreshToken / DriverVehicle. |
 
 ## CHỨC NĂNG CỦA TỪNG THÀNH PHẦN
 
-Chỉ liệt kê chức năng có trong source. Không ghi chức năng chỉ xuất hiện ở README cũ nếu source không có.
+Chỉ liệt kê chức năng có trong source.
 
 ### CustomerApp
 
-Nguồn: `CustomerApp/lib/screens/`, `services/api_service.dart`, `navigation/role_router.dart`, `data/portal_content.dart`, `main.dart`.
+Nguồn: `CustomerApp/lib/screens/`, `services/api_service.dart`, `navigation/role_router.dart`, `data/portal_content.dart`.
 
 - Đăng ký, đăng nhập, đăng xuất, khôi phục phiên
-- Trang chủ: loại xe từ API; tuyến phổ biến / tính năng / bước đặt / FAQ **tĩnh** (`portal_content.dart`)
-- Xem thông tin loại xe (giá, chỗ) — không xem đội xe theo biển số
-- Tạo đơn thuê; đặt theo tuyến phổ biến
-- Danh sách đơn; chi tiết đơn (bottom sheet); xem trạng thái
-- **RoleRouter:** Customer → `HomeScreen`; Driver → `DriverTripsScreen`; Admin/Dispatcher bị từ chối
-- Driver trên app này: danh sách chuyến, nhận / bắt đầu / hoàn thành, trạng thái Available/Busy/Offline
+- Trang chủ: loại xe API; tuyến/FAQ tĩnh; chọn hình thức thuê
+- `GET /api/bookings/quote` trước khi xác nhận đặt; POST đơn cùng `rentalMode`
+- Danh sách đơn; màn chi tiết (không còn chỉ bottom sheet)
+- **Cọc:** `GET /api/bookings/{id}/payments`, `POST /api/payments` (Deposit; amount do server; status Pending)
+- Đánh giá khi Completed, không SelfDrive, có assignment
+- RoleRouter: Customer → `CustomerShell`; Driver → `DriverTripsScreen`
 
-Không có: đánh giá đơn, thanh toán, CRUD xe.
+Không có: danh sách xe theo biển số, mark-paid, hiển thị `finalAmount`/`fees` trên model hiện tại.
+
+`ApiConfig.baseUrl`: Android emulator `http://10.0.2.2:5199`; web/desktop/iOS `http://localhost:5199`. Điện thoại Android thật vẫn ra `10.0.2.2` — cần đổi IP LAN.
 
 ### DriverApp
 
-Nguồn: `DriverApp/lib/screens/login_screen.dart`, `trips_screen.dart`, `services/api_service.dart`.
+Nguồn: `DriverApp/lib/screens/` (`driver_shell`, `trips_screen`, `trip_detail_screen`, `status_screen`, `account_screen`).
 
-- Đăng nhập tài xế (chỉ role Driver), đăng xuất, khôi phục phiên
-- Danh sách chuyến; thông tin chuyến trên danh sách
-- Nhận chuyến, bắt đầu chuyến, hoàn thành chuyến
+- Đăng nhập chỉ role Driver; đăng xuất; khôi phục JWT
+- Danh sách chuyến; chi tiết chuyến
+- Nhận / bắt đầu / hoàn thành (`complete` không gửi odometer)
 - Cập nhật trạng thái tài xế
 
-Không có: đăng ký, đặt xe, đánh giá.
+Không có: đăng ký, đặt xe, cọc, đánh giá.
 
-### PortalWeb (cổng đăng nhập web)
+### PortalWeb (`:5180`)
 
-Nguồn: `PortalWeb/Pages/`, `Services/AuthSession.cs` (`RoleRoutes`), `Services/CarRentalApiClient.cs`.
+Cookie `CarRentalPortalAuth`. Login: `http://localhost:5180/Account/Login`. Role: Admin → `/Admin`, Dispatcher → `/Dispatcher`, Customer → `/`, khác → Login.
 
-**AUTHENTICATION**
+**Customer:** trang chủ; đặt xe (WithDriver/SelfDrive); xem đơn + xe/tài xế theo mode. Không quote UI, không cọc, không đánh giá trên Portal (client có `CreateReviewAsync` nhưng không có Page gọi).
 
-- Đăng nhập: `http://localhost:5180/Account/Login`
-- Đăng ký khách hàng
-- Đăng xuất
-- Role: Admin → `/Admin`; Dispatcher → `/Dispatcher`; Customer → `/`; khác → `/Account/Login`
+**Admin:** dashboard; CRUD xe; xem/hủy đơn (`Cancelled`).
 
-**CUSTOMER**
+**Dispatcher:** Pending confirm; Confirmed assign (SelfDrive không chọn tài xế); SelfDrive Assigned → Giao xe; InProgress → Hoàn thành trả xe. Gọi API không body điều kiện xe.
 
-- Trang chủ (loại xe API + nội dung tĩnh)
-- Đặt xe; xem đơn và thông tin tài xế/xe nếu đã gán
+### AdminWeb (`:5258`)
 
-Không có trang đánh giá trên PortalWeb.
+Không `Pages/Account/Login`. Chưa login → `http://localhost:5180/Account/Login`. Cookie `CarRentalAdminAuth` không chia sẻ với PortalWeb.
 
-**ADMIN**
+Dashboard; CRUD xe; xem/hủy đơn; logout.
 
-- Dashboard (số xe, số đơn, đơn Pending)
-- Danh sách / thêm / sửa / xóa xe
-- Xem đơn; hủy đơn (`Cancelled`)
+### DispatcherWeb (`:5206`)
 
-**DISPATCHER**
+**Có** `Pages/Account/Login` (chỉ Dispatcher). Chưa login → `/Account/Login`. Cookie `CarRentalDispatcherAuth`.
 
-- Xem đơn Pending / Confirmed
-- Xác nhận đơn; phân công tài xế và xe
+Xác nhận; phân công; giao xe / hoàn thành SelfDrive; logout.
 
-Driver không có khu vực web.
+### CustomerWeb (`:5162`)
 
-### AdminWeb
-
-Web Admin riêng. **Không còn** `Pages/Account/Login.*`. Chưa login → `http://localhost:5180/Account/Login`. Cookie `CarRentalAdminAuth` không chia sẻ với PortalWeb.
-
-- Dashboard; quản lý xe (thêm/sửa/xóa/danh sách); xem đơn; hủy đơn; đăng xuất
-
-### DispatcherWeb
-
-Không còn login riêng. Chưa login → PortalWeb.
-
-- Xem đơn Pending; xác nhận đơn
-- Xem đơn Confirmed; phân công tài xế + xe
-- Đăng xuất → PortalWeb login
-
-### CustomerWeb
-
-Không còn login riêng. Login → PortalWeb. **Register vẫn còn** (`Pages/Account/Register`) và ghi cookie local sau đăng ký.
-
-- Xem loại xe; đặt xe; xem đơn
-- Đánh giá đơn khi `Status == Completed`
+Login → PortalWeb. Register còn (`CarRentalAuth`). Đặt xe có hình thức; xem đơn; đánh giá Completed.
 
 ### Backend / API
 
-Nguồn: `Backend/Controllers/`, `Backend/Services/`.
+Nguồn: `Backend/Controllers/`, `Backend/Services/`. Chi tiết path: `Tuan 3.md` mục 12 hoặc `HUONG_DAN_CHAY_PROJECT.txt` mục 10.
 
-**AUTH:** đăng nhập JWT; đăng ký khách hàng; `GET /api/auth/me` (có controller; không thấy client nào gọi).
+Tóm tắt mới so với README cũ:
 
-**VEHICLES:** xem loại xe (public); xem xe / chi tiết xe (public); thêm/sửa/xóa xe (Admin). Không có API CRUD loại xe.
+- Quote, snapshot giá, `PricingService`
+- PaymentsController (Deposit Pending)
+- Dispatch handover/complete SelfDrive
+- Driver complete optional `VehicleConditionRequest`
+- `BookingResponse`: snapshot, `finalAmount`, `fees`, `finalBaseAmount`, `totalFees` (`totalFees` **không** gồm ExtraKm)
 
-**BOOKINGS:** tạo đơn (Customer); xem đơn; cập nhật trạng thái (Admin/Dispatcher); đánh giá (Customer).
-
-**DISPATCH:** xác nhận đơn; phân công tài xế + xe (Dispatcher).
-
-**DRIVERS:** danh sách tài xế (Admin/Dispatcher); chuyến của tài xế; đổi trạng thái; nhận/bắt đầu/hoàn thành chuyến.
-
-Không có `PaymentsController`.
+`TotalAmount` = quote lúc đặt (immutable). `FinalAmount` = giá chốt sau complete (nullable). ExtraKm nằm trong `FinalAmount`; dòng `BookingFee` ExtraKm chỉ audit.
 
 ### Database
 
-Nguồn: `Backend/Entities`, `CarRentalDbContext`, `Database/02_CreateTables.sql`, `DbSeeder`.
-
-Có: Roles, Users, Customers, Drivers, VehicleTypes, Vehicles, Bookings, TripAssignments, BookingStatusHistory, Payments, Reviews.
+Có: Roles, Users, Customers, Drivers, VehicleTypes (cột giá theo mode), Vehicles (`CurrentKm`), Bookings, TripAssignments, BookingStatusHistory, Payments, Reviews, VehicleInspections, BookingFees.
 
 Không có: RefreshToken, DriverVehicle.
-
-Payments: entity + seed; không có API thanh toán.
 
 ## Chạy nhanh
 
@@ -158,7 +126,7 @@ dotnet run
 
 Login web: `http://localhost:5180/Account/Login`
 
-Flutter (sau khi Backend chạy; emulator Android dùng `10.0.2.2:5199` trong `lib/config/api_config.dart`):
+Flutter (Backend đã chạy):
 
 ```bash
 cd CustomerApp
@@ -168,12 +136,10 @@ flutter run
 
 Tài khoản demo (mật khẩu `Password123!`): `admin@carrental.vn`, `dispatcher@carrental.vn`, `customer1@gmail.com`, `driver1@carrental.vn`.
 
-OpenAPI (Development): `/openapi/v1.json` — không có Swagger UI trong source.
+OpenAPI (Development): `/openapi/v1.json` — không có Swagger UI.
+
+Tests Backend: `dotnet test Backend.Tests/Backend.Tests.csproj -c Release`.
 
 ## Database (SQL Server — tùy chọn)
 
-Chỉ cần nếu đổi `DatabaseProvider` sang SqlServer. Chạy lần lượt:
-
-1. `Database/01_CreateDatabase.sql`
-2. `Database/02_CreateTables.sql`
-3. `Database/03_SeedData.sql`
+Chỉ khi đổi `DatabaseProvider` sang SqlServer. Chạy lần lượt `Database/01_CreateDatabase.sql` → `02_CreateTables.sql` → `03_SeedData.sql`.

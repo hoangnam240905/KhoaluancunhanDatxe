@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'screens/driver_shell.dart';
 import 'screens/login_screen.dart';
-import 'screens/trips_screen.dart';
 import 'services/api_service.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const DriverApp());
@@ -14,7 +15,8 @@ class DriverApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Car Rental - Tài xế',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange), useMaterial3: true),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
       home: const SplashScreen(),
     );
   }
@@ -39,17 +41,50 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuth() async {
     final auth = await _api.authService.getAuth();
     if (!mounted) return;
-    if (auth != null && auth.role == 'Driver' && auth.expiresAt.isAfter(DateTime.now())) {
+    final valid =
+        auth != null &&
+        auth.role == 'Driver' &&
+        auth.expiresAt.isAfter(DateTime.now());
+    if (valid) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => TripsScreen(api: _api, userName: auth.fullName)),
+        MaterialPageRoute(
+          builder: (_) => DriverShell(api: _api, userName: auth.fullName),
+        ),
       );
-    } else {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
     }
+    if (auth != null) {
+      await _api.authService.logout();
+    }
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Scaffold(
+      backgroundColor: AppColors.primaryDark,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.local_taxi, size: 56, color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'DriverApp',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 24),
+            CircularProgressIndicator(color: Colors.white),
+          ],
+        ),
+      ),
+    );
   }
 }

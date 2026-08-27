@@ -27,6 +27,33 @@ public class BookingsController(BookingService bookingService) : ControllerBase
         return Forbid();
     }
 
+    [Authorize(Roles = RoleNames.Customer)]
+    [HttpGet("quote")]
+    public async Task<ActionResult<BookingQuoteResponse>> Quote(
+        [FromQuery] int? vehicleTypeId,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate,
+        [FromQuery] decimal? estimatedDistance,
+        [FromQuery] string? rentalMode)
+    {
+        if (vehicleTypeId is null or <= 0)
+            return BadRequest(new { message = "Loại xe không hợp lệ." });
+
+        if (startDate is null || endDate is null)
+            return BadRequest(new { message = "Thời gian thuê không hợp lệ." });
+
+        var (quote, error) = await bookingService.GetQuoteAsync(
+            vehicleTypeId.Value,
+            startDate.Value,
+            endDate.Value,
+            estimatedDistance,
+            rentalMode);
+
+        return quote is null
+            ? BadRequest(new { message = error ?? "Dữ liệu báo giá không hợp lệ." })
+            : Ok(quote);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<BookingResponse>> GetById(int id)
     {
@@ -46,6 +73,9 @@ public class BookingsController(BookingService bookingService) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<BookingResponse>> Create(CreateBookingRequest request)
     {
+        if (!RentalModes.TryResolve(request.RentalMode, out _))
+            return BadRequest(new { message = "Hình thức thuê không hợp lệ." });
+
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await bookingService.CreateBookingAsync(userId, request);
         return booking is null

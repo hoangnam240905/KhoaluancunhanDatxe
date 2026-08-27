@@ -11,7 +11,34 @@ public record CreateBookingRequest(
     DateTime StartDate,
     DateTime EndDate,
     decimal? EstimatedDistance,
-    string? Notes);
+    string? Notes,
+    string? RentalMode = null);
+
+public record BookingQuoteResponse(
+    int VehicleTypeId,
+    string VehicleTypeName,
+    string RentalMode,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal QuotedPricePerDay,
+    decimal QuotedPricePerKm,
+    int QuotedDays,
+    decimal EstimatedDistance,
+    decimal RentalAmount,
+    decimal DistanceAmount,
+    decimal TotalAmount,
+    decimal DriverAmount,
+    decimal IncludedKm,
+    decimal ExtraKm,
+    decimal ExtraKmPrice,
+    decimal DepositAmount);
+
+public record AssignedVehicleResponse(
+    int VehicleId,
+    string LicensePlate,
+    string Brand,
+    string Model,
+    string Status);
 
 public record BookingResponse(
     int BookingId,
@@ -28,7 +55,33 @@ public record BookingResponse(
     string Status,
     string? Notes,
     DateTime CreatedAt,
-    TripAssignmentResponse? Assignment);
+    TripAssignmentResponse? Assignment,
+    string RentalMode,
+    AssignedVehicleResponse? AssignedVehicle,
+    decimal? QuotedPricePerDay,
+    decimal? QuotedPricePerKm,
+    int? QuotedDays,
+    decimal? QuotedDriverFeePerDay,
+    decimal? QuotedSelfDriveIncludedKmPerDay,
+    decimal? QuotedSelfDriveExtraKmPrice,
+    decimal? QuotedDepositAmount,
+    decimal? FinalAmount,
+    IReadOnlyList<BookingFeeResponse> Fees,
+    decimal? FinalBaseAmount,
+    decimal? TotalFees);
+
+public record BookingFeeResponse(
+    int FeeId,
+    string FeeType,
+    string? Description,
+    decimal Amount,
+    DateTime CreatedAt);
+
+public record VehicleConditionRequest(
+    decimal? OdometerKm = null,
+    decimal? FuelLevel = null,
+    string? Condition = null,
+    string? Notes = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,
@@ -42,7 +95,7 @@ public record TripAssignmentResponse(
 
 public record UpdateBookingStatusRequest(string Status, string? Note);
 
-public record AssignTripRequest(int DriverId, int VehicleId);
+public record AssignTripRequest(int? DriverId, int VehicleId);
 
 public record CreateReviewRequest(byte Rating, string? Comment);
 

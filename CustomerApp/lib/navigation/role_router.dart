@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../screens/customer_shell.dart';
 import '../screens/driver_trips_screen.dart';
-import '../screens/home_screen.dart';
 
 /// Điều hướng sau đăng nhập/đăng ký theo vai trò (giống PortalWeb).
 class RoleRouter {
   static Widget homeFor(ApiService api, AuthResponse auth) {
     switch (auth.role) {
       case 'Customer':
-        return HomeScreen(api: api, userName: auth.fullName);
+        return CustomerShell(api: api, userName: auth.fullName);
       case 'Driver':
         return DriverTripsScreen(api: api, userName: auth.fullName);
       default:
-        return HomeScreen(api: api);
+        return CustomerShell(api: api);
     }
   }
 
   static void goHome(BuildContext context, ApiService api, AuthResponse auth) {
     if (auth.role != 'Customer' && auth.role != 'Driver') {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vai trò ${auth.role} chỉ dùng trên Web Portal.')),
+        SnackBar(
+          content: Text('Vai trò ${auth.role} chỉ dùng trên Web Portal.'),
+        ),
       );
       return;
     }

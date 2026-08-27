@@ -39,7 +39,15 @@ public record CreateBookingRequest(
     DateTime StartDate,
     DateTime EndDate,
     decimal? EstimatedDistance,
-    string? Notes);
+    string? Notes,
+    string? RentalMode = null);
+
+public record AssignedVehicleResponse(
+    int VehicleId,
+    string LicensePlate,
+    string Brand,
+    string Model,
+    string Status);
 
 public record BookingResponse(
     int BookingId,
@@ -56,7 +64,9 @@ public record BookingResponse(
     string Status,
     string? Notes,
     DateTime CreatedAt,
-    TripAssignmentResponse? Assignment);
+    TripAssignmentResponse? Assignment,
+    string RentalMode = "WithDriver",
+    AssignedVehicleResponse? AssignedVehicle = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,

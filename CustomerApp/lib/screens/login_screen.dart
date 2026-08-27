@@ -65,7 +65,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Card(
                   elevation: 12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -75,14 +77,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: CircleAvatar(
                             radius: 28,
                             backgroundColor: Color(0xFF2563EB),
-                            child: Icon(Icons.directions_car, color: Colors.white, size: 28),
+                            child: Icon(
+                              Icons.directions_car,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Car Rental',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
                           'Đăng nhập khách hàng / tài xế',
@@ -97,7 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: const Color(0xFFFEE2E2),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626))),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Color(0xFFDC2626)),
+                            ),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -106,7 +116,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: 'Email',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -115,10 +127,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: !_showPassword,
                           decoration: InputDecoration(
                             labelText: 'Mật khẩu',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             suffixIcon: IconButton(
-                              icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                              icon: Icon(
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () => setState(
+                                () => _showPassword = !_showPassword,
+                              ),
                             ),
                           ),
                         ),
@@ -127,14 +147,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: _loading ? null : _login,
                           child: _loading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Text('Đăng nhập'),
                         ),
@@ -145,20 +170,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               : () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) => const RegisterScreen(),
+                                    ),
                                   );
                                 },
                           child: const Text('Chưa có tài khoản? Đăng ký'),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Quay lại trang chủ'),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Demo KH: customer1@gmail.com\nDemo TX: driver1@carrental.vn\nMK: Password123!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          child: const Text('Quay lại'),
                         ),
                       ],
                     ),

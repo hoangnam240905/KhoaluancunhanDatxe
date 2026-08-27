@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/booking_pricing.dart';
+import '../utils/formatters.dart';
+import '../widgets/app_widgets.dart';
 
 class CreateBookingScreen extends StatefulWidget {
   final ApiService api;
-  final VehicleType vehicleType;
+  final String initialRentalMode;
+  final VehicleType? vehicleType;
+  final List<VehicleType>? vehicleTypes;
   final String? pickup;
   final String? dropoff;
   final double? distanceKm;
@@ -12,7 +19,9 @@ class CreateBookingScreen extends StatefulWidget {
   const CreateBookingScreen({
     super.key,
     required this.api,
-    required this.vehicleType,
+    this.initialRentalMode = 'WithDriver',
+    this.vehicleType,
+    this.vehicleTypes,
     this.pickup,
     this.dropoff,
     this.distanceKm,
@@ -23,24 +32,57 @@ class CreateBookingScreen extends StatefulWidget {
 }
 
 class _CreateBookingScreenState extends State<CreateBookingScreen> {
+  static const _titles = [
+    'Hình thức thuê',
+    'Loại xe',
+    'Thời gian',
+    'Địa điểm',
+    'Xác nhận',
+  ];
+
+  final _page = PageController();
+  int _step = 0;
+  late String _rentalMode;
+  VehicleType? _type;
+  List<VehicleType> _types = [];
+  bool _loadingTypes = false;
+  String? _typesError;
+
+  DateTime? _start;
+  DateTime? _end;
   late final TextEditingController _pickup;
   late final TextEditingController _dropoff;
   late final TextEditingController _distance;
   final _notes = TextEditingController();
-  final DateTime _start = DateTime.now().add(const Duration(days: 1));
-  final DateTime _end = DateTime.now().add(const Duration(days: 1, hours: 8));
-  bool _loading = false;
+  bool _submitting = false;
+  String? _formError;
+  BookingQuote? _quote;
+  bool _quoteLoading = false;
+  String? _quoteError;
 
   @override
   void initState() {
     super.initState();
-    _pickup = TextEditingController(text: widget.pickup ?? 'TP.HCM');
-    _dropoff = TextEditingController(text: widget.dropoff ?? 'Vũng Tàu');
-    _distance = TextEditingController(text: (widget.distanceKm ?? 120).toStringAsFixed(0));
+    _rentalMode = widget.initialRentalMode == 'SelfDrive'
+        ? 'SelfDrive'
+        : 'WithDriver';
+    _type = widget.vehicleType;
+    _types = widget.vehicleTypes ?? [];
+    _pickup = TextEditingController(text: widget.pickup ?? '');
+    _dropoff = TextEditingController(text: widget.dropoff ?? '');
+    _distance = TextEditingController(
+      text: widget.distanceKm == null
+          ? ''
+          : widget.distanceKm!.toStringAsFixed(0),
+    );
+    if (_types.isEmpty) {
+      _loadTypes();
+    }
   }
 
   @override
   void dispose() {
+    _page.dispose();
     _pickup.dispose();
     _dropoff.dispose();
     _distance.dispose();
@@ -48,77 +90,561 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    setState(() => _loading = true);
+  Future<void> _loadTypes() async {
+    setState(() {
+      _loadingTypes = true;
+      _typesError = null;
+    });
     try {
-      await widget.api.createBooking(
-        vehicleTypeId: widget.vehicleType.typeId,
-        pickupAddress: _pickup.text.trim(),
-        dropoffAddress: _dropoff.text.trim(),
-        startDate: _start,
-        endDate: _end,
-        estimatedDistance: double.tryParse(_distance.text),
-        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đặt xe thành công!')));
-      Navigator.pop(context);
+      _types = await widget.api.getVehicleTypes();
+      _type ??= _types.isEmpty ? null : _types.first;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      _typesError = e.toString().replaceFirst('Exception: ', '');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _loadingTypes = false);
     }
   }
 
-  InputDecoration _dec(String label) => InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: Colors.white,
+  Future<void> _pickDateTime({required bool start}) async {
+    final now = DateTime.now();
+    final initial =
+        (start ? _start : _end) ?? now.add(Duration(days: start ? 1 : 2));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null || !mounted) return;
+    final selected = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    setState(() {
+      if (start) {
+        _start = selected;
+      } else {
+        _end = selected;
+      }
+      _formError = null;
+    });
+  }
+
+  String? _validateStep() {
+    switch (_step) {
+      case 1:
+        if (_type == null) return 'Vui lòng chọn loại xe.';
+      case 2:
+        if (_start == null || _end == null) {
+          return 'Vui lòng chọn thời gian nhận và trả xe.';
+        }
+        if (!_end!.isAfter(_start!)) {
+          return 'Thời gian trả phải sau thời gian nhận.';
+        }
+      case 3:
+        if (_pickup.text.trim().isEmpty) return 'Vui lòng nhập điểm đón.';
+        if (_dropoff.text.trim().isEmpty) return 'Vui lòng nhập điểm trả.';
+        final km = _distance.text.trim();
+        if (km.isNotEmpty && double.tryParse(km.replaceAll(',', '.')) == null) {
+          return 'Km dự kiến không hợp lệ.';
+        }
+    }
+    return null;
+  }
+
+  void _next() {
+    final error = _validateStep();
+    if (error != null) {
+      setState(() => _formError = error);
+      return;
+    }
+    setState(() => _formError = null);
+    if (_step < 4) {
+      _page.nextPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
       );
+    }
+  }
+
+  void _back() {
+    if (_step == 0) {
+      Navigator.pop(context);
+      return;
+    }
+    _page.previousPage(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  double? get _distanceValue {
+    final raw = _distance.text.trim().replaceAll(',', '.');
+    if (raw.isEmpty) return null;
+    return double.tryParse(raw);
+  }
+
+  Future<void> _loadQuote() async {
+    if (_type == null || _start == null || _end == null) return;
+    if (!_end!.isAfter(_start!)) return;
+    setState(() {
+      _quoteLoading = true;
+      _quoteError = null;
+      _quote = null;
+    });
+    try {
+      final quote = await widget.api.getQuote(
+        vehicleTypeId: _type!.typeId,
+        startDate: _start!,
+        endDate: _end!,
+        rentalMode: _rentalMode,
+        estimatedDistance: _distanceValue,
+      );
+      if (!mounted) return;
+      setState(() {
+        _quote = quote;
+        _quoteLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _quoteError = e.toString().replaceFirst('Exception: ', '');
+        _quoteLoading = false;
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    final error = _validateStep();
+    if (error != null || _type == null || _start == null || _end == null) {
+      setState(() => _formError = error ?? 'Thiếu thông tin đặt xe.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _formError = null;
+    });
+    try {
+      await widget.api.createBooking(
+        vehicleTypeId: _type!.typeId,
+        rentalMode: _rentalMode,
+        pickupAddress: _pickup.text.trim(),
+        dropoffAddress: _dropoff.text.trim(),
+        startDate: _start!,
+        endDate: _end!,
+        estimatedDistance: _distanceValue,
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đặt xe thành công. Đơn đang chờ xác nhận.'),
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      setState(() => _formError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4FF),
       appBar: AppBar(
-        title: Text('Đặt ${widget.vehicleType.typeName}'),
-        backgroundColor: const Color(0xFF1E3A8A),
-        foregroundColor: Colors.white,
+        title: Text('Đặt xe · ${_step + 1}/5'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _back,
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _titles[_step],
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: (_step + 1) / 5,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: PageView(
+              controller: _page,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (i) {
+                setState(() => _step = i);
+                if (i == 4) _loadQuote();
+              },
+              children: [
+                _modeStep(),
+                _vehicleStep(),
+                _timeStep(),
+                _locationStep(),
+                _confirmStep(),
+              ],
+            ),
+          ),
+          SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(controller: _pickup, decoration: _dec('Điểm đón')),
-                  const SizedBox(height: 12),
-                  TextField(controller: _dropoff, decoration: _dec('Điểm trả')),
-                  const SizedBox(height: 12),
-                  TextField(controller: _distance, keyboardType: TextInputType.number, decoration: _dec('Km ước tính')),
-                  const SizedBox(height: 12),
-                  TextField(controller: _notes, maxLines: 2, decoration: _dec('Ghi chú')),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (_formError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        _formError!,
+                        style: const TextStyle(color: AppColors.danger),
+                      ),
                     ),
-                    onPressed: _loading ? null : _submit,
-                    child: _loading
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Gửi yêu cầu đặt xe'),
+                  Row(
+                    children: [
+                      if (_step > 0)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _submitting ? null : _back,
+                            child: const Text('Quay lại'),
+                          ),
+                        ),
+                      if (_step > 0) const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton(
+                          onPressed: _submitting
+                              ? null
+                              : (_step == 4 ? _submit : _next),
+                          child: _submitting
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  _step == 4 ? 'Xác nhận đặt xe' : 'Tiếp tục',
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeStep() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          'Chọn cách bạn muốn thuê xe',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        const SizedBox(height: 12),
+        RentalModeToggle(
+          value: _rentalMode,
+          onChanged: (v) => setState(() => _rentalMode = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _vehicleStep() {
+    if (_loadingTypes) {
+      return const Center(child: AppLoading(message: 'Đang tải loại xe...'));
+    }
+    if (_typesError != null) {
+      return AppErrorState(message: _typesError!, onRetry: _loadTypes);
+    }
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: _types.map((type) {
+        final selected = _type?.typeId == type.typeId;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: AppCard(
+            onTap: () => setState(() => _type = type),
+            child: Row(
+              children: [
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: selected ? AppColors.primary : AppColors.muted,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        type.typeName,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        '${type.seatCapacity} chỗ · ${Formatters.vnd(type.pricePerDay)}/ngày · ${Formatters.vnd(type.pricePerKm)}/km',
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _timeStep() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _timeTile('Ngày giờ nhận xe', _start, () => _pickDateTime(start: true)),
+        const SizedBox(height: 12),
+        _timeTile('Ngày giờ trả xe', _end, () => _pickDateTime(start: false)),
+        if (_start != null && _end != null && _end!.isAfter(_start!)) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Thời gian thuê: ${BookingPricing.rentalDays(_start!, _end!)} ngày (làm tròn theo hệ thống)',
+            style: const TextStyle(color: AppColors.muted),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _timeTile(String label, DateTime? value, VoidCallback onTap) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                Text(
+                  value == null ? 'Chọn thời gian' : Formatters.dt(value),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
+  }
+
+  Widget _locationStep() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        TextField(
+          controller: _pickup,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Điểm đón',
+            hintText: 'TP.HCM',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _dropoff,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Điểm trả',
+            hintText: 'Vũng Tàu',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _distance,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+          ],
+          decoration: const InputDecoration(
+            labelText: 'Km dự kiến (không bắt buộc)',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _notes,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Ghi chú (không bắt buộc)',
+            hintText: 'Hành lý, điểm đón cụ thể...',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _confirmStep() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        AppCard(
+          child: Column(
+            children: [
+              _row('Hình thức', Formatters.rentalModeLabel(_rentalMode)),
+              _row('Loại xe', _type?.typeName ?? '—'),
+              _row('Nhận xe', _start == null ? '—' : Formatters.dt(_start!)),
+              _row('Trả xe', _end == null ? '—' : Formatters.dt(_end!)),
+              _row(
+                'Điểm đón',
+                _pickup.text.trim().isEmpty ? '—' : _pickup.text.trim(),
+              ),
+              _row(
+                'Điểm trả',
+                _dropoff.text.trim().isEmpty ? '—' : _dropoff.text.trim(),
+              ),
+              _row(
+                'Km dự kiến',
+                _distanceValue == null
+                    ? 'Không nhập'
+                    : '${_distanceValue!.toStringAsFixed(0)} km',
+              ),
+              _row(
+                'Ghi chú',
+                _notes.text.trim().isEmpty ? 'Không' : _notes.text.trim(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Giá dự kiến',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              if (_quoteLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_quoteError != null)
+                Text(
+                  _quoteError!,
+                  style: const TextStyle(color: AppColors.danger),
+                )
+              else if (_quote != null) ...[
+                if (Formatters.isSelfDrive(_quote!.rentalMode)) ...[
+                  _row(
+                    'Giá thuê xe',
+                    Formatters.vnd(_quote!.quotedPricePerDay),
+                  ),
+                  _row('Số ngày', '${_quote!.quotedDays}'),
+                  _row(
+                    'Km miễn phí',
+                    '${_quote!.includedKm.toStringAsFixed(0)} km',
+                  ),
+                  _row(
+                    'Km dự kiến',
+                    '${_quote!.estimatedDistance.toStringAsFixed(0)} km',
+                  ),
+                  _row('Km vượt', '${_quote!.extraKm.toStringAsFixed(0)} km'),
+                  _row('Phí km vượt', Formatters.vnd(_quote!.extraKmPrice)),
+                  _row('Tạm tính', Formatters.vnd(_quote!.totalAmount)),
+                  _row('Cọc dự kiến', Formatters.vnd(_quote!.depositAmount)),
+                ] else ...[
+                  _row(
+                    'Giá thuê xe',
+                    Formatters.vnd(_quote!.quotedPricePerDay),
+                  ),
+                  _row('Số ngày', '${_quote!.quotedDays}'),
+                  _row('Phí tài xế', Formatters.vnd(_quote!.driverAmount)),
+                  _row(
+                    'Km dự kiến',
+                    '${_quote!.estimatedDistance.toStringAsFixed(0)} km',
+                  ),
+                  _row('Phí km', Formatters.vnd(_quote!.distanceAmount)),
+                  _row('Tạm tính', Formatters.vnd(_quote!.totalAmount)),
+                  _row('Cọc dự kiến', Formatters.vnd(_quote!.depositAmount)),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  Formatters.vnd(_quote!.totalAmount),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Tổng tạm tính từ máy chủ, chưa gồm cọc. Ứng dụng không gửi tổng tiền khi đặt xe.',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ] else
+                const Text('—'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],

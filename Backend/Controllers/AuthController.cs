@@ -20,8 +20,10 @@ public class AuthController(AuthService authService) : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterCustomerRequest request)
     {
-        var result = await authService.RegisterCustomerAsync(request);
-        return result is null ? BadRequest(new { message = "Email đã tồn tại hoặc dữ liệu không hợp lệ." }) : Ok(result);
+        var (result, error) = await authService.RegisterCustomerAsync(request);
+        return result is null
+            ? BadRequest(new { message = error ?? "Đăng ký không thành công." })
+            : Ok(result);
     }
 
     [Authorize]

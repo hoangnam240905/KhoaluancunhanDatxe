@@ -1,25 +1,38 @@
 @page
 @model DispatcherWeb.Pages.IndexModel
-@{ ViewData["Title"] = "Bang dieu phoi"; }
-<h2 class="mb-4">Bang dieu phoi</h2>
+@{ ViewData["Title"] = "Bảng điều phối"; }
+<h2 class="mb-4">Bảng điều phối</h2>
 @if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
 
-<h4 class="text-warning">Don cho xac nhan (@Model.PendingBookings.Count)</h4>
-@if (!Model.PendingBookings.Any()) { <p class="text-muted">Khong co don pending.</p> }
+<h4 class="text-warning">Đơn chờ xác nhận (@Model.PendingBookings.Count)</h4>
+@if (!Model.PendingBookings.Any()) { <p class="text-muted">Không có đơn pending.</p> }
 else
 {
     <table class="table table-sm mb-4">
-        <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th>Tuyen</th><th>Thoi gian</th><th></th></tr></thead>
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>Khách</th>
+                <th>Loại xe</th>
+                <th>Hình thức</th>
+                <th>Thời gian</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
         <tbody>
         @foreach (var b in Model.PendingBookings)
         {
             <tr>
-                <td>#@b.BookingId</td><td>@b.CustomerName</td><td>@b.VehicleTypeName</td>
-                <td>@b.PickupAddress → @b.DropoffAddress</td>
-                <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                <td>#@b.BookingId</td>
+                <td>@b.CustomerName</td>
+                <td>@b.VehicleTypeName</td>
+                <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
+                <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
+                <td>@b.Status</td>
                 <td>
                     <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-success">Xac nhan</button>
+                        <button type="submit" class="btn btn-sm btn-success">Xác nhận</button>
                     </form>
                 </td>
             </tr>
@@ -28,19 +41,107 @@ else
     </table>
 }
 
-<h4 class="text-primary">Don da xac nhan - can phan cong (@Model.ConfirmedBookings.Count)</h4>
-@if (!Model.ConfirmedBookings.Any()) { <p class="text-muted">Khong co don can phan cong.</p> }
+<h4 class="text-primary">Đơn đã xác nhận — cần phân công (@Model.ConfirmedBookings.Count)</h4>
+@if (!Model.ConfirmedBookings.Any()) { <p class="text-muted">Không có đơn cần phân công.</p> }
 else
 {
-    <table class="table table-sm">
-        <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th>Tuyen</th><th></th></tr></thead>
+    <table class="table table-sm mb-4">
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>Khách</th>
+                <th>Loại xe</th>
+                <th>Hình thức</th>
+                <th>Thời gian</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
         <tbody>
         @foreach (var b in Model.ConfirmedBookings)
         {
             <tr>
-                <td>#@b.BookingId</td><td>@b.CustomerName</td><td>@b.VehicleTypeName</td>
-                <td>@b.PickupAddress → @b.DropoffAddress</td>
-                <td><a asp-page="/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-primary">Phan cong</a></td>
+                <td>#@b.BookingId</td>
+                <td>@b.CustomerName</td>
+                <td>@b.VehicleTypeName</td>
+                <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
+                <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
+                <td>@b.Status</td>
+                <td><a asp-page="/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-primary">Phân công</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<h4 class="text-info">Tự lái — chờ giao xe (@Model.SelfDriveAssigned.Count)</h4>
+@if (!Model.SelfDriveAssigned.Any()) { <p class="text-muted">Không có đơn tự lái chờ giao xe.</p> }
+else
+{
+    <table class="table table-sm mb-4">
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>Khách</th>
+                <th>Loại xe</th>
+                <th>Xe đã gán</th>
+                <th>Thời gian</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var b in Model.SelfDriveAssigned)
+        {
+            <tr>
+                <td>#@b.BookingId</td>
+                <td>@b.CustomerName</td>
+                <td>@b.VehicleTypeName</td>
+                <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
+                <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
+                <td>@b.Status</td>
+                <td>
+                    <form method="post" asp-page-handler="Handover" asp-route-id="@b.BookingId" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-info">Giao xe</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<h4 class="text-success">Tự lái — đang thuê (@Model.SelfDriveInProgress.Count)</h4>
+@if (!Model.SelfDriveInProgress.Any()) { <p class="text-muted">Không có đơn tự lái đang thuê.</p> }
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>Khách</th>
+                <th>Loại xe</th>
+                <th>Xe đã gán</th>
+                <th>Thời gian</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var b in Model.SelfDriveInProgress)
+        {
+            <tr>
+                <td>#@b.BookingId</td>
+                <td>@b.CustomerName</td>
+                <td>@b.VehicleTypeName</td>
+                <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
+                <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
+                <td>@b.Status</td>
+                <td>
+                    <form method="post" asp-page-handler="Complete" asp-route-id="@b.BookingId" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-success">Hoàn thành trả xe</button>
+                    </form>
+                </td>
             </tr>
         }
         </tbody>

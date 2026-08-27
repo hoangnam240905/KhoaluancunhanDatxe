@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'navigation/role_router.dart';
-import 'screens/home_screen.dart';
+import 'screens/customer_shell.dart';
 import 'services/api_service.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const CarRentalApp());
@@ -15,11 +16,7 @@ class CarRentalApp extends StatelessWidget {
     return MaterialApp(
       title: 'Car Rental',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF0F4FF),
-      ),
+      theme: AppTheme.light,
       home: const SplashScreen(),
     );
   }
@@ -59,14 +56,33 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => HomeScreen(api: _api)),
+      MaterialPageRoute(builder: (_) => CustomerShell(api: _api)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      backgroundColor: AppColors.primaryDark,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.directions_car_filled, size: 56, color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Car Rental',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 24),
+            CircularProgressIndicator(color: Colors.white),
+          ],
+        ),
+      ),
     );
   }
 }

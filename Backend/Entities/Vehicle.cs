@@ -15,4 +15,5 @@ public class Vehicle
 
     public VehicleType VehicleType { get; set; } = null!;
     public ICollection<TripAssignment> TripAssignments { get; set; } = [];
+    public ICollection<VehicleInspection> Inspections { get; set; } = [];
 }

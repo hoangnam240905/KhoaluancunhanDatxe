@@ -21,9 +21,13 @@ builder.Services.AddDbContext<CarRentalDbContext>(options =>
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VehicleService>();
+builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<DriverService>();
+builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<VehicleInspectionService>();
+builder.Services.AddScoped<BookingFeeService>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -57,7 +61,17 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CarRentalDbContext>();
     db.Database.EnsureCreated();
+    db.EnsureSqliteBookingRentalColumns();
+    db.EnsureSqliteBookingPriceSnapshotColumns();
+    db.EnsureSqliteVehicleTypePricingColumns();
+    db.EnsureSqliteBookingModeSnapshotColumns();
+    db.EnsureSqlitePaymentTypeColumn();
+    db.EnsureSqliteVehicleInspectionsTable();
+    db.EnsureSqliteBookingFinalAmountColumn();
+    db.EnsureSqliteBookingFeesTable();
     DbSeeder.Seed(db);
+    db.FillVehicleTypePricingDefaults();
+    db.ReconcileOpenAssignmentResourceStatus();
 }
 
 if (app.Environment.IsDevelopment())

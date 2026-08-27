@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import 'home_screen.dart';
+import 'customer_shell.dart';
 
 class DriverTripsScreen extends StatefulWidget {
   final ApiService api;
   final String userName;
 
-  const DriverTripsScreen({super.key, required this.api, required this.userName});
+  const DriverTripsScreen({
+    super.key,
+    required this.api,
+    required this.userName,
+  });
 
   @override
   State<DriverTripsScreen> createState() => _DriverTripsScreenState();
@@ -38,7 +42,9 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
       await widget.api.updateDriverStatus(status);
       setState(() => _driverStatus = status);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trạng thái: $status')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Trạng thái: $status')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -63,7 +69,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
     await widget.api.authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => HomeScreen(api: ApiService())),
+      MaterialPageRoute(builder: (_) => CustomerShell(api: widget.api)),
       (_) => false,
     );
   }
@@ -94,7 +100,10 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text('Trạng thái:', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  'Trạng thái:',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 ChoiceChip(
                   label: const Text('Sẵn sàng'),
                   selected: _driverStatus == 'Available',
@@ -136,19 +145,30 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(14),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '#${t.bookingId} · ${t.vehicleTypeName}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                       const SizedBox(height: 6),
                                       Text('Khách: ${t.customerName}'),
-                                      Text('${t.pickupAddress} → ${t.dropoffAddress}'),
+                                      Text(
+                                        '${t.pickupAddress} → ${t.dropoffAddress}',
+                                      ),
                                       Text(fmt.format(t.startDate.toLocal())),
-                                      Text('Cước: ${money.format(t.totalAmount)}'),
+                                      Text(
+                                        'Cước: ${money.format(t.totalAmount)}',
+                                      ),
                                       Text('Trạng thái: ${t.status}'),
-                                      if (t.assignment != null) Text('Xe: ${t.assignment!.licensePlate}'),
+                                      if (t.assignment != null)
+                                        Text(
+                                          'Xe: ${t.assignment!.licensePlate}',
+                                        ),
                                       if (aid != null) ...[
                                         const SizedBox(height: 10),
                                         Wrap(
@@ -156,19 +176,41 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                           children: [
                                             if (t.status == 'Assigned')
                                               FilledButton(
-                                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEA580C)),
-                                                onPressed: () => _action(() => widget.api.acceptTrip(aid)),
-                                                child: const Text('Nhận chuyến'),
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFEA580C,
+                                                  ),
+                                                ),
+                                                onPressed: () => _action(
+                                                  () => widget.api.acceptTrip(
+                                                    aid,
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Nhận chuyến',
+                                                ),
                                               ),
-                                            if (t.status == 'Assigned' || t.status == 'InProgress')
+                                            if (t.status == 'Assigned' ||
+                                                t.status == 'InProgress')
                                               FilledButton(
-                                                onPressed: () => _action(() => widget.api.startTrip(aid)),
+                                                onPressed: () => _action(
+                                                  () =>
+                                                      widget.api.startTrip(aid),
+                                                ),
                                                 child: const Text('Bắt đầu'),
                                               ),
                                             if (t.status == 'InProgress')
                                               FilledButton(
-                                                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
-                                                onPressed: () => _action(() => widget.api.completeTrip(aid)),
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFF16A34A,
+                                                  ),
+                                                ),
+                                                onPressed: () => _action(
+                                                  () => widget.api.completeTrip(
+                                                    aid,
+                                                  ),
+                                                ),
                                                 child: const Text('Hoàn thành'),
                                               ),
                                           ],

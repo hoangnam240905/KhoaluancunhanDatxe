@@ -2,10 +2,46 @@
 @model PortalWeb.Pages.Dispatcher.AssignModel
 @{ ViewData["Title"] = "Phân công"; }
 <h2 class="mb-3">Phân công đơn #@Model.Booking?.BookingId</h2>
+@if (Model.Booking is not null)
+{
+    <p>
+        <strong>Khách:</strong> @Model.Booking.CustomerName
+        · <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
+        · <strong>Hình thức:</strong> @AssignModel.RentalModeLabel(Model.Booking.RentalMode)
+        · <strong>Thời gian:</strong> @Model.Booking.StartDate.ToString("dd/MM HH:mm") → @Model.Booking.EndDate.ToString("dd/MM HH:mm")
+    </p>
+}
 @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
 <form method="post" class="col-md-6">
-    <div class="mb-3"><label class="form-label">Tài xế</label><select asp-for="Input.DriverId" class="form-select">@foreach (var d in Model.Drivers) { <option value="@d.DriverId">@d.FullName</option> }</select></div>
-    <div class="mb-3"><label class="form-label">Xe</label><select asp-for="Input.VehicleId" class="form-select">@foreach (var v in Model.Vehicles) { <option value="@v.VehicleId">@v.LicensePlate - @v.TypeName</option> }</select></div>
-    <button type="submit" class="btn btn-primary">Phân công</button>
+    @if (!Model.IsSelfDrive)
+    {
+        <div class="mb-3">
+            <label class="form-label">Tài xế</label>
+            <select asp-for="Input.DriverId" class="form-select">
+                @foreach (var d in Model.Drivers)
+                {
+                    <option value="@d.DriverId">@d.FullName</option>
+                }
+            </select>
+            @if (!Model.Drivers.Any())
+            {
+                <div class="form-text text-danger">Không có tài xế đang rảnh.</div>
+            }
+        </div>
+    }
+    <div class="mb-3">
+        <label class="form-label">Xe</label>
+        <select asp-for="Input.VehicleId" class="form-select">
+            @foreach (var v in Model.Vehicles)
+            {
+                <option value="@v.VehicleId">@v.LicensePlate - @v.Brand @v.Model</option>
+            }
+        </select>
+        @if (!Model.Vehicles.Any())
+        {
+            <div class="form-text text-danger">Không có xe trống đúng loại đơn đặt.</div>
+        }
+    </div>
+    <button type="submit" class="btn btn-primary">@(Model.IsSelfDrive ? "Gán xe" : "Phân công")</button>
     <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lại</a>
 </form>

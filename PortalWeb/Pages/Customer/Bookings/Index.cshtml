@@ -5,7 +5,7 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
     <div>
         <h2>Đơn đặt xe của tôi</h2>
-        <p>Xem chi tiết chuyến đi và thông tin tài xế được phân công</p>
+        <p>Xem hình thức thuê, tuyến đi và thông tin xe / tài xế</p>
     </div>
     <a asp-page="/Customer/Bookings/Create" class="btn btn-primary">+ Đặt xe mới</a>
 </div>
@@ -19,20 +19,28 @@ else
     <div class="row g-3">
         @foreach (var b in Model.Bookings)
         {
+            var selfDrive = IndexModel.IsSelfDrive(b.RentalMode);
             <div class="col-12">
                 <div class="modern-card booking-detail-card p-4">
                     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                         <div>
                             <div class="fw-bold fs-5">#@b.BookingId · @b.VehicleTypeName</div>
-                            <div class="text-muted small">Tạo lúc @b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                            <div class="text-muted small">
+                                Hình thức: <strong>@IndexModel.RentalModeLabel(b.RentalMode)</strong>
+                                · Tạo lúc @b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </div>
                         </div>
                         <span class="badge bg-secondary badge-status">@b.Status</span>
                     </div>
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="detail-label">Tuyến đi</div>
-                            <div class="fw-semibold">@b.PickupAddress → @b.DropoffAddress</div>
+                            <div class="detail-label">Điểm đón</div>
+                            <div class="fw-semibold">@b.PickupAddress</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-label">Điểm trả</div>
+                            <div class="fw-semibold">@b.DropoffAddress</div>
                         </div>
                         <div class="col-md-3">
                             <div class="detail-label">Thời gian</div>
@@ -58,7 +66,31 @@ else
                     }
 
                     <div class="driver-box mt-4">
-                        @if (b.Assignment is null)
+                        @if (selfDrive)
+                        {
+                            @if (b.AssignedVehicle is null)
+                            {
+                                <div class="text-muted">Xe: chờ điều phối gán xe.</div>
+                            }
+                            else
+                            {
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <div class="detail-label">Xe đã gán</div>
+                                        <div class="fw-bold">@b.AssignedVehicle.LicensePlate</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-label">Mẫu xe</div>
+                                        <div>@b.AssignedVehicle.Brand @b.AssignedVehicle.Model</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="detail-label">Trạng thái xe</div>
+                                        <span class="badge bg-info text-dark">@b.AssignedVehicle.Status</span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else if (b.Assignment is null)
                         {
                             <div class="text-muted">
                                 <strong>Tài xế:</strong> Chưa phân công — đợi điều phối xác nhận.

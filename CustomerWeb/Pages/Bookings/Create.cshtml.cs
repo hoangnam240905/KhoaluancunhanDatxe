@@ -16,13 +16,17 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public class InputModel
     {
-        [Required]
+        [Required(ErrorMessage = "Vui lòng chọn loại xe.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn loại xe.")]
         public int VehicleTypeId { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Vui lòng chọn hình thức thuê.")]
+        public string RentalMode { get; set; } = "WithDriver";
+
+        [Required(ErrorMessage = "Vui lòng nhập điểm đón.")]
         public string PickupAddress { get; set; } = string.Empty;
 
-        [Required]
+        [Required(ErrorMessage = "Vui lòng nhập điểm trả.")]
         public string DropoffAddress { get; set; } = string.Empty;
 
         [Required, DataType(DataType.DateTime)]
@@ -40,6 +44,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         VehicleTypes = await api.GetVehicleTypesAsync();
+        if (string.IsNullOrWhiteSpace(Input.RentalMode))
+            Input.RentalMode = "WithDriver";
         if (typeId.HasValue) Input.VehicleTypeId = typeId.Value;
         else if (VehicleTypes.Count > 0) Input.VehicleTypeId = VehicleTypes[0].TypeId;
 
@@ -51,6 +57,16 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         VehicleTypes = await api.GetVehicleTypesAsync();
+
+        if (Input.RentalMode is not ("WithDriver" or "SelfDrive"))
+            Input.RentalMode = "WithDriver";
+
+        if (Input.EndDate <= Input.StartDate)
+            ModelState.AddModelError("Input.EndDate", "Thời gian kết thúc phải sau thời gian bắt đầu.");
+
+        if (Input.VehicleTypeId <= 0 || VehicleTypes.All(t => t.TypeId != Input.VehicleTypeId))
+            ModelState.AddModelError("Input.VehicleTypeId", "Vui lòng chọn loại xe.");
+
         if (!ModelState.IsValid) return Page();
 
         var (data, error) = await api.CreateBookingAsync(new CreateBookingRequest(
@@ -61,7 +77,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
             Input.StartDate,
             Input.EndDate,
             Input.EstimatedDistance,
-            Input.Notes));
+            Input.Notes,
+            Input.RentalMode));
 
         if (data is null)
         {

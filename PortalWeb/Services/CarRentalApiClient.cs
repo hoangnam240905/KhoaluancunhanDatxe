@@ -139,6 +139,22 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/handover");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
+    public async Task<(BookingResponse? Data, string? Error)> CompleteSelfDriveAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/complete");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
     public async Task<List<DriverResponse>> GetDriversAsync(string? status = "Available")
     {
         var url = $"/api/drivers?status={Uri.EscapeDataString(status ?? "Available")}";

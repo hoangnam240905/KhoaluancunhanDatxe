@@ -6,20 +6,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
 
-public class BookingService(CarRentalDbContext db)
+public class BookingService(CarRentalDbContext db, PricingService pricing)
 {
     public async Task<BookingResponse?> CreateBookingAsync(int customerId, CreateBookingRequest request)
     {
         if (request.EndDate <= request.StartDate)
             return null;
 
+        if (!RentalModes.TryResolve(request.RentalMode, out var rentalMode))
+            return null;
+
         var vehicleType = await db.VehicleTypes
             .FirstOrDefaultAsync(vt => vt.TypeId == request.VehicleTypeId && vt.IsActive);
         if (vehicleType is null) return null;
 
-        var days = Math.Max(1, (int)Math.Ceiling((request.EndDate - request.StartDate).TotalDays));
-        var distanceCost = (request.EstimatedDistance ?? 0) * vehicleType.PricePerKm;
-        var totalAmount = vehicleType.PricePerDay * days + distanceCost;
+        var quote = pricing.CalculateQuote(
+            vehicleType,
+            rentalMode,
+            request.StartDate,
+            request.EndDate,
+            request.EstimatedDistance);
 
         var booking = new Booking
         {
@@ -34,8 +40,17 @@ public class BookingService(CarRentalDbContext db)
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             EstimatedDistance = request.EstimatedDistance,
-            TotalAmount = totalAmount,
+            TotalAmount = quote.TotalAmount,
+            QuotedPricePerDay = quote.QuotedPricePerDay,
+            QuotedPricePerKm = quote.QuotedPricePerKm,
+            QuotedDays = quote.QuotedDays,
+            QuotedDriverFeePerDay = quote.QuotedDriverFeePerDay,
+            QuotedSelfDriveIncludedKmPerDay = quote.QuotedSelfDriveIncludedKmPerDay,
+            QuotedSelfDriveExtraKmPrice = quote.QuotedSelfDriveExtraKmPrice,
+            QuotedDepositAmount = quote.DepositAmount,
             Status = BookingStatuses.Pending,
+            RentalMode = rentalMode,
+            AssignedVehicleId = null,
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow
         };
@@ -47,13 +62,50 @@ public class BookingService(CarRentalDbContext db)
         return await GetBookingByIdAsync(booking.BookingId);
     }
 
+    public async Task<(BookingQuoteResponse? Quote, string? Error)> GetQuoteAsync(
+        int vehicleTypeId,
+        DateTime startDate,
+        DateTime endDate,
+        decimal? estimatedDistance,
+        string? rentalMode)
+    {
+        if (vehicleTypeId <= 0)
+            return (null, "Loại xe không hợp lệ.");
+
+        if (endDate <= startDate)
+            return (null, "Thời gian kết thúc phải sau thời gian bắt đầu.");
+
+        if (estimatedDistance is < 0)
+            return (null, "Km dự kiến không được âm.");
+
+        if (!RentalModes.TryResolve(rentalMode, out var resolvedMode))
+            return (null, "Hình thức thuê không hợp lệ.");
+
+        var vehicleType = await db.VehicleTypes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(vt => vt.TypeId == vehicleTypeId && vt.IsActive);
+        if (vehicleType is null)
+            return (null, "Loại xe không hợp lệ.");
+
+        var quote = pricing.CalculateQuote(
+            vehicleType,
+            resolvedMode,
+            startDate,
+            endDate,
+            estimatedDistance);
+
+        return (ToQuoteResponse(vehicleType, resolvedMode, startDate, endDate, quote), null);
+    }
+
     public async Task<List<BookingResponse>> GetBookingsAsync(int? customerId = null, string? status = null)
     {
         var query = db.Bookings
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
+            .Include(b => b.AssignedVehicle)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
+            .Include(b => b.Fees)
             .AsQueryable();
 
         if (customerId.HasValue)
@@ -71,8 +123,10 @@ public class BookingService(CarRentalDbContext db)
         var booking = await db.Bookings
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
+            .Include(b => b.AssignedVehicle)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
+            .Include(b => b.Fees)
             .FirstOrDefaultAsync(b => b.BookingId == id);
 
         return booking is null ? null : MapToResponse(booking);
@@ -148,8 +202,16 @@ public class BookingService(CarRentalDbContext db)
 
     private static BookingResponse MapToResponse(Booking b)
     {
+        var rentalMode = RentalModes.TryResolve(b.RentalMode, out var resolved)
+            ? resolved
+            : RentalModes.WithDriver;
+
         TripAssignmentResponse? assignment = null;
-        if (b.TripAssignment is not null)
+        AssignedVehicleResponse? assignedVehicle = null;
+
+        if (rentalMode == RentalModes.WithDriver
+            && b.TripAssignment?.Driver?.User is not null
+            && b.TripAssignment.Vehicle is not null)
         {
             assignment = new TripAssignmentResponse(
                 b.TripAssignment.AssignmentId,
@@ -161,6 +223,25 @@ public class BookingService(CarRentalDbContext db)
                 b.TripAssignment.Status,
                 b.TripAssignment.AssignedAt);
         }
+
+        if (rentalMode == RentalModes.SelfDrive && b.AssignedVehicle is not null)
+        {
+            assignedVehicle = new AssignedVehicleResponse(
+                b.AssignedVehicle.VehicleId,
+                b.AssignedVehicle.LicensePlate,
+                b.AssignedVehicle.Brand,
+                b.AssignedVehicle.Model,
+                b.AssignedVehicle.Status);
+        }
+
+        var fees = (b.Fees ?? [])
+            .OrderBy(f => f.FeeId)
+            .Select(f => new BookingFeeResponse(f.FeeId, f.FeeType, f.Description, f.Amount, f.CreatedAt))
+            .ToList();
+        var totalFees = fees
+            .Where(f => !BookingFeeTypes.IsIncludedInBase(f.FeeType))
+            .Sum(f => f.Amount);
+        decimal? finalBaseAmount = b.FinalAmount is null ? null : b.FinalAmount.Value - totalFees;
 
         return new BookingResponse(
             b.BookingId,
@@ -177,6 +258,44 @@ public class BookingService(CarRentalDbContext db)
             b.Status,
             b.Notes,
             b.CreatedAt,
-            assignment);
+            assignment,
+            rentalMode,
+            assignedVehicle,
+            b.QuotedPricePerDay,
+            b.QuotedPricePerKm,
+            b.QuotedDays,
+            b.QuotedDriverFeePerDay,
+            b.QuotedSelfDriveIncludedKmPerDay,
+            b.QuotedSelfDriveExtraKmPrice,
+            b.QuotedDepositAmount,
+            b.FinalAmount,
+            fees,
+            finalBaseAmount,
+            totalFees);
     }
+
+    private static BookingQuoteResponse ToQuoteResponse(
+        VehicleType vehicleType,
+        string rentalMode,
+        DateTime startDate,
+        DateTime endDate,
+        PricingQuote quote)
+        => new(
+            vehicleType.TypeId,
+            vehicleType.TypeName,
+            rentalMode,
+            startDate,
+            endDate,
+            quote.QuotedPricePerDay,
+            quote.QuotedPricePerKm,
+            quote.QuotedDays,
+            quote.EstimatedDistance,
+            quote.RentalAmount,
+            quote.DistanceAmount,
+            quote.TotalAmount,
+            quote.DriverAmount,
+            quote.IncludedKm,
+            quote.ExtraKm,
+            quote.ExtraKmPrice,
+            quote.DepositAmount);
 }

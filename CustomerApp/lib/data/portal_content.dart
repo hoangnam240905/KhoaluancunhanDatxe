@@ -125,18 +125,58 @@ class PortalContent {
   ];
 
   static const features = [
-    FeatureItem(icon: '🌐', title: 'Đặt xe 24/7', description: 'Đặt xe mọi lúc từ app, không cần đến văn phòng.'),
-    FeatureItem(icon: '🚗', title: 'Xe 4-16 chỗ', description: 'Sedan, SUV, Van, Limousine cho cá nhân và đoàn.'),
-    FeatureItem(icon: '👨‍✈️', title: 'Tài xế chuyên nghiệp', description: 'Lái xe có bằng, kinh nghiệm tour du lịch.'),
-    FeatureItem(icon: '💰', title: 'Giá minh bạch', description: 'Báo giá theo ngày + km trước khi xác nhận.'),
-    FeatureItem(icon: '📍', title: 'Theo dõi đơn', description: 'Xem trạng thái đơn từ đặt đến hoàn thành.'),
-    FeatureItem(icon: '⭐', title: 'Đánh giá dịch vụ', description: 'Đánh giá chuyến đi sau khi kết thúc.'),
+    FeatureItem(
+      icon: '🌐',
+      title: 'Đặt xe 24/7',
+      description: 'Đặt xe mọi lúc từ app, không cần đến văn phòng.',
+    ),
+    FeatureItem(
+      icon: '🚗',
+      title: 'Xe 4-16 chỗ',
+      description: 'Sedan, SUV, Van, Limousine cho cá nhân và đoàn.',
+    ),
+    FeatureItem(
+      icon: '👨‍✈️',
+      title: 'Tài xế chuyên nghiệp',
+      description: 'Lái xe có bằng, kinh nghiệm tour du lịch.',
+    ),
+    FeatureItem(
+      icon: '💰',
+      title: 'Giá minh bạch',
+      description: 'Báo giá theo ngày + km trước khi xác nhận.',
+    ),
+    FeatureItem(
+      icon: '📍',
+      title: 'Theo dõi đơn',
+      description: 'Xem trạng thái đơn từ đặt đến hoàn thành.',
+    ),
+    FeatureItem(
+      icon: '⭐',
+      title: 'Đánh giá dịch vụ',
+      description: 'Đánh giá chuyến đi sau khi kết thúc.',
+    ),
   ];
 
   static const steps = [
-    ProcessStep(step: 1, title: 'Chọn tuyến / xe', description: 'Xem gợi ý tuyến phổ biến và bảng giá.'),
-    ProcessStep(step: 2, title: 'Gửi yêu cầu', description: 'Điền điểm đón, trả, thời gian.'),
-    ProcessStep(step: 3, title: 'Xác nhận', description: 'Điều phối xác nhận và gán tài xế.'),
-    ProcessStep(step: 4, title: 'Đi & đánh giá', description: 'Thực hiện chuyến và đánh giá dịch vụ.'),
+    ProcessStep(
+      step: 1,
+      title: 'Chọn tuyến / xe',
+      description: 'Xem gợi ý tuyến phổ biến và bảng giá.',
+    ),
+    ProcessStep(
+      step: 2,
+      title: 'Gửi yêu cầu',
+      description: 'Điền điểm đón, trả, thời gian.',
+    ),
+    ProcessStep(
+      step: 3,
+      title: 'Xác nhận',
+      description: 'Điều phối xác nhận và gán tài xế.',
+    ),
+    ProcessStep(
+      step: 4,
+      title: 'Đi & đánh giá',
+      description: 'Thực hiện chuyến và đánh giá dịch vụ.',
+    ),
   ];
 }

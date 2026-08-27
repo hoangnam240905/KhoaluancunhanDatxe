@@ -19,13 +19,13 @@
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <form method="post">
             <div class="mb-3">
-                <label asp-for="Input.FullName" class="form-label">Họ tên</label>
+                <label asp-for="Input.FullName" class="form-label">Họ và tên</label>
                 <input asp-for="Input.FullName" class="form-control" placeholder="Nguyễn Văn A" />
                 <span asp-validation-for="Input.FullName" class="field-validation-error"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="Input.Email" class="form-label">Email</label>
-                <input asp-for="Input.Email" class="form-control" placeholder="email@gmail.com" autocomplete="username" />
+                <label asp-for="Input.Email" class="form-label">Gmail</label>
+                <input asp-for="Input.Email" class="form-control" placeholder="abc@gmail.com" autocomplete="username" />
                 <span asp-validation-for="Input.Email" class="field-validation-error"></span>
             </div>
             <div class="mb-3">
@@ -46,6 +46,7 @@
             <div class="mb-3">
                 <label asp-for="Input.Phone" class="form-label">Số điện thoại</label>
                 <input asp-for="Input.Phone" class="form-control" placeholder="09xxxxxxxx" />
+                <span asp-validation-for="Input.Phone" class="field-validation-error"></span>
             </div>
             <button type="submit" class="btn btn-primary w-100">Đăng ký</button>
         </form>

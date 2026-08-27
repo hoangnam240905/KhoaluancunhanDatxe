@@ -1,17 +1,17 @@
 @page
 @model CustomerWeb.Pages.Bookings.IndexModel
 @{
-    ViewData["Title"] = "Don dat xe cua toi";
+    ViewData["Title"] = "Đơn đặt xe của tôi";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Don dat xe cua toi</h2>
-    <a asp-page="Create" class="btn btn-primary">Dat xe moi</a>
+    <h2>Đơn đặt xe của tôi</h2>
+    <a asp-page="Create" class="btn btn-primary">Đặt xe mới</a>
 </div>
 
 @if (!Model.Bookings.Any())
 {
-    <div class="alert alert-info">Ban chua co don dat xe nao.</div>
+    <div class="alert alert-info">Bạn chưa có đơn đặt xe nào.</div>
 }
 else
 {
@@ -19,29 +19,60 @@ else
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Ma</th>
-                    <th>Loai xe</th>
-                    <th>Tuyen</th>
-                    <th>Thoi gian</th>
-                    <th>Tong tien</th>
-                    <th>Trang thai</th>
+                    <th>Mã</th>
+                    <th>Loại xe</th>
+                    <th>Hình thức</th>
+                    <th>Thời gian</th>
+                    <th>Điểm đón</th>
+                    <th>Điểm trả</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var b in Model.Bookings)
                 {
+                    var selfDrive = IndexModel.IsSelfDrive(b.RentalMode);
                     <tr>
                         <td>#@b.BookingId</td>
                         <td>@b.VehicleTypeName</td>
-                        <td>@b.PickupAddress → @b.DropoffAddress</td>
-                        <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
+                        <td>
+                            @b.StartDate.ToString("dd/MM/yyyy HH:mm")
+                            <div class="small text-muted">đến @b.EndDate.ToString("dd/MM HH:mm")</div>
+                        </td>
+                        <td>@b.PickupAddress</td>
+                        <td>@b.DropoffAddress</td>
                         <td>@b.TotalAmount.ToString("N0") VND</td>
                         <td><span class="badge bg-secondary">@b.Status</span></td>
                         <td>
                             @if (b.Status == "Completed")
                             {
-                                <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Danh gia</a>
+                                <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Đánh giá</a>
+                            }
+                        </td>
+                    </tr>
+                    <tr class="table-light">
+                        <td colspan="9" class="small">
+                            @if (selfDrive)
+                            {
+                                @if (b.AssignedVehicle is null)
+                                {
+                                    <span class="text-muted">Xe: chờ điều phối gán xe.</span>
+                                }
+                                else
+                                {
+                                    <span><strong>Xe:</strong> @b.AssignedVehicle.LicensePlate · @b.AssignedVehicle.Brand @b.AssignedVehicle.Model</span>
+                                }
+                            }
+                            else if (b.Assignment is null)
+                            {
+                                <span class="text-muted">Tài xế: chưa phân công — đợi điều phối xác nhận.</span>
+                            }
+                            else
+                            {
+                                <span><strong>Tài xế:</strong> @b.Assignment.DriverName · <strong>Xe:</strong> @b.Assignment.LicensePlate</span>
                             }
                         </td>
                     </tr>

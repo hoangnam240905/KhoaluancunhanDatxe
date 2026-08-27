@@ -1,57 +1,101 @@
 @page
 @model CustomerWeb.Pages.Bookings.CreateModel
 @{
-    ViewData["Title"] = "Dat xe";
+    ViewData["Title"] = "Đặt xe";
 }
 
-<h2 class="mb-4">Dat xe</h2>
+<h2 class="mb-4">Đặt xe</h2>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-<form method="post" class="row g-3">
+<form method="post" class="row g-4">
+    <div class="col-12">
+        <div class="fw-semibold mb-2">Hình thức thuê</div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input class="btn-check" type="radio" asp-for="Input.RentalMode" value="WithDriver" id="rentalWithDriver" />
+                <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalWithDriver">
+                    <div class="fw-bold">Có tài xế</div>
+                    <div class="small fw-normal text-muted mt-1">Thuê xe kèm tài xế. Tài xế sẽ được hệ thống điều phối và phân công cho chuyến.</div>
+                </label>
+            </div>
+            <div class="col-md-6">
+                <input class="btn-check" type="radio" asp-for="Input.RentalMode" value="SelfDrive" id="rentalSelfDrive" />
+                <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalSelfDrive">
+                    <div class="fw-bold">Tự lái</div>
+                    <div class="small fw-normal text-muted mt-1">Tự lái xe. Khách nhận xe và tự sử dụng trong thời gian thuê.</div>
+                </label>
+            </div>
+        </div>
+        <span asp-validation-for="Input.RentalMode" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <div class="fw-semibold mb-2">Loại xe</div>
+        @if (!Model.VehicleTypes.Any())
+        {
+            <p class="text-muted mb-0">Chưa có loại xe khả dụng.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var type in Model.VehicleTypes)
+                {
+                    <div class="col-md-6">
+                        <input class="btn-check" type="radio" asp-for="Input.VehicleTypeId" value="@type.TypeId" id="vt-@type.TypeId" />
+                        <label class="btn btn-outline-secondary w-100 text-start p-3 h-100" for="vt-@type.TypeId">
+                            @if (!string.IsNullOrWhiteSpace(type.ImageUrl))
+                            {
+                                <img src="@type.ImageUrl" alt="@type.TypeName" class="img-fluid rounded mb-2" style="max-height:120px;object-fit:cover;width:100%;" />
+                            }
+                            <div class="fw-bold">@type.TypeName</div>
+                            <div class="small text-muted">@type.SeatCapacity chỗ</div>
+                            <div class="small mt-1">@type.PricePerDay.ToString("N0") VND/ngày · @type.PricePerKm.ToString("N0") VND/km</div>
+                        </label>
+                    </div>
+                }
+            </div>
+        }
+        <span asp-validation-for="Input.VehicleTypeId" class="text-danger"></span>
+    </div>
+
     <div class="col-md-6">
-        <label asp-for="Input.VehicleTypeId" class="form-label">Loai xe</label>
-        <select asp-for="Input.VehicleTypeId" class="form-select">
-            @foreach (var type in Model.VehicleTypes)
-            {
-                <option value="@type.TypeId">@type.TypeName - @type.PricePerDay.ToString("N0") VND/ngay</option>
-            }
-        </select>
+        <label asp-for="Input.StartDate" class="form-label">Ngày giờ bắt đầu</label>
+        <input asp-for="Input.StartDate" class="form-control" type="datetime-local"
+               value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+        <span asp-validation-for="Input.StartDate" class="text-danger"></span>
     </div>
     <div class="col-md-6">
-        <label asp-for="Input.EstimatedDistance" class="form-label">Quang duong uoc tinh (km)</label>
-        <input asp-for="Input.EstimatedDistance" class="form-control" type="number" step="0.1" />
+        <label asp-for="Input.EndDate" class="form-label">Ngày giờ kết thúc</label>
+        <input asp-for="Input.EndDate" class="form-control" type="datetime-local"
+               value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+        <span asp-validation-for="Input.EndDate" class="text-danger"></span>
     </div>
     <div class="col-md-6">
-        <label asp-for="Input.PickupAddress" class="form-label">Diem don</label>
+        <label asp-for="Input.PickupAddress" class="form-label">Điểm đón</label>
         <input asp-for="Input.PickupAddress" class="form-control" placeholder="TP.HCM" />
         <span asp-validation-for="Input.PickupAddress" class="text-danger"></span>
     </div>
     <div class="col-md-6">
-        <label asp-for="Input.DropoffAddress" class="form-label">Diem tra</label>
-        <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vung Tau" />
+        <label asp-for="Input.DropoffAddress" class="form-label">Điểm trả</label>
+        <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vũng Tàu" />
         <span asp-validation-for="Input.DropoffAddress" class="text-danger"></span>
     </div>
     <div class="col-md-6">
-        <label asp-for="Input.StartDate" class="form-label">Ngay gio bat dau</label>
-        <input asp-for="Input.StartDate" class="form-control" type="datetime-local"
-               value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
-    </div>
-    <div class="col-md-6">
-        <label asp-for="Input.EndDate" class="form-label">Ngay gio ket thuc</label>
-        <input asp-for="Input.EndDate" class="form-control" type="datetime-local"
-               value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+        <label asp-for="Input.EstimatedDistance" class="form-label">Quãng đường ước tính (km)</label>
+        <input asp-for="Input.EstimatedDistance" class="form-control" type="number" step="0.1" min="0" />
     </div>
     <div class="col-12">
-        <label asp-for="Input.Notes" class="form-label">Ghi chu</label>
-        <textarea asp-for="Input.Notes" class="form-control" rows="2"></textarea>
+        <label asp-for="Input.Notes" class="form-label">Ghi chú</label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="2" placeholder="Yêu cầu đặc biệt, hành lý, điểm đón..."></textarea>
     </div>
     <div class="col-12">
-        <button type="submit" class="btn btn-primary">Gui yeu cau dat xe</button>
-        <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Quay lai</a>
+        <button type="submit" class="btn btn-primary">Gửi yêu cầu đặt xe</button>
+        <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
     </div>
 </form>
 

@@ -33,13 +33,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  bool get _gmailOk => RegExp(
+    r'^[^@\s]+@gmail\.com$',
+    caseSensitive: false,
+  ).hasMatch(_email.text.trim());
+  bool get _phoneOk => RegExp(
+    r'^0\d{9}$',
+  ).hasMatch(_phone.text.trim().replaceAll(RegExp(r'[\s.\-]'), ''));
+
   Future<void> _register() async {
-    if (_fullName.text.trim().isEmpty || _email.text.trim().isEmpty) {
-      setState(() => _error = 'Vui lòng nhập họ tên và email.');
+    if (_fullName.text.trim().isEmpty) {
+      setState(() => _error = 'Vui lòng nhập họ và tên.');
+      return;
+    }
+    if (!_gmailOk) {
+      setState(() => _error = 'Vui lòng nhập địa chỉ Gmail hợp lệ.');
+      return;
+    }
+    if (!_phoneOk) {
+      setState(
+        () => _error =
+            'Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0).',
+      );
       return;
     }
     if (!_passwordOk) {
-      setState(() => _error = 'Mật khẩu chưa đủ mạnh (8 ký tự, chữ hoa, ký tự đặc biệt).');
+      setState(
+        () => _error =
+            'Mật khẩu chưa đủ mạnh (8 ký tự, chữ hoa, ký tự đặc biệt).',
+      );
       return;
     }
 
@@ -52,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _email.text.trim(),
         password: _password.text,
         fullName: _fullName.text.trim(),
-        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+        phone: _phone.text.trim(),
       );
       if (!mounted) return;
       RoleRouter.goHome(context, _api, auth);
@@ -68,10 +90,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(ok ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 16, color: ok ? const Color(0xFF16A34A) : const Color(0xFF94A3B8)),
+          Icon(
+            ok ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 16,
+            color: ok ? const Color(0xFF16A34A) : const Color(0xFF94A3B8),
+          ),
           const SizedBox(width: 6),
-          Text(text, style: TextStyle(fontSize: 12, color: ok ? const Color(0xFF16A34A) : const Color(0xFF64748B))),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: ok ? const Color(0xFF16A34A) : const Color(0xFF64748B),
+            ),
+          ),
         ],
       ),
     );
@@ -96,7 +127,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Card(
                   elevation: 12,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -105,7 +138,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Text(
                           'Tạo tài khoản',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
                           'Đăng ký để đặt xe du lịch',
@@ -120,15 +154,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: const Color(0xFFFEE2E2),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626))),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Color(0xFFDC2626)),
+                            ),
                           ),
                           const SizedBox(height: 12),
                         ],
                         TextField(
                           controller: _fullName,
+                          textCapitalization: TextCapitalization.words,
                           decoration: InputDecoration(
-                            labelText: 'Họ tên',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            labelText: 'Họ và tên',
+                            hintText: 'Nguyễn Văn A',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -136,8 +177,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            labelText: 'Gmail',
+                            hintText: 'abc@gmail.com',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -147,24 +191,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
                             labelText: 'Mật khẩu',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             suffixIcon: IconButton(
-                              icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                              icon: Icon(
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () => setState(
+                                () => _showPassword = !_showPassword,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         _rule(_lenOk, 'Ít nhất 8 ký tự'),
                         _rule(_upperOk, 'Có ít nhất 1 chữ hoa (A-Z)'),
-                        _rule(_specialOk, 'Có ít nhất 1 ký tự đặc biệt (!@#\$...)'),
+                        _rule(
+                          _specialOk,
+                          'Có ít nhất 1 ký tự đặc biệt (!@#\$...)',
+                        ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _phone,
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
                             labelText: 'Số điện thoại',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            hintText: '09xxxxxxxx',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -172,14 +230,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF2563EB),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: _loading ? null : _register,
                           child: _loading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Text('Đăng ký'),
                         ),

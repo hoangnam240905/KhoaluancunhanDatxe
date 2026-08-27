@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
-import 'login_screen.dart';
+import '../theme/app_theme.dart';
+import '../utils/formatters.dart';
+import '../widgets/app_widgets.dart';
+import 'trip_detail_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   final ApiService api;
@@ -17,7 +19,7 @@ class TripsScreen extends StatefulWidget {
 class _TripsScreenState extends State<TripsScreen> {
   List<DriverBooking> _trips = [];
   bool _loading = true;
-  String _driverStatus = 'Available';
+  String? _error;
 
   @override
   void initState() {
@@ -26,109 +28,136 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _trips = await widget.api.getMyTrips();
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  Future<void> _setStatus(String status) async {
-    try {
-      await widget.api.updateStatus(status);
-      setState(() => _driverStatus = status);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Trạng thái: $status')));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      _error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _action(Future<void> Function() fn) async {
-    try {
-      await fn();
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
-
-  Future<void> _logout() async {
-    await widget.api.authService.logout();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+  Future<void> _open(DriverBooking trip) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TripDetailScreen(api: widget.api, trip: trip),
+      ),
+    );
+    _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('dd/MM/yyyy HH:mm');
     return Scaffold(
       appBar: AppBar(
-        title: Text('Xin chào, ${widget.userName}'),
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _logout)],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Chuyến của tôi', style: TextStyle(fontSize: 18)),
+            Text(
+              widget.userName,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+      body: _loading
+          ? const Center(child: AppLoading(message: 'Đang tải chuyến...'))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _error != null
+                  ? ListView(
+                      children: [
+                        const SizedBox(height: 80),
+                        AppErrorState(message: _error!, onRetry: _load),
+                      ],
+                    )
+                  : _trips.isEmpty
+                  ? ListView(
+                      children: const [
+                        SizedBox(height: 80),
+                        AppEmptyState(
+                          icon: Icons.route_outlined,
+                          title: 'Chưa có chuyến',
+                          subtitle:
+                              'Khi điều phối gán bạn vào đơn Có tài xế, chuyến sẽ hiện tại đây.',
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      itemCount: _trips.length,
+                      itemBuilder: (context, i) => _card(_trips[i]),
+                    ),
+            ),
+    );
+  }
+
+  Widget _card(DriverBooking t) {
+    final a = t.assignment;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        onTap: () => _open(t),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                const Text('Trạng thái: '),
-                ChoiceChip(label: const Text('Sẵn sàng'), selected: _driverStatus == 'Available', onSelected: (_) => _setStatus('Available')),
-                const SizedBox(width: 8),
-                ChoiceChip(label: const Text('Bận'), selected: _driverStatus == 'Busy', onSelected: (_) => _setStatus('Busy')),
-                const SizedBox(width: 8),
-                ChoiceChip(label: const Text('Offline'), selected: _driverStatus == 'Offline', onSelected: (_) => _setStatus('Offline')),
+                Expanded(
+                  child: Text(
+                    '#${t.bookingId} · ${t.vehicleTypeName}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                if (a != null) AssignmentBadge(status: a.status),
               ],
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _trips.isEmpty
-                        ? ListView(children: const [SizedBox(height: 120), Center(child: Text('Chưa có chuyến nào'))])
-                        : ListView.builder(
-                            itemCount: _trips.length,
-                            itemBuilder: (context, i) {
-                              final t = _trips[i];
-                              final aid = t.assignmentId;
-                              return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('#${t.bookingId} - ${t.vehicleTypeName}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('Khách: ${t.customerName}'),
-                                      Text('${t.pickupAddress} → ${t.dropoffAddress}'),
-                                      Text(fmt.format(t.startDate)),
-                                      Text('Trạng thái: ${t.status}'),
-                                      if (t.assignment != null) Text('Xe: ${t.assignment!.licensePlate}'),
-                                      if (aid != null) ...[
-                                        const SizedBox(height: 8),
-                                        Wrap(spacing: 8, children: [
-                                          if (t.status == 'Assigned')
-                                            FilledButton(onPressed: () => _action(() => widget.api.acceptTrip(aid)), child: const Text('Nhận chuyến')),
-                                          if (t.status == 'Assigned' || t.status == 'InProgress')
-                                            FilledButton(onPressed: () => _action(() => widget.api.startTrip(aid)), child: const Text('Bắt đầu')),
-                                          if (t.status == 'InProgress')
-                                            FilledButton(onPressed: () => _action(() => widget.api.completeTrip(aid)), child: const Text('Hoàn thành')),
-                                        ]),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text('Khách: ${t.customerName}'),
+            const SizedBox(height: 4),
+            Text(
+              '${t.pickupAddress} → ${t.dropoffAddress}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${Formatters.dt(t.startDate)}  →  ${Formatters.dt(t.endDate)}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.directions_car,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  a?.licensePlate ?? '—',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                Text(
+                  Formatters.bookingStatus(t.status),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

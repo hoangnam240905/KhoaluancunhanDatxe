@@ -1,3 +1,4 @@
+using Backend.Constants;
 using Backend.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,8 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<BookingStatusHistory> BookingStatusHistories => Set<BookingStatusHistory>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<VehicleInspection> VehicleInspections => Set<VehicleInspection>();
+    public DbSet<BookingFee> BookingFees => Set<BookingFee>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +65,12 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.TypeName).HasMaxLength(50);
             e.Property(x => x.PricePerDay).HasPrecision(18, 2);
             e.Property(x => x.PricePerKm).HasPrecision(18, 2);
+            e.Property(x => x.DriverFeePerDay).HasPrecision(18, 2);
+            e.Property(x => x.SelfDrivePricePerDay).HasPrecision(18, 2);
+            e.Property(x => x.SelfDriveIncludedKmPerDay).HasPrecision(10, 2);
+            e.Property(x => x.SelfDriveExtraKmPrice).HasPrecision(18, 2);
+            e.Property(x => x.WithDriverDepositAmount).HasPrecision(18, 2);
+            e.Property(x => x.SelfDriveDepositAmount).HasPrecision(18, 2);
             e.Property(x => x.Description).HasMaxLength(500);
             e.Property(x => x.ImageUrl).HasMaxLength(500);
         });
@@ -88,10 +97,23 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.DropoffLng).HasPrecision(10, 7);
             e.Property(x => x.EstimatedDistance).HasPrecision(10, 2);
             e.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            e.Property(x => x.QuotedPricePerDay).HasPrecision(18, 2);
+            e.Property(x => x.QuotedPricePerKm).HasPrecision(18, 2);
+            e.Property(x => x.QuotedDriverFeePerDay).HasPrecision(18, 2);
+            e.Property(x => x.QuotedSelfDriveIncludedKmPerDay).HasPrecision(10, 2);
+            e.Property(x => x.QuotedSelfDriveExtraKmPrice).HasPrecision(18, 2);
+            e.Property(x => x.QuotedDepositAmount).HasPrecision(18, 2);
+            e.Property(x => x.FinalAmount).HasPrecision(18, 2);
             e.Property(x => x.Status).HasMaxLength(30);
+            e.Property(x => x.RentalMode).HasMaxLength(20);
             e.Property(x => x.Notes).HasMaxLength(500);
             e.HasOne(x => x.Customer).WithMany(x => x.Bookings).HasForeignKey(x => x.CustomerId);
             e.HasOne(x => x.VehicleType).WithMany(x => x.Bookings).HasForeignKey(x => x.VehicleTypeId);
+            e.HasOne(x => x.AssignedVehicle)
+                .WithMany()
+                .HasForeignKey(x => x.AssignedVehicleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
         });
 
         modelBuilder.Entity<TripAssignment>(e =>
@@ -120,6 +142,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
         modelBuilder.Entity<Payment>(e =>
         {
             e.ToTable("Payments");
+            e.Property(x => x.PaymentType).HasMaxLength(30);
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.Method).HasMaxLength(30);
             e.Property(x => x.Status).HasMaxLength(20);
@@ -136,5 +159,333 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
         });
+
+        modelBuilder.Entity<VehicleInspection>(e =>
+        {
+            e.ToTable("VehicleInspections");
+            e.HasKey(x => x.InspectionId);
+            e.Property(x => x.InspectionType).HasMaxLength(20);
+            e.Property(x => x.OdometerKm).HasPrecision(10, 2);
+            e.Property(x => x.FuelLevel).HasPrecision(5, 2);
+            e.Property(x => x.Condition).HasMaxLength(100);
+            e.Property(x => x.Notes).HasMaxLength(500);
+            e.HasIndex(x => x.BookingId);
+            e.HasIndex(x => x.VehicleId);
+            e.HasOne(x => x.Booking).WithMany(x => x.Inspections).HasForeignKey(x => x.BookingId);
+            e.HasOne(x => x.Vehicle)
+                .WithMany(x => x.Inspections)
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BookingFee>(e =>
+        {
+            e.ToTable("BookingFees");
+            e.HasKey(x => x.FeeId);
+            e.Property(x => x.FeeType).HasMaxLength(30);
+            e.Property(x => x.Description).HasMaxLength(300);
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.HasIndex(x => x.BookingId);
+            e.HasOne(x => x.Booking).WithMany(x => x.Fees).HasForeignKey(x => x.BookingId);
+        });
+    }
+
+    /// <summary>
+    /// Adds RentalMode / AssignedVehicleId to an existing SQLite database.
+    /// EnsureCreated does not alter already-created tables.
+    /// </summary>
+    public void EnsureSqliteBookingRentalColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Bookings')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("RentalMode"))
+            Database.ExecuteSqlRaw(
+                "ALTER TABLE Bookings ADD COLUMN RentalMode TEXT NOT NULL DEFAULT 'WithDriver'");
+
+        if (!columns.Contains("AssignedVehicleId"))
+            Database.ExecuteSqlRaw(
+                "ALTER TABLE Bookings ADD COLUMN AssignedVehicleId INTEGER NULL REFERENCES Vehicles(VehicleId)");
+    }
+
+    /// <summary>
+    /// Adds price-snapshot columns to an existing SQLite Bookings table.
+    /// EnsureCreated does not alter already-created tables. Existing rows stay NULL.
+    /// </summary>
+    public void EnsureSqliteBookingPriceSnapshotColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Bookings')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("QuotedPricePerDay"))
+            Database.ExecuteSqlRaw(
+                "ALTER TABLE Bookings ADD COLUMN QuotedPricePerDay TEXT NULL");
+
+        if (!columns.Contains("QuotedPricePerKm"))
+            Database.ExecuteSqlRaw(
+                "ALTER TABLE Bookings ADD COLUMN QuotedPricePerKm TEXT NULL");
+
+        if (!columns.Contains("QuotedDays"))
+            Database.ExecuteSqlRaw(
+                "ALTER TABLE Bookings ADD COLUMN QuotedDays INTEGER NULL");
+    }
+
+    /// <summary>
+    /// Adds mode-specific rates to VehicleTypes. Existing rows stay NULL until FillVehicleTypePricingDefaults.
+    /// </summary>
+    public void EnsureSqliteVehicleTypePricingColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('VehicleTypes')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        void AddIfMissing(string name, string sql)
+        {
+            if (!columns.Contains(name))
+                Database.ExecuteSqlRaw(sql);
+        }
+
+        AddIfMissing("DriverFeePerDay", "ALTER TABLE VehicleTypes ADD COLUMN DriverFeePerDay TEXT NULL");
+        AddIfMissing("SelfDrivePricePerDay", "ALTER TABLE VehicleTypes ADD COLUMN SelfDrivePricePerDay TEXT NULL");
+        AddIfMissing("SelfDriveIncludedKmPerDay", "ALTER TABLE VehicleTypes ADD COLUMN SelfDriveIncludedKmPerDay TEXT NULL");
+        AddIfMissing("SelfDriveExtraKmPrice", "ALTER TABLE VehicleTypes ADD COLUMN SelfDriveExtraKmPrice TEXT NULL");
+        AddIfMissing("WithDriverDepositAmount", "ALTER TABLE VehicleTypes ADD COLUMN WithDriverDepositAmount TEXT NULL");
+        AddIfMissing("SelfDriveDepositAmount", "ALTER TABLE VehicleTypes ADD COLUMN SelfDriveDepositAmount TEXT NULL");
+    }
+
+    /// <summary>
+    /// Adds mode snapshot columns on Bookings. Existing rows stay NULL (no backfill).
+    /// </summary>
+    public void EnsureSqliteBookingModeSnapshotColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Bookings')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("QuotedDriverFeePerDay"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN QuotedDriverFeePerDay TEXT NULL");
+        if (!columns.Contains("QuotedSelfDriveIncludedKmPerDay"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN QuotedSelfDriveIncludedKmPerDay TEXT NULL");
+        if (!columns.Contains("QuotedSelfDriveExtraKmPrice"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN QuotedSelfDriveExtraKmPrice TEXT NULL");
+        if (!columns.Contains("QuotedDepositAmount"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN QuotedDepositAmount TEXT NULL");
+    }
+
+    /// <summary>
+    /// Adds PaymentType to existing SQLite Payments. Existing rows stay NULL (legacy seed).
+    /// </summary>
+    public void EnsureSqlitePaymentTypeColumn()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Payments')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("PaymentType"))
+            Database.ExecuteSqlRaw("ALTER TABLE Payments ADD COLUMN PaymentType TEXT NULL");
+    }
+
+    /// <summary>
+    /// Creates VehicleInspections on an existing SQLite database.
+    /// EnsureCreated does not add new tables to a live DB. No backfill.
+    /// </summary>
+    public void EnsureSqliteVehicleInspectionsTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var exists = false;
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText =
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'VehicleInspections' LIMIT 1";
+            exists = cmd.ExecuteScalar() is not null;
+        }
+
+        if (!exists)
+        {
+            Database.ExecuteSqlRaw("""
+                CREATE TABLE "VehicleInspections" (
+                    "InspectionId" INTEGER NOT NULL CONSTRAINT "PK_VehicleInspections" PRIMARY KEY AUTOINCREMENT,
+                    "BookingId" INTEGER NOT NULL,
+                    "VehicleId" INTEGER NOT NULL,
+                    "InspectionType" TEXT NOT NULL,
+                    "ActualAt" TEXT NOT NULL,
+                    "OdometerKm" TEXT NULL,
+                    "FuelLevel" TEXT NULL,
+                    "Condition" TEXT NULL,
+                    "Notes" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_VehicleInspections_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE CASCADE,
+                    CONSTRAINT "FK_VehicleInspections_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+                );
+                """);
+        }
+
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_VehicleInspections_BookingId" ON "VehicleInspections" ("BookingId");""");
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_VehicleInspections_VehicleId" ON "VehicleInspections" ("VehicleId");""");
+    }
+
+    /// <summary>
+    /// Adds FinalAmount to existing SQLite Bookings. Existing rows stay NULL (no backfill).
+    /// </summary>
+    public void EnsureSqliteBookingFinalAmountColumn()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Bookings')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("FinalAmount"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN FinalAmount TEXT NULL");
+    }
+
+    /// <summary>
+    /// Creates BookingFees on an existing SQLite database. No backfill.
+    /// </summary>
+    public void EnsureSqliteBookingFeesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var exists = false;
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText =
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'BookingFees' LIMIT 1";
+            exists = cmd.ExecuteScalar() is not null;
+        }
+
+        if (!exists)
+        {
+            Database.ExecuteSqlRaw("""
+                CREATE TABLE "BookingFees" (
+                    "FeeId" INTEGER NOT NULL CONSTRAINT "PK_BookingFees" PRIMARY KEY AUTOINCREMENT,
+                    "BookingId" INTEGER NOT NULL,
+                    "FeeType" TEXT NOT NULL,
+                    "Description" TEXT NULL,
+                    "Amount" TEXT NOT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_BookingFees_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE CASCADE
+                );
+                """);
+        }
+
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_BookingFees_BookingId" ON "BookingFees" ("BookingId");""");
+    }
+
+    /// <summary>
+    /// Fills NULL VehicleType pricing columns. Does not touch Bookings or Payments.
+    /// </summary>
+    public void FillVehicleTypePricingDefaults()
+    {
+        var types = VehicleTypes.ToList();
+        foreach (var vt in types)
+        {
+            vt.DriverFeePerDay ??= PricingDefaults.DriverFeePerDay(vt.PricePerDay);
+            vt.SelfDrivePricePerDay ??= PricingDefaults.SelfDrivePricePerDay(vt.PricePerDay);
+            vt.SelfDriveIncludedKmPerDay ??= PricingDefaults.IncludedKmPerDay;
+            vt.SelfDriveExtraKmPrice ??= PricingDefaults.ExtraKmPrice(vt.PricePerKm);
+            vt.WithDriverDepositAmount ??= PricingDefaults.WithDriverDeposit(vt.PricePerDay);
+            vt.SelfDriveDepositAmount ??= PricingDefaults.SelfDriveDeposit(vt.PricePerDay);
+        }
+
+        SaveChanges();
+    }
+
+    /// <summary>
+    /// Aligns Driver/Vehicle status with open TripAssignments without touching bookings or assignments.
+    /// Does not change Offline drivers or non-Available vehicles (e.g. Maintenance).
+    /// </summary>
+    public void ReconcileOpenAssignmentResourceStatus()
+    {
+        var open = TripAssignments
+            .Where(t =>
+                t.Status == TripAssignmentStatuses.Assigned
+                || t.Status == TripAssignmentStatuses.Accepted
+                || t.Status == TripAssignmentStatuses.InProgress)
+            .Select(t => new { t.DriverId, t.VehicleId })
+            .ToList();
+
+        foreach (var row in open)
+        {
+            var driver = Drivers.Find(row.DriverId);
+            if (driver is not null && driver.Status == DriverStatuses.Available)
+                driver.Status = DriverStatuses.Busy;
+
+            var vehicle = Vehicles.Find(row.VehicleId);
+            if (vehicle is not null && vehicle.Status == VehicleStatuses.Available)
+                vehicle.Status = VehicleStatuses.Rented;
+        }
+
+        SaveChanges();
     }
 }

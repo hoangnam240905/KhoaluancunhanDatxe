@@ -2,11 +2,17 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Drivers;
+using Backend.Entities;
+using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
 
-public class DriverService(CarRentalDbContext db, BookingService bookingService)
+public class DriverService(
+    CarRentalDbContext db,
+    BookingService bookingService,
+    VehicleInspectionService inspections,
+    BookingFeeService fees)
 {
     public async Task<List<DriverResponse>> GetDriversAsync(string? status = null)
     {
@@ -23,20 +29,35 @@ public class DriverService(CarRentalDbContext db, BookingService bookingService)
             .ToListAsync();
     }
 
-    public async Task<DriverResponse?> UpdateStatusAsync(int driverId, string status)
+    public async Task<DriverResponse?> GetDriverAsync(int driverId)
+    {
+        var driver = await db.Drivers.Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.DriverId == driverId);
+        return driver is null ? null : MapDriver(driver);
+    }
+
+    public Task<bool> HasOpenAssignmentAsync(int driverId, int? exceptAssignmentId = null)
+        => db.TripAssignments.AnyAsync(t =>
+            t.DriverId == driverId
+            && (exceptAssignmentId == null || t.AssignmentId != exceptAssignmentId)
+            && (t.Status == TripAssignmentStatuses.Assigned
+                || t.Status == TripAssignmentStatuses.Accepted
+                || t.Status == TripAssignmentStatuses.InProgress));
+
+    public async Task<(DriverResponse? Driver, string? Error)> UpdateStatusAsync(int driverId, string status)
     {
         if (status is not (DriverStatuses.Available or DriverStatuses.Busy or DriverStatuses.Offline))
-            return null;
+            return (null, "Trạng thái không hợp lệ.");
 
         var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
-        if (driver is null) return null;
+        if (driver is null) return (null, "Không tìm thấy tài xế.");
+
+        if (status == DriverStatuses.Available && await HasOpenAssignmentAsync(driverId))
+            return (null, "Không thể chuyển Available khi còn chuyến chưa hoàn thành.");
 
         driver.Status = status;
         await db.SaveChangesAsync();
-
-        return new DriverResponse(
-            driver.DriverId, driver.User.FullName, driver.User.Email, driver.User.Phone,
-            driver.LicenseNumber, driver.LicenseExpiry, driver.Status, driver.AverageRating, driver.TotalTrips);
+        return (MapDriver(driver), null);
     }
 
     public async Task<List<BookingResponse>> GetDriverTripsAsync(int driverId)
@@ -87,7 +108,8 @@ public class DriverService(CarRentalDbContext db, BookingService bookingService)
         return true;
     }
 
-    public async Task<bool> CompleteTripAsync(int driverId, int assignmentId)
+    public async Task<(bool Ok, string? Error)> CompleteTripAsync(
+        int driverId, int assignmentId, VehicleConditionRequest? request)
     {
         var assignment = await db.TripAssignments
             .Include(t => t.Booking)
@@ -96,17 +118,41 @@ public class DriverService(CarRentalDbContext db, BookingService bookingService)
             .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
 
         if (assignment is null || assignment.Status != TripAssignmentStatuses.InProgress)
-            return false;
+            return (false, null);
+
+        var handover = await inspections.GetHandoverAsync(assignment.BookingId);
+        var (inspection, inspectError) = await inspections.AddAsync(
+            assignment.BookingId,
+            VehicleInspectionTypes.Return,
+            request?.OdometerKm,
+            request?.FuelLevel,
+            request?.Condition,
+            request?.Notes);
+        if (inspection is null)
+            return (false, inspectError ?? "Không thể ghi nhận trả xe.");
+
+        var actualKm = VehicleInspectionRules.ResolveActualKm(handover?.OdometerKm, request?.OdometerKm);
+        await fees.ApplyCompletionAsync(assignment.Booking, actualKm, handover, inspection);
 
         assignment.Status = TripAssignmentStatuses.Completed;
         assignment.CompletedAt = DateTime.UtcNow;
         assignment.Booking.Status = BookingStatuses.Completed;
         assignment.Booking.UpdatedAt = DateTime.UtcNow;
-        assignment.Driver.Status = DriverStatuses.Available;
         assignment.Driver.TotalTrips += 1;
-        assignment.Vehicle.Status = VehicleStatuses.Available;
+        if (assignment.Vehicle.Status == VehicleStatuses.Rented)
+            assignment.Vehicle.Status = VehicleStatuses.Available;
+
+        if (assignment.Driver.Status != DriverStatuses.Offline)
+        {
+            var stillOpen = await HasOpenAssignmentAsync(driverId, assignment.AssignmentId);
+            assignment.Driver.Status = stillOpen ? DriverStatuses.Busy : DriverStatuses.Available;
+        }
 
         await db.SaveChangesAsync();
-        return true;
+        return (true, null);
     }
+
+    private static DriverResponse MapDriver(Driver driver) => new(
+        driver.DriverId, driver.User.FullName, driver.User.Email, driver.User.Phone,
+        driver.LicenseNumber, driver.LicenseExpiry, driver.Status, driver.AverageRating, driver.TotalTrips);
 }

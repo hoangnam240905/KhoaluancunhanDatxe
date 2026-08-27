@@ -11,13 +11,16 @@ class AuthService {
   Future<void> saveAuth(AuthResponse auth) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, auth.token);
-    await prefs.setString(_userKey, jsonEncode({
-      'userId': auth.userId,
-      'email': auth.email,
-      'fullName': auth.fullName,
-      'role': auth.role,
-      'expiresAt': auth.expiresAt.toIso8601String(),
-    }));
+    await prefs.setString(
+      _userKey,
+      jsonEncode({
+        'userId': auth.userId,
+        'email': auth.email,
+        'fullName': auth.fullName,
+        'role': auth.role,
+        'expiresAt': auth.expiresAt.toIso8601String(),
+      }),
+    );
   }
 
   Future<String?> getToken() async {
@@ -62,11 +65,27 @@ class ApiService {
 
   String _errorMessage(http.Response response) {
     try {
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return body['message'] as String? ?? 'Lỗi ${response.statusCode}';
-    } catch (_) {
-      return 'Lỗi ${response.statusCode}';
-    }
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'] as String?;
+        if (message != null && message.isNotEmpty) return message;
+        final errors = decoded['errors'];
+        if (errors is Map) {
+          final parts = <String>[];
+          for (final value in errors.values) {
+            if (value is List) {
+              parts.addAll(value.map((e) => e.toString()));
+            } else {
+              parts.add(value.toString());
+            }
+          }
+          if (parts.isNotEmpty) return parts.join('\n');
+        }
+        final title = decoded['title'] as String?;
+        if (title != null && title.isNotEmpty) return title;
+      }
+    } catch (_) {}
+    return 'Lỗi ${response.statusCode}';
   }
 
   Future<AuthResponse> login(String email, String password) async {
@@ -76,7 +95,9 @@ class ApiService {
       body: jsonEncode({'email': email, 'password': password}),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final auth = AuthResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    final auth = AuthResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
     await authService.saveAuth(auth);
     return auth;
   }
@@ -100,16 +121,33 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final auth = AuthResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    final auth = AuthResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
     await authService.saveAuth(auth);
     return auth;
   }
 
+  Future<UserProfile> getMe() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<List<VehicleType>> getVehicleTypes() async {
-    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/vehicle-types'));
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/vehicle-types'),
+    );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
-    return list.map((e) => VehicleType.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => VehicleType.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Booking>> getBookings() async {
@@ -119,11 +157,51 @@ class ApiService {
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
-    return list.map((e) => Booking.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => Booking.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Booking> getBooking(int id) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$id'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<BookingQuote> getQuote({
+    required int vehicleTypeId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String rentalMode,
+    double? estimatedDistance,
+  }) async {
+    final params = <String, String>{
+      'vehicleTypeId': '$vehicleTypeId',
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'rentalMode': rentalMode,
+    };
+    if (estimatedDistance != null) {
+      params['estimatedDistance'] = '$estimatedDistance';
+    }
+    final response = await http.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/bookings/quote',
+      ).replace(queryParameters: params),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return BookingQuote.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<Booking> createBooking({
     required int vehicleTypeId,
+    required String rentalMode,
     required String pickupAddress,
     required String dropoffAddress,
     required DateTime startDate,
@@ -136,6 +214,7 @@ class ApiService {
       headers: await _headers(auth: true),
       body: jsonEncode({
         'vehicleTypeId': vehicleTypeId,
+        'rentalMode': rentalMode,
         'pickupAddress': pickupAddress,
         'dropoffAddress': dropoffAddress,
         'startDate': startDate.toIso8601String(),
@@ -150,6 +229,53 @@ class ApiService {
     return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<void> createReview({
+    required int bookingId,
+    required int rating,
+    String? comment,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/reviews'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({'rating': rating, 'comment': comment}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  Future<List<Payment>> getBookingPayments(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/payments'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => Payment.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Payment> createDepositPayment({
+    required int bookingId,
+    required String method,
+    String? transactionRef,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/payments'),
+      headers: await _headers(auth: true),
+      body: jsonEncode(
+        Payment.depositCreateBody(
+          bookingId: bookingId,
+          method: method,
+          transactionRef: transactionRef,
+        ),
+      ),
+    );
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
+    return Payment.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   Future<List<DriverBooking>> getMyTrips() async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/drivers/me/trips'),
@@ -157,7 +283,9 @@ class ApiService {
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
-    return list.map((e) => DriverBooking.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => DriverBooking.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> updateDriverStatus(String status) async {
@@ -187,7 +315,9 @@ class ApiService {
 
   Future<void> completeTrip(int assignmentId) async {
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/complete'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/complete',
+      ),
       headers: await _headers(auth: true),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));

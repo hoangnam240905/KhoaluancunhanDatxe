@@ -32,5 +32,6 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
     public void Clear() => httpContextAccessor.HttpContext?.Response.Cookies.Delete(CookieName);
     public string? Token => GetAuth()?.Token;
     public bool IsLoggedIn => GetAuth() is not null;
+    public string? Role => GetAuth()?.Role;
     public string? FullName => GetAuth()?.FullName;
 }

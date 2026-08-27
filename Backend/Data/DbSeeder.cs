@@ -41,10 +41,46 @@ public static class DbSeeder
         db.SaveChanges();
 
         db.VehicleTypes.AddRange(
-            new VehicleType { TypeName = "4 chỗ - Sedan", SeatCapacity = 4, PricePerDay = 800000, PricePerKm = 12000, Description = "Xe sedan 4 chỗ, phù hợp đi nội thành" },
-            new VehicleType { TypeName = "7 chỗ - SUV", SeatCapacity = 7, PricePerDay = 1200000, PricePerKm = 15000, Description = "SUV 7 chỗ, phù hợp gia đình" },
-            new VehicleType { TypeName = "16 chỗ - Van", SeatCapacity = 16, PricePerDay = 2500000, PricePerKm = 20000, Description = "Xe van 16 chỗ, phù hợp tour nhóm" },
-            new VehicleType { TypeName = "Limousine 9 chỗ", SeatCapacity = 9, PricePerDay = 3500000, PricePerKm = 25000, Description = "Xe limousine cao cấp" });
+            new VehicleType
+            {
+                TypeName = "4 chỗ - Sedan", SeatCapacity = 4, PricePerDay = 800000, PricePerKm = 12000,
+                DriverFeePerDay = PricingDefaults.DriverFeePerDay(800000),
+                SelfDrivePricePerDay = 800000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
+                SelfDriveExtraKmPrice = 12000,
+                WithDriverDepositAmount = PricingDefaults.WithDriverDeposit(800000),
+                SelfDriveDepositAmount = PricingDefaults.SelfDriveDeposit(800000),
+                Description = "Xe sedan 4 chỗ, phù hợp đi nội thành"
+            },
+            new VehicleType
+            {
+                TypeName = "7 chỗ - SUV", SeatCapacity = 7, PricePerDay = 1200000, PricePerKm = 15000,
+                DriverFeePerDay = PricingDefaults.DriverFeePerDay(1200000),
+                SelfDrivePricePerDay = 1200000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
+                SelfDriveExtraKmPrice = 15000,
+                WithDriverDepositAmount = PricingDefaults.WithDriverDeposit(1200000),
+                SelfDriveDepositAmount = PricingDefaults.SelfDriveDeposit(1200000),
+                Description = "SUV 7 chỗ, phù hợp gia đình"
+            },
+            new VehicleType
+            {
+                TypeName = "16 chỗ - Van", SeatCapacity = 16, PricePerDay = 2500000, PricePerKm = 20000,
+                DriverFeePerDay = PricingDefaults.DriverFeePerDay(2500000),
+                SelfDrivePricePerDay = 2500000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
+                SelfDriveExtraKmPrice = 20000,
+                WithDriverDepositAmount = PricingDefaults.WithDriverDeposit(2500000),
+                SelfDriveDepositAmount = PricingDefaults.SelfDriveDeposit(2500000),
+                Description = "Xe van 16 chỗ, phù hợp tour nhóm"
+            },
+            new VehicleType
+            {
+                TypeName = "Limousine 9 chỗ", SeatCapacity = 9, PricePerDay = 3500000, PricePerKm = 25000,
+                DriverFeePerDay = PricingDefaults.DriverFeePerDay(3500000),
+                SelfDrivePricePerDay = 3500000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
+                SelfDriveExtraKmPrice = 25000,
+                WithDriverDepositAmount = PricingDefaults.WithDriverDeposit(3500000),
+                SelfDriveDepositAmount = PricingDefaults.SelfDriveDeposit(3500000),
+                Description = "Xe limousine cao cấp"
+            });
         db.SaveChanges();
 
         db.Vehicles.AddRange(
@@ -84,6 +120,13 @@ public static class DbSeeder
             BookingId = 2, DriverId = 5, VehicleId = 1, AssignedBy = 2,
             AssignedAt = now, Status = TripAssignmentStatuses.Assigned
         });
+
+        var assignedDriver = db.Drivers.Find(5);
+        if (assignedDriver is not null)
+            assignedDriver.Status = DriverStatuses.Busy;
+        var assignedVehicle = db.Vehicles.Find(1);
+        if (assignedVehicle is not null)
+            assignedVehicle.Status = VehicleStatuses.Rented;
 
         db.BookingStatusHistories.AddRange(
             new BookingStatusHistory { BookingId = 1, NewStatus = BookingStatuses.Pending, ChangedBy = 3, Note = "Khách tạo đơn đặt xe", ChangedAt = now },
