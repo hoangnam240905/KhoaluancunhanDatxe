@@ -32,6 +32,9 @@ else
                         </div>
                         <span class="badge bg-secondary badge-status">@b.Status</span>
                     </div>
+                    <div class="mb-3">
+                        <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                    </div>
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -50,6 +53,10 @@ else
                         <div class="col-md-3">
                             <div class="detail-label">Cước phí</div>
                             <div class="fw-bold text-primary">@b.TotalAmount.ToString("N0") VND</div>
+                            @if (b.FinalAmount is not null)
+                            {
+                                <div class="small text-muted">Giá chốt: @b.FinalAmount.Value.ToString("N0") VND</div>
+                            }
                             @if (b.EstimatedDistance is not null)
                             {
                                 <div class="small text-muted">~@b.EstimatedDistance km</div>

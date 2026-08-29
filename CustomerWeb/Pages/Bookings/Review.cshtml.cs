@@ -14,6 +14,7 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
     public int BookingId { get; set; }
     public string? ErrorMessage { get; set; }
     public string? SuccessMessage { get; set; }
+    public bool CanReview { get; set; } = true;
 
     public class InputModel
     {
@@ -23,10 +24,18 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
         public string? Comment { get; set; }
     }
 
-    public IActionResult OnGet(int id)
+    public async Task<IActionResult> OnGetAsync(int id)
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
         BookingId = id;
+        var booking = await api.GetBookingAsync(id);
+        if (booking is null) return RedirectToPage("Index");
+        if (IndexModel.IsSelfDrive(booking.RentalMode))
+        {
+            CanReview = false;
+            ErrorMessage = "Đơn tự lái không đánh giá tài xế trên hệ thống hiện tại.";
+            return Page();
+        }
         return Page();
     }
 
@@ -35,6 +44,14 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         BookingId = id;
+        var booking = await api.GetBookingAsync(id);
+        if (booking is null) return RedirectToPage("Index");
+        if (IndexModel.IsSelfDrive(booking.RentalMode))
+        {
+            CanReview = false;
+            ErrorMessage = "Đơn tự lái không đánh giá tài xế trên hệ thống hiện tại.";
+            return Page();
+        }
         if (!ModelState.IsValid) return Page();
 
         var (success, error) = await api.CreateReviewAsync(id, new CreateReviewRequest(Input.Rating, Input.Comment));

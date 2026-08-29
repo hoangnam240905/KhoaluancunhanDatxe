@@ -164,6 +164,72 @@ class AssignedVehicle {
       );
 }
 
+class BookingFee {
+  final int feeId;
+  final String feeType;
+  final String? description;
+  final double amount;
+  final DateTime createdAt;
+
+  BookingFee({
+    required this.feeId,
+    required this.feeType,
+    required this.amount,
+    required this.createdAt,
+    this.description,
+  });
+
+  bool get isIncludedInBase => feeType == 'ExtraKm';
+
+  factory BookingFee.fromJson(Map<String, dynamic> json) => BookingFee(
+    feeId: json['feeId'] as int,
+    feeType: json['feeType'] as String? ?? '',
+    description: json['description'] as String?,
+    amount: (json['amount'] as num?)?.toDouble() ?? 0,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
+}
+
+class VehicleInspection {
+  final int inspectionId;
+  final int bookingId;
+  final int vehicleId;
+  final String inspectionType;
+  final DateTime actualAt;
+  final double? odometerKm;
+  final double? fuelLevel;
+  final String? condition;
+  final String? notes;
+  final DateTime createdAt;
+
+  VehicleInspection({
+    required this.inspectionId,
+    required this.bookingId,
+    required this.vehicleId,
+    required this.inspectionType,
+    required this.actualAt,
+    required this.createdAt,
+    this.odometerKm,
+    this.fuelLevel,
+    this.condition,
+    this.notes,
+  });
+
+  factory VehicleInspection.fromJson(Map<String, dynamic> json) =>
+      VehicleInspection(
+        inspectionId: json['inspectionId'] as int,
+        bookingId: json['bookingId'] as int,
+        vehicleId: json['vehicleId'] as int,
+        inspectionType: json['inspectionType'] as String? ?? '',
+        actualAt: DateTime.parse(json['actualAt'] as String),
+        odometerKm: (json['odometerKm'] as num?)?.toDouble(),
+        fuelLevel: (json['fuelLevel'] as num?)?.toDouble(),
+        condition: json['condition'] as String?,
+        notes: json['notes'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+}
+
 class Booking {
   final int bookingId;
   final int? customerId;
@@ -182,6 +248,17 @@ class Booking {
   final TripAssignment? assignment;
   final AssignedVehicle? assignedVehicle;
   final double? quotedDepositAmount;
+  final double? quotedPricePerDay;
+  final double? quotedPricePerKm;
+  final int? quotedDays;
+  final double? quotedDriverFeePerDay;
+  final double? quotedSelfDriveIncludedKmPerDay;
+  final double? quotedSelfDriveExtraKmPrice;
+  final double? finalAmount;
+  final List<BookingFee> fees;
+  final double? finalBaseAmount;
+  final double? totalFees;
+  final List<VehicleInspection> inspections;
 
   Booking({
     required this.bookingId,
@@ -201,9 +278,29 @@ class Booking {
     this.assignment,
     this.assignedVehicle,
     this.quotedDepositAmount,
+    this.quotedPricePerDay,
+    this.quotedPricePerKm,
+    this.quotedDays,
+    this.quotedDriverFeePerDay,
+    this.quotedSelfDriveIncludedKmPerDay,
+    this.quotedSelfDriveExtraKmPrice,
+    this.finalAmount,
+    this.fees = const [],
+    this.finalBaseAmount,
+    this.totalFees,
+    this.inspections = const [],
   });
 
   bool get isSelfDrive => rentalMode == 'SelfDrive';
+
+  bool get hasPriceSnapshot =>
+      quotedPricePerDay != null ||
+      quotedPricePerKm != null ||
+      quotedDays != null ||
+      quotedDriverFeePerDay != null ||
+      quotedSelfDriveIncludedKmPerDay != null ||
+      quotedSelfDriveExtraKmPrice != null ||
+      quotedDepositAmount != null;
 
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
     bookingId: json['bookingId'] as int,
@@ -229,7 +326,34 @@ class Booking {
           )
         : null,
     quotedDepositAmount: (json['quotedDepositAmount'] as num?)?.toDouble(),
+    quotedPricePerDay: (json['quotedPricePerDay'] as num?)?.toDouble(),
+    quotedPricePerKm: (json['quotedPricePerKm'] as num?)?.toDouble(),
+    quotedDays: json['quotedDays'] as int?,
+    quotedDriverFeePerDay: (json['quotedDriverFeePerDay'] as num?)?.toDouble(),
+    quotedSelfDriveIncludedKmPerDay:
+        (json['quotedSelfDriveIncludedKmPerDay'] as num?)?.toDouble(),
+    quotedSelfDriveExtraKmPrice: (json['quotedSelfDriveExtraKmPrice'] as num?)
+        ?.toDouble(),
+    finalAmount: (json['finalAmount'] as num?)?.toDouble(),
+    fees: _parseFees(json['fees']),
+    finalBaseAmount: (json['finalBaseAmount'] as num?)?.toDouble(),
+    totalFees: (json['totalFees'] as num?)?.toDouble(),
+    inspections: _parseInspections(json['inspections']),
   );
+
+  static List<BookingFee> _parseFees(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => BookingFee.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static List<VehicleInspection> _parseInspections(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => VehicleInspection.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 }
 
 class Payment {

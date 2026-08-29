@@ -44,10 +44,16 @@ else
                         </td>
                         <td>@b.PickupAddress</td>
                         <td>@b.DropoffAddress</td>
-                        <td>@b.TotalAmount.ToString("N0") VND</td>
+                        <td>@b.TotalAmount.ToString("N0") VND
+                            @if (b.FinalAmount is not null)
+                            {
+                                <div class="small text-muted">Chốt: @b.FinalAmount.Value.ToString("N0")</div>
+                            }
+                        </td>
                         <td><span class="badge bg-secondary">@b.Status</span></td>
                         <td>
-                            @if (b.Status == "Completed")
+                            <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                            @if (b.Status == "Completed" && !selfDrive)
                             {
                                 <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Đánh giá</a>
                             }

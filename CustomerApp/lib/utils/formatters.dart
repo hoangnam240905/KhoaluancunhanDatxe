@@ -86,6 +86,34 @@ class Formatters {
     }
   }
 
+  static String feeTypeLabel(String type) {
+    switch (type) {
+      case 'LateFee':
+        return 'Phí trễ hạn';
+      case 'ExtraKm':
+        return 'Km vượt';
+      case 'Fuel':
+        return 'Nhiên liệu';
+      case 'Damage':
+        return 'Hư hỏng';
+      case 'Other':
+        return 'Khác';
+      default:
+        return type;
+    }
+  }
+
+  static String inspectionTypeLabel(String type) {
+    switch (type) {
+      case 'Handover':
+        return 'Giao xe';
+      case 'Return':
+        return 'Trả xe';
+      default:
+        return type;
+    }
+  }
+
   static String paymentTypeLabel(String? type) {
     switch (type) {
       case 'Deposit':

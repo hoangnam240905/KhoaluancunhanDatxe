@@ -2,11 +2,12 @@
 HƯỚNG DẪN CHẠY CAR RENTAL SYSTEM
 ==================================================
 
-File này dựa trên source trong repository, trạng thái đến PHASE 3.6.3.
+File này dựa trên source trong repository, trạng thái đến PHASE 3.9.
 Mục nào không xác định được sẽ ghi: "Chưa xác định được từ source code".
 
-Chi tiết phase (quote, cọc, kiểm xe, FinalAmount, BookingFee): Tuan 3.md
-Tóm tắt chức năng: README.md
+Chi tiết phase + đặc tả hiện trạng (flow, action, **từng page/handler**, state, API matrix, checklist PHASE 3): Tuan 3.md mục 18–32.
+Bảng chức năng / Role / catalog page Web / API vs UI: README.md
+PHASE 3 — COMPLETED (source đến 3.9).
 
 Remote Git:
 https://github.com/hoangnam240905/KhoaluancunhanDatxe.git
@@ -93,7 +94,7 @@ Dispatcher
 
 Customer
     → PortalWeb / CustomerApp / CustomerWeb
-    → chức năng khách hàng (đặt xe, quote trên app, cọc trên app)
+    → chức năng khách hàng (đặt xe + quote + cọc trên CustomerApp, PortalWeb, CustomerWeb)
 
 Driver
     → DriverApp, hoặc CustomerApp (RoleRouter case Driver → DriverTripsScreen)
@@ -118,17 +119,18 @@ Khách hàng (role Customer):
   POST /api/payments với paymentType=Deposit, method, transactionRef tùy chọn;
   KHÔNG gửi amount; status tạo ra là Pending
 - Đánh giá khi Status == Completed, không SelfDrive, có assignment
+- Chi tiết đơn: snapshot, TotalAmount, FinalAmount, fees, inspections (từ BookingResponse)
+- GET /api/auth/me trên màn Account
 - RoleRouter: Admin/Dispatcher bị từ chối
 
 Tài xế trên cùng app (driver_trips_screen.dart):
 - GET /api/drivers/me/trips
-- Nhận / bắt đầu / hoàn thành (complete KHÔNG gửi odometer/fuel)
+- Nhận / bắt đầu / hoàn thành (complete KHÔNG gửi body điều kiện xe)
 - Cập nhật trạng thái Available / Busy / Offline
 
 Không có trong CustomerApp source:
-- Hiển thị finalAmount / fees (API có field; model Booking chưa đọc)
 - Mark-paid / cổng thanh toán thật
-- Form kiểm xe (km, nhiên liệu)
+- Form kiểm xe lúc Driver complete (DriverApp mới có form)
 
 C) DRIVER APP  (DriverApp/lib/)
 
@@ -140,16 +142,17 @@ Nguồn: screens/driver_shell.dart, trips_screen.dart, trip_detail_screen.dart,
 - Đăng xuất
 - NavigationBar: Chuyến / Trạng thái / Tài khoản
 - Danh sách chuyến; màn hình chi tiết chuyến
-- Nhận chuyến (Assigned)
-- Bắt đầu chuyến (Assigned hoặc InProgress)
-- Hoàn thành chuyến (InProgress) — POST complete không body
+- Nhận chuyến (Assigned → Accepted)
+- Bắt đầu chuyến (Assigned hoặc Accepted → InProgress)
+- Hoàn thành chuyến (InProgress) — POST complete, body VehicleCondition optional (odometerKm, fuelLevel, condition, notes)
 - Cập nhật trạng thái Available / Busy / Offline
+- GET /api/auth/me trên màn Account
 
 Không có trong DriverApp source:
 - Đăng ký
 - Đặt xe / quote / cọc
 - Đánh giá
-- Form km / nhiên liệu lúc complete
+- Handover (chỉ Dispatcher SelfDrive)
 
 D) PORTAL WEB  (cổng đăng nhập web chính — :5180)
 
@@ -164,16 +167,17 @@ AUTHENTICATION:
 
 CUSTOMER:
 - Trang chủ: loại xe từ API; tuyến / tính năng / FAQ tĩnh (PortalContent)
-- Đặt xe: chọn RentalMode WithDriver | SelfDrive (Pages/Customer/Bookings/Create)
-  Không gọi GET /api/bookings/quote — Backend tự tính khi POST /api/bookings
-- Xem danh sách + chi tiết đơn (hình thức, tuyến, cước TotalAmount, tài xế hoặc xe đã gán)
-- Không UI cọc, không UI phí, không UI FinalAmount
+- Đặt xe: chọn RentalMode; GET /api/bookings/quote rồi POST /api/bookings (Pages/Customer/Bookings/Create)
+- Xem danh sách + chi tiết đơn (hình thức, snapshot, TotalAmount, FinalAmount, fees, inspections)
+- UI cọc: GET/POST payments trên Details
 - /Customer/Index redirect /#bang-gia
 - Không có trang Đánh giá trên PortalWeb (CarRentalApiClient có CreateReviewAsync, không có Page gọi)
 
 ADMIN:
 - Dashboard: đếm xe, tổng đơn, đơn Pending
 - Danh sách / thêm / sửa / xóa xe
+- Giá loại xe: GET/PUT /api/admin/vehicle-types (8 field; đơn cũ không đổi snapshot)
+- Xem thanh toán: GET /api/admin/payments (read-only; PaymentType null = «Thanh toán cũ»)
 - Xem đơn (lọc status query)
 - Hủy đơn (PATCH status Cancelled)
 
@@ -188,27 +192,29 @@ Driver: không có khu vực web trên PortalWeb.
 
 E) ADMIN WEB  (:5258) — web Admin riêng
 
-Nguồn: Pages/Index, Pages/Vehicles/*, Pages/Bookings/Index, Pages/Account/Logout
+Nguồn: Pages/Index, Pages/Vehicles/*, Pages/Pricing/*, Pages/Payments/Index, Pages/Bookings/Index, Pages/Account/Logout
 - KHÔNG còn trang Login riêng (không có Pages/Account/Login)
+- Không page nào gọi AuthSession.SetAuth → cookie CarRentalAdminAuth không được tạo từ UI
 - Chưa đăng nhập → redirect http://localhost:5180/Account/Login
-- Cookie riêng CarRentalAdminAuth (đăng nhập PortalWeb không tự login site này)
+- Cookie riêng CarRentalAdminAuth (đăng nhập PortalWeb không ghi cookie này)
 - Đăng xuất (xóa cookie local, rồi chuyển PortalWeb login)
 - Dashboard: số xe, số đơn, số Pending
 - Quản lý xe: danh sách, thêm, sửa, xóa
+- Giá loại xe; xem thanh toán (mirror Portal Admin; không Mark Paid)
 - Xem đơn; hủy đơn (Cancelled)
 
 F) DISPATCHER WEB  (:5206) — web điều phối riêng
 
-Nguồn: Pages/Index, Pages/Assign, Pages/Account/Login, Pages/Account/Logout
+Nguồn: Pages/Index, Pages/Assign, Pages/Handover, Pages/Complete, Pages/Account/Login, Pages/Account/Logout
 - CÓ Login riêng (Pages/Account/Login): chỉ chấp nhận role Dispatcher
 - Chưa login → redirect /Account/Login (KHÔNG redirect PortalWeb)
 - Cookie riêng CarRentalDispatcherAuth
 - Đăng xuất
 - Pending: xác nhận đơn
 - Confirmed: phân công (SelfDrive: chỉ xe, nút Gán xe; WithDriver: tài xế + xe)
-- SelfDrive Assigned: Giao xe
-- SelfDrive InProgress: Hoàn thành trả xe
-- Handover/complete gọi API không gửi odometer/fuel
+- SelfDrive Assigned: Giao xe (Pages/Handover — form 4 field optional)
+- SelfDrive InProgress: Hoàn thành trả xe (Pages/Complete — form 4 field optional)
+- Handover/complete gửi VehicleConditionRequest nếu user nhập
 
 G) CUSTOMER WEB  (:5162) — web khách hàng riêng
 
@@ -217,26 +223,105 @@ Nguồn: Pages/Index, Pages/Bookings/*, Pages/Account/Register, Pages/Account/Lo
 - Register vẫn còn (Pages/Account/Register): đăng ký rồi ghi cookie local CarRentalAuth
 - Đăng xuất → trang chủ CustomerWeb
 - Trang chủ: xem loại xe + giá (API vehicle-types — chỉ pricePerDay / pricePerKm)
-- Đặt xe có RentalMode; không gọi quote API
-- Xem danh sách đơn (hình thức, xe hoặc tài xế)
+- Đặt xe có RentalMode; GET quote rồi POST booking
+- Xem danh sách + chi tiết (snapshot, FinalAmount, fees, inspections, cọc Deposit)
 - Đánh giá khi Status == Completed (Pages/Bookings/Review)
   Backend yêu cầu TripAssignment → đơn SelfDrive Completed sẽ không đánh giá được
-- Không UI cọc / phí / FinalAmount
 
+==================================================
+2.2. PAGE / HANDLER / API / SIDE EFFECT (WEB)
+--------------------------------------------------
+Chỉ page có trong source. Chi tiết đầy đủ: Tuan 3.md mục 31.
+
+PORTALWEB (CarRentalPortalAuth)
+
+GET/POST /Account/Login     POST /api/auth/login
+  Pre: chưa login (đã login → RoleRoutes.HomeFor)
+  Post: cookie JWT. DB: không đổi.
+  Redirect: Admin /Admin | Dispatcher /Dispatcher | Customer /
+  401: "Email hoặc mật khẩu không đúng."
+
+GET/POST /Account/Register  POST /api/auth/register
+  Pre: Gmail, SĐT 0 + 9 số, StrongPassword
+  Post: INSERT Users+Customers Role=Customer; cookie; → /
+  Address/idNumber/dob gửi null.
+
+GET /Account/Logout          xóa cookie → Login. Không API.
+
+GET /                      GET /api/vehicle-types
+  Admin/Dispatcher logged-in → redirect khu họ. Nội dung tĩnh PortalContent.
+
+GET /Customer               redirect /#bang-gia
+
+GET /Customer/Bookings      GET /api/bookings   Role Customer
+  Chỉ đọc. Link Details. Không Review / Cancel.
+
+GET Create + POST Quote     GET vehicle-types; GET /api/bookings/quote
+  Fingerprint type|mode|start|end|distance. Không INSERT.
+
+POST Create (đặt)          POST /api/bookings
+  Pre: QuoteConfirmed + fingerprint khớp, không thì quote lại
+  Post: Booking Pending + snapshot + history "Khach tao don dat xe"
+  400: "Dữ liệu đặt xe không hợp lệ."
+  Redirect Details.
+
+GET Details + POST Deposit GET booking, payments, inspections; POST /api/payments Deposit
+  Pre UI: QuotedDepositAmount != null, chưa Deposit Pending/Paid
+  Post: Payment Pending Amount=QuotedDepositAmount PaidAt=null
+  Booking status không đổi. Không mark Paid.
+
+GET /Admin                  GET vehicles + bookings (đếm)
+GET Vehicles + POST Delete GET/DELETE /api/vehicles
+  Xóa fail nếu có TripAssignment (AssignedVehicleId SelfDrive không chặn xóa)
+GET/POST Vehicles/Create   POST /api/vehicles Status=Available
+  Form Portal không Color/CurrentKm (km=0)
+GET/POST Vehicles/Edit     PUT vehicle (Status, CurrentKm sửa tay được)
+GET Pricing                 GET /api/admin/vehicle-types
+GET/POST Pricing/Edit       PUT 8 giá; không Booking
+GET Payments                GET /api/admin/payments (lọc GET query; không POST)
+GET Bookings + POST Cancel  PATCH status Cancelled note "Admin huy"
+  Nút chỉ Pending/Confirmed; API không whitelist transition
+
+GET /Dispatcher             GET bookings Pending/Confirmed/Assigned/InProgress
+POST Confirm                POST .../confirm  Pending→Confirmed
+GET/POST Assign/{id}        chỉ load Confirmed; POST assign
+  WithDriver: TripAssignment + Driver Busy + Vehicle Rented
+  SelfDrive: AssignedVehicleId, không TripAssignment
+POST Handover               POST .../handover KHÔNG body → Inspection Handover null fields; InProgress
+POST Complete               POST .../complete KHÔNG body → Return + FinalAmount + Completed
+
+DISPATCHERWEB (CarRentalDispatcherAuth)
+
+Login: chỉ Role Dispatcher. Index Confirm trên chỗ. Assign/Handover/Complete page riêng.
+Handover pre UI: SelfDrive Assigned. Complete: SelfDrive InProgress.
+Form 4 field optional (odo≥0, fuel 0–100, condition≤100, notes≤500).
+
+CUSTOMERWEB (CarRentalAuth)
+
+Không Login page. Register ghi cookie local. Logout → Index.
+Bookings/Create quote+POST như Portal. Details Deposit như Portal.
+Review: UI chặn SelfDrive; API cần Completed + TripAssignment.
+
+ADMINWEB (CarRentalAdminAuth)
+
+Không Login. Không Page gọi SetAuth. Mọi page redirect Portal nếu chưa cookie.
+Nếu cookie tồn tại: mirror Portal Admin (Create xe CÓ Color/Km).
+
+==================================================
 H) BACKEND / API
-
-Nguồn: Controllers/, Services/ (PricingService, PaymentService, VehicleInspectionService, BookingFeeService)
+--------------------------------------------------
 
 AUTH:
 - Đăng nhập JWT (POST /api/auth/login)
 - Đăng ký khách hàng (POST /api/auth/register) — email, password, fullName, phone?, address?, idNumber?, dateOfBirth?
-- Lấy hồ sơ (GET /api/auth/me) — có controller; app/web không gọi trong source
+- Lấy hồ sơ (GET /api/auth/me) — CustomerApp + DriverApp Account; web không gọi
 
 VEHICLES:
 - GET /api/vehicle-types (public) — không trả DriverFeePerDay / deposit / included km
 - GET /api/vehicles, GET /api/vehicles/{id} (public)
 - Thêm / sửa / xóa xe (Admin)
-- Không có API CRUD loại xe
+- GET /api/admin/vehicle-types, GET /api/admin/vehicle-types/{id}, PUT /api/admin/vehicle-types/{id} (Admin)
+  PUT: đủ 8 giá ≥ 0, không null; chỉ VehicleType; không sửa Booking
 
 BOOKINGS:
 - GET /api/bookings/quote (Customer) — query vehicleTypeId, startDate, endDate, estimatedDistance?, rentalMode?
@@ -250,10 +335,14 @@ BOOKINGS:
 PAYMENTS (Customer):
 - POST /api/payments — chỉ Deposit; Amount = QuotedDepositAmount; Status Pending; PaidAt null
   Body: bookingId, paymentType, method, transactionRef?
-  Balance / Refund → 400 "chưa được hỗ trợ"
-  Trùng Deposit Pending/Paid → 400; thiếu snapshot cọc → 400; không phải chủ đơn → 403
+  Balance → 400 "Thanh toán phần còn lại chưa được hỗ trợ ở giai đoạn này."
+  Refund → 400 "Refund chưa được hỗ trợ ở giai đoạn này."
+  Trùng Deposit Pending/Paid → "Đơn này đã có khoản cọc đang chờ hoặc đã thanh toán."
+  Thiếu QuotedDepositAmount → "Đơn hàng chưa có thông tin tiền cọc."
+  không phải chủ đơn → 403
 - GET /api/bookings/{id}/payments — chỉ chủ đơn
-- Không mark-paid, không gateway, Admin/Dispatcher không có API payment
+- GET /api/admin/payments (Admin, read-only; query bookingId/status/paymentType; 404 nếu bookingId không có)
+- Không mark-paid, không gateway, không Refund/Balance
 
 DISPATCH (Dispatcher):
 - Xác nhận đơn Pending
@@ -620,8 +709,8 @@ Cấu hình cần thay đổi:
 
 Chức năng chi tiết: mục 2.1.D
 - Auth: đăng nhập, đăng ký, đăng xuất, role routing
-- Customer: trang chủ, đặt xe (RentalMode), xem đơn (không UI đánh giá / cọc / quote)
-- Admin: dashboard, CRUD xe, xem/hủy đơn
+- Customer: trang chủ, đặt xe (quote + RentalMode), xem đơn + cọc/fees/inspections (không trang Review)
+- Admin: dashboard, CRUD xe, giá loại xe, xem thanh toán, xem/hủy đơn
 - Dispatcher: xác nhận, phân công theo mode, giao xe / hoàn thành SelfDrive
 
 Không bắt buộc chạy đồng thời AdminWeb / CustomerWeb / DispatcherWeb khi đã chạy PortalWeb.
@@ -1156,18 +1245,25 @@ PHỤ LỤC C — CHƯA XÁC ĐỊNH ĐƯỢC TỪ SOURCE CODE
 - Swagger UI URL (project không dùng Swagger UI)
 
 ==================================================
-PHỤ LỤC D — PHASE ĐÃ XONG / CHƯA XONG (đến 3.6.3)
+PHỤ LỤC D — PHASE ĐÃ XONG / CHƯA XONG (đến 3.9)
 --------------------------------------------------
 
 Đã có trong source:
 PHASE 3.1 snapshot giá; 3.2 PricingService; 3.3 quote API + CustomerApp;
-3.4 giá theo RentalMode; 3.5.1 Payment Deposit API; 3.5.2 Payment UI CustomerApp;
-3.6.1 VehicleInspection; 3.6.2 FinalAmount + km thực tế; 3.6.3 BookingFee (ExtraKm audit).
+3.4 giá theo RentalMode; 3.5.1 Payment Deposit API; 3.5.2 Payment UI CustomerApp
+(+ Portal/CustomerWeb Details sau 3.7);
+3.6.1 VehicleInspection; 3.6.2 FinalAmount + km thực tế; 3.6.3 BookingFee (ExtraKm audit);
+3.6.4 GET inspection; 3.7 UI khách (quote/final/fees/cọc web);
+3.8 form km DispatcherWeb/DriverApp (Portal Dispatcher vẫn empty body);
+3.9 Admin giá VehicleType + Admin xem payment.
+
+PHASE 3 — COMPLETED. Đặc tả: Tuan 3.md mục 18–29.
 
 Chưa có:
-PHASE 3.6.4 trở đi; mark-paid; cổng MoMo/VNPay; Balance/Refund;
-đơn giá Late/Fuel/Damage; UI phí; UI nhập km trên web/app;
-endpoint inspection/fee công khai; backfill đơn seed.
+mark-paid; cổng MoMo/VNPay; Balance/Refund/settlement;
+đơn giá Late/Fuel/Damage; Admin tạo payment;
+endpoint fee công khai; backfill đơn seed; login riêng AdminWeb;
+form km trên Portal Dispatcher.
 
 ==================================================
 HẾT FILE HƯỚNG DẪN

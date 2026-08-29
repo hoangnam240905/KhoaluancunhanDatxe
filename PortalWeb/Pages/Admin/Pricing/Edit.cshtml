@@ -1,0 +1,62 @@
+@page "/Admin/Pricing/Edit/{id:int}"
+@model PortalWeb.Pages.Admin.Pricing.EditModel
+@{ ViewData["Title"] = "Sửa giá loại xe"; }
+
+<h2 class="mb-3">Sửa giá — @Model.TypeName (#@Model.TypeId)</h2>
+
+<div class="alert alert-info">
+    Giá này áp dụng cho đơn mới. Đơn đã đặt giữ nguyên snapshot.
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<form method="post" class="row g-3 col-lg-8">
+    <div class="col-md-6">
+        <label class="form-label">Giá/ngày có tài xế (PricePerDay)</label>
+        <input asp-for="Input.PricePerDay" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.PricePerDay" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Giá/km có tài xế (PricePerKm)</label>
+        <input asp-for="Input.PricePerKm" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.PricePerKm" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Phí tài xế/ngày (DriverFeePerDay)</label>
+        <input asp-for="Input.DriverFeePerDay" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.DriverFeePerDay" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Giá/ngày tự lái (SelfDrivePricePerDay)</label>
+        <input asp-for="Input.SelfDrivePricePerDay" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.SelfDrivePricePerDay" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Km gồm/ngày tự lái (SelfDriveIncludedKmPerDay)</label>
+        <input asp-for="Input.SelfDriveIncludedKmPerDay" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.SelfDriveIncludedKmPerDay" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Giá km vượt (SelfDriveExtraKmPrice)</label>
+        <input asp-for="Input.SelfDriveExtraKmPrice" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.SelfDriveExtraKmPrice" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Cọc có tài xế (WithDriverDepositAmount)</label>
+        <input asp-for="Input.WithDriverDepositAmount" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.WithDriverDepositAmount" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Cọc tự lái (SelfDriveDepositAmount)</label>
+        <input asp-for="Input.SelfDriveDepositAmount" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.SelfDriveDepositAmount" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Lưu giá</button>
+        <a asp-page="Index" class="btn btn-secondary">Quay lại</a>
+    </div>
+</form>

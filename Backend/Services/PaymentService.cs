@@ -89,7 +89,29 @@ public class PaymentService(CarRentalDbContext db)
         return (rows.Select(Map).ToList(), null, StatusCodes.Status200OK);
     }
 
-    private static PaymentResponse Map(Payment p) => new(
+    public async Task<(List<PaymentResponse>? Payments, string? Error, int StatusCode)> GetAdminAsync(
+        int? bookingId, string? status, string? paymentType)
+    {
+        if (bookingId is not null)
+        {
+            var exists = await db.Bookings.AsNoTracking().AnyAsync(b => b.BookingId == bookingId.Value);
+            if (!exists)
+                return (null, "Không tìm thấy đơn.", StatusCodes.Status404NotFound);
+        }
+
+        var query = db.Payments.AsNoTracking().AsQueryable();
+        if (bookingId is not null)
+            query = query.Where(p => p.BookingId == bookingId.Value);
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(p => p.Status == status.Trim());
+        if (!string.IsNullOrWhiteSpace(paymentType))
+            query = query.Where(p => p.PaymentType == paymentType.Trim());
+
+        var rows = await query.OrderBy(p => p.PaymentId).ToListAsync();
+        return (rows.Select(Map).ToList(), null, StatusCodes.Status200OK);
+    }
+
+    internal static PaymentResponse Map(Payment p) => new(
         p.PaymentId,
         p.BookingId,
         p.PaymentType,

@@ -10,6 +10,10 @@
 {
     <div class="alert alert-danger">@Model.ErrorMessage</div>
 }
+@if (!string.IsNullOrEmpty(Model.InfoMessage))
+{
+    <div class="alert alert-info">@Model.InfoMessage</div>
+}
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
 <form method="post" class="row g-4">
@@ -54,7 +58,8 @@
                             }
                             <div class="fw-bold">@type.TypeName</div>
                             <div class="small text-muted">@type.SeatCapacity chỗ</div>
-                            <div class="small mt-1">@type.PricePerDay.ToString("N0") VND/ngày · @type.PricePerKm.ToString("N0") VND/km</div>
+                            <div class="small mt-1">Catalog: @type.PricePerDay.ToString("N0") VND/ngày · @type.PricePerKm.ToString("N0") VND/km</div>
+                            <div class="small text-muted">Giá đặt lấy từ báo giá máy chủ.</div>
                         </label>
                     </div>
                 }
@@ -93,10 +98,45 @@
         <label asp-for="Input.Notes" class="form-label">Ghi chú</label>
         <textarea asp-for="Input.Notes" class="form-control" rows="2" placeholder="Yêu cầu đặc biệt, hành lý, điểm đón..."></textarea>
     </div>
-    <div class="col-12">
-        <button type="submit" class="btn btn-primary">Gửi yêu cầu đặt xe</button>
-        <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
-    </div>
+        <input type="hidden" asp-for="QuoteConfirmed" />
+        <input type="hidden" asp-for="QuotedFingerprint" />
+
+        @if (Model.Quote is not null)
+        {
+            var q = Model.Quote;
+            var selfDrive = CreateModel.IsSelfDrive(q.RentalMode);
+            <div class="col-12">
+                <div class="border rounded p-3 bg-light">
+                    <div class="fw-bold mb-2">Báo giá từ máy chủ</div>
+                    <div class="small text-muted mb-3">Giá lấy từ GET /api/bookings/quote. Trang không tự tính tổng.</div>
+                    <div class="row g-2">
+                        <div class="col-md-4"><div class="text-muted small">Hình thức</div><div>@(selfDrive ? "Tự lái" : "Có tài xế")</div></div>
+                        <div class="col-md-4"><div class="text-muted small">Giá thuê/ngày</div><div>@q.QuotedPricePerDay.ToString("N0") VND</div></div>
+                        <div class="col-md-4"><div class="text-muted small">Số ngày</div><div>@q.QuotedDays</div></div>
+                        @if (selfDrive)
+                        {
+                            <div class="col-md-4"><div class="text-muted small">Km miễn phí</div><div>@q.IncludedKm.ToString("N0") km</div></div>
+                            <div class="col-md-4"><div class="text-muted small">Km vượt ước tính</div><div>@q.ExtraKm.ToString("N0") km</div></div>
+                            <div class="col-md-4"><div class="text-muted small">Phí km vượt</div><div>@q.ExtraKmPrice.ToString("N0") VND</div></div>
+                        }
+                        else
+                        {
+                            <div class="col-md-4"><div class="text-muted small">Phí tài xế</div><div>@q.DriverAmount.ToString("N0") VND</div></div>
+                            <div class="col-md-4"><div class="text-muted small">Km dự kiến</div><div>@q.EstimatedDistance.ToString("N0") km</div></div>
+                            <div class="col-md-4"><div class="text-muted small">Cước km</div><div>@q.DistanceAmount.ToString("N0") VND</div></div>
+                        }
+                        <div class="col-md-4"><div class="text-muted small">Tạm tính</div><div class="fw-bold text-primary">@q.TotalAmount.ToString("N0") VND</div></div>
+                        <div class="col-md-4"><div class="text-muted small">Cọc dự kiến</div><div>@q.DepositAmount.ToString("N0") VND</div></div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="col-12">
+            <button type="submit" asp-page-handler="Quote" class="btn btn-outline-primary">Xem báo giá</button>
+            <button type="submit" class="btn btn-primary">Gửi yêu cầu đặt xe</button>
+            <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
+        </div>
 </form>
 
 @section Scripts {

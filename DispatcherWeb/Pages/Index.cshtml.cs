@@ -29,24 +29,6 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostHandoverAsync(int id)
-    {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
-        var (_, error) = await api.HandoverBookingAsync(id);
-        Message = error ?? "Đã giao xe.";
-        await LoadAsync();
-        return Page();
-    }
-
-    public async Task<IActionResult> OnPostCompleteAsync(int id)
-    {
-        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
-        var (_, error) = await api.CompleteSelfDriveAsync(id);
-        Message = error ?? "Đã hoàn thành trả xe.";
-        await LoadAsync();
-        return Page();
-    }
-
     public static string RentalModeLabel(string? mode)
         => mode == "SelfDrive" ? "Tự lái" : "Có tài xế";
 

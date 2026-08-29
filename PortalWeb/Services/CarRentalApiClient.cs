@@ -105,6 +105,58 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<BookingResponse?> GetBookingAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(BookingQuoteResponse? Data, string? Error)> GetQuoteAsync(
+        int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
+    {
+        var query = $"vehicleTypeId={vehicleTypeId}" +
+                    $"&startDate={Uri.EscapeDataString(startDate.ToString("o"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("o"))}" +
+                    $"&rentalMode={Uri.EscapeDataString(rentalMode)}";
+        if (estimatedDistance.HasValue)
+            query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/quote?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lấy được báo giá.");
+        return (await response.Content.ReadFromJsonAsync<BookingQuoteResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<PaymentResponse>> GetBookingPaymentsAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/payments");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<PaymentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> CreateDepositAsync(CreatePaymentRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/payments");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không tạo được yêu cầu cọc.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<VehicleInspectionResponse>> GetBookingInspectionsAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/inspections");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleInspectionResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
     public async Task<(BookingResponse? Data, string? Error)> UpdateBookingStatusAsync(int id, string status, string? note)
     {
         using var request = CreateRequest(HttpMethod.Patch, $"/api/bookings/{id}/status");
@@ -161,5 +213,49 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         using var request = CreateRequest(HttpMethod.Get, url);
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<DriverResponse>>(JsonOptions) ?? [] : [];
+    }
+
+    public async Task<List<AdminVehicleTypeResponse>> GetAdminVehicleTypesAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/admin/vehicle-types");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<AdminVehicleTypeResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<AdminVehicleTypeResponse?> GetAdminVehicleTypeAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/admin/vehicle-types/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<AdminVehicleTypeResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(AdminVehicleTypeResponse? Data, string? Error)> UpdateVehicleTypePricingAsync(
+        int id, UpdateVehicleTypePricingRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/admin/vehicle-types/{id}");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminVehicleTypeResponse>(JsonOptions), null);
+    }
+
+    public async Task<(List<PaymentResponse>? Data, string? Error)> GetAdminPaymentsAsync(
+        int? bookingId = null, string? status = null, string? paymentType = null)
+    {
+        var query = new List<string>();
+        if (bookingId is not null) query.Add($"bookingId={bookingId.Value}");
+        if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrWhiteSpace(paymentType)) query.Add($"paymentType={Uri.EscapeDataString(paymentType)}");
+        var url = query.Count == 0 ? "/api/admin/payments" : "/api/admin/payments?" + string.Join("&", query);
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return (null, await GetErrorAsync(response) ?? "Không tìm thấy đơn.");
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<PaymentResponse>>(JsonOptions) ?? [], null);
     }
 }

@@ -1,0 +1,54 @@
+@page "{id:int}"
+@model DispatcherWeb.Pages.HandoverModel
+@{ ViewData["Title"] = "Giao xe tự lái"; }
+
+<h2 class="mb-3">Giao xe — đơn #@Model.Booking?.BookingId</h2>
+
+@if (Model.Booking is not null)
+{
+    <p class="mb-2">
+        <strong>Khách:</strong> @Model.Booking.CustomerName
+        | <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
+        | <strong>Xe:</strong> @(Model.Booking.AssignedVehicle?.LicensePlate ?? "—")
+        | <strong>Hình thức:</strong> Tự lái
+    </p>
+}
+
+<div class="alert alert-info">
+    <div class="fw-bold">Biên bản kiểm xe (VehicleInspection) — Giao xe (Handover)</div>
+    <div class="small mb-0">
+        Thời điểm kiểm xe do máy chủ ghi UTC. Không nhập ActualAt / loại biên bản.
+        Không tính giá chốt trên trang này. Bốn trường dưới đây không bắt buộc.
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<form method="post" class="col-lg-6">
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.OdometerKm">Số km (odometerKm)</label>
+        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" />
+        <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % (fuelLevel)</label>
+        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" />
+        <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.Condition">Tình trạng (condition)</label>
+        <input asp-for="Input.Condition" class="form-control" maxlength="100" />
+        <span asp-validation-for="Input.Condition" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.Notes">Ghi chú (notes)</label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
+        <span asp-validation-for="Input.Notes" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-info">Ghi nhận giao xe</button>
+    <a asp-page="/Index" class="btn btn-secondary">Quay lại</a>
+</form>

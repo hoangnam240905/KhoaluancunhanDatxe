@@ -106,6 +106,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
+            .Include(b => b.Inspections)
             .AsQueryable();
 
         if (customerId.HasValue)
@@ -127,6 +128,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
+            .Include(b => b.Inspections)
             .FirstOrDefaultAsync(b => b.BookingId == id);
 
         return booking is null ? null : MapToResponse(booking);
@@ -242,6 +244,10 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             .Where(f => !BookingFeeTypes.IsIncludedInBase(f.FeeType))
             .Sum(f => f.Amount);
         decimal? finalBaseAmount = b.FinalAmount is null ? null : b.FinalAmount.Value - totalFees;
+        var inspections = (b.Inspections ?? [])
+            .OrderBy(i => i.InspectionId)
+            .Select(VehicleInspectionService.ToResponse)
+            .ToList();
 
         return new BookingResponse(
             b.BookingId,
@@ -271,7 +277,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             b.FinalAmount,
             fees,
             finalBaseAmount,
-            totalFees);
+            totalFees,
+            inspections);
     }
 
     private static BookingQuoteResponse ToQuoteResponse(

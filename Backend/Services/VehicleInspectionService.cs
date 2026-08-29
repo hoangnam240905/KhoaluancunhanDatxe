@@ -1,5 +1,6 @@
 using Backend.Constants;
 using Backend.Data;
+using Backend.DTOs.Bookings;
 using Backend.Entities;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +89,30 @@ public class VehicleInspectionService(CarRentalDbContext db)
 
     public async Task<VehicleInspection?> GetHandoverAsync(int bookingId)
         => await db.VehicleInspections
+            .AsNoTracking()
             .FirstOrDefaultAsync(i =>
                 i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover);
+
+    public async Task<IReadOnlyList<VehicleInspectionResponse>> GetByBookingAsync(int bookingId)
+    {
+        var rows = await db.VehicleInspections
+            .AsNoTracking()
+            .Where(i => i.BookingId == bookingId)
+            .OrderBy(i => i.InspectionId)
+            .ToListAsync();
+
+        return rows.Select(ToResponse).ToList();
+    }
+
+    public static VehicleInspectionResponse ToResponse(VehicleInspection i) => new(
+        i.InspectionId,
+        i.BookingId,
+        i.VehicleId,
+        i.InspectionType,
+        i.ActualAt,
+        i.OdometerKm,
+        i.FuelLevel,
+        i.Condition,
+        i.Notes,
+        i.CreatedAt);
 }

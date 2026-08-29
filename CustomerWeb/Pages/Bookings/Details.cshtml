@@ -1,0 +1,243 @@
+@page "{id:int}"
+@model CustomerWeb.Pages.Bookings.DetailsModel
+@{
+    ViewData["Title"] = Model.Booking is null ? "Chi tiết đơn" : $"Đơn #{Model.Booking.BookingId}";
+}
+
+@if (Model.Booking is null)
+{
+    <div class="alert alert-warning">Không tìm thấy đơn.</div>
+    return;
+}
+
+@{
+    var b = Model.Booking;
+    var selfDrive = DetailsModel.IsSelfDrive(b.RentalMode);
+    var fees = b.Fees ?? [];
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h2>Đơn #@b.BookingId · @b.VehicleTypeName</h2>
+        <div class="text-muted">@DetailsModel.RentalModeLabel(b.RentalMode) · @b.Status</div>
+    </div>
+    <a asp-page="Index" class="btn btn-outline-secondary">Quay lại</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+@if (!string.IsNullOrEmpty(Model.InfoMessage))
+{
+    <div class="alert alert-success">@Model.InfoMessage</div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6"><div class="text-muted small">Điểm đón</div><div class="fw-semibold">@b.PickupAddress</div></div>
+            <div class="col-md-6"><div class="text-muted small">Điểm trả</div><div class="fw-semibold">@b.DropoffAddress</div></div>
+            <div class="col-md-4">
+                <div class="text-muted small">Thời gian</div>
+                <div>@b.StartDate.ToString("dd/MM/yyyy HH:mm")</div>
+                <div class="small text-muted">đến @b.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Giá lúc đặt</div>
+                <div class="fw-bold text-primary">@b.TotalAmount.ToString("N0") VND</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Giá chốt</div>
+                @if (b.FinalAmount is not null)
+                {
+                    <div class="fw-bold">@b.FinalAmount.Value.ToString("N0") VND</div>
+                }
+                else
+                {
+                    <div class="text-muted">Chưa chốt</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.HasPriceSnapshot)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="fw-bold mb-2">Đơn giá lúc đặt</div>
+            <div class="small text-muted mb-3">Snapshot trên đơn. Không tính lại từ bảng giá hiện tại.</div>
+            <div class="row g-2">
+                @if (b.QuotedPricePerDay is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Giá thuê/ngày</div><div>@b.QuotedPricePerDay.Value.ToString("N0") VND</div></div>
+                }
+                @if (b.QuotedDays is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Số ngày</div><div>@b.QuotedDays</div></div>
+                }
+                @if (!selfDrive && b.QuotedDriverFeePerDay is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Phí tài xế/ngày</div><div>@b.QuotedDriverFeePerDay.Value.ToString("N0") VND</div></div>
+                }
+                @if (selfDrive && b.QuotedSelfDriveIncludedKmPerDay is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Km miễn phí/ngày</div><div>@b.QuotedSelfDriveIncludedKmPerDay.Value.ToString("N0") km</div></div>
+                }
+                @if (selfDrive && b.QuotedSelfDriveExtraKmPrice is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Đơn giá km vượt</div><div>@b.QuotedSelfDriveExtraKmPrice.Value.ToString("N0") VND</div></div>
+                }
+                @if (b.QuotedDepositAmount is not null)
+                {
+                    <div class="col-md-4"><div class="text-muted small">Cọc lúc đặt</div><div>@b.QuotedDepositAmount.Value.ToString("N0") VND</div></div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        @if (selfDrive)
+        {
+            @if (b.AssignedVehicle is null)
+            {
+                <div class="text-muted">Xe: chờ điều phối gán xe.</div>
+            }
+            else
+            {
+                <div><strong>Xe:</strong> @b.AssignedVehicle.LicensePlate · @b.AssignedVehicle.Brand @b.AssignedVehicle.Model</div>
+            }
+        }
+        else if (b.Assignment is null)
+        {
+            <div class="text-muted">Tài xế: chưa phân công — đợi điều phối xác nhận.</div>
+        }
+        else
+        {
+            <div><strong>Tài xế:</strong> @b.Assignment.DriverName · <strong>Xe:</strong> @b.Assignment.LicensePlate</div>
+            @if (!string.IsNullOrWhiteSpace(b.Assignment.DriverPhone))
+            {
+                <div class="small">SĐT: @b.Assignment.DriverPhone</div>
+            }
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="fw-bold mb-2">Phí phát sinh</div>
+        @if (!fees.Any())
+        {
+            <div class="text-muted">Không có phí phát sinh.</div>
+        }
+        else
+        {
+            @foreach (var fee in fees)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <div><strong>@DetailsModel.FeeTypeLabel(fee.FeeType)</strong> · @fee.Amount.ToString("N0") VND</div>
+                    @if (!string.IsNullOrWhiteSpace(fee.Description))
+                    {
+                        <div class="small">@fee.Description</div>
+                    }
+                    @if (fee.FeeType == "ExtraKm")
+                    {
+                        <div class="small text-muted">Đã gồm trong giá chốt — không cộng thêm.</div>
+                    }
+                </div>
+            }
+            @if (b.TotalFees is not null)
+            {
+                <div>Tổng phí (server): <strong>@b.TotalFees.Value.ToString("N0") VND</strong></div>
+            }
+            <div class="small text-muted mt-2">Km vượt đã nằm trong giá chốt. Không cộng ExtraKm thêm một lần nữa.</div>
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="fw-bold mb-2">Biên bản kiểm xe</div>
+        @if (!Model.Inspections.Any())
+        {
+            <div class="text-muted">Chưa có biên bản kiểm xe.</div>
+        }
+        else
+        {
+            @foreach (var i in Model.Inspections)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <div class="fw-semibold">@DetailsModel.InspectionTypeLabel(i.InspectionType)</div>
+                    <div class="small text-muted">@i.ActualAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                    @if (i.OdometerKm is not null)
+                    {
+                        <div>Số km: @i.OdometerKm.Value.ToString("N0") km</div>
+                    }
+                    @if (i.FuelLevel is not null)
+                    {
+                        <div>Nhiên liệu: @i.FuelLevel.Value.ToString("N0")%</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(i.Condition))
+                    {
+                        <div>Tình trạng: @i.Condition</div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="fw-bold mb-2">Thanh toán</div>
+        @if (b.QuotedDepositAmount is not null)
+        {
+            <div class="mb-2">Tiền cọc: <strong>@b.QuotedDepositAmount.Value.ToString("N0") VND</strong></div>
+        }
+        else
+        {
+            <div class="text-muted mb-2">Đơn hàng chưa có thông tin tiền cọc.</div>
+        }
+
+        @if (!Model.Payments.Any())
+        {
+            <div class="text-muted mb-2">Chưa có khoản thanh toán.</div>
+        }
+        else
+        {
+            @foreach (var p in Model.Payments)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <div>@DetailsModel.PaymentTypeLabel(p.PaymentType) · @p.Amount.ToString("N0") VND</div>
+                    <div class="small">@DetailsModel.PaymentMethodLabel(p.Method) · @DetailsModel.PaymentStatusLabel(p.Status)</div>
+                </div>
+            }
+        }
+
+        @if (Model.CanPayDeposit)
+        {
+            <form method="post" asp-page-handler="Deposit" class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <label class="form-label" asp-for="Method">Phương thức</label>
+                    <select asp-for="Method" class="form-select">
+                        @foreach (var m in DetailsModel.PaymentMethods)
+                        {
+                            <option value="@m">@DetailsModel.PaymentMethodLabel(m)</option>
+                        }
+                    </select>
+                    <div class="form-text">Số tiền do máy chủ tính. Yêu cầu sẽ ở trạng thái chờ thanh toán.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" asp-for="TransactionRef">Mã giao dịch (không bắt buộc)</label>
+                    <input asp-for="TransactionRef" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Tạo yêu cầu cọc</button>
+                </div>
+            </form>
+        }
+    </div>
+</div>

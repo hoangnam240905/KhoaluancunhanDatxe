@@ -10,7 +10,9 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/bookings")]
-public class BookingsController(BookingService bookingService) : ControllerBase
+public class BookingsController(
+    BookingService bookingService,
+    VehicleInspectionService inspections) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<BookingResponse>>> GetAll([FromQuery] string? status)
@@ -67,6 +69,27 @@ public class BookingsController(BookingService bookingService) : ControllerBase
             return Forbid();
 
         return Ok(booking);
+    }
+
+    [HttpGet("{id:int}/inspections")]
+    public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetInspections(int id)
+    {
+        var booking = await bookingService.GetBookingByIdAsync(id);
+        if (booking is null) return NotFound();
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        if (role == RoleNames.Driver)
+            return Forbid();
+
+        if (role == RoleNames.Customer && booking.CustomerId != userId)
+            return Forbid();
+
+        if (role is not (RoleNames.Customer or RoleNames.Admin or RoleNames.Dispatcher))
+            return Forbid();
+
+        return Ok(await inspections.GetByBookingAsync(id));
     }
 
     [Authorize(Roles = RoleNames.Customer)]

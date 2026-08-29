@@ -117,6 +117,26 @@ class TripAssignment {
   }
 }
 
+class VehicleCondition {
+  /// JSON body for VehicleConditionRequest. Omits null/blank fields.
+  /// Returns null when nothing to send (empty complete, same as before).
+  static Map<String, dynamic>? toJson({
+    double? odometerKm,
+    double? fuelLevel,
+    String? condition,
+    String? notes,
+  }) {
+    final body = <String, dynamic>{};
+    if (odometerKm != null) body['odometerKm'] = odometerKm;
+    if (fuelLevel != null) body['fuelLevel'] = fuelLevel;
+    final c = condition?.trim();
+    if (c != null && c.isNotEmpty) body['condition'] = c;
+    final n = notes?.trim();
+    if (n != null && n.isNotEmpty) body['notes'] = n;
+    return body.isEmpty ? null : body;
+  }
+}
+
 class AssignedVehicle {
   final int vehicleId;
   final String licensePlate;

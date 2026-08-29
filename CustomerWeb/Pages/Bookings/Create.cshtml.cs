@@ -11,8 +11,13 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    [BindProperty] public bool QuoteConfirmed { get; set; }
+    [BindProperty] public string? QuotedFingerprint { get; set; }
+
     public List<VehicleTypeResponse> VehicleTypes { get; set; } = [];
+    public BookingQuoteResponse? Quote { get; set; }
     public string? ErrorMessage { get; set; }
+    public string? InfoMessage { get; set; }
 
     public class InputModel
     {
@@ -39,6 +44,11 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         public string? Notes { get; set; }
     }
 
+    public string CurrentFingerprint =>
+        $"{Input.VehicleTypeId}|{Input.RentalMode}|{Input.StartDate:yyyy-MM-ddTHH:mm}|{Input.EndDate:yyyy-MM-ddTHH:mm}|{Input.EstimatedDistance}";
+
+    public static bool IsSelfDrive(string? mode) => mode == "SelfDrive";
+
     public async Task<IActionResult> OnGetAsync(int? typeId)
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
@@ -52,22 +62,31 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostQuoteAsync()
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        VehicleTypes = await api.GetVehicleTypesAsync();
+        NormalizeAndValidate();
+        if (!ModelState.IsValid) return Page();
+        await LoadQuoteAsync();
+        return Page();
+    }
+
     public async Task<IActionResult> OnPostAsync()
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
         VehicleTypes = await api.GetVehicleTypesAsync();
-
-        if (Input.RentalMode is not ("WithDriver" or "SelfDrive"))
-            Input.RentalMode = "WithDriver";
-
-        if (Input.EndDate <= Input.StartDate)
-            ModelState.AddModelError("Input.EndDate", "Thời gian kết thúc phải sau thời gian bắt đầu.");
-
-        if (Input.VehicleTypeId <= 0 || VehicleTypes.All(t => t.TypeId != Input.VehicleTypeId))
-            ModelState.AddModelError("Input.VehicleTypeId", "Vui lòng chọn loại xe.");
-
+        NormalizeAndValidate();
         if (!ModelState.IsValid) return Page();
+
+        if (!QuoteConfirmed || QuotedFingerprint != CurrentFingerprint)
+        {
+            await LoadQuoteAsync();
+            if (Quote is not null)
+                InfoMessage = "Đã lấy báo giá từ máy chủ. Kiểm tra rồi bấm đặt xe.";
+            return Page();
+        }
 
         var (data, error) = await api.CreateBookingAsync(new CreateBookingRequest(
             Input.VehicleTypeId,
@@ -83,9 +102,45 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (data is null)
         {
             ErrorMessage = error;
+            await LoadQuoteAsync();
             return Page();
         }
 
-        return RedirectToPage("Index");
+        return RedirectToPage("Details", new { id = data.BookingId });
+    }
+
+    private void NormalizeAndValidate()
+    {
+        if (Input.RentalMode is not ("WithDriver" or "SelfDrive"))
+            Input.RentalMode = "WithDriver";
+
+        if (Input.EndDate <= Input.StartDate)
+            ModelState.AddModelError("Input.EndDate", "Thời gian kết thúc phải sau thời gian bắt đầu.");
+
+        if (Input.VehicleTypeId <= 0 || VehicleTypes.All(t => t.TypeId != Input.VehicleTypeId))
+            ModelState.AddModelError("Input.VehicleTypeId", "Vui lòng chọn loại xe.");
+    }
+
+    private async Task LoadQuoteAsync()
+    {
+        var (quote, error) = await api.GetQuoteAsync(
+            Input.VehicleTypeId,
+            Input.StartDate,
+            Input.EndDate,
+            Input.RentalMode,
+            Input.EstimatedDistance);
+        if (quote is null)
+        {
+            Quote = null;
+            QuoteConfirmed = false;
+            QuotedFingerprint = null;
+            ErrorMessage = error;
+            return;
+        }
+
+        Quote = quote;
+        QuoteConfirmed = true;
+        QuotedFingerprint = CurrentFingerprint;
+        ErrorMessage = null;
     }
 }

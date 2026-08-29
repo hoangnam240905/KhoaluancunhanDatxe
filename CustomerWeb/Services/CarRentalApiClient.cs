@@ -75,6 +75,60 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
     }
 
+    public async Task<BookingResponse?> GetBookingAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(BookingQuoteResponse? Data, string? Error)> GetQuoteAsync(
+        int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
+    {
+        var query = $"vehicleTypeId={vehicleTypeId}" +
+                    $"&startDate={Uri.EscapeDataString(startDate.ToString("o"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("o"))}" +
+                    $"&rentalMode={Uri.EscapeDataString(rentalMode)}";
+        if (estimatedDistance.HasValue)
+            query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/quote?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong lay duoc bao gia.");
+        return (await response.Content.ReadFromJsonAsync<BookingQuoteResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<PaymentResponse>> GetBookingPaymentsAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/payments");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<PaymentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> CreateDepositAsync(CreatePaymentRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/payments");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong tao duoc yeu cau coc.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<VehicleInspectionResponse>> GetBookingInspectionsAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/inspections");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleInspectionResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
     public async Task<(bool Success, string? Error)> CreateReviewAsync(int bookingId, CreateReviewRequest request)
     {
         using var httpRequest = CreateRequest(HttpMethod.Post, $"/api/bookings/{bookingId}/reviews");

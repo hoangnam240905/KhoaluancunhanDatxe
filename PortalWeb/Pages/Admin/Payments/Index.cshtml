@@ -1,0 +1,84 @@
+@page "/Admin/Payments"
+@model PortalWeb.Pages.Admin.Payments.IndexModel
+@{ ViewData["Title"] = "Thanh toán"; }
+
+<div class="page-header">
+    <h2>Thanh toán</h2>
+    <p>Chỉ xem. Không xác nhận đã thu, không hoàn tiền, không thu phần còn lại.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-2">
+        <label class="form-label">Mã đơn</label>
+        <input name="bookingId" value="@Model.FilterBookingId" class="form-control" type="number" min="1" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Trạng thái</label>
+        <select name="status" class="form-select">
+            <option value="">Tất cả</option>
+            <option value="Pending" @(Model.FilterStatus == "Pending" ? "selected" : null)>Pending</option>
+            <option value="Paid" @(Model.FilterStatus == "Paid" ? "selected" : null)>Paid</option>
+            <option value="Failed" @(Model.FilterStatus == "Failed" ? "selected" : null)>Failed</option>
+            <option value="Refunded" @(Model.FilterStatus == "Refunded" ? "selected" : null)>Refunded</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Loại</label>
+        <select name="paymentType" class="form-select">
+            <option value="">Tất cả</option>
+            <option value="Deposit" @(Model.FilterPaymentType == "Deposit" ? "selected" : null)>Deposit</option>
+            <option value="Balance" @(Model.FilterPaymentType == "Balance" ? "selected" : null)>Balance</option>
+            <option value="Refund" @(Model.FilterPaymentType == "Refund" ? "selected" : null)>Refund</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">Lọc</button>
+        <a asp-page="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+    </div>
+</form>
+
+@if (!Model.Payments.Any())
+{
+    <div class="modern-card p-5 text-center text-muted">Không có khoản thanh toán.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Đơn</th>
+                    <th>Số tiền</th>
+                    <th>Loại</th>
+                    <th>Phương thức</th>
+                    <th>Trạng thái</th>
+                    <th>Mã giao dịch</th>
+                    <th>PaidAt</th>
+                    <th>Tạo lúc</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Payments)
+            {
+                <tr>
+                    <td>#@p.PaymentId</td>
+                    <td>#@p.BookingId</td>
+                    <td>@p.Amount.ToString("N0")</td>
+                    <td>@IndexModel.PaymentTypeLabel(p.PaymentType)</td>
+                    <td>@p.Method</td>
+                    <td>@p.Status</td>
+                    <td>@(p.TransactionRef ?? "—")</td>
+                    <td>@(p.PaidAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    <td>@p.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

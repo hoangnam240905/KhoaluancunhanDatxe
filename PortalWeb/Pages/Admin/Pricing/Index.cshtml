@@ -1,0 +1,59 @@
+@page "/Admin/Pricing"
+@model PortalWeb.Pages.Admin.Pricing.IndexModel
+@{ ViewData["Title"] = "Giá loại xe"; }
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+        <h2>Giá loại xe</h2>
+        <p>Quản lý bảng giá catalog. Không tính lại đơn đã đặt.</p>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    Giá này áp dụng cho đơn mới. Đơn đã đặt giữ nguyên snapshot.
+</div>
+
+@if (!Model.Types.Any())
+{
+    <div class="modern-card p-5 text-center text-muted">Chưa có loại xe.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Loại</th>
+                    <th>Ngày (có TX)</th>
+                    <th>Km (có TX)</th>
+                    <th>Phí tài xế/ngày</th>
+                    <th>Ngày tự lái</th>
+                    <th>Km gồm/ngày</th>
+                    <th>Km vượt</th>
+                    <th>Cọc có TX</th>
+                    <th>Cọc tự lái</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in Model.Types)
+            {
+                <tr>
+                    <td>#@t.TypeId</td>
+                    <td>@t.TypeName</td>
+                    <td>@t.PricePerDay.ToString("N0")</td>
+                    <td>@t.PricePerKm.ToString("N0")</td>
+                    <td>@t.DriverFeePerDay.ToString("N0")</td>
+                    <td>@t.SelfDrivePricePerDay.ToString("N0")</td>
+                    <td>@t.SelfDriveIncludedKmPerDay.ToString("N0")</td>
+                    <td>@t.SelfDriveExtraKmPrice.ToString("N0")</td>
+                    <td>@t.WithDriverDepositAmount.ToString("N0")</td>
+                    <td>@t.SelfDriveDepositAmount.ToString("N0")</td>
+                    <td><a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sửa giá</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

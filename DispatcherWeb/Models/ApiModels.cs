@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DispatcherWeb.Models;
 
 public record LoginRequest(string Email, string Password);
@@ -17,3 +19,26 @@ public record AssignTripRequest(int? DriverId, int VehicleId);
 
 public record DriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips);
 public record VehicleResponse(int VehicleId, int TypeId, string TypeName, string LicensePlate, string Brand, string Model, int Year, string? Color, string Status, int CurrentKm);
+
+public class VehicleConditionRequest
+{
+    public decimal? OdometerKm { get; set; }
+    public decimal? FuelLevel { get; set; }
+    public string? Condition { get; set; }
+    public string? Notes { get; set; }
+
+    [JsonIgnore]
+    public bool HasValues =>
+        OdometerKm is not null ||
+        FuelLevel is not null ||
+        !string.IsNullOrWhiteSpace(Condition) ||
+        !string.IsNullOrWhiteSpace(Notes);
+
+    public VehicleConditionRequest ForApi() => new()
+    {
+        OdometerKm = OdometerKm,
+        FuelLevel = FuelLevel,
+        Condition = string.IsNullOrWhiteSpace(Condition) ? null : Condition.Trim(),
+        Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim()
+    };
+}

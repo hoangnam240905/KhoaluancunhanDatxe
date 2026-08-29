@@ -9,6 +9,32 @@ public record VehicleTypeResponse(
     string? Description,
     string? ImageUrl);
 
+public record AdminVehicleTypeResponse(
+    int TypeId,
+    string TypeName,
+    int SeatCapacity,
+    decimal PricePerDay,
+    decimal PricePerKm,
+    decimal DriverFeePerDay,
+    decimal SelfDrivePricePerDay,
+    decimal SelfDriveIncludedKmPerDay,
+    decimal SelfDriveExtraKmPrice,
+    decimal WithDriverDepositAmount,
+    decimal SelfDriveDepositAmount,
+    string? Description,
+    string? ImageUrl,
+    bool IsActive);
+
+public record UpdateVehicleTypePricingRequest(
+    decimal? PricePerDay,
+    decimal? PricePerKm,
+    decimal? DriverFeePerDay,
+    decimal? SelfDrivePricePerDay,
+    decimal? SelfDriveIncludedKmPerDay,
+    decimal? SelfDriveExtraKmPrice,
+    decimal? WithDriverDepositAmount,
+    decimal? SelfDriveDepositAmount);
+
 public record VehicleResponse(
     int VehicleId,
     int TypeId,

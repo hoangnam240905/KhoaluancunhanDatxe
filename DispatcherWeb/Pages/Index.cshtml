@@ -101,9 +101,7 @@ else
                 <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
                 <td>@b.Status</td>
                 <td>
-                    <form method="post" asp-page-handler="Handover" asp-route-id="@b.BookingId" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-info">Giao xe</button>
-                    </form>
+                    <a asp-page="/Handover" asp-route-id="@b.BookingId" class="btn btn-sm btn-info">Giao xe</a>
                 </td>
             </tr>
         }
@@ -138,9 +136,7 @@ else
                 <td>@b.StartDate.ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
                 <td>@b.Status</td>
                 <td>
-                    <form method="post" asp-page-handler="Complete" asp-route-id="@b.BookingId" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-success">Hoàn thành trả xe</button>
-                    </form>
+                    <a asp-page="/Complete" asp-route-id="@b.BookingId" class="btn btn-sm btn-success">Hoàn thành trả xe</a>
                 </td>
             </tr>
         }

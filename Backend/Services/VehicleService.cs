@@ -97,4 +97,84 @@ public class VehicleService(CarRentalDbContext db)
         await db.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<AdminVehicleTypeResponse>> GetAdminVehicleTypesAsync()
+    {
+        var rows = await db.VehicleTypes
+            .AsNoTracking()
+            .OrderBy(vt => vt.TypeId)
+            .ToListAsync();
+        return rows.Select(MapAdmin).ToList();
+    }
+
+    public async Task<AdminVehicleTypeResponse?> GetAdminVehicleTypeAsync(int id)
+    {
+        var vt = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(x => x.TypeId == id);
+        return vt is null ? null : MapAdmin(vt);
+    }
+
+    public async Task<(AdminVehicleTypeResponse? Data, string? Error, int StatusCode)> UpdatePricingAsync(
+        int id, UpdateVehicleTypePricingRequest request)
+    {
+        var validation = ValidatePricing(request);
+        if (validation is not null)
+            return (null, validation, StatusCodes.Status400BadRequest);
+
+        var vt = await db.VehicleTypes.FirstOrDefaultAsync(x => x.TypeId == id);
+        if (vt is null)
+            return (null, "Không tìm thấy loại xe.", StatusCodes.Status404NotFound);
+
+        vt.PricePerDay = request.PricePerDay!.Value;
+        vt.PricePerKm = request.PricePerKm!.Value;
+        vt.DriverFeePerDay = request.DriverFeePerDay!.Value;
+        vt.SelfDrivePricePerDay = request.SelfDrivePricePerDay!.Value;
+        vt.SelfDriveIncludedKmPerDay = request.SelfDriveIncludedKmPerDay!.Value;
+        vt.SelfDriveExtraKmPrice = request.SelfDriveExtraKmPrice!.Value;
+        vt.WithDriverDepositAmount = request.WithDriverDepositAmount!.Value;
+        vt.SelfDriveDepositAmount = request.SelfDriveDepositAmount!.Value;
+
+        await db.SaveChangesAsync();
+        return (MapAdmin(vt), null, StatusCodes.Status200OK);
+    }
+
+    internal static string? ValidatePricing(UpdateVehicleTypePricingRequest request)
+    {
+        if (request.PricePerDay is null
+            || request.PricePerKm is null
+            || request.DriverFeePerDay is null
+            || request.SelfDrivePricePerDay is null
+            || request.SelfDriveIncludedKmPerDay is null
+            || request.SelfDriveExtraKmPrice is null
+            || request.WithDriverDepositAmount is null
+            || request.SelfDriveDepositAmount is null)
+            return "Phải gửi đủ 8 giá, không được để trống.";
+
+        if (request.PricePerDay < 0
+            || request.PricePerKm < 0
+            || request.DriverFeePerDay < 0
+            || request.SelfDrivePricePerDay < 0
+            || request.SelfDriveIncludedKmPerDay < 0
+            || request.SelfDriveExtraKmPrice < 0
+            || request.WithDriverDepositAmount < 0
+            || request.SelfDriveDepositAmount < 0)
+            return "Giá không được âm.";
+
+        return null;
+    }
+
+    private static AdminVehicleTypeResponse MapAdmin(Entities.VehicleType vt) => new(
+        vt.TypeId,
+        vt.TypeName,
+        vt.SeatCapacity,
+        vt.PricePerDay,
+        vt.PricePerKm,
+        vt.DriverFeePerDay ?? 0,
+        vt.SelfDrivePricePerDay ?? 0,
+        vt.SelfDriveIncludedKmPerDay ?? 0,
+        vt.SelfDriveExtraKmPrice ?? 0,
+        vt.WithDriverDepositAmount ?? 0,
+        vt.SelfDriveDepositAmount ?? 0,
+        vt.Description,
+        vt.ImageUrl,
+        vt.IsActive);
 }

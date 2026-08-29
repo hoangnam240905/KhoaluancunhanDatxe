@@ -49,6 +49,52 @@ public record AssignedVehicleResponse(
     string Model,
     string Status);
 
+public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
+
+public record VehicleInspectionResponse(
+    int InspectionId,
+    int BookingId,
+    int VehicleId,
+    string InspectionType,
+    DateTime ActualAt,
+    decimal? OdometerKm,
+    decimal? FuelLevel,
+    string? Condition,
+    string? Notes,
+    DateTime CreatedAt);
+
+public record BookingQuoteResponse(
+    int VehicleTypeId,
+    string VehicleTypeName,
+    string RentalMode,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal QuotedPricePerDay,
+    decimal QuotedPricePerKm,
+    int QuotedDays,
+    decimal EstimatedDistance,
+    decimal RentalAmount,
+    decimal DistanceAmount,
+    decimal TotalAmount,
+    decimal DriverAmount,
+    decimal IncludedKm,
+    decimal ExtraKm,
+    decimal ExtraKmPrice,
+    decimal DepositAmount);
+
+public record PaymentResponse(
+    int PaymentId,
+    int BookingId,
+    string? PaymentType,
+    decimal Amount,
+    string Method,
+    string Status,
+    string? TransactionRef,
+    DateTime? PaidAt,
+    DateTime CreatedAt);
+
+public record CreatePaymentRequest(int BookingId, string? PaymentType, string? Method, string? TransactionRef = null);
+
 public record BookingResponse(
     int BookingId,
     int CustomerId,
@@ -66,7 +112,19 @@ public record BookingResponse(
     DateTime CreatedAt,
     TripAssignmentResponse? Assignment,
     string RentalMode = "WithDriver",
-    AssignedVehicleResponse? AssignedVehicle = null);
+    AssignedVehicleResponse? AssignedVehicle = null,
+    decimal? QuotedPricePerDay = null,
+    decimal? QuotedPricePerKm = null,
+    int? QuotedDays = null,
+    decimal? QuotedDriverFeePerDay = null,
+    decimal? QuotedSelfDriveIncludedKmPerDay = null,
+    decimal? QuotedSelfDriveExtraKmPrice = null,
+    decimal? QuotedDepositAmount = null,
+    decimal? FinalAmount = null,
+    IReadOnlyList<BookingFeeResponse>? Fees = null,
+    decimal? FinalBaseAmount = null,
+    decimal? TotalFees = null,
+    IReadOnlyList<VehicleInspectionResponse>? Inspections = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,
@@ -75,7 +133,8 @@ public record TripAssignmentResponse(
     int VehicleId,
     string LicensePlate,
     string Status,
-    DateTime AssignedAt);
+    DateTime AssignedAt,
+    string? DriverPhone = null);
 
 public record CreateReviewRequest(byte Rating, string? Comment);
 

@@ -68,7 +68,20 @@ public record BookingResponse(
     decimal? FinalAmount,
     IReadOnlyList<BookingFeeResponse> Fees,
     decimal? FinalBaseAmount,
-    decimal? TotalFees);
+    decimal? TotalFees,
+    IReadOnlyList<VehicleInspectionResponse> Inspections);
+
+public record VehicleInspectionResponse(
+    int InspectionId,
+    int BookingId,
+    int VehicleId,
+    string InspectionType,
+    DateTime ActualAt,
+    decimal? OdometerKm,
+    decimal? FuelLevel,
+    string? Condition,
+    string? Notes,
+    DateTime CreatedAt);
 
 public record BookingFeeResponse(
     int FeeId,

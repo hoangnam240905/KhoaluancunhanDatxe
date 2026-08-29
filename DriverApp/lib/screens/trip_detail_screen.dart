@@ -63,28 +63,149 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<void> _complete() async {
     final aid = _trip.assignmentId;
     if (aid == null) return;
+    final odo = TextEditingController();
+    final fuel = TextEditingController();
+    final condition = TextEditingController();
+    final notes = TextEditingController();
+    String? localError;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hoàn thành chuyến?'),
-        content: const Text(
-          'Chỉ xác nhận khi đã trả khách và kết thúc hành trình. Máy chủ sẽ đóng chuyến theo trạng thái hiện tại.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hoàn thành'),
-          ),
-        ],
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: const Text('Hoàn thành chuyến'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Biên bản kiểm xe (VehicleInspection) — Trả xe (Return). Các trường không bắt buộc. Để trống thì gửi như trước, không có body.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
+                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: odo,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Số km (odometerKm)',
+                      ),
+                    ),
+                    TextField(
+                      controller: fuel,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Nhiên liệu % (fuelLevel)',
+                      ),
+                    ),
+                    TextField(
+                      controller: condition,
+                      maxLength: 100,
+                      decoration: const InputDecoration(
+                        labelText: 'Tình trạng (condition)',
+                      ),
+                    ),
+                    TextField(
+                      controller: notes,
+                      maxLength: 500,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Ghi chú (notes)',
+                      ),
+                    ),
+                    if (localError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        localError!,
+                        style: const TextStyle(color: AppColors.danger),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final parsed = _parseCompleteFields(odo.text, fuel.text);
+                    if (parsed.error != null) {
+                      setLocal(() => localError = parsed.error);
+                      return;
+                    }
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('Hoàn thành'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    final odoText = odo.text;
+    final fuelText = fuel.text;
+    final conditionText = condition.text;
+    final notesText = notes.text;
+    odo.dispose();
+    fuel.dispose();
+    condition.dispose();
+    notes.dispose();
+    if (ok != true || !mounted) return;
+    final parsed = _parseCompleteFields(odoText, fuelText);
+    if (parsed.error != null) return;
+    await _run(
+      () => widget.api.completeTrip(
+        aid,
+        odometerKm: parsed.odometerKm,
+        fuelLevel: parsed.fuelLevel,
+        condition: conditionText,
+        notes: notesText,
       ),
     );
-    if (ok == true) {
-      await _run(() => widget.api.completeTrip(aid));
+  }
+
+  ({double? odometerKm, double? fuelLevel, String? error}) _parseCompleteFields(
+    String odoRaw,
+    String fuelRaw,
+  ) {
+    double? odometerKm;
+    double? fuelLevel;
+    final odo = odoRaw.trim().replaceAll(',', '.');
+    if (odo.isNotEmpty) {
+      odometerKm = double.tryParse(odo);
+      if (odometerKm == null || odometerKm < 0) {
+        return (
+          odometerKm: null,
+          fuelLevel: null,
+          error: 'Số km không hợp lệ.',
+        );
+      }
     }
+    final fuel = fuelRaw.trim().replaceAll(',', '.');
+    if (fuel.isNotEmpty) {
+      fuelLevel = double.tryParse(fuel);
+      if (fuelLevel == null || fuelLevel < 0 || fuelLevel > 100) {
+        return (
+          odometerKm: null,
+          fuelLevel: null,
+          error: 'Nhiên liệu phải từ 0 đến 100.',
+        );
+      }
+    }
+    return (odometerKm: odometerKm, fuelLevel: fuelLevel, error: null);
   }
 
   @override

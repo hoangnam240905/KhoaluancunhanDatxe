@@ -169,6 +169,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 color: AppColors.primary,
               ),
             ),
+            if (b.finalAmount != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Giá chốt: ${Formatters.vnd(b.finalAmount!)}',
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+            ],
           ],
         ),
       ),

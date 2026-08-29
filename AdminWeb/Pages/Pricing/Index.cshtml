@@ -1,0 +1,35 @@
+@page
+@model AdminWeb.Pages.Pricing.IndexModel
+@{ ViewData["Title"] = "Gia loai xe"; }
+
+<h2 class="mb-3">Gia loai xe</h2>
+<div class="alert alert-info">
+    Giá này áp dụng cho đơn mới. Đơn đã đặt giữ nguyên snapshot.
+</div>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ma</th><th>Loai</th><th>Ngay (TX)</th><th>Km (TX)</th>
+            <th>Phi TX/ngay</th><th>Ngay tu lai</th><th>Km gom/ngay</th>
+            <th>Km vuot</th><th>Coc TX</th><th>Coc tu lai</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var t in Model.Types)
+    {
+        <tr>
+            <td>#@t.TypeId</td>
+            <td>@t.TypeName</td>
+            <td>@t.PricePerDay.ToString("N0")</td>
+            <td>@t.PricePerKm.ToString("N0")</td>
+            <td>@t.DriverFeePerDay.ToString("N0")</td>
+            <td>@t.SelfDrivePricePerDay.ToString("N0")</td>
+            <td>@t.SelfDriveIncludedKmPerDay.ToString("N0")</td>
+            <td>@t.SelfDriveExtraKmPrice.ToString("N0")</td>
+            <td>@t.WithDriverDepositAmount.ToString("N0")</td>
+            <td>@t.SelfDriveDepositAmount.ToString("N0")</td>
+            <td><a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sua gia</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

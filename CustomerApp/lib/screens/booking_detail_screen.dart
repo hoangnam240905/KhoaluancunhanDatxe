@@ -177,19 +177,178 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     'Km dự kiến',
                     '${b.estimatedDistance!.toStringAsFixed(0)} km',
                   ),
-                _row('Tổng tiền', Formatters.vnd(b.totalAmount)),
+                _row('Giá lúc đặt', Formatters.vnd(b.totalAmount)),
+                if (b.finalAmount != null)
+                  _row('Giá chốt', Formatters.vnd(b.finalAmount!)),
                 if (b.notes != null && b.notes!.isNotEmpty)
                   _row('Ghi chú', b.notes!),
               ],
             ),
           ),
+          if (b.hasPriceSnapshot) ...[
+            const SizedBox(height: 12),
+            AppCard(child: _snapshotSection(b)),
+          ],
           const SizedBox(height: 12),
           AppCard(child: _assignmentSection(b)),
+          const SizedBox(height: 12),
+          AppCard(child: _feesSection(b)),
+          const SizedBox(height: 12),
+          AppCard(child: _inspectionsSection(b)),
           const SizedBox(height: 12),
           _paymentSection(),
           const SizedBox(height: 12),
           _reviewSection(),
         ],
+      ),
+    );
+  }
+
+  Widget _snapshotSection(Booking b) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Đơn giá lúc đặt',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        if (b.quotedPricePerDay != null)
+          _row('Giá thuê/ngày', Formatters.vnd(b.quotedPricePerDay!)),
+        if (b.quotedDays != null) _row('Số ngày', '${b.quotedDays}'),
+        if (b.quotedPricePerKm != null)
+          _row('Giá km', Formatters.vnd(b.quotedPricePerKm!)),
+        if (!b.isSelfDrive && b.quotedDriverFeePerDay != null)
+          _row('Phí tài xế/ngày', Formatters.vnd(b.quotedDriverFeePerDay!)),
+        if (b.isSelfDrive && b.quotedSelfDriveIncludedKmPerDay != null)
+          _row(
+            'Km miễn phí/ngày',
+            '${b.quotedSelfDriveIncludedKmPerDay!.toStringAsFixed(0)} km',
+          ),
+        if (b.isSelfDrive && b.quotedSelfDriveExtraKmPrice != null)
+          _row(
+            'Đơn giá km vượt',
+            Formatters.vnd(b.quotedSelfDriveExtraKmPrice!),
+          ),
+        if (b.quotedDepositAmount != null)
+          _row('Cọc lúc đặt', Formatters.vnd(b.quotedDepositAmount!)),
+        const SizedBox(height: 4),
+        const Text(
+          'Số liệu máy chủ lúc đặt. Ứng dụng không tính lại từ bảng giá hiện tại.',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _feesSection(Booking b) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Phí phát sinh',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        if (b.fees.isEmpty)
+          const Text(
+            'Không có phí phát sinh.',
+            style: TextStyle(color: AppColors.muted),
+          )
+        else ...[
+          ...b.fees.map(_feeTile),
+          if (b.totalFees != null)
+            _row('Tổng phí (server)', Formatters.vnd(b.totalFees!)),
+          if (b.finalBaseAmount != null)
+            _row('Giá chốt trước phí', Formatters.vnd(b.finalBaseAmount!)),
+          const SizedBox(height: 4),
+          const Text(
+            'Km vượt đã nằm trong giá chốt. Không cộng ExtraKm thêm một lần nữa.',
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _feeTile(BookingFee fee) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            _row('Loại', Formatters.feeTypeLabel(fee.feeType)),
+            _row('Số tiền', Formatters.vnd(fee.amount)),
+            if (fee.description != null && fee.description!.isNotEmpty)
+              _row('Mô tả', fee.description!),
+            if (fee.isIncludedInBase)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Đã gồm trong giá chốt — không cộng thêm.',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _inspectionsSection(Booking b) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Biên bản kiểm xe',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        if (b.inspections.isEmpty)
+          const Text(
+            'Chưa có biên bản kiểm xe.',
+            style: TextStyle(color: AppColors.muted),
+          )
+        else
+          ...b.inspections.map(_inspectionTile),
+      ],
+    );
+  }
+
+  Widget _inspectionTile(VehicleInspection i) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            _row('Loại', Formatters.inspectionTypeLabel(i.inspectionType)),
+            _row('Thời điểm', Formatters.dt(i.actualAt)),
+            if (i.odometerKm != null)
+              _row('Số km', '${i.odometerKm!.toStringAsFixed(0)} km'),
+            if (i.fuelLevel != null)
+              _row('Nhiên liệu', '${i.fuelLevel!.toStringAsFixed(0)}%'),
+            if (i.condition != null && i.condition!.isNotEmpty)
+              _row('Tình trạng', i.condition!),
+            if (i.notes != null && i.notes!.isNotEmpty) _row('Ghi chú', i.notes!),
+          ],
+        ),
       ),
     );
   }

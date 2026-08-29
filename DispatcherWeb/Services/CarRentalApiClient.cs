@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DispatcherWeb.Models;
 
 namespace DispatcherWeb.Services;
@@ -8,6 +9,11 @@ namespace DispatcherWeb.Services;
 public class CarRentalApiClient(HttpClient http, AuthSession auth)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions WriteJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string url)
     {
@@ -62,20 +68,39 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id)
+    public async Task<BookingResponse?> GetBookingAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id, VehicleConditionRequest? condition = null)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/handover");
+        ApplyConditionBody(request, condition);
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> CompleteSelfDriveAsync(int id)
+    public async Task<(BookingResponse? Data, string? Error)> CompleteSelfDriveAsync(int id, VehicleConditionRequest? condition = null)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/complete");
+        ApplyConditionBody(request, condition);
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
+    private static void ApplyConditionBody(HttpRequestMessage request, VehicleConditionRequest? condition)
+    {
+        var body = condition?.ForApi();
+        if (body is null || !body.HasValues)
+            return;
+        request.Content = JsonContent.Create(body, options: WriteJson);
     }
 
     public async Task<List<DriverResponse>> GetDriversAsync(string? status = "Available")

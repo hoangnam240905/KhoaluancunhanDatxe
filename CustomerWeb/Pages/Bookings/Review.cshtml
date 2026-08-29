@@ -17,6 +17,8 @@ else
     {
         <div class="alert alert-danger">@Model.ErrorMessage</div>
     }
+    @if (Model.CanReview)
+    {
     <form method="post" class="col-md-6">
         <div class="mb-3">
             <label asp-for="Input.Rating" class="form-label">Diem (1-5 sao)</label>
@@ -33,4 +35,9 @@ else
         </div>
         <button type="submit" class="btn btn-warning">Gui danh gia</button>
     </form>
+    }
+    else
+    {
+        <a asp-page="Index" class="btn btn-outline-secondary">Quay lai danh sach</a>
+    }
 }
