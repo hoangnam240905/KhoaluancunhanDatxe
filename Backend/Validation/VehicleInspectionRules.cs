@@ -21,7 +21,9 @@ public static class VehicleInspectionRules
         decimal? fuelLevel,
         string? condition,
         string? notes,
-        out string resolvedType)
+        out string resolvedType,
+        string? exteriorCondition = null,
+        string? technicalCondition = null)
     {
         if (!VehicleInspectionTypes.TryResolve(inspectionType, out resolvedType))
             return InvalidType;
@@ -37,6 +39,10 @@ public static class VehicleInspectionRules
 
         if (notes is { Length: > NotesMaxLength })
             return NotesTooLong;
+
+        if (exteriorCondition is { Length: > ConditionMaxLength } ||
+            technicalCondition is { Length: > ConditionMaxLength })
+            return ConditionTooLong;
 
         return null;
     }

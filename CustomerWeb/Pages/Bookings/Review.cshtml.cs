@@ -21,6 +21,7 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
         [Required, Range(1, 5)]
         public byte Rating { get; set; } = 5;
 
+        [MaxLength(500, ErrorMessage = "Nhận xét không được vượt quá 500 ký tự.")]
         public string? Comment { get; set; }
     }
 
@@ -53,6 +54,8 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
             return Page();
         }
         if (!ModelState.IsValid) return Page();
+        ApplyCommentRule();
+        if (!ModelState.IsValid) return Page();
 
         var (success, error) = await api.CreateReviewAsync(id, new CreateReviewRequest(Input.Rating, Input.Comment));
         if (!success)
@@ -63,5 +66,16 @@ public class ReviewModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
         SuccessMessage = "Cam on ban da danh gia!";
         return Page();
+    }
+
+    private void ApplyCommentRule()
+    {
+        var comment = string.IsNullOrWhiteSpace(Input.Comment) ? null : Input.Comment.Trim();
+        if (Input.Rating is >= 1 and <= 3 && comment is null)
+            ModelState.AddModelError("Input.Comment", "Vui lòng nhập nhận xét khi đánh giá từ 1 đến 3 sao.");
+        else if (comment is { Length: > 500 })
+            ModelState.AddModelError("Input.Comment", "Nhận xét không được vượt quá 500 ký tự.");
+        else
+            Input.Comment = comment;
     }
 }

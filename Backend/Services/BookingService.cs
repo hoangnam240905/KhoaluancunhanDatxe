@@ -2,13 +2,15 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.Entities;
+using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
 
-public class BookingService(CarRentalDbContext db, PricingService pricing)
+public class BookingService(CarRentalDbContext db, PricingService pricing, IRealtimePublisher? realtime = null)
 {
-    public async Task<BookingResponse?> CreateBookingAsync(int customerId, CreateBookingRequest request)
+    public async Task<BookingResponse?> CreateBookingAsync(
+        int customerId, CreateBookingRequest request, bool fromRecommendation = false)
     {
         if (request.EndDate <= request.StartDate)
             return null;
@@ -26,6 +28,16 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             request.StartDate,
             request.EndDate,
             request.EstimatedDistance);
+
+        int? intentVehicleId = null;
+        if (request.VehicleId is int vehicleId and > 0)
+        {
+            var vehicle = await db.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == vehicleId);
+            if (vehicle is null) return null;
+            if (vehicle.TypeId != request.VehicleTypeId) return null;
+            if (vehicle.Status == VehicleStatuses.Inactive) return null;
+            intentVehicleId = vehicle.VehicleId;
+        }
 
         var booking = new Booking
         {
@@ -50,7 +62,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             QuotedDepositAmount = quote.DepositAmount,
             Status = BookingStatuses.Pending,
             RentalMode = rentalMode,
-            AssignedVehicleId = null,
+            AssignedVehicleId = intentVehicleId,
+            SourceRecommended = fromRecommendation,
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow
         };
@@ -59,6 +72,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
         await db.SaveChangesAsync();
 
         await AddStatusHistoryAsync(booking.BookingId, null, BookingStatuses.Pending, customerId, "Khach tao don dat xe");
+        await RealtimeNotify.BookingStatusChanged(
+            realtime, customerId, booking.BookingId, booking.Status, booking.AssignedVehicleId);
         return await GetBookingByIdAsync(booking.BookingId);
     }
 
@@ -134,34 +149,92 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
         return booking is null ? null : MapToResponse(booking);
     }
 
-    public async Task<BookingResponse?> UpdateStatusAsync(int bookingId, string newStatus, int changedBy, string? note)
+    public Task<(BookingResponse? Data, string? Error, int StatusCode)> UpdateStatusAsync(
+        int bookingId, string newStatus, int changedBy, string? note)
+        => SqliteWriteLock.ExecuteAsync(db, () =>
+            ChangeStatusAsync(bookingId, newStatus, changedBy, note, patch: true));
+
+    public Task<(BookingResponse? Data, string? Error, int StatusCode)> ConfirmPendingAsync(
+        int bookingId, int dispatcherId, string? note)
+        => SqliteWriteLock.ExecuteAsync(db, () => ChangeStatusAsync(
+            bookingId, BookingStatuses.Confirmed, dispatcherId, note, patch: false));
+
+    private async Task<(BookingResponse? Data, string? Error, int StatusCode)> ChangeStatusAsync(
+        int bookingId, string newStatus, int changedBy, string? note, bool patch)
     {
         var booking = await db.Bookings.FindAsync(bookingId);
-        if (booking is null) return null;
+        if (booking is null)
+            return (null, "Không tìm thấy đơn.", StatusCodes.Status404NotFound);
+
+        var allowed = patch
+            ? BookingStateTransitionRules.CanPatch(booking.Status, newStatus)
+            : BookingStateTransitionRules.CanConfirm(booking.Status)
+              && newStatus == BookingStatuses.Confirmed;
+
+        if (!allowed)
+            return (null, BookingStateTransitionRules.InvalidTransition, StatusCodes.Status400BadRequest);
 
         var oldStatus = booking.Status;
+        var heldVehicleId = booking.AssignedVehicleId;
         booking.Status = newStatus;
         booking.UpdatedAt = DateTime.UtcNow;
+        if (newStatus == BookingStatuses.Cancelled)
+            await ReleaseHeldVehicleAsync(booking);
 
         await AddStatusHistoryAsync(bookingId, oldStatus, newStatus, changedBy, note);
+        Contract? voided = null;
+        if (newStatus == BookingStatuses.Cancelled)
+        {
+            voided = await db.Contracts.FirstOrDefaultAsync(c =>
+                c.BookingId == bookingId && c.Status != ContractStatuses.Voided);
+            if (voided is not null)
+                voided.Status = ContractStatuses.Voided;
+        }
+
         await db.SaveChangesAsync();
 
-        return await GetBookingByIdAsync(bookingId);
+        var trip = await db.TripAssignments.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.BookingId == bookingId);
+        await RealtimeNotify.BookingStatusChanged(
+            realtime,
+            booking.CustomerId,
+            booking.BookingId,
+            booking.Status,
+            booking.AssignedVehicleId ?? heldVehicleId,
+            trip?.DriverId);
+        if (newStatus == BookingStatuses.Cancelled && heldVehicleId is int releasedId)
+        {
+            var released = await db.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.VehicleId == releasedId);
+            if (released is not null)
+                await RealtimeNotify.VehicleStatusChanged(
+                    realtime, released.VehicleId, released.Status, booking.BookingId, booking.CustomerId, trip?.DriverId);
+        }
+        if (voided is not null)
+            await RealtimeNotify.ContractStatusChanged(
+                realtime, booking.CustomerId, booking.BookingId, voided.ContractId, voided.Status);
+
+        return (await GetBookingByIdAsync(bookingId), null, StatusCodes.Status200OK);
     }
 
-    public async Task<ReviewResponse?> CreateReviewAsync(int bookingId, int customerId, CreateReviewRequest request)
+    public async Task<(ReviewResponse? Data, string? Error)> CreateReviewAsync(
+        int bookingId, int customerId, CreateReviewRequest request)
     {
-        if (request.Rating is < 1 or > 5) return null;
+        if (request.Rating is < 1 or > 5)
+            return (null, "Không thể đánh giá đơn này.");
+
+        var commentError = ReviewRules.ValidateComment(request.Rating, request.Comment, out var comment);
+        if (commentError is not null)
+            return (null, commentError);
 
         var booking = await db.Bookings
             .Include(b => b.TripAssignment)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId);
 
         if (booking is null || booking.Status != BookingStatuses.Completed || booking.TripAssignment is null)
-            return null;
+            return (null, "Không thể đánh giá đơn này.");
 
         if (await db.Reviews.AnyAsync(r => r.BookingId == bookingId))
-            return null;
+            return (null, "Không thể đánh giá đơn này.");
 
         var review = new Review
         {
@@ -169,7 +242,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
             CustomerId = customerId,
             DriverId = booking.TripAssignment.DriverId,
             Rating = request.Rating,
-            Comment = request.Comment,
+            Comment = comment,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -185,7 +258,27 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
 
         await db.SaveChangesAsync();
 
-        return new ReviewResponse(review.ReviewId, review.BookingId, review.Rating, review.Comment, review.CreatedAt);
+        return (new ReviewResponse(review.ReviewId, review.BookingId, review.Rating, review.Comment, review.CreatedAt), null);
+    }
+
+    private async Task ReleaseHeldVehicleAsync(Booking booking)
+    {
+        var vehicleId = booking.AssignedVehicleId;
+        booking.AssignedVehicleId = null;
+        if (vehicleId is not int vid)
+            return;
+
+        var vehicle = await db.Vehicles.FindAsync(vid);
+        if (vehicle is null || vehicle.Status != VehicleStatuses.Rented)
+            return;
+
+        var stillRented = await db.Bookings.AnyAsync(b =>
+            b.BookingId != booking.BookingId
+            && (b.Status == BookingStatuses.Assigned || b.Status == BookingStatuses.InProgress)
+            && (b.AssignedVehicleId == vid
+                || (b.TripAssignment != null && b.TripAssignment.VehicleId == vid)));
+        if (!stillRented)
+            vehicle.Status = VehicleStatuses.Available;
     }
 
     private async Task AddStatusHistoryAsync(int bookingId, string? oldStatus, string newStatus, int? changedBy, string? note)
@@ -226,7 +319,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing)
                 b.TripAssignment.AssignedAt);
         }
 
-        if (rentalMode == RentalModes.SelfDrive && b.AssignedVehicle is not null)
+        if (b.AssignedVehicle is not null)
         {
             assignedVehicle = new AssignedVehicleResponse(
                 b.AssignedVehicle.VehicleId,

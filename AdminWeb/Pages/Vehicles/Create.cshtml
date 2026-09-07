@@ -16,5 +16,10 @@
     <div class="col-md-4"><label class="form-label">Nam</label><input asp-for="Input.Year" class="form-control" type="number" /></div>
     <div class="col-md-6"><label class="form-label">Mau</label><input asp-for="Input.Color" class="form-control" /></div>
     <div class="col-md-6"><label class="form-label">Km hien tai</label><input asp-for="Input.CurrentKm" class="form-control" type="number" /></div>
+    <div class="col-12"><h5 class="mt-2 mb-0">Giấy tờ lưu hành</h5></div>
+    <div class="col-md-6"><label class="form-label">So giay dang ky</label><input asp-for="Input.RegistrationNumber" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Han dang ky</label><input asp-for="Input.RegistrationExpiryDate" class="form-control" type="date" /></div>
+    <div class="col-md-6"><label class="form-label">Han dang kiem</label><input asp-for="Input.InspectionExpiryDate" class="form-control" type="date" /></div>
+    <div class="col-md-6"><label class="form-label">Han bao hiem</label><input asp-for="Input.InsuranceExpiryDate" class="form-control" type="date" /></div>
     <div class="col-12"><button type="submit" class="btn btn-primary">Luu</button> <a asp-page="Index" class="btn btn-secondary">Huy</a></div>
 </form>

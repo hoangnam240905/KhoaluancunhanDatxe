@@ -29,6 +29,13 @@ class _CustomerShellState extends State<CustomerShell> {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    if (widget.isLoggedIn) widget.api.connectRealtime();
+  }
+
+  @override
+  void dispose() {
+    widget.api.disconnectRealtime();
+    super.dispose();
   }
 
   @override

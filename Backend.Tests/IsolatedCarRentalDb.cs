@@ -10,7 +10,11 @@ internal sealed class IsolatedCarRentalDb : IDisposable
     public string Path { get; }
     public CarRentalDbContext Db { get; }
 
-    public IsolatedCarRentalDb()
+    public IsolatedCarRentalDb() : this(seed: true)
+    {
+    }
+
+    public IsolatedCarRentalDb(bool seed)
     {
         Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"crs-admin-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<CarRentalDbContext>()
@@ -18,6 +22,15 @@ internal sealed class IsolatedCarRentalDb : IDisposable
             .Options;
         Db = new CarRentalDbContext(options);
         Db.Database.EnsureCreated();
+        Db.EnsureSqliteMaintenanceRecordsTable();
+        Db.EnsureSqliteBookingRecommendationColumn();
+        Db.EnsureSqliteContractsTable();
+        Db.EnsureSqliteInspectionConditionColumns();
+        Db.EnsureSqliteIncidentReportsTable();
+        Db.EnsureSqliteVehicleLegalColumns();
+        Db.EnsureSqliteLicensePlateUniqueIndex();
+        if (!seed)
+            return;
         DbSeeder.Seed(Db);
         AlignLiveLikeBookings(Db);
     }
@@ -50,6 +63,30 @@ internal sealed class IsolatedCarRentalDb : IDisposable
             b2.FinalAmount = null;
 
         db.SaveChanges();
+    }
+
+    public void ClearMaintenanceRecords(int? vehicleId = null)
+    {
+        var rows = vehicleId is int id
+            ? Db.MaintenanceRecords.Where(m => m.VehicleId == id)
+            : Db.MaintenanceRecords;
+        Db.MaintenanceRecords.RemoveRange(rows);
+        Db.SaveChanges();
+    }
+
+    public void SetLastCompletedMaintenance(int vehicleId, DateTime completedUtc, int odometer)
+    {
+        ClearMaintenanceRecords(vehicleId);
+        Db.MaintenanceRecords.Add(new MaintenanceRecord
+        {
+            VehicleId = vehicleId,
+            MaintenanceType = MaintenanceTypes.Scheduled,
+            ScheduledDate = completedUtc,
+            CompletedDate = completedUtc,
+            OdometerAtMaintenance = odometer,
+            CreatedAt = DateTime.UtcNow
+        });
+        Db.SaveChanges();
     }
 
     public Booking AddDepositBooking(decimal deposit)

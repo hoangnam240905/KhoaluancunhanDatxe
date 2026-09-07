@@ -1,0 +1,18 @@
+@page "/Admin/Drivers/Edit/{id:int}"
+@model PortalWeb.Pages.Admin.Drivers.EditModel
+@{ ViewData["Title"] = "Sửa tài xế"; }
+<h2 class="mb-3">Sửa tài xế #@Model.DriverId</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Họ tên</label><input asp-for="Input.FullName" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Số điện thoại</label><input asp-for="Input.Phone" class="form-control" /></div>
+    <div class="col-md-6">
+        <label class="form-label">Trạng thái</label>
+        <select asp-for="Input.Status" class="form-select">
+            <option>Available</option>
+            <option>Busy</option>
+            <option>Offline</option>
+        </select>
+    </div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Lưu</button> <a asp-page="Index" class="btn btn-secondary">Hủy</a></div>
+</form>

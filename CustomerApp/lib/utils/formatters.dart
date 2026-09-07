@@ -127,6 +127,19 @@ class Formatters {
     }
   }
 
+  static String contractStatusLabel(String status) {
+    switch (status) {
+      case 'Issued':
+        return 'Đã lập';
+      case 'Signed':
+        return 'Đã ký (mô phỏng)';
+      case 'Voided':
+        return 'Đã hủy hiệu lực';
+      default:
+        return status;
+    }
+  }
+
   static Color statusColor(String status) {
     switch (status) {
       case 'Completed':

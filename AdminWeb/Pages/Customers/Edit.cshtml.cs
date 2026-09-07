@@ -1,0 +1,61 @@
+using System.ComponentModel.DataAnnotations;
+using AdminWeb.Models;
+using AdminWeb.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace AdminWeb.Pages.Customers;
+
+public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
+{
+    [BindProperty] public InputModel Input { get; set; } = new();
+    public string? ErrorMessage { get; set; }
+    public int CustomerId { get; set; }
+
+    public class InputModel
+    {
+        [Required(ErrorMessage = "Vui lòng nhập họ và tên.")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, RegularExpression(@"^0\d{9}$", ErrorMessage = "Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0).")]
+        public string Phone { get; set; } = string.Empty;
+
+        public string? Address { get; set; }
+        public string? IdNumber { get; set; }
+        public DateOnly? DateOfBirth { get; set; }
+    }
+
+    public async Task<IActionResult> OnGetAsync(int id)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        CustomerId = id;
+        var c = await api.GetAdminCustomerAsync(id);
+        if (c is null) return NotFound();
+        Input = new InputModel
+        {
+            FullName = c.FullName,
+            Email = c.Email,
+            Phone = c.Phone ?? "",
+            Address = c.Address,
+            IdNumber = c.IdNumber,
+            DateOfBirth = c.DateOfBirth
+        };
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync(int id)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        CustomerId = id;
+        if (!ModelState.IsValid) return Page();
+
+        var (data, error) = await api.UpdateAdminCustomerAsync(id,
+            new UpdateAdminCustomerRequest(Input.FullName, Input.Email, Input.Phone,
+                Input.Address, Input.IdNumber, Input.DateOfBirth));
+        if (data is null) { ErrorMessage = error; return Page(); }
+        return RedirectToPage("Index");
+    }
+}

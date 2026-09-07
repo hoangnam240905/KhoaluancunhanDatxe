@@ -21,19 +21,19 @@
         <label class="form-label">Trạng thái</label>
         <select name="status" class="form-select">
             <option value="">Tất cả</option>
-            <option value="Pending" @(Model.FilterStatus == "Pending" ? "selected" : null)>Pending</option>
-            <option value="Paid" @(Model.FilterStatus == "Paid" ? "selected" : null)>Paid</option>
-            <option value="Failed" @(Model.FilterStatus == "Failed" ? "selected" : null)>Failed</option>
-            <option value="Refunded" @(Model.FilterStatus == "Refunded" ? "selected" : null)>Refunded</option>
+            <option value="Pending" selected="@(Model.FilterStatus == "Pending" ? "selected" : null)">Pending</option>
+            <option value="Paid" selected="@(Model.FilterStatus == "Paid" ? "selected" : null)">Paid</option>
+            <option value="Failed" selected="@(Model.FilterStatus == "Failed" ? "selected" : null)">Failed</option>
+            <option value="Refunded" selected="@(Model.FilterStatus == "Refunded" ? "selected" : null)">Refunded</option>
         </select>
     </div>
     <div class="col-md-3">
         <label class="form-label">Loại</label>
         <select name="paymentType" class="form-select">
             <option value="">Tất cả</option>
-            <option value="Deposit" @(Model.FilterPaymentType == "Deposit" ? "selected" : null)>Deposit</option>
-            <option value="Balance" @(Model.FilterPaymentType == "Balance" ? "selected" : null)>Balance</option>
-            <option value="Refund" @(Model.FilterPaymentType == "Refund" ? "selected" : null)>Refund</option>
+            <option value="Deposit" selected="@(Model.FilterPaymentType == "Deposit" ? "selected" : null)">Deposit</option>
+            <option value="Balance" selected="@(Model.FilterPaymentType == "Balance" ? "selected" : null)">Balance</option>
+            <option value="Refund" selected="@(Model.FilterPaymentType == "Refund" ? "selected" : null)">Refund</option>
         </select>
     </div>
     <div class="col-md-4">

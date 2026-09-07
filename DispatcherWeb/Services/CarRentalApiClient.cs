@@ -41,6 +41,14 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
     }
 
+    public async Task<(bool Success, string? Error)> ChangePasswordAsync(string oldPassword, string newPassword)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/auth/change-password");
+        request.Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword));
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
+    }
+
     public async Task<List<BookingResponse>> GetBookingsAsync(string? status = null)
     {
         var url = string.IsNullOrEmpty(status) ? "/api/bookings" : $"/api/bookings?status={Uri.EscapeDataString(status)}";
@@ -59,13 +67,32 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> AssignTripAsync(int id, AssignTripRequest body)
+    public async Task<(BookingResponse? Data, string? Error, AssignConflictResponse? Conflict)> AssignTripAsync(int id, AssignTripRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/assign");
         request.Content = JsonContent.Create(body);
         var response = await http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
-        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null, null);
+
+        var json = await response.Content.ReadAsStringAsync();
+        try
+        {
+            var conflict = JsonSerializer.Deserialize<AssignConflictResponse>(json, JsonOptions);
+            if (conflict is not null && !string.IsNullOrEmpty(conflict.ConflictType))
+                return (null, conflict.Message, conflict);
+        }
+        catch { /* not a conflict payload */ }
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<ApiError>(json, JsonOptions);
+            if (!string.IsNullOrEmpty(error?.Message))
+                return (null, error.Message, null);
+        }
+        catch { }
+
+        return (null, $"Loi API ({(int)response.StatusCode})", null);
     }
 
     public async Task<BookingResponse?> GetBookingAsync(int id)
@@ -121,5 +148,29 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return response.IsSuccessStatusCode
             ? await response.Content.ReadFromJsonAsync<List<VehicleResponse>>(JsonOptions) ?? []
             : [];
+    }
+
+    public async Task<(List<IncidentResponse>? Data, string? Error)> GetIncidentsAsync(
+        int? bookingId = null, string? status = null)
+    {
+        var query = new List<string>();
+        if (bookingId is not null) query.Add($"bookingId={bookingId.Value}");
+        if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
+        var url = query.Count == 0 ? "/api/dispatch/incidents" : "/api/dispatch/incidents?" + string.Join("&", query);
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<(List<VehicleInspectionResponse>? Data, string? Error)> GetInspectionsAsync(int? bookingId = null)
+    {
+        var url = bookingId is null
+            ? "/api/dispatch/inspections"
+            : $"/api/dispatch/inspections?bookingId={bookingId.Value}";
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<VehicleInspectionResponse>>(JsonOptions) ?? [], null);
     }
 }

@@ -25,3 +25,5 @@ public record UserProfileResponse(
     string FullName,
     string? Phone,
     string Role);
+
+public record ChangePasswordRequest(string? OldPassword, string? NewPassword);

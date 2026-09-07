@@ -1,0 +1,12 @@
+@page
+@model AdminWeb.Pages.Drivers.CreateModel
+@{ ViewData["Title"] = "Them tai xe"; }
+<h2 class="mb-3">Them tai xe</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Ho ten</label><input asp-for="Input.FullName" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Email</label><input asp-for="Input.Email" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">So dien thoai</label><input asp-for="Input.Phone" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Mat khau</label><input asp-for="Input.Password" class="form-control" /></div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Tao</button> <a asp-page="Index" class="btn btn-secondary">Huy</a></div>
+</form>

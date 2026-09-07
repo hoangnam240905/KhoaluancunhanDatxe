@@ -21,6 +21,10 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         [Required] public int Year { get; set; } = DateTime.Now.Year;
         public string? Color { get; set; }
         public int CurrentKm { get; set; }
+        public string? RegistrationNumber { get; set; }
+        public DateOnly? RegistrationExpiryDate { get; set; }
+        public DateOnly? InspectionExpiryDate { get; set; }
+        public DateOnly? InsuranceExpiryDate { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -37,7 +41,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (!ModelState.IsValid) return Page();
         var (data, error) = await api.CreateVehicleAsync(new CreateVehicleRequest(
-            Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year, Input.Color, Input.CurrentKm));
+            Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year, Input.Color, Input.CurrentKm,
+            Input.RegistrationNumber, Input.RegistrationExpiryDate, Input.InspectionExpiryDate, Input.InsuranceExpiryDate));
         if (data is null) { ErrorMessage = error; return Page(); }
         return RedirectToPage("Index");
     }

@@ -13,8 +13,14 @@ public class AuthController(AuthService authService) : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
-        var result = await authService.LoginAsync(request);
-        return result is null ? Unauthorized(new { message = "Email hoặc mật khẩu không đúng." }) : Ok(result);
+        var (result, error, status) = await authService.LoginAsync(request);
+        if (result is not null)
+            return Ok(result);
+
+        if (status == StatusCodes.Status403Forbidden)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = error });
+
+        return Unauthorized(new { message = error ?? "Email hoặc mật khẩu không đúng." });
     }
 
     [HttpPost("register")]
@@ -33,5 +39,16 @@ public class AuthController(AuthService authService) : ControllerBase
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var profile = await authService.GetProfileAsync(userId);
         return profile is null ? NotFound() : Ok(profile);
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (ok, error) = await authService.ChangePasswordAsync(userId, request);
+        return ok
+            ? Ok(new { message = "Đã đổi mật khẩu." })
+            : BadRequest(new { message = error ?? "Không thể đổi mật khẩu." });
     }
 }

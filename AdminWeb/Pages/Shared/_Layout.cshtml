@@ -1,4 +1,5 @@
 @inject AdminWeb.Services.AuthSession Auth
+@inject IConfiguration Config
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -17,7 +18,12 @@
                 <div>
                     <a class="nav-link d-inline text-white" asp-page="/Vehicles/Index">Xe</a>
                     <a class="nav-link d-inline text-white" asp-page="/Pricing/Index">Gia</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Drivers/Index">Tai xe</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Customers/Index">Khach</a>
                     <a class="nav-link d-inline text-white" asp-page="/Payments/Index">Thanh toan</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Contracts/Index">Hop dong</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Inspections/Index">Kiem xe</a>
+                    <a class="nav-link d-inline text-white" asp-page="/Incidents/Index">Su co</a>
                     <a class="nav-link d-inline text-white" asp-page="/Bookings/Index">Don dat</a>
                     <span class="text-white-50 ms-2">@Auth.FullName</span>
                     <a class="btn btn-sm btn-outline-light ms-2" asp-page="/Account/Logout">Dang xuat</a>
@@ -27,6 +33,16 @@
     }
     <div class="container pb-4">@RenderBody()</div>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+    {
+        <script>
+            window.carRentalRealtime = {
+                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+            };
+        </script>
+        <script src="~/js/realtime.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

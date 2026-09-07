@@ -22,9 +22,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<VehicleType> _types = [];
+  List<VehicleTypeRecommendation> _recommended = [];
   bool _loading = true;
+  bool _recommendLoading = false;
   String? _error;
+  String? _recommendError;
   String _rentalMode = 'WithDriver';
+  DateTime _start = DateTime.now().add(const Duration(days: 1));
+  DateTime _end = DateTime.now().add(const Duration(days: 2));
+  final _seats = TextEditingController();
+  final _priceMax = TextEditingController();
 
   @override
   void initState() {
@@ -57,7 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openBooking({VehicleType? type, PopularRoute? route}) {
+  void _openBooking({
+    VehicleType? type,
+    PopularRoute? route,
+    DateTime? start,
+    DateTime? end,
+    bool fromRecommendation = false,
+  }) {
     _requireLoginThen(() {
       Navigator.push(
         context,
@@ -70,6 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
             pickup: route?.from,
             dropoff: route?.to,
             distanceKm: route?.distanceKm.toDouble(),
+            initialStart: start,
+            initialEnd: end,
+            fromRecommendation: fromRecommendation,
           ),
         ),
       );
@@ -169,6 +185,30 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           const Text(
+            'Gợi ý cho bạn',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Rule-based theo đánh giá, lịch sử đặt và xe còn lịch trống.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          _recommendForm(),
+          if (_recommendError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(_recommendError!, style: const TextStyle(color: Colors.red)),
+            ),
+          if (_recommendLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: AppLoading(message: 'Đang gợi ý...'),
+            )
+          else
+            ..._recommended.map(_recommendCard),
+          const SizedBox(height: 24),
+          const Text(
             'Chọn loại xe',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
@@ -206,6 +246,147 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           ...PortalContent.popularRoutes.map(_routeCard),
         ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _seats.dispose();
+    _priceMax.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickStart() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _start,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null) return;
+    setState(() => _start = DateTime(date.year, date.month, date.day, 8));
+  }
+
+  Future<void> _pickEnd() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _end,
+      firstDate: _start,
+      lastDate: DateTime.now().add(const Duration(days: 400)),
+    );
+    if (date == null) return;
+    setState(() => _end = DateTime(date.year, date.month, date.day, 18));
+  }
+
+  Future<void> _loadRecommended() async {
+    setState(() {
+      _recommendLoading = true;
+      _recommendError = null;
+    });
+    try {
+      final seats = int.tryParse(_seats.text.trim());
+      final price = double.tryParse(_priceMax.text.trim());
+      _recommended = await widget.api.getRecommended(
+        startDate: _start,
+        endDate: _end,
+        seats: seats,
+        priceMax: price,
+      );
+      if (_recommended.isEmpty) {
+        _recommendError = 'Không có loại xe khả dụng trong khoảng thời gian này.';
+      }
+    } catch (e) {
+      _recommendError = e.toString().replaceFirst('Exception: ', '');
+      _recommended = [];
+    } finally {
+      if (mounted) setState(() => _recommendLoading = false);
+    }
+  }
+
+  Widget _recommendForm() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _pickStart,
+                child: Text('Từ ${Formatters.dt(_start)}'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _pickEnd,
+                child: Text('Đến ${Formatters.dt(_end)}'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _seats,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Số chỗ tối thiểu',
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _priceMax,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Giá/ngày tối đa',
+                  isDense: true,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _loadRecommended,
+            child: const Text('Gợi ý'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _recommendCard(VehicleTypeRecommendation item) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.typeName, style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(
+              'Điểm ${item.score.toStringAsFixed(2)} · Rating ${item.avgRating.toStringAsFixed(2)} · ${item.availableCount} xe còn lịch',
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () => _openBooking(
+                type: item.toVehicleType(),
+                start: _start,
+                end: _end,
+                fromRecommendation: true,
+              ),
+              child: Text(widget.isLoggedIn ? 'Chọn và đặt' : 'Đăng nhập để đặt'),
+            ),
+          ],
+        ),
       ),
     );
   }

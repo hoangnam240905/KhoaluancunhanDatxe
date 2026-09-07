@@ -7,6 +7,7 @@ namespace PortalWeb.Pages.Admin.Vehicles;
 public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
 {
     public List<VehicleResponse> Vehicles { get; set; } = [];
+    public HashSet<int> AlertVehicleIds { get; set; } = [];
     public string? Message { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -14,6 +15,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var denied = RequireRole(auth, "Admin");
         if (denied is not null) return denied;
         Vehicles = await api.GetVehiclesAsync();
+        AlertVehicleIds = (await api.GetMaintenanceAlertsAsync()).Select(a => a.VehicleId).ToHashSet();
         return Page();
     }
 
@@ -24,6 +26,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var (ok, error) = await api.DeleteVehicleAsync(id);
         Message = ok ? "Đã xóa." : error;
         Vehicles = await api.GetVehiclesAsync();
+        AlertVehicleIds = (await api.GetMaintenanceAlertsAsync()).Select(a => a.VehicleId).ToHashSet();
         return Page();
     }
 }

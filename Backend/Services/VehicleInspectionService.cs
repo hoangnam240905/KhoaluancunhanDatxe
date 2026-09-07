@@ -15,10 +15,13 @@ public class VehicleInspectionService(CarRentalDbContext db)
         decimal? odometerKm,
         decimal? fuelLevel,
         string? condition,
-        string? notes)
+        string? notes,
+        string? exteriorCondition = null,
+        string? technicalCondition = null)
     {
         var error = VehicleInspectionRules.Validate(
-            inspectionType, odometerKm, fuelLevel, condition, notes, out var resolvedType);
+            inspectionType, odometerKm, fuelLevel, condition, notes, out var resolvedType,
+            exteriorCondition, technicalCondition);
         if (error is not null)
             return (null, error);
 
@@ -67,6 +70,8 @@ public class VehicleInspectionService(CarRentalDbContext db)
         }
 
         var now = DateTime.UtcNow;
+        var exterior = TrimOrNull(exteriorCondition) ?? TrimOrNull(condition);
+        var technical = TrimOrNull(technicalCondition);
         var inspection = new VehicleInspection
         {
             BookingId = bookingId,
@@ -75,8 +80,10 @@ public class VehicleInspectionService(CarRentalDbContext db)
             ActualAt = now,
             OdometerKm = odometerKm,
             FuelLevel = fuelLevel,
-            Condition = string.IsNullOrWhiteSpace(condition) ? null : condition.Trim(),
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            Condition = TrimOrNull(condition) ?? exterior,
+            ExteriorCondition = exterior,
+            TechnicalCondition = technical,
+            Notes = TrimOrNull(notes),
             CreatedAt = now
         };
 
@@ -104,6 +111,16 @@ public class VehicleInspectionService(CarRentalDbContext db)
         return rows.Select(ToResponse).ToList();
     }
 
+    public async Task<IReadOnlyList<VehicleInspectionResponse>> GetAdminAsync(int? bookingId)
+    {
+        var query = db.VehicleInspections.AsNoTracking().AsQueryable();
+        if (bookingId is not null)
+            query = query.Where(i => i.BookingId == bookingId.Value);
+
+        var rows = await query.OrderBy(i => i.InspectionId).ToListAsync();
+        return rows.Select(ToResponse).ToList();
+    }
+
     public static VehicleInspectionResponse ToResponse(VehicleInspection i) => new(
         i.InspectionId,
         i.BookingId,
@@ -114,5 +131,10 @@ public class VehicleInspectionService(CarRentalDbContext db)
         i.FuelLevel,
         i.Condition,
         i.Notes,
-        i.CreatedAt);
+        i.CreatedAt,
+        i.ExteriorCondition,
+        i.TechnicalCondition);
+
+    private static string? TrimOrNull(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

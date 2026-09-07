@@ -12,7 +12,8 @@ public record CreateBookingRequest(
     DateTime EndDate,
     decimal? EstimatedDistance,
     string? Notes,
-    string? RentalMode = null);
+    string? RentalMode = null,
+    int? VehicleId = null);
 
 public record BookingQuoteResponse(
     int VehicleTypeId,
@@ -81,7 +82,9 @@ public record VehicleInspectionResponse(
     decimal? FuelLevel,
     string? Condition,
     string? Notes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? ExteriorCondition = null,
+    string? TechnicalCondition = null);
 
 public record BookingFeeResponse(
     int FeeId,
@@ -94,7 +97,9 @@ public record VehicleConditionRequest(
     decimal? OdometerKm = null,
     decimal? FuelLevel = null,
     string? Condition = null,
-    string? Notes = null);
+    string? Notes = null,
+    string? ExteriorCondition = null,
+    string? TechnicalCondition = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,
@@ -109,6 +114,38 @@ public record TripAssignmentResponse(
 public record UpdateBookingStatusRequest(string Status, string? Note);
 
 public record AssignTripRequest(int? DriverId, int VehicleId);
+
+public record VehicleAlternativeResponse(
+    int VehicleId,
+    string LicensePlate,
+    string Brand,
+    string Model,
+    string Status);
+
+public record DriverAlternativeResponse(
+    int DriverId,
+    string FullName,
+    string? Phone,
+    string Status);
+
+public record AssignConflictResponse(
+    string Message,
+    string ConflictType,
+    IReadOnlyList<VehicleAlternativeResponse> VehicleAlternatives,
+    IReadOnlyList<DriverAlternativeResponse> DriverAlternatives);
+
+public sealed record AssignTripResult(
+    BookingResponse? Booking,
+    string? Error,
+    AssignConflictResponse? Conflict)
+{
+    public static AssignTripResult Ok(BookingResponse booking) => new(booking, null, null);
+
+    public static AssignTripResult Fail(string error) => new(null, error, null);
+
+    public static AssignTripResult FromConflict(AssignConflictResponse conflict)
+        => new(null, conflict.Message, conflict);
+}
 
 public record CreateReviewRequest(byte Rating, string? Comment);
 

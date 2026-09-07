@@ -55,6 +55,28 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return await response.Content.ReadFromJsonAsync<List<VehicleTypeResponse>>(JsonOptions) ?? [];
     }
 
+    public async Task<List<VehicleResponse>> GetVehiclesAsync(string? status = null)
+    {
+        var url = string.IsNullOrEmpty(status) ? "/api/vehicles" : $"/api/vehicles?status={Uri.EscapeDataString(status)}";
+        var response = await http.GetAsync(url);
+        if (!response.IsSuccessStatusCode) return [];
+        return await response.Content.ReadFromJsonAsync<List<VehicleResponse>>(JsonOptions) ?? [];
+    }
+
+    public async Task<(List<VehicleTypeRecommendationResponse> Data, string? Error)> GetRecommendedAsync(
+        DateTime startDate, DateTime endDate, int? seats, decimal? priceMax, decimal? estimatedDistance)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("o"))}&endDate={Uri.EscapeDataString(endDate.ToString("o"))}";
+        if (seats.HasValue) query += $"&seats={seats.Value}";
+        if (priceMax.HasValue) query += $"&priceMax={priceMax.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        if (estimatedDistance.HasValue) query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicle-types/recommended?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return ([], await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<VehicleTypeRecommendationResponse>>(JsonOptions) ?? [], null);
+    }
+
     public async Task<List<BookingResponse>> GetBookingsAsync(string? status = null)
     {
         var url = string.IsNullOrEmpty(status) ? "/api/bookings" : $"/api/bookings?status={Uri.EscapeDataString(status)}";
@@ -64,9 +86,11 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return await response.Content.ReadFromJsonAsync<List<BookingResponse>>(JsonOptions) ?? [];
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> CreateBookingAsync(CreateBookingRequest request)
+    public async Task<(BookingResponse? Data, string? Error)> CreateBookingAsync(
+        CreateBookingRequest request, bool fromRecommendation = false)
     {
-        using var httpRequest = CreateRequest(HttpMethod.Post, "/api/bookings");
+        var url = fromRecommendation ? "/api/bookings?fromRecommendation=true" : "/api/bookings";
+        using var httpRequest = CreateRequest(HttpMethod.Post, url);
         httpRequest.Content = JsonContent.Create(request);
         var response = await http.SendAsync(httpRequest);
         if (!response.IsSuccessStatusCode)
@@ -117,6 +141,51 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
             return (null, await GetErrorAsync(response) ?? "Khong tao duoc yeu cau coc.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<ContractResponse?> GetContractAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/contract");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(ContractResponse? Data, string? Error)> CreateContractAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/bookings/{bookingId}/contract");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong tao duoc hop dong.");
+        return (await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions), null);
+    }
+
+    public async Task<(ContractResponse? Data, string? Error)> SimulateSignContractAsync(int contractId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/contracts/{contractId}/simulate-sign");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong ky duoc hop dong.");
+        return (await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions), null);
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> SimulatePaymentSuccessAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/payments/{paymentId}/simulate-success");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong mo phong thanh toan.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> SimulatePaymentFailureAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/payments/{paymentId}/simulate-failure");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong mo phong thanh toan.");
         return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
     }
 

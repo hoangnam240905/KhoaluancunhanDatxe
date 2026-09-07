@@ -19,7 +19,13 @@
         <h2>Đơn #@b.BookingId · @b.VehicleTypeName</h2>
         <p>@DetailsModel.RentalModeLabel(b.RentalMode) · @b.Status</p>
     </div>
-    <a asp-page="Index" class="btn btn-outline-secondary">Quay lại danh sách</a>
+    <div class="d-flex flex-wrap gap-2">
+        @if (IndexModel.CanOfferReview(b))
+        {
+            <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-warning">Đánh giá chuyến</a>
+        }
+        <a asp-page="Index" class="btn btn-outline-secondary">Quay lại danh sách</a>
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -190,15 +196,63 @@
                 {
                     <div>Nhiên liệu: @i.FuelLevel.Value.ToString("N0")%</div>
                 }
-                @if (!string.IsNullOrWhiteSpace(i.Condition))
-                {
-                    <div>Tình trạng: @i.Condition</div>
-                }
+                    @if (!string.IsNullOrWhiteSpace(i.Condition))
+                    {
+                        <div>Tình trạng: @i.Condition</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(i.ExteriorCondition))
+                    {
+                        <div>Ngoại thất: @i.ExteriorCondition</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(i.TechnicalCondition))
+                    {
+                        <div>Kỹ thuật: @i.TechnicalCondition</div>
+                    }
                 @if (!string.IsNullOrWhiteSpace(i.Notes))
                 {
                     <div>Ghi chú: @i.Notes</div>
                 }
             </div>
+        }
+    }
+</div>
+
+<div class="modern-card p-4 mb-3">
+    <div class="fw-bold mb-2">Hợp đồng điện tử</div>
+    @if (Model.Contract is null)
+    {
+        <div class="text-muted mb-2">Chưa có hợp đồng cho đơn này.</div>
+        @if (Model.CanIssueContract)
+        {
+            <form method="post" asp-page-handler="IssueContract">
+                <button type="submit" class="btn btn-outline-primary">Lập hợp đồng</button>
+            </form>
+        }
+    }
+    else
+    {
+        var c = Model.Contract;
+        <div class="driver-box mb-2">
+            <div><strong>@c.ContractNumber</strong> · @DetailsModel.ContractStatusLabel(c.Status)</div>
+            <div class="small">Khách: @c.CustomerName · @DetailsModel.RentalModeLabel(c.RentalMode)</div>
+            <div class="small">@c.VehicleTypeName · @c.PickupAddress → @c.DropoffAddress</div>
+            <div class="small">@c.StartDate.ToString("dd/MM/yyyy HH:mm") — @c.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+            <div class="small">Giá: @c.TotalAmount.ToString("N0") VND
+                @if (c.DepositAmount is not null)
+                {
+                    <text> · Cọc: @c.DepositAmount.Value.ToString("N0") VND</text>
+                }
+            </div>
+            @if (c.SignedAt is not null)
+            {
+                <div class="small text-muted">Ký lúc: @c.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+            }
+        </div>
+        @if (Model.CanSignContract)
+        {
+            <form method="post" asp-page-handler="SignContract">
+                <button type="submit" class="btn btn-primary">Mô phỏng ký hợp đồng</button>
+            </form>
         }
     }
 </div>
@@ -228,6 +282,19 @@
                 @if (!string.IsNullOrWhiteSpace(p.TransactionRef))
                 {
                     <div class="small">Mã giao dịch: @p.TransactionRef</div>
+                }
+                @if (Model.CanSimulate(p))
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <form method="post" asp-page-handler="SimulateSuccess">
+                            <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                            <button type="submit" class="btn btn-sm btn-success">Mô phỏng thanh toán thành công</button>
+                        </form>
+                        <form method="post" asp-page-handler="SimulateFailure">
+                            <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Mô phỏng thất bại</button>
+                        </form>
+                    </div>
                 }
             </div>
         }

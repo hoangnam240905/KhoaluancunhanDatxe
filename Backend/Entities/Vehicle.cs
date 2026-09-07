@@ -11,9 +11,14 @@ public class Vehicle
     public string? Color { get; set; }
     public string Status { get; set; } = "Available";
     public int CurrentKm { get; set; }
+    public string? RegistrationNumber { get; set; }
+    public DateOnly? RegistrationExpiryDate { get; set; }
+    public DateOnly? InspectionExpiryDate { get; set; }
+    public DateOnly? InsuranceExpiryDate { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public VehicleType VehicleType { get; set; } = null!;
     public ICollection<TripAssignment> TripAssignments { get; set; } = [];
     public ICollection<VehicleInspection> Inspections { get; set; } = [];
+    public ICollection<MaintenanceRecord> MaintenanceRecords { get; set; } = [];
 }

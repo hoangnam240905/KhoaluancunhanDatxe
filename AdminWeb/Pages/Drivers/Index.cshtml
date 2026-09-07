@@ -1,0 +1,34 @@
+@page
+@model AdminWeb.Pages.Drivers.IndexModel
+@{ ViewData["Title"] = "Tai xe"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Quan ly tai xe</h2>
+    <a asp-page="Create" class="btn btn-primary">Them tai xe</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<table class="table table-striped">
+    <thead><tr><th>Ma</th><th>Ten</th><th>Email</th><th>SDT</th><th>Trang thai</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var d in Model.Drivers)
+    {
+        <tr>
+            <td>#@d.DriverId</td>
+            <td>@d.FullName</td>
+            <td>@d.Email</td>
+            <td>@d.Phone</td>
+            <td>@d.Status</td>
+            <td>@(d.IsActive ? "Co" : "Khong")</td>
+            <td>
+                <a asp-page="Edit" asp-route-id="@d.DriverId" class="btn btn-sm btn-outline-primary">Sua</a>
+                @if (d.IsActive)
+                {
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@d.DriverId" class="d-inline">
+                        <button class="btn btn-sm btn-outline-danger">Khoa</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

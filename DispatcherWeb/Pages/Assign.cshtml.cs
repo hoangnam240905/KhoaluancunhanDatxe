@@ -13,6 +13,7 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : PageModel
     public List<DriverResponse> Drivers { get; set; } = [];
     public List<VehicleResponse> Vehicles { get; set; } = [];
     public string? ErrorMessage { get; set; }
+    public AssignConflictResponse? Conflict { get; set; }
     public bool IsSelfDrive => Booking?.RentalMode == "SelfDrive";
 
     public class InputModel
@@ -41,8 +42,13 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : PageModel
         }
 
         var driverId = IsSelfDrive ? null : Input.DriverId;
-        var (data, error) = await api.AssignTripAsync(id, new AssignTripRequest(driverId, Input.VehicleId));
-        if (data is null) { ErrorMessage = error; return Page(); }
+        var (data, error, conflict) = await api.AssignTripAsync(id, new AssignTripRequest(driverId, Input.VehicleId));
+        if (data is null)
+        {
+            ErrorMessage = error;
+            Conflict = conflict;
+            return Page();
+        }
         return RedirectToPage("/Index");
     }
 
@@ -66,7 +72,12 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : PageModel
             .Where(v => v.TypeId == Booking.VehicleTypeId)
             .ToList();
         if (Vehicles.Count > 0 && Input.VehicleId == 0)
-            Input.VehicleId = Vehicles[0].VehicleId;
+        {
+            var heldId = Booking.AssignedVehicle?.VehicleId;
+            Input.VehicleId = heldId is int held && Vehicles.Any(v => v.VehicleId == held)
+                ? held
+                : Vehicles[0].VehicleId;
+        }
         return true;
     }
 }

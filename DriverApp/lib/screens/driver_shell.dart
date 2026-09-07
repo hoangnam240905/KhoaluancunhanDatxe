@@ -18,6 +18,18 @@ class _DriverShellState extends State<DriverShell> {
   int _index = 0;
 
   @override
+  void initState() {
+    super.initState();
+    widget.api.connectRealtime();
+  }
+
+  @override
+  void dispose() {
+    widget.api.disconnectRealtime();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(

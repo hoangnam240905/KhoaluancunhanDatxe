@@ -155,6 +155,105 @@ public static class PaymentStatuses
     public const string Refunded = "Refunded";
 }
 
+public static class ContractStatuses
+{
+    public const string Issued = "Issued";
+    public const string Signed = "Signed";
+    public const string Voided = "Voided";
+}
+
+public static class IncidentTypes
+{
+    public const string Accident = "Accident";
+    public const string VehicleIssue = "VehicleIssue";
+    public const string CustomerIssue = "CustomerIssue";
+    public const string Other = "Other";
+
+    public static bool TryResolve(string? incidentType, out string resolved)
+    {
+        if (string.IsNullOrWhiteSpace(incidentType))
+        {
+            resolved = string.Empty;
+            return false;
+        }
+
+        var trimmed = incidentType.Trim();
+        if (trimmed is Accident or VehicleIssue or CustomerIssue or Other)
+        {
+            resolved = trimmed;
+            return true;
+        }
+
+        resolved = string.Empty;
+        return false;
+    }
+}
+
+public static class IncidentStatuses
+{
+    public const string Open = "Open";
+}
+
+public static class MaintenanceTypes
+{
+    public const string Scheduled = "Scheduled";
+    public const string Repair = "Repair";
+    public const string Inspection = "Inspection";
+
+    public static bool TryResolve(string? maintenanceType, out string resolved)
+    {
+        if (string.IsNullOrWhiteSpace(maintenanceType))
+        {
+            resolved = string.Empty;
+            return false;
+        }
+
+        var trimmed = maintenanceType.Trim();
+        if (trimmed is Scheduled or Repair or Inspection)
+        {
+            resolved = trimmed;
+            return true;
+        }
+
+        resolved = string.Empty;
+        return false;
+    }
+}
+
+public static class MaintenanceAlertThresholds
+{
+    public const int KmThreshold = 5000;
+    public const int DaysThreshold = 180;
+}
+
+public static class MaintenanceLock
+{
+    public const string BlockedForNewSchedule = "Xe đã đến hạn bảo trì, không nhận lịch mới.";
+}
+
+public static class RecommendationWeights
+{
+    public const decimal Rating = 0.5m;
+    public const decimal BookingCount = 0.3m;
+    public const decimal Availability = 0.2m;
+}
+
+/// <summary>
+/// Technical buffer between consecutive trips of the same vehicle/driver.
+/// Thesis spec: T_buffer = 2 hours.
+/// </summary>
+public static class ScheduleBuffers
+{
+    public const int TechnicalHours = 2;
+    public static readonly TimeSpan Technical = TimeSpan.FromHours(TechnicalHours);
+}
+
+public static class ScheduleConflictTypes
+{
+    public const string Vehicle = "Vehicle";
+    public const string Driver = "Driver";
+}
+
 public static class VehicleInspectionTypes
 {
     public const string Handover = "Handover";

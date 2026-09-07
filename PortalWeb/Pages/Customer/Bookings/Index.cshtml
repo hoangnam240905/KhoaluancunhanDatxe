@@ -32,8 +32,12 @@ else
                         </div>
                         <span class="badge bg-secondary badge-status">@b.Status</span>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 d-flex flex-wrap gap-2">
                         <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                        @if (IndexModel.CanOfferReview(b))
+                        {
+                            <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Đánh giá chuyến</a>
+                        }
                     </div>
 
                     <div class="row g-3">

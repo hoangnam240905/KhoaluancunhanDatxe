@@ -1,0 +1,15 @@
+@page
+@model AdminWeb.Pages.Customers.CreateModel
+@{ ViewData["Title"] = "Them khach hang"; }
+<h2 class="mb-3">Them khach hang</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Ho ten</label><input asp-for="Input.FullName" class="form-control" /><span asp-validation-for="Input.FullName" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Email (Gmail)</label><input asp-for="Input.Email" class="form-control" /><span asp-validation-for="Input.Email" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">So dien thoai</label><input asp-for="Input.Phone" class="form-control" /><span asp-validation-for="Input.Phone" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Mat khau</label><input asp-for="Input.Password" class="form-control" type="password" /><span asp-validation-for="Input.Password" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Dia chi</label><input asp-for="Input.Address" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">CCCD/CMND</label><input asp-for="Input.IdNumber" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Ngay sinh</label><input asp-for="Input.DateOfBirth" class="form-control" type="date" /></div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Tao</button> <a asp-page="Index" class="btn btn-secondary">Huy</a></div>
+</form>

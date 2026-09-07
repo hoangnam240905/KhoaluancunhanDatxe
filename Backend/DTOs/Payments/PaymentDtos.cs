@@ -4,7 +4,8 @@ public record CreatePaymentRequest(
     int BookingId,
     string? PaymentType,
     string? Method,
-    string? TransactionRef = null);
+    string? TransactionRef = null,
+    int? VehicleId = null);
 
 public record PaymentResponse(
     int PaymentId,

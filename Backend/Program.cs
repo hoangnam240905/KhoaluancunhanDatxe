@@ -1,5 +1,6 @@
 using System.Text;
 using Backend.Data;
+using Backend.Hubs;
 using Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +24,29 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
+builder.Services.AddScoped<ScheduleConflictService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<DriverService>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<ContractService>();
+builder.Services.AddScoped<IncidentService>();
 builder.Services.AddScoped<VehicleInspectionService>();
 builder.Services.AddScoped<BookingFeeService>();
+builder.Services.AddScoped<AdminCustomerService>();
+builder.Services.AddScoped<VehicleMaintenanceService>();
+builder.Services.AddScoped<MaintenanceAlertService>();
+builder.Services.AddScoped<DashboardService>();
+builder.Services.Configure<RecommenderOptions>(builder.Configuration.GetSection(RecommenderOptions.SectionName));
+builder.Services.AddHttpClient<IRecommenderClient, FastApiRecommenderClient>((sp, client) =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<RecommenderOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(opts.BaseUrl) ? "http://127.0.0.1:8001" : opts.BaseUrl.TrimEnd('/');
+    client.BaseAddress = new Uri(baseUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds <= 0 ? 8 : opts.TimeoutSeconds);
+});
+builder.Services.AddScoped<RecommendationService>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -42,6 +61,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!))
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -69,9 +99,28 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteVehicleInspectionsTable();
     db.EnsureSqliteBookingFinalAmountColumn();
     db.EnsureSqliteBookingFeesTable();
+    db.EnsureSqliteUsersLockColumn();
+    db.EnsureSqliteDriversActiveColumn();
+    db.EnsureSqliteMaintenanceRecordsTable();
+    db.EnsureSqliteBookingRecommendationColumn();
+    db.EnsureSqliteContractsTable();
+    db.EnsureSqliteInspectionConditionColumns();
+    db.EnsureSqliteIncidentReportsTable();
+    db.EnsureSqliteVehicleLegalColumns();
+    db.EnsureSqliteLicensePlateUniqueIndex();
     DbSeeder.Seed(db);
+    if (ShouldSeedDemoRich(app.Configuration, connectionString))
+        DemoRichSeeder.Seed(db);
     db.FillVehicleTypePricingDefaults();
     db.ReconcileOpenAssignmentResourceStatus();
+}
+
+static bool ShouldSeedDemoRich(IConfiguration config, string cs)
+{
+    if (!config.GetValue("SeedDemoRich", false))
+        return false;
+    // Never enrich live carrental.db — DemoRich only runs on carrental.demo.db.
+    return cs.Contains("carrental.demo.db", StringComparison.OrdinalIgnoreCase);
 }
 
 if (app.Environment.IsDevelopment())
@@ -84,6 +133,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<RealtimeHub>("/hubs/realtime");
 
 app.Run();
 

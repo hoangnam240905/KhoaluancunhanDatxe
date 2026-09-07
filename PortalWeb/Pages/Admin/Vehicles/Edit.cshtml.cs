@@ -22,6 +22,10 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         public string? Color { get; set; }
         [Required] public string Status { get; set; } = "Available";
         public int CurrentKm { get; set; }
+        public string? RegistrationNumber { get; set; }
+        public DateOnly? RegistrationExpiryDate { get; set; }
+        public DateOnly? InspectionExpiryDate { get; set; }
+        public DateOnly? InsuranceExpiryDate { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(int id)
@@ -32,7 +36,15 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         VehicleTypes = await api.GetVehicleTypesAsync();
         var v = await api.GetVehicleAsync(id);
         if (v is null) return NotFound();
-        Input = new InputModel { TypeId = v.TypeId, LicensePlate = v.LicensePlate, Brand = v.Brand, Model = v.Model, Year = v.Year, Color = v.Color, Status = v.Status, CurrentKm = v.CurrentKm };
+        Input = new InputModel
+        {
+            TypeId = v.TypeId, LicensePlate = v.LicensePlate, Brand = v.Brand, Model = v.Model, Year = v.Year,
+            Color = v.Color, Status = v.Status, CurrentKm = v.CurrentKm,
+            RegistrationNumber = v.RegistrationNumber,
+            RegistrationExpiryDate = v.RegistrationExpiryDate,
+            InspectionExpiryDate = v.InspectionExpiryDate,
+            InsuranceExpiryDate = v.InsuranceExpiryDate
+        };
         return Page();
     }
 
@@ -43,7 +55,9 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         VehicleId = id;
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (!ModelState.IsValid) return Page();
-        var (data, error) = await api.UpdateVehicleAsync(id, new UpdateVehicleRequest(Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year, Input.Color, Input.Status, Input.CurrentKm));
+        var (data, error) = await api.UpdateVehicleAsync(id, new UpdateVehicleRequest(
+            Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year, Input.Color, Input.Status, Input.CurrentKm,
+            Input.RegistrationNumber, Input.RegistrationExpiryDate, Input.InspectionExpiryDate, Input.InsuranceExpiryDate));
         if (data is null) { ErrorMessage = error; return Page(); }
         return RedirectToPage("Index");
     }

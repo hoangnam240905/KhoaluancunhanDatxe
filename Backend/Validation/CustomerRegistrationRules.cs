@@ -45,6 +45,61 @@ public static class CustomerRegistrationRules
         return null;
     }
 
+    public static bool IsValidPhone(string? phone) =>
+        !string.IsNullOrEmpty(phone) && PhoneRegex.IsMatch(phone);
+
+    public static string? ValidateCustomerProfile(
+        string? fullName,
+        string? email,
+        string? phone,
+        out string normalizedName,
+        out string normalizedEmail,
+        out string normalizedPhone)
+    {
+        normalizedName = NormalizeFullName(fullName);
+        normalizedEmail = (email ?? string.Empty).Trim().ToLowerInvariant();
+        normalizedPhone = NormalizePhone(phone);
+
+        if (string.IsNullOrEmpty(normalizedName))
+            return NameRequired;
+
+        if (!GmailRegex.IsMatch(normalizedEmail))
+            return InvalidGmail;
+
+        if (!PhoneRegex.IsMatch(normalizedPhone))
+            return InvalidPhone;
+
+        return null;
+    }
+
+    public static string? ValidateAdminDriver(
+        string? fullName,
+        string? email,
+        string? phone,
+        string? password,
+        out string normalizedName,
+        out string normalizedEmail,
+        out string normalizedPhone)
+    {
+        normalizedName = NormalizeFullName(fullName);
+        normalizedEmail = (email ?? string.Empty).Trim().ToLowerInvariant();
+        normalizedPhone = NormalizePhone(phone);
+
+        if (string.IsNullOrEmpty(normalizedName))
+            return NameRequired;
+
+        if (string.IsNullOrEmpty(normalizedEmail) || !normalizedEmail.Contains('@') || normalizedEmail.Contains(' '))
+            return "Vui lòng nhập địa chỉ email hợp lệ.";
+
+        if (!PhoneRegex.IsMatch(normalizedPhone))
+            return InvalidPhone;
+
+        if (!IsStrongPassword(password))
+            return InvalidPassword;
+
+        return null;
+    }
+
     public static string NormalizeFullName(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))

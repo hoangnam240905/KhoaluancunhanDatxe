@@ -1,0 +1,14 @@
+@page
+@model AdminWeb.Pages.Pricing.CreateModel
+@{ ViewData["Title"] = "Them loai xe"; }
+<h2 class="mb-3">Them loai xe</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-12"><label class="form-label">Ten loai</label><input asp-for="Input.TypeName" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Gia/ngay</label><input asp-for="Input.PricePerDay" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-md-6"><label class="form-label">Gia/km</label><input asp-for="Input.PricePerKm" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Tao</button>
+        <a asp-page="Index" class="btn btn-secondary">Huy</a>
+    </div>
+</form>

@@ -23,6 +23,17 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   void initState() {
     super.initState();
     _trip = widget.trip;
+    widget.api.realtime.addListener(_onRealtime);
+  }
+
+  @override
+  void dispose() {
+    widget.api.realtime.removeListener(_onRealtime);
+    super.dispose();
+  }
+
+  void _onRealtime() {
+    _reload();
   }
 
   Future<void> _reload() async {
@@ -65,7 +76,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     if (aid == null) return;
     final odo = TextEditingController();
     final fuel = TextEditingController();
-    final condition = TextEditingController();
+    final exterior = TextEditingController();
+    final technical = TextEditingController();
     final notes = TextEditingController();
     String? localError;
     final ok = await showDialog<bool>(
@@ -81,7 +93,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Biên bản kiểm xe (VehicleInspection) — Trả xe (Return). Các trường không bắt buộc. Để trống thì gửi như trước, không có body.',
+                      'Ghi nhận dữ liệu vận hành khi trả xe: số km, nhiên liệu, ngoại thất, kỹ thuật. Trường để trống thì không gửi.',
                       style: TextStyle(fontSize: 13),
                     ),
                     const SizedBox(height: 8),
@@ -109,10 +121,17 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                       ),
                     ),
                     TextField(
-                      controller: condition,
+                      controller: exterior,
                       maxLength: 100,
                       decoration: const InputDecoration(
-                        labelText: 'Tình trạng (condition)',
+                        labelText: 'Tình trạng ngoại thất',
+                      ),
+                    ),
+                    TextField(
+                      controller: technical,
+                      maxLength: 100,
+                      decoration: const InputDecoration(
+                        labelText: 'Tình trạng kỹ thuật',
                       ),
                     ),
                     TextField(
@@ -157,11 +176,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     );
     final odoText = odo.text;
     final fuelText = fuel.text;
-    final conditionText = condition.text;
+    final exteriorText = exterior.text;
+    final technicalText = technical.text;
     final notesText = notes.text;
     odo.dispose();
     fuel.dispose();
-    condition.dispose();
+    exterior.dispose();
+    technical.dispose();
     notes.dispose();
     if (ok != true || !mounted) return;
     final parsed = _parseCompleteFields(odoText, fuelText);
@@ -171,7 +192,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         aid,
         odometerKm: parsed.odometerKm,
         fuelLevel: parsed.fuelLevel,
-        condition: conditionText,
+        exteriorCondition: exteriorText,
+        technicalCondition: technicalText,
         notes: notesText,
       ),
     );
@@ -206,6 +228,97 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       }
     }
     return (odometerKm: odometerKm, fuelLevel: fuelLevel, error: null);
+  }
+
+  Future<void> _reportIncident() async {
+    final aid = _trip.assignmentId;
+    if (aid == null) return;
+    var type = 'VehicleIssue';
+    final description = TextEditingController();
+    String? localError;
+    const types = {
+      'Accident': 'Tai nạn',
+      'VehicleIssue': 'Sự cố xe',
+      'CustomerIssue': 'Sự cố khách',
+      'Other': 'Khác',
+    };
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: const Text('Báo cáo sự cố'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioGroup<String>(
+                      groupValue: type,
+                      onChanged: (v) => setLocal(() => type = v ?? type),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...types.entries.map(
+                            (e) => RadioListTile<String>(
+                              dense: true,
+                              title: Text(e.value),
+                              value: e.key,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextField(
+                      controller: description,
+                      maxLines: 3,
+                      maxLength: 500,
+                      decoration: const InputDecoration(
+                        labelText: 'Mô tả',
+                      ),
+                    ),
+                    if (localError != null)
+                      Text(
+                        localError!,
+                        style: const TextStyle(color: AppColors.danger),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (description.text.trim().isEmpty) {
+                      setLocal(() => localError = 'Nhập mô tả sự cố.');
+                      return;
+                    }
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text('Gửi'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    final text = description.text;
+    description.dispose();
+    if (ok != true || !mounted) return;
+    await _run(
+      () async {
+        await widget.api.reportIncident(
+          assignmentId: aid,
+          incidentType: type,
+          description: text,
+        );
+        return 'Đã gửi báo cáo sự cố.';
+      },
+    );
   }
 
   @override
@@ -321,12 +434,22 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             onPressed: () => _run(() => widget.api.acceptTrip(aid)),
             child: const Text('Nhận chuyến'),
           ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _reportIncident,
+            child: const Text('Báo cáo sự cố'),
+          ),
         ];
       case 'Accepted':
         return [
           FilledButton(
             onPressed: () => _run(() => widget.api.startTrip(aid)),
             child: const Text('Bắt đầu chuyến'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _reportIncident,
+            child: const Text('Báo cáo sự cố'),
           ),
         ];
       case 'InProgress':
@@ -335,6 +458,18 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             onPressed: _complete,
             child: const Text('Hoàn thành chuyến'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _reportIncident,
+            child: const Text('Báo cáo sự cố'),
+          ),
+        ];
+      case 'Completed':
+        return [
+          OutlinedButton(
+            onPressed: _reportIncident,
+            child: const Text('Báo cáo sự cố'),
           ),
         ];
       default:

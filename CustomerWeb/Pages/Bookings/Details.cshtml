@@ -184,7 +184,57 @@
                     {
                         <div>Tình trạng: @i.Condition</div>
                     }
+                    @if (!string.IsNullOrWhiteSpace(i.ExteriorCondition))
+                    {
+                        <div>Ngoại thất: @i.ExteriorCondition</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(i.TechnicalCondition))
+                    {
+                        <div>Kỹ thuật: @i.TechnicalCondition</div>
+                    }
                 </div>
+            }
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="fw-bold mb-2">Hợp đồng điện tử</div>
+        @if (Model.Contract is null)
+        {
+            <div class="text-muted mb-2">Chưa có hợp đồng cho đơn này.</div>
+            @if (Model.CanIssueContract)
+            {
+                <form method="post" asp-page-handler="IssueContract">
+                    <button type="submit" class="btn btn-outline-primary">Lập hợp đồng</button>
+                </form>
+            }
+        }
+        else
+        {
+            var c = Model.Contract;
+            <div class="border rounded p-2 mb-2">
+                <div><strong>@c.ContractNumber</strong> · @DetailsModel.ContractStatusLabel(c.Status)</div>
+                <div class="small">Khách: @c.CustomerName · @DetailsModel.RentalModeLabel(c.RentalMode)</div>
+                <div class="small">@c.VehicleTypeName · @c.PickupAddress → @c.DropoffAddress</div>
+                <div class="small">@c.StartDate.ToString("dd/MM/yyyy HH:mm") — @c.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+                <div class="small">Giá: @c.TotalAmount.ToString("N0") VND
+                    @if (c.DepositAmount is not null)
+                    {
+                        <text> · Cọc: @c.DepositAmount.Value.ToString("N0") VND</text>
+                    }
+                </div>
+                @if (c.SignedAt is not null)
+                {
+                    <div class="small text-muted">Ký lúc: @c.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                }
+            </div>
+            @if (Model.CanSignContract)
+            {
+                <form method="post" asp-page-handler="SignContract">
+                    <button type="submit" class="btn btn-primary">Mô phỏng ký hợp đồng</button>
+                </form>
             }
         }
     </div>
@@ -213,6 +263,19 @@
                 <div class="border rounded p-2 mb-2">
                     <div>@DetailsModel.PaymentTypeLabel(p.PaymentType) · @p.Amount.ToString("N0") VND</div>
                     <div class="small">@DetailsModel.PaymentMethodLabel(p.Method) · @DetailsModel.PaymentStatusLabel(p.Status)</div>
+                    @if (Model.CanSimulate(p))
+                    {
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <form method="post" asp-page-handler="SimulateSuccess">
+                                <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                                <button type="submit" class="btn btn-sm btn-success">Mô phỏng thanh toán thành công</button>
+                            </form>
+                            <form method="post" asp-page-handler="SimulateFailure">
+                                <input type="hidden" name="paymentId" value="@p.PaymentId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Mô phỏng thất bại</button>
+                            </form>
+                        </div>
+                    }
                 </div>
             }
         }

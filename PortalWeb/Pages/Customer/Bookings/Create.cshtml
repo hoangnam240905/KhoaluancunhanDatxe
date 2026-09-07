@@ -19,6 +19,7 @@
 
 <div class="modern-card p-4 col-lg-9">
     <form method="post" class="row g-4">
+        <input type="hidden" asp-for="FromRecommendation" />
         <div class="col-12">
             <div class="fw-semibold mb-2">Hình thức thuê</div>
             <div class="row g-3">
@@ -67,7 +68,23 @@
                     }
                 </div>
             }
-            <span asp-validation-for="Input.VehicleTypeId" class="text-danger"></span>
+        <span asp-validation-for="Input.VehicleTypeId" class="text-danger"></span>
+        </div>
+
+        @{
+            var availableVehicles = Model.Vehicles.Where(v => v.TypeId == Model.Input.VehicleTypeId).ToList();
+        }
+        <div class="col-12">
+            <label asp-for="Input.VehicleId" class="form-label">Xe cụ thể (không bắt buộc)</label>
+            <select asp-for="Input.VehicleId" class="form-select">
+                <option value="">Để điều phối chọn sau</option>
+                @foreach (var vehicle in availableVehicles)
+                {
+                    <option value="@vehicle.VehicleId">@vehicle.LicensePlate · @vehicle.Brand @vehicle.Model</option>
+                }
+            </select>
+            <div class="form-text">Nếu chọn xe, hệ thống sẽ giữ xe này khi bạn thanh toán cọc.</div>
+            <span asp-validation-for="Input.VehicleId" class="text-danger"></span>
         </div>
 
         <div class="col-md-6">

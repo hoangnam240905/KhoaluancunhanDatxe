@@ -1,4 +1,5 @@
 @inject CustomerWeb.Services.AuthSession Auth
+@inject IConfiguration Config
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -50,6 +51,16 @@
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+    {
+        <script>
+            window.carRentalRealtime = {
+                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+            };
+        </script>
+        <script src="~/js/realtime.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
+using Backend.DTOs.Incidents;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,10 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize(Roles = RoleNames.Dispatcher)]
 [Route("api/dispatch")]
-public class DispatchController(DispatchService dispatchService) : ControllerBase
+public class DispatchController(
+    DispatchService dispatchService,
+    IncidentService incidents,
+    VehicleInspectionService inspections) : ControllerBase
 {
     [HttpPost("bookings/{id:int}/confirm")]
     public async Task<ActionResult<BookingResponse>> Confirm(int id)
@@ -25,8 +29,12 @@ public class DispatchController(DispatchService dispatchService) : ControllerBas
     public async Task<ActionResult<BookingResponse>> Assign(int id, AssignTripRequest request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var (booking, error) = await dispatchService.AssignTripAsync(id, request, userId);
-        return booking is null ? BadRequest(new { message = error ?? "Không thể phân công chuyến đi." }) : Ok(booking);
+        var result = await dispatchService.AssignTripAsync(id, request, userId);
+        if (result.Booking is not null)
+            return Ok(result.Booking);
+        if (result.Conflict is not null)
+            return BadRequest(result.Conflict);
+        return BadRequest(new { message = result.Error ?? "Không thể phân công chuyến đi." });
     }
 
     [HttpPost("bookings/{id:int}/handover")]
@@ -48,4 +56,15 @@ public class DispatchController(DispatchService dispatchService) : ControllerBas
         var (booking, error) = await dispatchService.CompleteSelfDriveAsync(id, userId, request);
         return booking is null ? BadRequest(new { message = error ?? "Không thể hoàn thành đơn." }) : Ok(booking);
     }
+
+    [HttpGet("incidents")]
+    public async Task<ActionResult<List<IncidentResponse>>> GetIncidents(
+        [FromQuery] int? bookingId,
+        [FromQuery] string? status)
+        => Ok(await incidents.GetOperationsAsync(bookingId, status));
+
+    [HttpGet("inspections")]
+    public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetInspections(
+        [FromQuery] int? bookingId)
+        => Ok(await inspections.GetAdminAsync(bookingId));
 }

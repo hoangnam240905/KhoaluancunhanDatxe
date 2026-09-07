@@ -15,6 +15,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
     [BindProperty] public string? QuotedFingerprint { get; set; }
 
     public List<VehicleTypeResponse> VehicleTypes { get; set; } = [];
+    public List<VehicleResponse> Vehicles { get; set; } = [];
     public BookingQuoteResponse? Quote { get; set; }
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
@@ -42,22 +43,29 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
         public decimal? EstimatedDistance { get; set; }
         public string? Notes { get; set; }
+        public int? VehicleId { get; set; }
     }
 
     public string CurrentFingerprint =>
-        $"{Input.VehicleTypeId}|{Input.RentalMode}|{Input.StartDate:yyyy-MM-ddTHH:mm}|{Input.EndDate:yyyy-MM-ddTHH:mm}|{Input.EstimatedDistance}";
+        $"{Input.VehicleTypeId}|{Input.RentalMode}|{Input.VehicleId}|{Input.StartDate:yyyy-MM-ddTHH:mm}|{Input.EndDate:yyyy-MM-ddTHH:mm}|{Input.EstimatedDistance}";
 
     public static bool IsSelfDrive(string? mode) => mode == "SelfDrive";
 
-    public async Task<IActionResult> OnGetAsync(int? typeId)
+    [BindProperty] public bool FromRecommendation { get; set; }
+
+    public async Task<IActionResult> OnGetAsync(int? typeId, DateTime? start, DateTime? end, decimal? distance, bool fromRecommendation = false)
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
-        VehicleTypes = await api.GetVehicleTypesAsync();
+        await LoadLookupsAsync();
         if (string.IsNullOrWhiteSpace(Input.RentalMode))
             Input.RentalMode = "WithDriver";
         if (typeId.HasValue) Input.VehicleTypeId = typeId.Value;
         else if (VehicleTypes.Count > 0) Input.VehicleTypeId = VehicleTypes[0].TypeId;
+        if (start.HasValue) Input.StartDate = start.Value;
+        if (end.HasValue) Input.EndDate = end.Value;
+        if (distance.HasValue) Input.EstimatedDistance = distance;
+        FromRecommendation = fromRecommendation;
 
         return Page();
     }
@@ -65,7 +73,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
     public async Task<IActionResult> OnPostQuoteAsync()
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
-        VehicleTypes = await api.GetVehicleTypesAsync();
+        await LoadLookupsAsync();
         NormalizeAndValidate();
         if (!ModelState.IsValid) return Page();
         await LoadQuoteAsync();
@@ -76,7 +84,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
 
-        VehicleTypes = await api.GetVehicleTypesAsync();
+        await LoadLookupsAsync();
         NormalizeAndValidate();
         if (!ModelState.IsValid) return Page();
 
@@ -97,7 +105,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
             Input.EndDate,
             Input.EstimatedDistance,
             Input.Notes,
-            Input.RentalMode));
+            Input.RentalMode,
+            Input.VehicleId), FromRecommendation);
 
         if (data is null)
         {
@@ -119,6 +128,10 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
         if (Input.VehicleTypeId <= 0 || VehicleTypes.All(t => t.TypeId != Input.VehicleTypeId))
             ModelState.AddModelError("Input.VehicleTypeId", "Vui lòng chọn loại xe.");
+
+        if (Input.VehicleId is int vehicleId and > 0
+            && Vehicles.All(v => v.VehicleId != vehicleId || v.TypeId != Input.VehicleTypeId))
+            ModelState.AddModelError("Input.VehicleId", "Xe không thuộc loại xe đã chọn hoặc không còn khả dụng.");
     }
 
     private async Task LoadQuoteAsync()
@@ -142,5 +155,13 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
         QuoteConfirmed = true;
         QuotedFingerprint = CurrentFingerprint;
         ErrorMessage = null;
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        VehicleTypes = await api.GetVehicleTypesAsync();
+        Vehicles = (await api.GetVehiclesAsync("Available"))
+            .Where(v => v.Status == "Available")
+            .ToList();
     }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../utils/driver_trip_actions.dart';
 import 'customer_shell.dart';
 
 class DriverTripsScreen extends StatefulWidget {
@@ -26,6 +27,19 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
   @override
   void initState() {
     super.initState();
+    widget.api.connectRealtime();
+    _load();
+    widget.api.realtime.addListener(_onRealtime);
+  }
+
+  @override
+  void dispose() {
+    widget.api.realtime.removeListener(_onRealtime);
+    widget.api.disconnectRealtime();
+    super.dispose();
+  }
+
+  void _onRealtime() {
     _load();
   }
 
@@ -72,6 +86,36 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
       MaterialPageRoute(builder: (_) => CustomerShell(api: widget.api)),
       (_) => false,
     );
+  }
+
+  List<Widget> _actionButtons(int assignmentId, String? assignmentStatus) {
+    final action = DriverTripActions.forAssignmentStatus(assignmentStatus);
+    if (action == null) return [];
+
+    return [
+      const SizedBox(height: 10),
+      switch (action) {
+        DriverTripAction.accept => FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEA580C),
+            ),
+            onPressed: () => _action(() => widget.api.acceptTrip(assignmentId)),
+            child: Text(action.label),
+          ),
+        DriverTripAction.start => FilledButton(
+            onPressed: () => _action(() => widget.api.startTrip(assignmentId)),
+            child: Text(action.label),
+          ),
+        DriverTripAction.complete => FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF16A34A),
+            ),
+            onPressed: () =>
+                _action(() => widget.api.completeTrip(assignmentId)),
+            child: Text(action.label),
+          ),
+      },
+    ];
   }
 
   @override
@@ -164,58 +208,15 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                       Text(
                                         'Cước: ${money.format(t.totalAmount)}',
                                       ),
-                                      Text('Trạng thái: ${t.status}'),
+                                      Text(
+                                        'Trạng thái: ${t.assignment?.status ?? t.status}',
+                                      ),
                                       if (t.assignment != null)
                                         Text(
                                           'Xe: ${t.assignment!.licensePlate}',
                                         ),
-                                      if (aid != null) ...[
-                                        const SizedBox(height: 10),
-                                        Wrap(
-                                          spacing: 8,
-                                          children: [
-                                            if (t.status == 'Assigned')
-                                              FilledButton(
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor: const Color(
-                                                    0xFFEA580C,
-                                                  ),
-                                                ),
-                                                onPressed: () => _action(
-                                                  () => widget.api.acceptTrip(
-                                                    aid,
-                                                  ),
-                                                ),
-                                                child: const Text(
-                                                  'Nhận chuyến',
-                                                ),
-                                              ),
-                                            if (t.status == 'Assigned' ||
-                                                t.status == 'InProgress')
-                                              FilledButton(
-                                                onPressed: () => _action(
-                                                  () =>
-                                                      widget.api.startTrip(aid),
-                                                ),
-                                                child: const Text('Bắt đầu'),
-                                              ),
-                                            if (t.status == 'InProgress')
-                                              FilledButton(
-                                                style: FilledButton.styleFrom(
-                                                  backgroundColor: const Color(
-                                                    0xFF16A34A,
-                                                  ),
-                                                ),
-                                                onPressed: () => _action(
-                                                  () => widget.api.completeTrip(
-                                                    aid,
-                                                  ),
-                                                ),
-                                                child: const Text('Hoàn thành'),
-                                              ),
-                                          ],
-                                        ),
-                                      ],
+                                      if (aid != null)
+                                        ..._actionButtons(aid, t.assignment?.status),
                                     ],
                                   ),
                                 ),

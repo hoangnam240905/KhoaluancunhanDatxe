@@ -28,6 +28,30 @@ public record VehicleTypeResponse(
     string? Description,
     string? ImageUrl);
 
+public record VehicleTypeRecommendationResponse(
+    int VehicleTypeId,
+    string TypeName,
+    decimal Score,
+    decimal AvgRating,
+    decimal PricePerDay,
+    int AvailableCount);
+
+public record VehicleResponse(
+    int VehicleId,
+    int TypeId,
+    string TypeName,
+    string LicensePlate,
+    string Brand,
+    string Model,
+    int Year,
+    string? Color,
+    string Status,
+    int CurrentKm,
+    string? RegistrationNumber = null,
+    DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null,
+    DateOnly? InsuranceExpiryDate = null);
+
 public record CreateBookingRequest(
     int VehicleTypeId,
     string PickupAddress,
@@ -40,7 +64,8 @@ public record CreateBookingRequest(
     DateTime EndDate,
     decimal? EstimatedDistance,
     string? Notes,
-    string? RentalMode = null);
+    string? RentalMode = null,
+    int? VehicleId = null);
 
 public record AssignedVehicleResponse(
     int VehicleId,
@@ -61,7 +86,9 @@ public record VehicleInspectionResponse(
     decimal? FuelLevel,
     string? Condition,
     string? Notes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? ExteriorCondition = null,
+    string? TechnicalCondition = null);
 
 public record BookingQuoteResponse(
     int VehicleTypeId,
@@ -93,7 +120,25 @@ public record PaymentResponse(
     DateTime? PaidAt,
     DateTime CreatedAt);
 
-public record CreatePaymentRequest(int BookingId, string? PaymentType, string? Method, string? TransactionRef = null);
+public record CreatePaymentRequest(int BookingId, string? PaymentType, string? Method, string? TransactionRef = null, int? VehicleId = null);
+
+public record ContractResponse(
+    int ContractId,
+    int BookingId,
+    string ContractNumber,
+    string Status,
+    int CustomerId,
+    string CustomerName,
+    string VehicleTypeName,
+    string RentalMode,
+    string PickupAddress,
+    string DropoffAddress,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal TotalAmount,
+    decimal? DepositAmount,
+    DateTime CreatedAt,
+    DateTime? SignedAt);
 
 public record BookingResponse(
     int BookingId,

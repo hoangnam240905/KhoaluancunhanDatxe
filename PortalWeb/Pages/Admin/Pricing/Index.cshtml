@@ -7,7 +7,13 @@
         <h2>Giá loại xe</h2>
         <p>Quản lý bảng giá catalog. Không tính lại đơn đã đặt.</p>
     </div>
+    <a asp-page="Create" class="btn btn-primary">Thêm loại xe</a>
 </div>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="alert alert-info">@Model.Message</div>
+}
 
 <div class="alert alert-info">
     Giá này áp dụng cho đơn mới. Đơn đã đặt giữ nguyên snapshot.
@@ -50,7 +56,12 @@ else
                     <td>@t.SelfDriveExtraKmPrice.ToString("N0")</td>
                     <td>@t.WithDriverDepositAmount.ToString("N0")</td>
                     <td>@t.SelfDriveDepositAmount.ToString("N0")</td>
-                    <td><a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sửa giá</a></td>
+                    <td>
+                        <a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sửa giá</a>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@t.TypeId" class="d-inline">
+                            <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                        </form>
+                    </td>
                 </tr>
             }
             </tbody>

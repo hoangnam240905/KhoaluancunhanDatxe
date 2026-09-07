@@ -26,6 +26,17 @@ class _BookingsScreenState extends State<BookingsScreen> {
   void initState() {
     super.initState();
     _load();
+    widget.api.realtime.addListener(_onRealtime);
+  }
+
+  @override
+  void dispose() {
+    widget.api.realtime.removeListener(_onRealtime);
+    super.dispose();
+  }
+
+  void _onRealtime() {
+    if (widget.isLoggedIn) _load();
   }
 
   @override

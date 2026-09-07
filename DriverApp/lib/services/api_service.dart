@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
+import 'realtime_service.dart';
 
 class AuthService {
   static const _tokenKey = 'driver_auth_token';
@@ -53,6 +54,16 @@ class AuthService {
 
 class ApiService {
   final AuthService authService = AuthService();
+  final RealtimeService realtime = RealtimeService();
+
+  Future<void> connectRealtime() async {
+    final token = await authService.getToken();
+    if (token != null) await realtime.connect(token);
+  }
+
+  Future<void> disconnectRealtime() async {
+    await realtime.disconnect();
+  }
 
   Future<Map<String, String>> _headers({bool auth = false}) async {
     final headers = {'Content-Type': 'application/json'};
@@ -110,6 +121,21 @@ class ApiService {
     }
     await authService.saveAuth(auth);
     return auth;
+  }
+
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/change-password'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 
   Future<UserProfile> getMe() async {
@@ -187,12 +213,16 @@ class ApiService {
     double? fuelLevel,
     String? condition,
     String? notes,
+    String? exteriorCondition,
+    String? technicalCondition,
   }) async {
     final body = VehicleCondition.toJson(
       odometerKm: odometerKm,
       fuelLevel: fuelLevel,
       condition: condition,
       notes: notes,
+      exteriorCondition: exteriorCondition,
+      technicalCondition: technicalCondition,
     );
     final response = await http.post(
       Uri.parse(
@@ -203,5 +233,40 @@ class ApiService {
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     return _successMessage(response, 'Đã hoàn thành chuyến.');
+  }
+
+  Future<List<IncidentReport>> getMyIncidents() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/me/incidents'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => IncidentReport.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<IncidentReport> reportIncident({
+    required int assignmentId,
+    required String incidentType,
+    required String description,
+  }) async {
+    final response = await http.post(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/incidents',
+      ),
+      headers: await _headers(auth: true),
+      body: jsonEncode({
+        'incidentType': incidentType,
+        'description': description,
+      }),
+    );
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
+    return IncidentReport.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 }

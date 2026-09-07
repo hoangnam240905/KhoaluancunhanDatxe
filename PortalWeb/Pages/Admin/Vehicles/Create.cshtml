@@ -9,5 +9,10 @@
     <div class="col-md-4"><label class="form-label">Hãng</label><input asp-for="Input.Brand" class="form-control" /></div>
     <div class="col-md-4"><label class="form-label">Model</label><input asp-for="Input.Model" class="form-control" /></div>
     <div class="col-md-4"><label class="form-label">Năm</label><input asp-for="Input.Year" class="form-control" type="number" /></div>
+    <div class="col-12"><h5 class="mt-2 mb-0">Giấy tờ lưu hành</h5></div>
+    <div class="col-md-6"><label class="form-label">Số giấy đăng ký</label><input asp-for="Input.RegistrationNumber" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Hạn đăng ký</label><input asp-for="Input.RegistrationExpiryDate" class="form-control" type="date" /></div>
+    <div class="col-md-6"><label class="form-label">Hạn đăng kiểm</label><input asp-for="Input.InspectionExpiryDate" class="form-control" type="date" /></div>
+    <div class="col-md-6"><label class="form-label">Hạn bảo hiểm</label><input asp-for="Input.InsuranceExpiryDate" class="form-control" type="date" /></div>
     <div class="col-12"><button type="submit" class="btn btn-primary">Lưu</button></div>
 </form>

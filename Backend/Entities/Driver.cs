@@ -8,6 +8,7 @@ public class Driver
     public string Status { get; set; } = "Offline";
     public decimal AverageRating { get; set; }
     public int TotalTrips { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public User User { get; set; } = null!;
     public ICollection<TripAssignment> TripAssignments { get; set; } = [];

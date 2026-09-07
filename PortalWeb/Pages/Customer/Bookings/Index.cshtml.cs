@@ -14,6 +14,9 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
     public static bool IsSelfDrive(string? mode)
         => mode == "SelfDrive";
 
+    public static bool CanOfferReview(BookingResponse b)
+        => b.Status == "Completed" && !IsSelfDrive(b.RentalMode) && b.Assignment is not null;
+
     public async Task<IActionResult> OnGetAsync()
     {
         var denied = RequireRole(auth, "Customer");

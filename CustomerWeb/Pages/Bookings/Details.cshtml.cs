@@ -9,6 +9,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : PageModel
 {
     public BookingResponse? Booking { get; set; }
     public List<PaymentResponse> Payments { get; set; } = [];
+    public ContractResponse? Contract { get; set; }
     public IReadOnlyList<VehicleInspectionResponse> Inspections { get; set; } = [];
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
@@ -64,13 +65,35 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : PageModel
         _ => method
     };
 
+    public static string ContractStatusLabel(string status) => status switch
+    {
+        "Issued" => "Đã lập",
+        "Signed" => "Đã ký (mô phỏng)",
+        "Voided" => "Đã hủy hiệu lực",
+        _ => status
+    };
+
     public bool HasBlockingDeposit =>
         Payments.Any(p => p.PaymentType == "Deposit" && (p.Status is "Pending" or "Paid"));
 
     public bool CanPayDeposit =>
         Booking is not null &&
         Booking.QuotedDepositAmount is not null &&
+        Booking.Status != "Cancelled" &&
         !HasBlockingDeposit;
+
+    public bool CanIssueContract =>
+        Booking is not null &&
+        Contract is null &&
+        Booking.Status != "Cancelled";
+
+    public bool CanSignContract =>
+        Contract is not null &&
+        Contract.Status == "Issued" &&
+        Booking?.Status != "Cancelled";
+
+    public bool CanSimulate(PaymentResponse p) =>
+        p.Status == "Pending" && Booking?.Status != "Cancelled";
 
     public bool HasPriceSnapshot =>
         Booking is not null &&
@@ -118,11 +141,81 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostIssueContractAsync(int id)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        if (!await LoadAsync(id)) return RedirectToPage("Index");
+        var (contract, error) = await api.CreateContractAsync(id);
+        if (contract is null)
+        {
+            ErrorMessage = error;
+            await LoadAsync(id);
+            return Page();
+        }
+        InfoMessage = "Đã lập hợp đồng điện tử.";
+        await LoadAsync(id);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostSignContractAsync(int id)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        if (!await LoadAsync(id)) return RedirectToPage("Index");
+        if (Contract is null)
+        {
+            ErrorMessage = "Chưa có hợp đồng.";
+            return Page();
+        }
+        var (signed, error) = await api.SimulateSignContractAsync(Contract.ContractId);
+        if (signed is null)
+        {
+            ErrorMessage = error;
+            await LoadAsync(id);
+            return Page();
+        }
+        InfoMessage = "Đã mô phỏng ký hợp đồng.";
+        await LoadAsync(id);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostSimulateSuccessAsync(int id, int paymentId)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        if (!await LoadAsync(id)) return RedirectToPage("Index");
+        var (payment, error) = await api.SimulatePaymentSuccessAsync(paymentId);
+        if (payment is null)
+        {
+            ErrorMessage = error;
+            await LoadAsync(id);
+            return Page();
+        }
+        InfoMessage = "Mô phỏng thanh toán thành công. Cọc đã được ghi nhận Paid.";
+        await LoadAsync(id);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostSimulateFailureAsync(int id, int paymentId)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        if (!await LoadAsync(id)) return RedirectToPage("Index");
+        var (payment, error) = await api.SimulatePaymentFailureAsync(paymentId);
+        if (payment is null)
+        {
+            ErrorMessage = error;
+            await LoadAsync(id);
+            return Page();
+        }
+        InfoMessage = "Mô phỏng thanh toán thất bại. Cọc không chuyển sang Paid.";
+        await LoadAsync(id);
+        return Page();
+    }
+
     private async Task<bool> LoadAsync(int id)
     {
         Booking = await api.GetBookingAsync(id);
         if (Booking is null) return false;
         Payments = await api.GetBookingPaymentsAsync(id);
+        Contract = await api.GetContractAsync(id);
         Inspections = Booking.Inspections is { Count: > 0 }
             ? Booking.Inspections
             : await api.GetBookingInspectionsAsync(id);

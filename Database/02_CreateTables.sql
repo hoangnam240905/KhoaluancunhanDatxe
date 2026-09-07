@@ -81,6 +81,10 @@ CREATE TABLE Vehicles (
     Color         NVARCHAR(30)   NULL,
     Status        NVARCHAR(20)   NOT NULL DEFAULT N'Available',
     CurrentKm     INT            NOT NULL DEFAULT 0,
+    RegistrationNumber     NVARCHAR(30) NULL,
+    RegistrationExpiryDate DATE         NULL,
+    InspectionExpiryDate   DATE         NULL,
+    InsuranceExpiryDate    DATE         NULL,
     CreatedAt     DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Vehicles_VehicleTypes FOREIGN KEY (TypeId) REFERENCES VehicleTypes(TypeId),
     CONSTRAINT CK_Vehicles_Status CHECK (Status IN (N'Available', N'Rented', N'Maintenance', N'Inactive')),
@@ -116,6 +120,7 @@ CREATE TABLE Bookings (
     Status            NVARCHAR(30)   NOT NULL DEFAULT N'Pending',
     RentalMode        NVARCHAR(20)   NOT NULL DEFAULT N'WithDriver',
     AssignedVehicleId INT            NULL,
+    SourceRecommended BIT            NOT NULL DEFAULT 0,
     Notes             NVARCHAR(500)  NULL,
     CreatedAt         DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt         DATETIME2      NULL,
@@ -245,4 +250,21 @@ CREATE TABLE BookingFees (
 );
 
 CREATE INDEX IX_BookingFees_BookingId ON BookingFees(BookingId);
+
+CREATE TABLE MaintenanceRecords (
+    MaintenanceId          INT IDENTITY(1,1) PRIMARY KEY,
+    VehicleId              INT            NOT NULL,
+    MaintenanceType        NVARCHAR(20)   NOT NULL,
+    ScheduledDate          DATETIME2      NOT NULL,
+    CompletedDate          DATETIME2      NULL,
+    OdometerAtMaintenance  INT            NULL,
+    Cost                   DECIMAL(18,2)  NULL,
+    Notes                  NVARCHAR(500)  NULL,
+    CreatedAt              DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_MaintenanceRecords_Vehicles FOREIGN KEY (VehicleId) REFERENCES Vehicles(VehicleId),
+    CONSTRAINT CK_MaintenanceRecords_Type CHECK (MaintenanceType IN (N'Scheduled', N'Repair', N'Inspection')),
+    CONSTRAINT CK_MaintenanceRecords_Cost CHECK (Cost IS NULL OR Cost >= 0)
+);
+
+CREATE INDEX IX_MaintenanceRecords_VehicleId ON MaintenanceRecords(VehicleId);
 GO

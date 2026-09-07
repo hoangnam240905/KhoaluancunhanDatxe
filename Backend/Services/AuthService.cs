@@ -9,20 +9,27 @@ namespace Backend.Services;
 
 public class AuthService(CarRentalDbContext db, JwtTokenService jwtTokenService)
 {
-    public async Task<AuthResponse?> LoginAsync(LoginRequest request)
+    public async Task<(AuthResponse? Data, string? Error, int StatusCode)> LoginAsync(LoginRequest request)
     {
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
         var user = await db.Users
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.IsActive && u.Email.ToLower() == email);
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return null;
+            return (null, "Email hoặc mật khẩu không đúng.", StatusCodes.Status401Unauthorized);
+
+        if (!user.IsActive)
+            return (null, "Tài khoản đã bị vô hiệu hóa.", StatusCodes.Status403Forbidden);
+
+        if (user.IsLocked)
+            return (null, "Tài khoản đã bị khóa.", StatusCodes.Status403Forbidden);
 
         var (token, expires) = jwtTokenService.CreateToken(
             user.UserId, user.Email, user.FullName, user.Role.RoleName);
 
-        return new AuthResponse(token, user.UserId, user.Email, user.FullName, user.Role.RoleName, expires);
+        return (new AuthResponse(token, user.UserId, user.Email, user.FullName, user.Role.RoleName, expires),
+            null, StatusCodes.Status200OK);
     }
 
     public async Task<(AuthResponse? Data, string? Error)> RegisterCustomerAsync(RegisterCustomerRequest request)
@@ -84,5 +91,23 @@ public class AuthService(CarRentalDbContext db, JwtTokenService jwtTokenService)
         if (user is null) return null;
 
         return new UserProfileResponse(user.UserId, user.Email, user.FullName, user.Phone, user.Role.RoleName);
+    }
+
+    public async Task<(bool Ok, string? Error)> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+    {
+        if (!CustomerRegistrationRules.IsStrongPassword(request.NewPassword))
+            return (false, CustomerRegistrationRules.InvalidPassword);
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+        if (user is null)
+            return (false, "Không tìm thấy tài khoản.");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.OldPassword ?? string.Empty, user.PasswordHash))
+            return (false, "Mật khẩu cũ không đúng.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return (true, null);
     }
 }

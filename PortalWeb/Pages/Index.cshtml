@@ -188,6 +188,76 @@
     </div>
 </section>
 
+<!-- Gợi ý phương tiện -->
+<section id="goi-y" class="landing-section bg-white">
+    <div class="container">
+        <div class="text-center mb-4">
+            <span class="section-tag">Gợi ý</span>
+            <h2 class="section-title">Gợi ý cho bạn</h2>
+            <p class="text-muted">Nhập thời gian thuê — hệ thống xếp hạng loại xe theo đánh giá, lịch sử đặt và xe còn lịch trống (rule-based, không dùng AI/ML).</p>
+        </div>
+        <form method="get" class="row g-3 align-items-end mb-4">
+            <div class="col-md-3">
+                <label class="form-label">Bắt đầu</label>
+                <input type="datetime-local" name="StartDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Kết thúc</label>
+                <input type="datetime-local" name="EndDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Số chỗ tối thiểu</label>
+                <input type="number" name="Seats" min="1" class="form-control" value="@Model.Seats" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Giá/ngày tối đa</label>
+                <input type="number" name="PriceMax" min="0" class="form-control" value="@Model.PriceMax" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Gợi ý</button>
+            </div>
+        </form>
+        @if (!string.IsNullOrEmpty(Model.RecommendError))
+        {
+            <div class="alert alert-danger">@Model.RecommendError</div>
+        }
+        else if (Model.HasRecommendQuery && !Model.Recommendations.Any())
+        {
+            <div class="alert alert-warning">Không có loại xe khả dụng trong khoảng thời gian này.</div>
+        }
+        else if (Model.Recommendations.Any())
+        {
+            <div class="row g-4">
+                @foreach (var t in Model.Recommendations)
+                {
+                    <div class="col-md-6 col-lg-3">
+                        <div class="modern-card p-4 h-100 d-flex flex-column">
+                            <span class="badge bg-success-subtle text-success badge-status mb-2">Điểm @t.Score.ToString("0.00")</span>
+                            <h5 class="fw-bold">@t.TypeName</h5>
+                            <p class="small text-muted mb-2">Đánh giá TB @t.AvgRating.ToString("0.00") · @t.AvailableCount xe còn lịch</p>
+                            <div class="fw-bold text-primary mb-3">@t.PricePerDay.ToString("N0") VND/ngày</div>
+                            @if (Model.IsCustomer)
+                            {
+                                <a asp-page="/Customer/Bookings/Create"
+                                   asp-route-typeId="@t.VehicleTypeId"
+                                   asp-route-start="@Model.StartDate?.ToString("o")"
+                                   asp-route-end="@Model.EndDate?.ToString("o")"
+                                   asp-route-distance="@Model.EstimatedDistance"
+                                   asp-route-fromRecommendation="true"
+                                   class="btn btn-primary w-100 rounded-pill">Chọn và đặt</a>
+                            }
+                            else
+                            {
+                                <a asp-page="/Account/Login" class="btn btn-outline-primary w-100 rounded-pill">Đăng nhập để đặt</a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
 <!-- Bảng giá xe -->
 <section id="bang-gia" class="landing-section">
     <div class="container">

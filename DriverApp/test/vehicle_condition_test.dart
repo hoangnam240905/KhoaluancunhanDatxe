@@ -38,5 +38,16 @@ void main() {
       final body = VehicleCondition.toJson(odometerKm: 1000);
       expect(body, {'odometerKm': 1000});
     });
+
+    test('includes exterior and technical when provided', () {
+      final body = VehicleCondition.toJson(
+        exteriorCondition: '  trầy  ',
+        technicalCondition: ' máy êm ',
+      );
+      expect(body, {
+        'exteriorCondition': 'trầy',
+        'technicalCondition': 'máy êm',
+      });
+    });
   });
 }

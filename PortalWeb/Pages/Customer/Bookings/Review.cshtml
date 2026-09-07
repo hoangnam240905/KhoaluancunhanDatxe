@@ -1,0 +1,65 @@
+@page "/Customer/Bookings/Review/{id:int}"
+@model PortalWeb.Pages.Customer.Bookings.ReviewModel
+@{ ViewData["Title"] = "Đánh giá chuyến đi"; }
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+        <h2>Đánh giá đơn #@Model.BookingId</h2>
+        <p>1–3 sao cần nhận xét. 4–5 sao có thể bỏ trống. Tối đa 500 ký tự.</p>
+    </div>
+    <a asp-page="Index" class="btn btn-outline-secondary">Quay lại danh sách</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+    <div class="modern-card p-4">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold">Bạn đã gửi đánh giá cho đơn này.</span>
+        </div>
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">@Model.ErrorMessage</div>
+    }
+
+    @if (Model.CanReview)
+    {
+        <form method="post" class="modern-card p-4 col-lg-6">
+            <div class="mb-3">
+                <label asp-for="Input.Rating" class="form-label">Điểm (1-5 sao)</label>
+                <select asp-for="Input.Rating" class="form-select" id="review-rating">
+                    @for (byte i = 5; i >= 1; i--)
+                    {
+                        <option value="@i">@i sao</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.Comment" class="form-label" id="review-comment-label">Nhận xét (không bắt buộc)</label>
+                <textarea asp-for="Input.Comment" class="form-control" rows="3" maxlength="500"></textarea>
+                <div class="form-text" id="review-comment-hint">Bắt buộc khi chọn 1–3 sao. Tối đa 500 ký tự.</div>
+                <span asp-validation-for="Input.Comment" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-warning">Gửi đánh giá</button>
+        </form>
+        <script>
+            (function () {
+                var rating = document.getElementById('review-rating');
+                var label = document.getElementById('review-comment-label');
+                if (!rating || !label) return;
+                function sync() {
+                    var value = parseInt(rating.value, 10);
+                    label.textContent = (value >= 1 && value <= 3)
+                        ? 'Nhận xét (bắt buộc)'
+                        : 'Nhận xét (không bắt buộc)';
+                }
+                rating.addEventListener('change', sync);
+                sync();
+            })();
+        </script>
+    }
+}

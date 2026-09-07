@@ -1,4 +1,5 @@
 @inject PortalWeb.Services.AuthSession Auth
+@inject IConfiguration Config
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -22,6 +23,7 @@
                     <li class="nav-item"><a class="nav-link" href="/#gioi-thieu">Giới thiệu</a></li>
                     <li class="nav-item"><a class="nav-link" href="/#tuyen-di">Tuyến đi</a></li>
                     <li class="nav-item"><a class="nav-link" href="/#bang-gia">Bảng giá</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/#goi-y">Gợi ý</a></li>
                 }
                 @if (Auth.IsLoggedIn && Auth.Role == "Customer")
                 {
@@ -32,7 +34,10 @@
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Index">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Vehicles/Index">Xe</a></li>
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Pricing/Index">Giá</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Drivers/Index">Tài xế</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Customers/Index">Khách</a></li>
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Payments/Index">Thanh toán</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Contracts/Index">Hợp đồng</a></li>
                     <li class="nav-item"><a class="nav-link" asp-page="/Admin/Bookings/Index">Đơn đặt</a></li>
                 }
                 @if (Auth.Role == "Dispatcher")
@@ -44,6 +49,7 @@
                 @if (Auth.IsLoggedIn)
                 {
                     <li class="nav-item"><span class="navbar-text text-white-50 small">@Auth.FullName</span></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                     <li class="nav-item"><a class="btn btn-sm btn-outline-light rounded-pill px-3" asp-page="/Account/Logout">Đăng xuất</a></li>
                 }
                 else
@@ -66,6 +72,16 @@ else
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+@if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+{
+    <script>
+        window.carRentalRealtime = {
+            hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+            accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+        };
+    </script>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
+}
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

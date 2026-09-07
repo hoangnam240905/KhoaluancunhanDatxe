@@ -22,7 +22,7 @@ else
     <form method="post" class="col-md-6">
         <div class="mb-3">
             <label asp-for="Input.Rating" class="form-label">Diem (1-5 sao)</label>
-            <select asp-for="Input.Rating" class="form-select">
+            <select asp-for="Input.Rating" class="form-select" id="review-rating">
                 @for (byte i = 5; i >= 1; i--)
                 {
                     <option value="@i">@i sao</option>
@@ -30,11 +30,28 @@ else
             </select>
         </div>
         <div class="mb-3">
-            <label asp-for="Input.Comment" class="form-label">Nhan xet</label>
-            <textarea asp-for="Input.Comment" class="form-control" rows="3"></textarea>
+            <label asp-for="Input.Comment" class="form-label" id="review-comment-label">Nhan xet (khong bat buoc)</label>
+            <textarea asp-for="Input.Comment" class="form-control" rows="3" maxlength="500"></textarea>
+            <div class="form-text">Bat buoc khi chon 1-3 sao. Toi da 500 ky tu.</div>
+            <span asp-validation-for="Input.Comment" class="text-danger"></span>
         </div>
         <button type="submit" class="btn btn-warning">Gui danh gia</button>
     </form>
+    <script>
+        (function () {
+            var rating = document.getElementById('review-rating');
+            var label = document.getElementById('review-comment-label');
+            if (!rating || !label) return;
+            function sync() {
+                var value = parseInt(rating.value, 10);
+                label.textContent = (value >= 1 && value <= 3)
+                    ? 'Nhan xet (bat buoc)'
+                    : 'Nhan xet (khong bat buoc)';
+            }
+            rating.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
     }
     else
     {

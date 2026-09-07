@@ -79,6 +79,71 @@ class VehicleType {
   );
 }
 
+class Vehicle {
+  final int vehicleId;
+  final int typeId;
+  final String licensePlate;
+  final String brand;
+  final String model;
+  final String status;
+
+  Vehicle({
+    required this.vehicleId,
+    required this.typeId,
+    required this.licensePlate,
+    required this.brand,
+    required this.model,
+    required this.status,
+  });
+
+  factory Vehicle.fromJson(Map<String, dynamic> json) => Vehicle(
+    vehicleId: json['vehicleId'] as int,
+    typeId: json['typeId'] as int,
+    licensePlate: json['licensePlate'] as String,
+    brand: json['brand'] as String,
+    model: json['model'] as String,
+    status: json['status'] as String,
+  );
+
+  String get label => '$licensePlate · $brand $model';
+}
+
+class VehicleTypeRecommendation {
+  final int vehicleTypeId;
+  final String typeName;
+  final double score;
+  final double avgRating;
+  final double pricePerDay;
+  final int availableCount;
+
+  VehicleTypeRecommendation({
+    required this.vehicleTypeId,
+    required this.typeName,
+    required this.score,
+    required this.avgRating,
+    required this.pricePerDay,
+    required this.availableCount,
+  });
+
+  factory VehicleTypeRecommendation.fromJson(Map<String, dynamic> json) =>
+      VehicleTypeRecommendation(
+        vehicleTypeId: json['vehicleTypeId'] as int,
+        typeName: json['typeName'] as String,
+        score: (json['score'] as num).toDouble(),
+        avgRating: (json['avgRating'] as num).toDouble(),
+        pricePerDay: (json['pricePerDay'] as num).toDouble(),
+        availableCount: json['availableCount'] as int,
+      );
+
+  VehicleType toVehicleType() => VehicleType(
+    typeId: vehicleTypeId,
+    typeName: typeName,
+    seatCapacity: 0,
+    pricePerDay: pricePerDay,
+    pricePerKm: 0,
+  );
+}
+
 class BookingQuote {
   final int vehicleTypeId;
   final String vehicleTypeName;
@@ -199,6 +264,8 @@ class VehicleInspection {
   final double? odometerKm;
   final double? fuelLevel;
   final String? condition;
+  final String? exteriorCondition;
+  final String? technicalCondition;
   final String? notes;
   final DateTime createdAt;
 
@@ -212,6 +279,8 @@ class VehicleInspection {
     this.odometerKm,
     this.fuelLevel,
     this.condition,
+    this.exteriorCondition,
+    this.technicalCondition,
     this.notes,
   });
 
@@ -225,6 +294,8 @@ class VehicleInspection {
         odometerKm: (json['odometerKm'] as num?)?.toDouble(),
         fuelLevel: (json['fuelLevel'] as num?)?.toDouble(),
         condition: json['condition'] as String?,
+        exteriorCondition: json['exteriorCondition'] as String?,
+        technicalCondition: json['technicalCondition'] as String?,
         notes: json['notes'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
@@ -415,6 +486,67 @@ class Payment {
     }
     return body;
   }
+}
+
+class RentalContract {
+  final int contractId;
+  final int bookingId;
+  final String contractNumber;
+  final String status;
+  final int customerId;
+  final String customerName;
+  final String vehicleTypeName;
+  final String rentalMode;
+  final String pickupAddress;
+  final String dropoffAddress;
+  final DateTime startDate;
+  final DateTime endDate;
+  final double totalAmount;
+  final double? depositAmount;
+  final DateTime createdAt;
+  final DateTime? signedAt;
+
+  RentalContract({
+    required this.contractId,
+    required this.bookingId,
+    required this.contractNumber,
+    required this.status,
+    required this.customerId,
+    required this.customerName,
+    required this.vehicleTypeName,
+    required this.rentalMode,
+    required this.pickupAddress,
+    required this.dropoffAddress,
+    required this.startDate,
+    required this.endDate,
+    required this.totalAmount,
+    required this.createdAt,
+    this.depositAmount,
+    this.signedAt,
+  });
+
+  bool get canSign => status == 'Issued';
+
+  factory RentalContract.fromJson(Map<String, dynamic> json) => RentalContract(
+    contractId: json['contractId'] as int,
+    bookingId: json['bookingId'] as int,
+    contractNumber: json['contractNumber'] as String,
+    status: json['status'] as String,
+    customerId: json['customerId'] as int,
+    customerName: json['customerName'] as String,
+    vehicleTypeName: json['vehicleTypeName'] as String,
+    rentalMode: json['rentalMode'] as String,
+    pickupAddress: json['pickupAddress'] as String,
+    dropoffAddress: json['dropoffAddress'] as String,
+    startDate: DateTime.parse(json['startDate'] as String),
+    endDate: DateTime.parse(json['endDate'] as String),
+    totalAmount: (json['totalAmount'] as num).toDouble(),
+    depositAmount: (json['depositAmount'] as num?)?.toDouble(),
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    signedAt: json['signedAt'] == null
+        ? null
+        : DateTime.parse(json['signedAt'] as String),
+  );
 }
 
 class TripAssignment {

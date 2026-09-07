@@ -1,0 +1,49 @@
+@page "/Admin/Customers"
+@model PortalWeb.Pages.Admin.Customers.IndexModel
+@{ ViewData["Title"] = "Khách hàng"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Khách hàng</h2>
+    <a asp-page="Create" class="btn btn-primary">Thêm khách hàng</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4"><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Tên, email, SĐT" /></div>
+    <div class="col-md-2"><button class="btn btn-primary">Tìm</button></div>
+</form>
+<table class="table table-striped">
+    <thead><tr><th>Mã</th><th>Tên</th><th>Email</th><th>SĐT</th><th>Khóa</th><th>Hoạt động</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var c in Model.Result.Items)
+    {
+        <tr>
+            <td>#@c.CustomerId</td>
+            <td>@c.FullName</td>
+            <td>@c.Email</td>
+            <td>@c.Phone</td>
+            <td>@(c.IsLocked ? "Có" : "Không")</td>
+            <td>@(c.IsActive ? "Có" : "Không")</td>
+            <td>
+                <a asp-page="Edit" asp-route-id="@c.CustomerId" class="btn btn-sm btn-outline-primary">Sửa</a>
+                <form method="post" asp-page-handler="Lock" asp-route-id="@c.CustomerId" class="d-inline">
+                    <input type="hidden" name="isLocked" value="@((!c.IsLocked).ToString().ToLowerInvariant())" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <input type="hidden" name="page" value="@Model.Result.Page" />
+                    <button class="btn btn-sm @(c.IsLocked ? "btn-success" : "btn-outline-danger")">
+                        @(c.IsLocked ? "Mở khóa" : "Khóa")
+                    </button>
+                </form>
+                @if (c.IsActive)
+                {
+                    <form method="post" asp-page-handler="Deactivate" asp-route-id="@c.CustomerId" class="d-inline">
+                        <input type="hidden" name="keyword" value="@Model.Keyword" />
+                        <input type="hidden" name="page" value="@Model.Result.Page" />
+                        <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Vô hiệu hóa tài khoản này? Lịch sử thuê sẽ được giữ.');">Vô hiệu hóa</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+<p class="text-muted small">Tổng @Model.Result.Total — trang @Model.Result.Page. Vô hiệu hóa là soft-delete (Users.IsActive=false), không xóa Booking/Payment/Contract.</p>

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Drivers;
+using Backend.DTOs.Incidents;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +12,7 @@ namespace Backend.Controllers;
 
 [ApiController]
 [Route("api/drivers")]
-public class DriversController(DriverService driverService) : ControllerBase
+public class DriversController(DriverService driverService, IncidentService incidentService) : ControllerBase
 {
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
     [HttpGet]
@@ -73,5 +74,31 @@ public class DriversController(DriverService driverService) : ControllerBase
         if (ok)
             return Ok(new { message = "Đã hoàn thành chuyến." });
         return error is null ? BadRequest() : BadRequest(new { message = error });
+    }
+
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpGet("me/incidents")]
+    public async Task<ActionResult<List<IncidentResponse>>> GetMyIncidents()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (incidents, _, _) = await incidentService.GetByDriverAsync(userId);
+        return Ok(incidents);
+    }
+
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("trips/{assignmentId:int}/incidents")]
+    public async Task<ActionResult<IncidentResponse>> ReportIncident(int assignmentId, CreateIncidentRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (incident, error, status) = await incidentService.CreateAsync(userId, assignmentId, request);
+        if (incident is not null)
+            return Created($"/api/drivers/me/incidents", incident);
+
+        return status switch
+        {
+            StatusCodes.Status403Forbidden => Forbid(),
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error ?? "Không thể báo sự cố." })
+        };
     }
 }

@@ -125,6 +125,8 @@ class VehicleCondition {
     double? fuelLevel,
     String? condition,
     String? notes,
+    String? exteriorCondition,
+    String? technicalCondition,
   }) {
     final body = <String, dynamic>{};
     if (odometerKm != null) body['odometerKm'] = odometerKm;
@@ -133,6 +135,14 @@ class VehicleCondition {
     if (c != null && c.isNotEmpty) body['condition'] = c;
     final n = notes?.trim();
     if (n != null && n.isNotEmpty) body['notes'] = n;
+    final exterior = exteriorCondition?.trim();
+    if (exterior != null && exterior.isNotEmpty) {
+      body['exteriorCondition'] = exterior;
+    }
+    final technical = technicalCondition?.trim();
+    if (technical != null && technical.isNotEmpty) {
+      body['technicalCondition'] = technical;
+    }
     return body.isEmpty ? null : body;
   }
 }
@@ -240,6 +250,45 @@ class DriverBooking {
       assignedVehicle: vehicle,
     );
   }
+}
+
+class IncidentReport {
+  final int incidentId;
+  final int bookingId;
+  final int assignmentId;
+  final int driverId;
+  final String driverName;
+  final String incidentType;
+  final String description;
+  final DateTime occurredAt;
+  final String status;
+  final DateTime createdAt;
+
+  IncidentReport({
+    required this.incidentId,
+    required this.bookingId,
+    required this.assignmentId,
+    required this.driverId,
+    required this.driverName,
+    required this.incidentType,
+    required this.description,
+    required this.occurredAt,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory IncidentReport.fromJson(Map<String, dynamic> json) => IncidentReport(
+    incidentId: json['incidentId'] as int,
+    bookingId: json['bookingId'] as int,
+    assignmentId: json['assignmentId'] as int,
+    driverId: json['driverId'] as int,
+    driverName: json['driverName'] as String? ?? '',
+    incidentType: json['incidentType'] as String,
+    description: json['description'] as String,
+    occurredAt: DateTime.parse(json['occurredAt'] as String),
+    status: json['status'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }
 
 class TripFilters {

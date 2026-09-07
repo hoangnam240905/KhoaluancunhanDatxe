@@ -14,6 +14,71 @@
     <div class="alert alert-success">Xin chao, <strong>@Model.CustomerName</strong>!</div>
 }
 
+<h3 class="mt-4">Goi y cho ban</h3>
+<p class="text-muted small">Nhap thoi gian thue. Xep hang theo danh gia, lich su dat va xe con lich (rule-based).</p>
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Bat dau</label>
+        <input type="datetime-local" name="StartDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Ket thuc</label>
+        <input type="datetime-local" name="EndDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">So cho</label>
+        <input type="number" name="Seats" min="1" class="form-control" value="@Model.Seats" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Gia/ngay toi da</label>
+        <input type="number" name="PriceMax" min="0" class="form-control" value="@Model.PriceMax" />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">Goi y</button>
+    </div>
+</form>
+@if (!string.IsNullOrEmpty(Model.RecommendError))
+{
+    <div class="alert alert-danger">@Model.RecommendError</div>
+}
+else if (Model.HasRecommendQuery && !Model.Recommendations.Any())
+{
+    <div class="alert alert-warning">Khong co loai xe kha dung.</div>
+}
+else if (Model.Recommendations.Any())
+{
+    <div class="row g-4 mb-4">
+        @foreach (var t in Model.Recommendations)
+        {
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5>@t.TypeName</h5>
+                        <p class="small text-muted">Diem @t.Score.ToString("0.00") · Rating @t.AvgRating.ToString("0.00") · @t.AvailableCount xe</p>
+                        <p><strong>@t.PricePerDay.ToString("N0")</strong> VND/ngay</p>
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        @if (Model.IsLoggedIn)
+                        {
+                            <a asp-page="/Bookings/Create"
+                               asp-route-typeId="@t.VehicleTypeId"
+                               asp-route-start="@Model.StartDate?.ToString("o")"
+                               asp-route-end="@Model.EndDate?.ToString("o")"
+                               asp-route-fromRecommendation="true"
+                               class="btn btn-primary w-100">Chon va dat</a>
+                        }
+                        else
+                        {
+                            <a href="http://localhost:5180/Account/Login" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<h3>Bang gia</h3>
 <div class="row g-4">
     @foreach (var type in Model.VehicleTypes)
     {

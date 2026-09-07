@@ -4,8 +4,12 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Backend.DTOs.Auth;
+using Backend.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Backend.Tests;
@@ -18,8 +22,14 @@ public class IsolatedApiFactory : WebApplicationFactory<Program>
     {
         builder.UseSetting("DatabaseProvider", "Sqlite");
         builder.UseSetting("ConnectionStrings:DefaultConnection", $"Data Source={DbPath}");
+        builder.UseSetting("SeedDemoRich", "false");
         builder.UseSetting("Urls", "http://127.0.0.1:0");
         builder.UseEnvironment("Development");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IRecommenderClient>();
+            services.AddSingleton<IRecommenderClient, TestSnapshotRecommenderClient>();
+        });
     }
 
     protected override void Dispose(bool disposing)
@@ -85,6 +95,8 @@ public class AdminApiAuthTests : IClassFixture<IsolatedApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/vehicle-types")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/vehicle-types/1")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/payments")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/drivers")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/admin/customers")).StatusCode);
         var put = await client.PutAsync("/api/admin/vehicle-types/1",
             new StringContent("{}", Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
@@ -102,6 +114,10 @@ public class AdminApiAuthTests : IClassFixture<IsolatedApiFactory>
             (await client.SendAsync(Authed(HttpMethod.Get, "/api/admin/vehicle-types", token))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await client.SendAsync(Authed(HttpMethod.Get, "/api/admin/payments", token))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.SendAsync(Authed(HttpMethod.Get, "/api/admin/drivers", token))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.SendAsync(Authed(HttpMethod.Get, "/api/admin/customers", token))).StatusCode);
         var put = Authed(HttpMethod.Put, "/api/admin/vehicle-types/1", token,
             new StringContent("""{"pricePerDay":1,"pricePerKm":1,"driverFeePerDay":1,"selfDrivePricePerDay":1,"selfDriveIncludedKmPerDay":1,"selfDriveExtraKmPrice":1,"withDriverDepositAmount":1,"selfDriveDepositAmount":1}""", Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(put)).StatusCode);

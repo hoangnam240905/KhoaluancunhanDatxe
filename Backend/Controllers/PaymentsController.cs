@@ -43,4 +43,36 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
             _ => BadRequest(new { message = error ?? "Không thể lấy thanh toán." })
         };
     }
+
+    [HttpPost("{id:int}/simulate-success")]
+    public async Task<ActionResult<PaymentResponse>> SimulateSuccess(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (payment, error, status) = await paymentService.SimulateSuccessAsync(userId, id);
+        if (payment is not null)
+            return Ok(payment);
+
+        return status switch
+        {
+            StatusCodes.Status403Forbidden => Forbid(),
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error ?? "Không thể mô phỏng thanh toán." })
+        };
+    }
+
+    [HttpPost("{id:int}/simulate-failure")]
+    public async Task<ActionResult<PaymentResponse>> SimulateFailure(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (payment, error, status) = await paymentService.SimulateFailureAsync(userId, id);
+        if (payment is not null)
+            return Ok(payment);
+
+        return status switch
+        {
+            StatusCodes.Status403Forbidden => Forbid(),
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error ?? "Không thể mô phỏng thanh toán." })
+        };
+    }
 }

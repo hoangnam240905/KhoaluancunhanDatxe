@@ -12,6 +12,62 @@
     </p>
 }
 @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+@if (Model.Conflict is not null)
+{
+    <div class="alert alert-warning">
+        <p class="mb-2"><strong>Xung đột lịch</strong> (@Model.Conflict.ConflictType). Khoảng đệm kỹ thuật 2 giờ.</p>
+        @if ((Model.Conflict.VehicleAlternatives?.Count ?? 0) > 0)
+        {
+            <p class="mb-1">Xe thay thế:</p>
+            <ul class="mb-2">
+            @foreach (var v in Model.Conflict.VehicleAlternatives!)
+            {
+                <li>
+                    <form method="post" class="d-inline">
+                        <input type="hidden" name="Input.VehicleId" value="@v.VehicleId" />
+                        @if (!Model.IsSelfDrive)
+                        {
+                            <input type="hidden" name="Input.DriverId" value="@Model.Input.DriverId" />
+                        }
+                        <button type="submit" class="btn btn-sm btn-outline-primary mb-1">
+                            Gán @v.LicensePlate (@v.Brand @v.Model)
+                        </button>
+                    </form>
+                </li>
+            }
+            </ul>
+        }
+        else
+        {
+            <p class="mb-2">Không còn xe thay thế cùng loại trong khoảng thời gian này.</p>
+        }
+        @if (!Model.IsSelfDrive)
+        {
+            if ((Model.Conflict.DriverAlternatives?.Count ?? 0) > 0)
+            {
+                <p class="mb-1">Tài xế thay thế:</p>
+                <ul class="mb-0">
+                @foreach (var d in Model.Conflict.DriverAlternatives!)
+                {
+                    <li>
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="Input.VehicleId" value="@Model.Input.VehicleId" />
+                            <input type="hidden" name="Input.DriverId" value="@d.DriverId" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary mb-1">
+                                Gán tài xế @d.FullName
+                            </button>
+                        </form>
+                    </li>
+                }
+                </ul>
+            }
+            else
+            {
+                <p class="mb-0">Không còn tài xế thay thế trong khoảng thời gian này.</p>
+            }
+        }
+    </div>
+}
 <form method="post" class="col-md-6">
     @if (!Model.IsSelfDrive)
     {

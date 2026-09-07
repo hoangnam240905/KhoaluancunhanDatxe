@@ -2,7 +2,11 @@
 @model AdminWeb.Pages.Pricing.IndexModel
 @{ ViewData["Title"] = "Gia loai xe"; }
 
-<h2 class="mb-3">Gia loai xe</h2>
+<div class="d-flex justify-content-between mb-3">
+    <h2>Gia loai xe</h2>
+    <a asp-page="Create" class="btn btn-primary">Them loai xe</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
 <div class="alert alert-info">
     Giá này áp dụng cho đơn mới. Đơn đã đặt giữ nguyên snapshot.
 </div>
@@ -28,7 +32,12 @@
             <td>@t.SelfDriveExtraKmPrice.ToString("N0")</td>
             <td>@t.WithDriverDepositAmount.ToString("N0")</td>
             <td>@t.SelfDriveDepositAmount.ToString("N0")</td>
-            <td><a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sua gia</a></td>
+            <td>
+                <a asp-page="Edit" asp-route-id="@t.TypeId" class="btn btn-sm btn-outline-primary">Sua gia</a>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@t.TypeId" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">Xoa</button>
+                </form>
+            </td>
         </tr>
     }
     </tbody>

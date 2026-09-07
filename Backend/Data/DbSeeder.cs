@@ -92,6 +92,22 @@ public static class DbSeeder
             new Vehicle { TypeId = 4, LicensePlate = "51F-44444", Brand = "Ford", Model = "Transit", Year = 2023, Color = "Đen", Status = VehicleStatuses.Maintenance, CurrentKm = 12000, CreatedAt = now });
         db.SaveChanges();
 
+        var servicedAt = now.AddDays(-10);
+        foreach (var vehicle in db.Vehicles.OrderBy(v => v.VehicleId).ToList())
+        {
+            db.MaintenanceRecords.Add(new MaintenanceRecord
+            {
+                VehicleId = vehicle.VehicleId,
+                MaintenanceType = MaintenanceTypes.Scheduled,
+                ScheduledDate = servicedAt,
+                CompletedDate = servicedAt,
+                OdometerAtMaintenance = vehicle.CurrentKm,
+                Notes = "Bảo trì định kỳ",
+                CreatedAt = now
+            });
+        }
+        db.SaveChanges();
+
         db.Bookings.AddRange(
             new Booking
             {

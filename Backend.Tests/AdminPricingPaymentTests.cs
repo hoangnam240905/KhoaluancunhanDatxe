@@ -154,7 +154,7 @@ public class AdminPricingPaymentTests
     public async Task H_Admin_get_payments_serializes_null_payment_type()
     {
         using var iso = new IsolatedCarRentalDb();
-        var (rows, error, status) = await new PaymentService(iso.Db).GetAdminAsync(null, null, null);
+        var (rows, error, status) = await new PaymentService(iso.Db, new ScheduleConflictService(iso.Db)).GetAdminAsync(null, null, null);
         Assert.Null(error);
         Assert.Equal(200, status);
         Assert.NotNull(rows);
@@ -169,7 +169,7 @@ public class AdminPricingPaymentTests
     public async Task H_Admin_get_payments_unknown_booking_is_404()
     {
         using var iso = new IsolatedCarRentalDb();
-        var (rows, error, status) = await new PaymentService(iso.Db).GetAdminAsync(99999, null, null);
+        var (rows, error, status) = await new PaymentService(iso.Db, new ScheduleConflictService(iso.Db)).GetAdminAsync(99999, null, null);
         Assert.Null(rows);
         Assert.Equal(404, status);
         Assert.Contains("Không tìm thấy đơn", error);
@@ -180,7 +180,7 @@ public class AdminPricingPaymentTests
     {
         using var iso = new IsolatedCarRentalDb();
         var booking = iso.AddDepositBooking(800_000);
-        var (payment, error, status) = await new PaymentService(iso.Db).CreateAsync(
+        var (payment, error, status) = await new PaymentService(iso.Db, new ScheduleConflictService(iso.Db)).CreateAsync(
             3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
 
         Assert.Null(error);

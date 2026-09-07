@@ -16,14 +16,48 @@ public record UpdateVehicleTypePricingRequest(
     decimal PricePerDay, decimal PricePerKm, decimal DriverFeePerDay,
     decimal SelfDrivePricePerDay, decimal SelfDriveIncludedKmPerDay, decimal SelfDriveExtraKmPrice,
     decimal WithDriverDepositAmount, decimal SelfDriveDepositAmount);
-public record VehicleResponse(int VehicleId, int TypeId, string TypeName, string LicensePlate, string Brand, string Model, int Year, string? Color, string Status, int CurrentKm);
-public record CreateVehicleRequest(int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, int CurrentKm);
-public record UpdateVehicleRequest(int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, string Status, int CurrentKm);
+public record VehicleTypeRecommendationResponse(
+    int VehicleTypeId, string TypeName, decimal Score, decimal AvgRating, decimal PricePerDay, int AvailableCount);
+public record VehicleResponse(
+    int VehicleId, int TypeId, string TypeName, string LicensePlate, string Brand, string Model, int Year,
+    string? Color, string Status, int CurrentKm,
+    string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null);
+public record MaintenanceRecordResponse(
+    int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
+    int? OdometerAtMaintenance, decimal? Cost, string? Notes, DateTime CreatedAt);
+public record CreateMaintenanceRequest(
+    string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate, int? OdometerAtMaintenance, decimal? Cost, string? Notes);
+public record MaintenanceAlertResponse(
+    int VehicleId, string LicensePlate, int KmSinceLastMaintenance, int DaysSinceLastMaintenance, string Reason);
+public record DashboardRange(DateTime From, DateTime To, bool DefaultRangeApplied, string TimeRangeNote, string SnapshotNote);
+public record DashboardSummary(int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel);
+public record DashboardDriverTrips(int Assigned, int Accepted, int InProgress, int Completed, int Cancelled);
+public record DashboardBookings(int Total, int Pending, int Confirmed, int Assigned, int InProgress, int Completed, int Cancelled, DashboardDriverTrips DriverTrips);
+public record DashboardPayments(int PaidDepositCount, int PendingDepositCount, int FailedDepositCount, decimal DepositPaidAmount, string AmountLabel, string MetricNote);
+public record DashboardVehicles(int Total, int Available, int Rented, int Maintenance, int Inactive, string SnapshotNote);
+public record DashboardDriverRow(int DriverId, string FullName, int CompletedAssignments, int CancelledAssignments, int IncidentCount, decimal? AverageReviewRating, decimal? AssignmentCompletionRate);
+public record DashboardDrivers(int Total, int Available, int Busy, int Offline, string SnapshotNote, IReadOnlyList<DashboardDriverRow> Performance);
+public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount);
+public record DashboardMaintenance(int AlertCount, IReadOnlyList<MaintenanceAlertResponse> Alerts);
+public record DashboardRecommendation(int TotalBookings, int RecommendedBookings, decimal? AttributionShare, int RecommendedCompletedBookings, decimal? AverageRatingRecommendedReviewed, string MetricNote);
+public record DashboardResponse(
+    DashboardRange Range, DashboardSummary Summary, DashboardBookings Bookings, DashboardPayments Payments,
+    DashboardVehicles Vehicles, DashboardDrivers Drivers, IReadOnlyList<DashboardTopVehicle> TopVehicles,
+    DashboardMaintenance Maintenance, DashboardRecommendation Recommendation);
+public record CreateVehicleRequest(
+    int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, int CurrentKm,
+    string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null);
+public record UpdateVehicleRequest(
+    int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, string Status, int CurrentKm,
+    string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null);
 
-public record CreateBookingRequest(int VehicleTypeId, string PickupAddress, string DropoffAddress, decimal? PickupLat, decimal? PickupLng, decimal? DropoffLat, decimal? DropoffLng, DateTime StartDate, DateTime EndDate, decimal? EstimatedDistance, string? Notes, string? RentalMode = null);
+public record CreateBookingRequest(int VehicleTypeId, string PickupAddress, string DropoffAddress, decimal? PickupLat, decimal? PickupLng, decimal? DropoffLat, decimal? DropoffLng, DateTime StartDate, DateTime EndDate, decimal? EstimatedDistance, string? Notes, string? RentalMode = null, int? VehicleId = null);
 public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
-public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt);
+public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null);
 public record BookingQuoteResponse(
     int VehicleTypeId,
     string VehicleTypeName,
@@ -43,7 +77,25 @@ public record BookingQuoteResponse(
     decimal ExtraKmPrice,
     decimal DepositAmount);
 public record PaymentResponse(int PaymentId, int BookingId, string? PaymentType, decimal Amount, string Method, string Status, string? TransactionRef, DateTime? PaidAt, DateTime CreatedAt);
-public record CreatePaymentRequest(int BookingId, string? PaymentType, string? Method, string? TransactionRef = null);
+public record CreatePaymentRequest(int BookingId, string? PaymentType, string? Method, string? TransactionRef = null, int? VehicleId = null);
+
+public record ContractResponse(
+    int ContractId,
+    int BookingId,
+    string ContractNumber,
+    string Status,
+    int CustomerId,
+    string CustomerName,
+    string VehicleTypeName,
+    string RentalMode,
+    string PickupAddress,
+    string DropoffAddress,
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal TotalAmount,
+    decimal? DepositAmount,
+    DateTime CreatedAt,
+    DateTime? SignedAt);
 public record BookingResponse(
     int BookingId,
     int CustomerId,
@@ -77,5 +129,22 @@ public record BookingResponse(
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record AssignTripRequest(int? DriverId, int VehicleId);
+public record VehicleAlternativeResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
+public record DriverAlternativeResponse(int DriverId, string FullName, string? Phone, string Status);
+public record AssignConflictResponse(
+    string Message,
+    string ConflictType,
+    IReadOnlyList<VehicleAlternativeResponse> VehicleAlternatives,
+    IReadOnlyList<DriverAlternativeResponse> DriverAlternatives);
 public record CreateReviewRequest(byte Rating, string? Comment);
 public record DriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips);
+public record ChangePasswordRequest(string OldPassword, string NewPassword);
+public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, decimal PricePerKm);
+public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive);
+public record CreateAdminDriverRequest(string FullName, string Email, string Phone, string Password);
+public record UpdateAdminDriverRequest(string? FullName, string? Phone, string? Status);
+public record AdminCustomerResponse(int CustomerId, string FullName, string Email, string? Phone, bool IsLocked, DateTime CreatedAt, bool IsActive = true, string? Address = null, string? IdNumber = null, DateOnly? DateOfBirth = null);
+public record AdminCustomerListResponse(List<AdminCustomerResponse> Items, int Total, int Page, int PageSize);
+public record LockCustomerRequest(bool IsLocked);
+public record CreateAdminCustomerRequest(string FullName, string Email, string Phone, string Password, string? Address, string? IdNumber, DateOnly? DateOfBirth);
+public record UpdateAdminCustomerRequest(string FullName, string Email, string Phone, string? Address, string? IdNumber, DateOnly? DateOfBirth);

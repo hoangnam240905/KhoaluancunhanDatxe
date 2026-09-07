@@ -35,4 +35,28 @@ public class AdminVehicleTypesController(VehicleService vehicleService) : Contro
             _ => BadRequest(new { message = error ?? "Không thể cập nhật giá." })
         };
     }
+
+    [HttpPost]
+    public async Task<ActionResult<AdminVehicleTypeResponse>> Create(CreateVehicleTypeRequest request)
+    {
+        var (data, error, status) = await vehicleService.CreateTypeAsync(request);
+        if (data is not null)
+            return StatusCode(StatusCodes.Status201Created, data);
+
+        return status == StatusCodes.Status404NotFound
+            ? NotFound(new { message = error })
+            : BadRequest(new { message = error ?? "Không thể tạo loại xe." });
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var (ok, error, status) = await vehicleService.DeleteTypeAsync(id);
+        if (ok)
+            return Ok(new { message = "Đã xóa loại xe." });
+
+        return status == StatusCodes.Status404NotFound
+            ? NotFound(new { message = error })
+            : BadRequest(new { message = error ?? "Không thể xóa loại xe." });
+    }
 }

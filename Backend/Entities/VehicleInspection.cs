@@ -10,6 +10,8 @@ public class VehicleInspection
     public decimal? OdometerKm { get; set; }
     public decimal? FuelLevel { get; set; }
     public string? Condition { get; set; }
+    public string? ExteriorCondition { get; set; }
+    public string? TechnicalCondition { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 

@@ -48,6 +48,47 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<VehicleTypeResponse>>(JsonOptions) ?? [] : [];
     }
 
+    public async Task<(List<VehicleTypeRecommendationResponse> Data, string? Error)> GetRecommendedAsync(
+        DateTime startDate, DateTime endDate, int? seats, decimal? priceMax, decimal? estimatedDistance)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("o"))}&endDate={Uri.EscapeDataString(endDate.ToString("o"))}";
+        if (seats.HasValue) query += $"&seats={seats.Value}";
+        if (priceMax.HasValue) query += $"&priceMax={priceMax.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        if (estimatedDistance.HasValue) query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicle-types/recommended?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return ([], await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<VehicleTypeRecommendationResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<List<MaintenanceAlertResponse>> GetMaintenanceAlertsAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/vehicles/maintenance-alerts");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<MaintenanceAlertResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<(List<MaintenanceRecordResponse> Data, string? Error)> GetMaintenanceHistoryAsync(int vehicleId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{vehicleId}/maintenance-history");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return ([], await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<MaintenanceRecordResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<(MaintenanceRecordResponse? Data, string? Error)> CreateMaintenanceAsync(int vehicleId, CreateMaintenanceRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/vehicles/{vehicleId}/maintenance");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<MaintenanceRecordResponse>(JsonOptions), null);
+    }
+
     public async Task<List<VehicleResponse>> GetVehiclesAsync(string? status = null)
     {
         var url = string.IsNullOrEmpty(status) ? "/api/vehicles" : $"/api/vehicles?status={Uri.EscapeDataString(status)}";
@@ -96,9 +137,11 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<BookingResponse>>(JsonOptions) ?? [] : [];
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> CreateBookingAsync(CreateBookingRequest request)
+    public async Task<(BookingResponse? Data, string? Error)> CreateBookingAsync(
+        CreateBookingRequest request, bool fromRecommendation = false)
     {
-        using var httpRequest = CreateRequest(HttpMethod.Post, "/api/bookings");
+        var url = fromRecommendation ? "/api/bookings?fromRecommendation=true" : "/api/bookings";
+        using var httpRequest = CreateRequest(HttpMethod.Post, url);
         httpRequest.Content = JsonContent.Create(request);
         var response = await http.SendAsync(httpRequest);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đặt xe thất bại.");
@@ -148,6 +191,64 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
     }
 
+    public async Task<ContractResponse?> GetContractAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/contract");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(ContractResponse? Data, string? Error)> CreateContractAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/bookings/{bookingId}/contract");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không tạo được hợp đồng.");
+        return (await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions), null);
+    }
+
+    public async Task<(ContractResponse? Data, string? Error)> SimulateSignContractAsync(int contractId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/contracts/{contractId}/simulate-sign");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không ký được hợp đồng.");
+        return (await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions), null);
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> SimulatePaymentSuccessAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/payments/{paymentId}/simulate-success");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không mô phỏng thanh toán.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<(PaymentResponse? Data, string? Error)> SimulatePaymentFailureAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/payments/{paymentId}/simulate-failure");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không mô phỏng thanh toán.");
+        return (await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions), null);
+    }
+
+    public async Task<(List<ContractResponse>? Data, string? Error)> GetAdminContractsAsync(
+        int? bookingId = null, string? status = null)
+    {
+        var query = new List<string>();
+        if (bookingId is not null) query.Add($"bookingId={bookingId.Value}");
+        if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
+        var url = query.Count == 0 ? "/api/admin/contracts" : "/api/admin/contracts?" + string.Join("&", query);
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<ContractResponse>>(JsonOptions) ?? [], null);
+    }
+
     public async Task<List<VehicleInspectionResponse>> GetBookingInspectionsAsync(int bookingId)
     {
         using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/inspections");
@@ -182,13 +283,32 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> AssignTripAsync(int id, AssignTripRequest body)
+    public async Task<(BookingResponse? Data, string? Error, AssignConflictResponse? Conflict)> AssignTripAsync(int id, AssignTripRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/assign");
         request.Content = JsonContent.Create(body);
         var response = await http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
-        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null, null);
+
+        var json = await response.Content.ReadAsStringAsync();
+        try
+        {
+            var conflict = JsonSerializer.Deserialize<AssignConflictResponse>(json, JsonOptions);
+            if (conflict is not null && !string.IsNullOrEmpty(conflict.ConflictType))
+                return (null, conflict.Message, conflict);
+        }
+        catch { /* not a conflict payload */ }
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<ApiError>(json, JsonOptions);
+            if (!string.IsNullOrEmpty(error?.Message))
+                return (null, error.Message, null);
+        }
+        catch { }
+
+        return (null, $"Loi API ({(int)response.StatusCode})", null);
     }
 
     public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id)
@@ -243,6 +363,21 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<AdminVehicleTypeResponse>(JsonOptions), null);
     }
 
+    public async Task<(DashboardResponse? Data, string? Error)> GetAdminDashboardAsync(
+        DateTime? from = null, DateTime? to = null)
+    {
+        var query = new List<string>();
+        if (from is not null)
+            query.Add($"from={Uri.EscapeDataString(from.Value.ToUniversalTime().ToString("o"))}");
+        if (to is not null)
+            query.Add($"to={Uri.EscapeDataString(to.Value.ToUniversalTime().ToString("o"))}");
+        var url = query.Count == 0 ? "/api/admin/dashboard" : "/api/admin/dashboard?" + string.Join("&", query);
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<DashboardResponse>(JsonOptions), null);
+    }
+
     public async Task<(List<PaymentResponse>? Data, string? Error)> GetAdminPaymentsAsync(
         int? bookingId = null, string? status = null, string? paymentType = null)
     {
@@ -257,5 +392,128 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             return (null, await GetErrorAsync(response) ?? "Không tìm thấy đơn.");
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<List<PaymentResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<(bool Success, string? Error)> ChangePasswordAsync(string oldPassword, string newPassword)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/auth/change-password");
+        request.Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword));
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
+    }
+
+    public async Task<(AdminVehicleTypeResponse? Data, string? Error)> CreateVehicleTypeAsync(CreateVehicleTypeRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/admin/vehicle-types");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminVehicleTypeResponse>(JsonOptions), null);
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteVehicleTypeAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Delete, $"/api/admin/vehicle-types/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
+    }
+
+    public async Task<List<AdminDriverResponse>> GetAdminDriversAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/admin/drivers");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<AdminDriverResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<AdminDriverResponse?> GetAdminDriverAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/admin/drivers/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<AdminDriverResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(AdminDriverResponse? Data, string? Error)> CreateAdminDriverAsync(CreateAdminDriverRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/admin/drivers");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminDriverResponse>(JsonOptions), null);
+    }
+
+    public async Task<(AdminDriverResponse? Data, string? Error)> UpdateAdminDriverAsync(int id, UpdateAdminDriverRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/admin/drivers/{id}");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminDriverResponse>(JsonOptions), null);
+    }
+
+    public async Task<(bool Success, string? Error)> DeleteAdminDriverAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Delete, $"/api/admin/drivers/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
+    }
+
+    public async Task<AdminCustomerListResponse> GetAdminCustomersAsync(string? keyword = null, int page = 1)
+    {
+        var url = $"/api/admin/customers?page={page}";
+        if (!string.IsNullOrWhiteSpace(keyword))
+            url += $"&keyword={Uri.EscapeDataString(keyword)}";
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<AdminCustomerListResponse>(JsonOptions)
+              ?? new AdminCustomerListResponse([], 0, page, 20)
+            : new AdminCustomerListResponse([], 0, page, 20);
+    }
+
+    public async Task<AdminCustomerResponse?> GetAdminCustomerAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/admin/customers/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions)
+            : null;
+    }
+
+    public async Task<(AdminCustomerResponse? Data, string? Error)> CreateAdminCustomerAsync(CreateAdminCustomerRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/admin/customers");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
+    }
+
+    public async Task<(AdminCustomerResponse? Data, string? Error)> UpdateAdminCustomerAsync(int id, UpdateAdminCustomerRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/admin/customers/{id}");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
+    }
+
+    public async Task<(bool Success, string? Error)> DeactivateAdminCustomerAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Delete, $"/api/admin/customers/{id}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
+    }
+
+    public async Task<(AdminCustomerResponse? Data, string? Error)> SetCustomerLockedAsync(int id, bool isLocked)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/admin/customers/{id}/lock");
+        request.Content = JsonContent.Create(new LockCustomerRequest(isLocked));
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
     }
 }

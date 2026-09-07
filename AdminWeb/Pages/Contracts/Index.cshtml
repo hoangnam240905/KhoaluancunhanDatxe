@@ -1,0 +1,48 @@
+@page
+@model AdminWeb.Pages.Contracts.IndexModel
+@{ ViewData["Title"] = "Hop dong"; }
+
+<h2 class="mb-3">Hop dong dien tu</h2>
+<p class="text-muted">Chi xem. Ky hop dong va thanh toan do khach mo phong tren don cua minh.</p>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3"><label class="form-label">Ma don</label><input name="bookingId" value="@Model.FilterBookingId" class="form-control" type="number" min="1" /></div>
+    <div class="col-md-3">
+        <label class="form-label">Trang thai</label>
+        <select name="status" class="form-select">
+            <option value="">Tat ca</option>
+            <option value="Issued" selected="@(Model.FilterStatus == "Issued" ? "selected" : null)">Issued</option>
+            <option value="Signed" selected="@(Model.FilterStatus == "Signed" ? "selected" : null)">Signed</option>
+            <option value="Voided" selected="@(Model.FilterStatus == "Voided" ? "selected" : null)">Voided</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <button type="submit" class="btn btn-primary">Loc</button>
+        <a asp-page="Index" class="btn btn-outline-secondary">Xoa loc</a>
+    </div>
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ma</th><th>So HD</th><th>Don</th><th>Khach</th><th>Trang thai</th>
+            <th>Tong tien</th><th>Coc</th><th>Ky luc</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var c in Model.Contracts)
+    {
+        <tr>
+            <td>#@c.ContractId</td>
+            <td>@c.ContractNumber</td>
+            <td>#@c.BookingId</td>
+            <td>@c.CustomerName</td>
+            <td>@c.Status</td>
+            <td>@c.TotalAmount.ToString("N0")</td>
+            <td>@(c.DepositAmount?.ToString("N0") ?? "—")</td>
+            <td>@(c.SignedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+        </tr>
+    }
+    </tbody>
+</table>

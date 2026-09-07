@@ -11,6 +11,16 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
+    "Demo": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "launchUrl": "api/vehicle-types",
+      "applicationUrl": "http://localhost:5199",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Demo"
+      }
+    },
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,

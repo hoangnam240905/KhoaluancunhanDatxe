@@ -23,6 +23,10 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
         public string? Color { get; set; }
         [Required] public string Status { get; set; } = "Available";
         public int CurrentKm { get; set; }
+        public string? RegistrationNumber { get; set; }
+        public DateOnly? RegistrationExpiryDate { get; set; }
+        public DateOnly? InspectionExpiryDate { get; set; }
+        public DateOnly? InsuranceExpiryDate { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(int id)
@@ -36,7 +40,11 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
         {
             TypeId = vehicle.TypeId, LicensePlate = vehicle.LicensePlate, Brand = vehicle.Brand,
             Model = vehicle.Model, Year = vehicle.Year, Color = vehicle.Color,
-            Status = vehicle.Status, CurrentKm = vehicle.CurrentKm
+            Status = vehicle.Status, CurrentKm = vehicle.CurrentKm,
+            RegistrationNumber = vehicle.RegistrationNumber,
+            RegistrationExpiryDate = vehicle.RegistrationExpiryDate,
+            InspectionExpiryDate = vehicle.InspectionExpiryDate,
+            InsuranceExpiryDate = vehicle.InsuranceExpiryDate
         };
         return Page();
     }
@@ -49,7 +57,8 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (!ModelState.IsValid) return Page();
         var (data, error) = await api.UpdateVehicleAsync(id, new UpdateVehicleRequest(
             Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year,
-            Input.Color, Input.Status, Input.CurrentKm));
+            Input.Color, Input.Status, Input.CurrentKm,
+            Input.RegistrationNumber, Input.RegistrationExpiryDate, Input.InspectionExpiryDate, Input.InsuranceExpiryDate));
         if (data is null) { ErrorMessage = error; return Page(); }
         return RedirectToPage("Index");
     }

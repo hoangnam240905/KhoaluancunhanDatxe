@@ -25,6 +25,11 @@ public record AdminVehicleTypeResponse(
     string? ImageUrl,
     bool IsActive);
 
+public record CreateVehicleTypeRequest(
+    string? TypeName,
+    decimal PricePerDay,
+    decimal PricePerKm);
+
 public record UpdateVehicleTypePricingRequest(
     decimal? PricePerDay,
     decimal? PricePerKm,
@@ -45,7 +50,11 @@ public record VehicleResponse(
     int Year,
     string? Color,
     string Status,
-    int CurrentKm);
+    int CurrentKm,
+    string? RegistrationNumber = null,
+    DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null,
+    DateOnly? InsuranceExpiryDate = null);
 
 public record CreateVehicleRequest(
     int TypeId,
@@ -54,7 +63,11 @@ public record CreateVehicleRequest(
     string Model,
     int Year,
     string? Color,
-    int CurrentKm);
+    int CurrentKm,
+    string? RegistrationNumber = null,
+    DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null,
+    DateOnly? InsuranceExpiryDate = null);
 
 public record UpdateVehicleRequest(
     int TypeId,
@@ -64,4 +77,8 @@ public record UpdateVehicleRequest(
     int Year,
     string? Color,
     string Status,
-    int CurrentKm);
+    int CurrentKm,
+    string? RegistrationNumber = null,
+    DateOnly? RegistrationExpiryDate = null,
+    DateOnly? InspectionExpiryDate = null,
+    DateOnly? InsuranceExpiryDate = null);

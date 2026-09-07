@@ -1,0 +1,49 @@
+@page
+@model AdminWeb.Pages.Customers.IndexModel
+@{ ViewData["Title"] = "Khach hang"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Khach hang</h2>
+    <a asp-page="Create" class="btn btn-primary">Them khach hang</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4"><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Ten, email, SDT" /></div>
+    <div class="col-md-2"><button class="btn btn-primary">Tim</button></div>
+</form>
+<table class="table table-striped">
+    <thead><tr><th>Ma</th><th>Ten</th><th>Email</th><th>SDT</th><th>Khoa</th><th>Hoat dong</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var c in Model.Result.Items)
+    {
+        <tr>
+            <td>#@c.CustomerId</td>
+            <td>@c.FullName</td>
+            <td>@c.Email</td>
+            <td>@c.Phone</td>
+            <td>@(c.IsLocked ? "Co" : "Khong")</td>
+            <td>@(c.IsActive ? "Co" : "Khong")</td>
+            <td>
+                <a asp-page="Edit" asp-route-id="@c.CustomerId" class="btn btn-sm btn-outline-primary">Sua</a>
+                <form method="post" asp-page-handler="Lock" asp-route-id="@c.CustomerId" class="d-inline">
+                    <input type="hidden" name="isLocked" value="@((!c.IsLocked).ToString().ToLowerInvariant())" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <input type="hidden" name="page" value="@Model.Result.Page" />
+                    <button class="btn btn-sm @(c.IsLocked ? "btn-success" : "btn-outline-danger")">
+                        @(c.IsLocked ? "Mo khoa" : "Khoa")
+                    </button>
+                </form>
+                @if (c.IsActive)
+                {
+                    <form method="post" asp-page-handler="Deactivate" asp-route-id="@c.CustomerId" class="d-inline">
+                        <input type="hidden" name="keyword" value="@Model.Keyword" />
+                        <input type="hidden" name="page" value="@Model.Result.Page" />
+                        <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Vo hieu hoa tai khoan nay? Lich su thue se duoc giu.');">Vo hieu hoa</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+<p class="text-muted small">Tong @Model.Result.Total — trang @Model.Result.Page. Vo hieu hoa la soft-delete (Users.IsActive=false), khong xoa Booking/Payment/Contract.</p>

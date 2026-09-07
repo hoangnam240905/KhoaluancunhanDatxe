@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
 using Backend.Services;
+using Backend.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -65,10 +66,16 @@ public class BookingsController(
         var role = User.FindFirstValue(ClaimTypes.Role);
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        if (role == RoleNames.Customer && booking.CustomerId != userId)
-            return Forbid();
+        if (role == RoleNames.Customer)
+            return booking.CustomerId == userId ? Ok(booking) : Forbid();
 
-        return Ok(booking);
+        if (role == RoleNames.Driver)
+            return booking.Assignment?.DriverId == userId ? Ok(booking) : Forbid();
+
+        if (role is RoleNames.Admin or RoleNames.Dispatcher)
+            return Ok(booking);
+
+        return Forbid();
     }
 
     [HttpGet("{id:int}/inspections")]
@@ -94,13 +101,15 @@ public class BookingsController(
 
     [Authorize(Roles = RoleNames.Customer)]
     [HttpPost]
-    public async Task<ActionResult<BookingResponse>> Create(CreateBookingRequest request)
+    public async Task<ActionResult<BookingResponse>> Create(
+        CreateBookingRequest request,
+        [FromQuery] bool fromRecommendation = false)
     {
         if (!RentalModes.TryResolve(request.RentalMode, out _))
             return BadRequest(new { message = "Hình thức thuê không hợp lệ." });
 
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var booking = await bookingService.CreateBookingAsync(userId, request);
+        var booking = await bookingService.CreateBookingAsync(userId, request, fromRecommendation);
         return booking is null
             ? BadRequest(new { message = "Dữ liệu đặt xe không hợp lệ." })
             : CreatedAtAction(nameof(GetById), new { id = booking.BookingId }, booking);
@@ -111,8 +120,10 @@ public class BookingsController(
     public async Task<ActionResult<ReviewResponse>> CreateReview(int id, CreateReviewRequest request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var review = await bookingService.CreateReviewAsync(id, userId, request);
-        return review is null ? BadRequest(new { message = "Không thể đánh giá đơn này." }) : Ok(review);
+        var (review, error) = await bookingService.CreateReviewAsync(id, userId, request);
+        return review is null
+            ? BadRequest(new { message = error ?? "Không thể đánh giá đơn này." })
+            : Ok(review);
     }
 
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
@@ -120,7 +131,13 @@ public class BookingsController(
     public async Task<ActionResult<BookingResponse>> UpdateStatus(int id, UpdateBookingStatusRequest request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var booking = await bookingService.UpdateStatusAsync(id, request.Status, userId, request.Note);
-        return booking is null ? NotFound() : Ok(booking);
+        var (booking, error, status) = await bookingService.UpdateStatusAsync(
+            id, request.Status, userId, request.Note);
+        return status switch
+        {
+            StatusCodes.Status200OK when booking is not null => Ok(booking),
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error ?? BookingStateTransitionRules.InvalidTransition })
+        };
     }
 }

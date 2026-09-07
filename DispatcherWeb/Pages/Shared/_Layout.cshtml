@@ -1,4 +1,5 @@
 @inject DispatcherWeb.Services.AuthSession Auth
+@inject IConfiguration Config
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -16,6 +17,9 @@
                 <a class="navbar-brand text-dark fw-bold" asp-page="/Index">Dieu phoi</a>
                 <div>
                     <span class="text-dark">@Auth.FullName</span>
+                    <a class="nav-link d-inline text-dark" asp-page="/Inspections/Index">Kiem xe</a>
+                    <a class="nav-link d-inline text-dark" asp-page="/Incidents/Index">Su co</a>
+                    <a class="btn btn-sm btn-outline-dark ms-2" asp-page="/Account/ChangePassword">Doi mat khau</a>
                     <a class="btn btn-sm btn-outline-dark ms-2" asp-page="/Account/Logout">Dang xuat</a>
                 </div>
             </div>
@@ -23,5 +27,16 @@
     }
     <div class="container pb-4">@RenderBody()</div>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+    {
+        <script>
+            window.carRentalRealtime = {
+                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+            };
+        </script>
+        <script src="~/js/realtime.js" asp-append-version="true"></script>
+    }
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

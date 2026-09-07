@@ -41,9 +41,17 @@
         <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.Condition">Tình trạng (condition)</label>
+        <label class="form-label" asp-for="Input.Condition">Tình trạng chung (condition)</label>
         <input asp-for="Input.Condition" class="form-control" maxlength="100" />
         <span asp-validation-for="Input.Condition" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.ExteriorCondition">Ngoại thất</label>
+        <input asp-for="Input.ExteriorCondition" class="form-control" maxlength="100" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.TechnicalCondition">Kỹ thuật</label>
+        <input asp-for="Input.TechnicalCondition" class="form-control" maxlength="100" />
     </div>
     <div class="mb-3">
         <label class="form-label" asp-for="Input.Notes">Ghi chú (notes)</label>

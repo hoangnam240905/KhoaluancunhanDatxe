@@ -15,6 +15,9 @@ class CreateBookingScreen extends StatefulWidget {
   final String? pickup;
   final String? dropoff;
   final double? distanceKm;
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+  final bool fromRecommendation;
 
   const CreateBookingScreen({
     super.key,
@@ -25,6 +28,9 @@ class CreateBookingScreen extends StatefulWidget {
     this.pickup,
     this.dropoff,
     this.distanceKm,
+    this.initialStart,
+    this.initialEnd,
+    this.fromRecommendation = false,
   });
 
   @override
@@ -45,6 +51,9 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   late String _rentalMode;
   VehicleType? _type;
   List<VehicleType> _types = [];
+  Vehicle? _vehicle;
+  List<Vehicle> _vehicles = [];
+  bool _loadingVehicles = false;
   bool _loadingTypes = false;
   String? _typesError;
 
@@ -77,7 +86,11 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     );
     if (_types.isEmpty) {
       _loadTypes();
+    } else {
+      _loadVehicles();
     }
+    _start = widget.initialStart;
+    _end = widget.initialEnd;
   }
 
   @override
@@ -98,10 +111,43 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     try {
       _types = await widget.api.getVehicleTypes();
       _type ??= _types.isEmpty ? null : _types.first;
+      await _loadVehicles();
     } catch (e) {
       _typesError = e.toString().replaceFirst('Exception: ', '');
     } finally {
       if (mounted) setState(() => _loadingTypes = false);
+    }
+  }
+
+  Future<void> _loadVehicles() async {
+    final typeId = _type?.typeId;
+    if (typeId == null) {
+      setState(() {
+        _vehicles = [];
+        _vehicle = null;
+        _loadingVehicles = false;
+      });
+      return;
+    }
+    setState(() => _loadingVehicles = true);
+    try {
+      final all = await widget.api.getVehicles(status: 'Available');
+      if (!mounted) return;
+      final filtered = all.where((v) => v.typeId == typeId).toList();
+      setState(() {
+        _vehicles = filtered;
+        if (_vehicle != null &&
+            filtered.every((v) => v.vehicleId != _vehicle!.vehicleId)) {
+          _vehicle = null;
+        }
+        _loadingVehicles = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _vehicles = [];
+        _loadingVehicles = false;
+      });
     }
   }
 
@@ -242,6 +288,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         endDate: _end!,
         estimatedDistance: _distanceValue,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        fromRecommendation: widget.fromRecommendation,
+        vehicleId: _vehicle?.vehicleId,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -387,12 +435,19 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: _types.map((type) {
+      children: [
+        ..._types.map((type) {
         final selected = _type?.typeId == type.typeId;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: AppCard(
-            onTap: () => setState(() => _type = type),
+            onTap: () {
+              setState(() {
+                _type = type;
+                _vehicle = null;
+              });
+              _loadVehicles();
+            },
             child: Row(
               children: [
                 Icon(
@@ -424,7 +479,74 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             ),
           ),
         );
-      }).toList(),
+      }),
+        const SizedBox(height: 8),
+        const Text(
+          'Xe cụ thể (không bắt buộc)',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Nếu chọn xe, hệ thống sẽ giữ xe này khi bạn thanh toán cọc.',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        if (_loadingVehicles)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              onTap: () => setState(() => _vehicle = null),
+              child: Row(
+                children: [
+                  Icon(
+                    _vehicle == null
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: _vehicle == null
+                        ? AppColors.primary
+                        : AppColors.muted,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Để điều phối chọn sau'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ..._vehicles.map((vehicle) {
+            final selected = _vehicle?.vehicleId == vehicle.vehicleId;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: AppCard(
+                onTap: () => setState(() => _vehicle = vehicle),
+                child: Row(
+                  children: [
+                    Icon(
+                      selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: selected ? AppColors.primary : AppColors.muted,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        vehicle.label,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
     );
   }
 
@@ -531,6 +653,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             children: [
               _row('Hình thức', Formatters.rentalModeLabel(_rentalMode)),
               _row('Loại xe', _type?.typeName ?? '—'),
+              _row('Xe cụ thể', _vehicle?.label ?? 'Để điều phối chọn sau'),
               _row('Nhận xe', _start == null ? '—' : Formatters.dt(_start!)),
               _row('Trả xe', _end == null ? '—' : Formatters.dt(_end!)),
               _row(

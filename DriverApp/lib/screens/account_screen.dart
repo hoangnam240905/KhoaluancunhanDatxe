@@ -20,6 +20,10 @@ class _AccountScreenState extends State<AccountScreen> {
   AuthResponse? _session;
   bool _loading = true;
   String? _error;
+  final _oldPassword = TextEditingController();
+  final _newPassword = TextEditingController();
+  String? _passwordMessage;
+  bool _changingPassword = false;
 
   @override
   void initState() {
@@ -42,7 +46,57 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _oldPassword.dispose();
+    _newPassword.dispose();
+    super.dispose();
+  }
+
+  bool get _newPasswordOk {
+    final p = _newPassword.text;
+    return p.length >= 8 &&
+        RegExp(r'[A-Z]').hasMatch(p) &&
+        RegExp(r'[^a-zA-Z0-9]').hasMatch(p);
+  }
+
+  Future<void> _changePassword() async {
+    if (_oldPassword.text.isEmpty) {
+      setState(() => _passwordMessage = 'Vui lòng nhập mật khẩu cũ.');
+      return;
+    }
+    if (!_newPasswordOk) {
+      setState(
+        () => _passwordMessage =
+            'Mật khẩu chưa đủ mạnh (8 ký tự, chữ hoa, ký tự đặc biệt).',
+      );
+      return;
+    }
+    setState(() {
+      _changingPassword = true;
+      _passwordMessage = null;
+    });
+    try {
+      await widget.api.changePassword(
+        oldPassword: _oldPassword.text,
+        newPassword: _newPassword.text,
+      );
+      if (!mounted) return;
+      _oldPassword.clear();
+      _newPassword.clear();
+      setState(() => _passwordMessage = 'Đã đổi mật khẩu.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => _passwordMessage = e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => _changingPassword = false);
+    }
+  }
+
   Future<void> _logout() async {
+    await widget.api.disconnectRealtime();
     await widget.api.authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -120,6 +174,45 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                       const Divider(height: 24),
                       _row(Icons.badge_outlined, 'Vai trò', 'Driver'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Đổi mật khẩu',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _oldPassword,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Mật khẩu cũ',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _newPassword,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Mật khẩu mới',
+                        ),
+                      ),
+                      if (_passwordMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(_passwordMessage!),
+                      ],
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: _changingPassword ? null : _changePassword,
+                        child: Text(
+                          _changingPassword ? 'Đang lưu...' : 'Đổi mật khẩu',
+                        ),
+                      ),
                     ],
                   ),
                 ),

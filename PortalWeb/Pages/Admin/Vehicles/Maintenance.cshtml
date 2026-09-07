@@ -1,0 +1,71 @@
+@page "/Admin/Vehicles/Maintenance/{id:int}"
+@model PortalWeb.Pages.Admin.Vehicles.MaintenanceModel
+@{ ViewData["Title"] = "Bảo trì xe"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Bảo trì — @Model.Vehicle?.LicensePlate</h2>
+    <a asp-page="Index" class="btn btn-outline-secondary">Quay lại</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-success">@Model.Message</div> }
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card"><div class="card-body">
+            <h5>Ghi nhận bảo trì</h5>
+            <form method="post" class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Loại</label>
+                    <select asp-for="Input.MaintenanceType" class="form-select">
+                        <option>Scheduled</option>
+                        <option>Repair</option>
+                        <option>Inspection</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ngày lên lịch</label>
+                    <input asp-for="Input.ScheduledDate" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Hoàn thành (nếu đã xong)</label>
+                    <input asp-for="Input.CompletedDate" type="datetime-local" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Km tại bảo trì</label>
+                    <input asp-for="Input.OdometerAtMaintenance" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Chi phí</label>
+                    <input asp-for="Input.Cost" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Ghi chú</label>
+                    <textarea asp-for="Input.Notes" class="form-control" maxlength="500"></textarea>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-7">
+        <h5>Lịch sử</h5>
+        <table class="table table-sm">
+            <thead><tr><th>Loại</th><th>Lịch</th><th>Xong</th><th>Km</th><th>Chi phí</th><th>Ghi chú</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.History)
+            {
+                <tr>
+                    <td>@row.MaintenanceType</td>
+                    <td>@row.ScheduledDate.ToString("g")</td>
+                    <td>@(row.CompletedDate?.ToString("g") ?? "—")</td>
+                    <td>@row.OdometerAtMaintenance</td>
+                    <td>@(row.Cost?.ToString("N0"))</td>
+                    <td>@row.Notes</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        @if (!Model.History.Any()) { <p class="text-muted">Chưa có bản ghi.</p> }
+    </div>
+</div>

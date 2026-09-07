@@ -1,0 +1,66 @@
+@page "/Admin/Contracts"
+@model PortalWeb.Pages.Admin.Contracts.IndexModel
+@{ ViewData["Title"] = "Hợp đồng"; }
+
+<div class="page-header">
+    <h2>Hợp đồng điện tử</h2>
+    <p>Chỉ xem. Khách lập/ký mô phỏng trên đơn của mình. Không chữ ký số.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Mã đơn</label>
+        <input name="bookingId" value="@Model.FilterBookingId" class="form-control" type="number" min="1" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Trạng thái</label>
+        <select name="status" class="form-select">
+            <option value="">Tất cả</option>
+            <option value="Issued" selected="@(Model.FilterStatus == "Issued" ? "selected" : null)">Issued</option>
+            <option value="Signed" selected="@(Model.FilterStatus == "Signed" ? "selected" : null)">Signed</option>
+            <option value="Voided" selected="@(Model.FilterStatus == "Voided" ? "selected" : null)">Voided</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <button type="submit" class="btn btn-primary">Lọc</button>
+        <a asp-page="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+    </div>
+</form>
+
+@if (!Model.Contracts.Any())
+{
+    <div class="modern-card p-5 text-center text-muted">Không có hợp đồng.</div>
+}
+else
+{
+    <div class="table-responsive modern-card">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Mã</th><th>Số HĐ</th><th>Đơn</th><th>Khách</th><th>Trạng thái</th>
+                    <th>Tổng tiền</th><th>Cọc</th><th>Ký lúc</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model.Contracts)
+            {
+                <tr>
+                    <td>#@c.ContractId</td>
+                    <td>@c.ContractNumber</td>
+                    <td>#@c.BookingId</td>
+                    <td>@c.CustomerName</td>
+                    <td>@c.Status</td>
+                    <td>@c.TotalAmount.ToString("N0")</td>
+                    <td>@(c.DepositAmount?.ToString("N0") ?? "—")</td>
+                    <td>@(c.SignedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

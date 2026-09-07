@@ -26,6 +26,7 @@ public class Booking
     public string Status { get; set; } = "Pending";
     public string RentalMode { get; set; } = "WithDriver";
     public int? AssignedVehicleId { get; set; }
+    public bool SourceRecommended { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -35,6 +36,7 @@ public class Booking
     public Vehicle? AssignedVehicle { get; set; }
     public TripAssignment? TripAssignment { get; set; }
     public ICollection<Payment> Payments { get; set; } = [];
+    public Contract? Contract { get; set; }
     public Review? Review { get; set; }
     public ICollection<BookingStatusHistory> StatusHistory { get; set; } = [];
     public ICollection<VehicleInspection> Inspections { get; set; } = [];
