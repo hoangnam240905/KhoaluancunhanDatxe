@@ -38,9 +38,13 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     private bool ValidateInput()
     {
-        if (Input.OdometerKm is < 0)
+        if (Input.OdometerKm is null)
+            ModelState.AddModelError("Input.OdometerKm", "Vui lòng nhập số km hợp lệ.");
+        else if (Input.OdometerKm < 0)
             ModelState.AddModelError("Input.OdometerKm", "Số km không được âm.");
-        if (Input.FuelLevel is < 0 or > 100)
+        if (Input.FuelLevel is null)
+            ModelState.AddModelError("Input.FuelLevel", "Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
+        else if (Input.FuelLevel is < 0 or > 100)
             ModelState.AddModelError("Input.FuelLevel", "Mức nhiên liệu phải từ 0 đến 100.");
         if (Input.Condition is { Length: > 100 })
             ModelState.AddModelError("Input.Condition", "Tình trạng xe tối đa 100 ký tự.");

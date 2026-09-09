@@ -1,6 +1,7 @@
 using System.Text;
 using Backend.Data;
 using Backend.Hubs;
+using Backend.Options;
 using Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -20,8 +21,21 @@ builder.Services.AddDbContext<CarRentalDbContext>(options =>
 });
 
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<EmailOtpService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
+builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
+var emailEnabled = builder.Configuration.GetValue("Email:Enabled", false);
+var smtpPassword = builder.Configuration["Email:SmtpPassword"];
+var useSmtp = emailEnabled && !string.IsNullOrWhiteSpace(smtpPassword);
+if (useSmtp)
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+else
+    builder.Services.AddSingleton<IEmailSender, NullEmailSender>();
 builder.Services.AddScoped<VehicleService>();
+builder.Services.AddScoped<VehicleOperationalProfileService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<ScheduleConflictService>();
@@ -86,6 +100,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+if (useSmtp)
+    app.Logger.LogInformation("Email delivery: SMTP.");
+else if (emailEnabled)
+    app.Logger.LogWarning("Email:Enabled is true but Email:SmtpPassword is missing. Using NullEmailSender.");
+else
+    app.Logger.LogInformation("Email delivery: disabled (NullEmailSender).");
 
 using (var scope = app.Services.CreateScope())
 {
@@ -100,6 +120,9 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteBookingFinalAmountColumn();
     db.EnsureSqliteBookingFeesTable();
     db.EnsureSqliteUsersLockColumn();
+    db.EnsureSqliteUsersAccountStatusColumns();
+    db.EnsureSqliteUsersAuthColumns();
+    db.EnsureSqliteEmailOtpsTable();
     db.EnsureSqliteDriversActiveColumn();
     db.EnsureSqliteMaintenanceRecordsTable();
     db.EnsureSqliteBookingRecommendationColumn();

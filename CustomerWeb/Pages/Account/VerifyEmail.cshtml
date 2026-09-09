@@ -1,0 +1,53 @@
+@page
+@model CustomerWeb.Pages.Account.VerifyEmailModel
+@{
+    ViewData["Title"] = "Xac minh email";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="mb-4">Xác minh email</h2>
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger">@Model.ErrorMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(Model.InfoMessage))
+                {
+                    <div class="alert alert-info">@Model.InfoMessage</div>
+                }
+                <form method="post">
+                    <div class="mb-3">
+                        <label asp-for="Input.Email" class="form-label">Email</label>
+                        <div class="input-group">
+                            <input asp-for="Input.Email" class="form-control bg-light" readonly autocomplete="username" aria-readonly="true" />
+                            <span class="input-group-text bg-light" title="Email không thể thay đổi" aria-hidden="true">🔒</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Otp" class="form-label">Mã OTP</label>
+                        <input asp-for="Input.Otp" class="form-control js-otp-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="one-time-code" />
+                        <span asp-validation-for="Input.Otp" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Xác minh</button>
+                </form>
+                <form method="post" asp-page-handler="Resend" class="mt-2">
+                    <input type="hidden" asp-for="Input.Email" />
+                    <button type="submit" class="btn btn-outline-secondary w-100">Gửi lại mã OTP</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.js-otp-input').forEach(function (input) {
+            input.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 6);
+            });
+        });
+    </script>
+}

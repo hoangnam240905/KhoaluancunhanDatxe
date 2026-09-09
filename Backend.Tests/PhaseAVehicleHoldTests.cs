@@ -187,6 +187,7 @@ public class PhaseAVehicleHoldTests
         await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
         var confirmed = await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
         Assert.Null(confirmed.Error);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var assigned = await Dispatch(iso.Db).AssignTripAsync(
             created.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
@@ -218,6 +219,7 @@ public class PhaseAVehicleHoldTests
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
         await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
         await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var assigned = await Dispatch(iso.Db).AssignTripAsync(
             created.BookingId, new AssignTripRequest(null, spareId), dispatcherId: 2);

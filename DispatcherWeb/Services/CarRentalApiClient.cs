@@ -67,6 +67,22 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<(DispatchFleetStatusResponse? Data, string? Error)> GetFleetStatusAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/dispatch/fleet-status");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<DispatchFleetStatusResponse>(JsonOptions), null);
+    }
+
+    public async Task<(DispatchAssignableResponse? Data, string? Error)> GetAssignableAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/dispatch/bookings/{bookingId}/assignable");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<DispatchAssignableResponse>(JsonOptions), null);
+    }
+
     public async Task<(BookingResponse? Data, string? Error, AssignConflictResponse? Conflict)> AssignTripAsync(int id, AssignTripRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/assign");
@@ -124,9 +140,7 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
 
     private static void ApplyConditionBody(HttpRequestMessage request, VehicleConditionRequest? condition)
     {
-        var body = condition?.ForApi();
-        if (body is null || !body.HasValues)
-            return;
+        var body = condition?.ForApi() ?? new VehicleConditionRequest();
         request.Content = JsonContent.Create(body, options: WriteJson);
     }
 

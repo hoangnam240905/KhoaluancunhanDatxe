@@ -27,6 +27,12 @@ public class RegisterModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Vui lòng xác nhận mật khẩu.")]
+        [Compare(nameof(Password), ErrorMessage = "Xác nhận mật khẩu không khớp.")]
+        [DataType(DataType.Password)]
+        [Display(Name = "Xác nhận mật khẩu")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "Vui lòng nhập số điện thoại.")]
         [RegularExpression(@"^0\d{9}$", ErrorMessage = "Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0).")]
         [Display(Name = "Số điện thoại")]
@@ -42,9 +48,9 @@ public class RegisterModel(CarRentalApiClient api, AuthSession auth) : RolePageM
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid) return Page();
-        var (data, error) = await api.RegisterAsync(new RegisterCustomerRequest(Input.Email, Input.Password, Input.FullName, Input.Phone, null, null, null));
+        var (data, error) = await api.RegisterAsync(new RegisterCustomerRequest(
+            Input.Email, Input.Password, Input.FullName, Input.Phone, null, null, null, Input.ConfirmPassword));
         if (data is null) { ErrorMessage = error; return Page(); }
-        auth.SetAuth(data);
-        return Redirect(RoleRoutes.HomeFor(data.Role));
+        return RedirectToPage("/Account/VerifyEmail", new { email = data.Email });
     }
 }

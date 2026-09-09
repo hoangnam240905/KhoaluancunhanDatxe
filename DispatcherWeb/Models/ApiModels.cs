@@ -26,6 +26,16 @@ public record AssignConflictResponse(
     IReadOnlyList<DriverAlternativeResponse> DriverAlternatives);
 
 public record DriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips);
+public record DispatchVehicleStatusResponse(
+    int VehicleId, string LicensePlate, string TypeName, string VehicleStatus,
+    string? DriverName, string? DriverStatus, int? BookingId, int? AssignmentId,
+    DateTime? StartDate, DateTime? EndDate, string? RentalMode);
+public record DispatchDriverStatusResponse(
+    int DriverId, string FullName, string DriverStatus, bool IsActive,
+    string? LicensePlate, int? BookingId, DateTime? StartDate, DateTime? EndDate, string? RentalMode);
+public record DispatchFleetStatusResponse(
+    List<DispatchVehicleStatusResponse> Vehicles, List<DispatchDriverStatusResponse> Drivers);
+public record DispatchAssignableResponse(List<VehicleResponse> Vehicles, List<DriverResponse> Drivers);
 public record VehicleResponse(
     int VehicleId, int TypeId, string TypeName, string LicensePlate, string Brand, string Model, int Year,
     string? Color, string Status, int CurrentKm,

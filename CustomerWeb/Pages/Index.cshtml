@@ -62,8 +62,8 @@ else if (Model.Recommendations.Any())
                         {
                             <a asp-page="/Bookings/Create"
                                asp-route-typeId="@t.VehicleTypeId"
-                               asp-route-start="@Model.StartDate?.ToString("o")"
-                               asp-route-end="@Model.EndDate?.ToString("o")"
+                               asp-route-start="@Model.StartDate?.ToString("yyyy-MM-ddTHH:mm")"
+                               asp-route-end="@Model.EndDate?.ToString("yyyy-MM-ddTHH:mm")"
                                asp-route-fromRecommendation="true"
                                class="btn btn-primary w-100">Chon va dat</a>
                         }

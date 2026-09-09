@@ -205,8 +205,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               children: [
                 _row('Điểm đón', b.pickupAddress),
                 _row('Điểm trả', b.dropoffAddress),
-                _row('Nhận xe', Formatters.dt(b.startDate)),
-                _row('Trả xe', Formatters.dt(b.endDate)),
+                _row('Nhận xe', Formatters.rentalDt(b.startDate)),
+                _row('Trả xe', Formatters.rentalDt(b.endDate)),
                 if (b.estimatedDistance != null)
                   _row(
                     'Km dự kiến',
@@ -343,26 +343,54 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Widget _inspectionsSection(Booking b) {
+    final handover = b.inspections.where((i) => i.inspectionType == 'Handover');
+    final returned = b.inspections.where((i) => i.inspectionType == 'Return');
+    final handoverRow = handover.isEmpty ? null : handover.last;
+    final returnRow = returned.isEmpty ? null : returned.last;
+    num? actualKm;
+    if (handoverRow?.odometerKm != null && returnRow?.odometerKm != null) {
+      actualKm = returnRow!.odometerKm! - handoverRow!.odometerKm!;
+      if (actualKm < 0) actualKm = 0;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Biên bản kiểm xe',
+          'Tình trạng xe',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
         if (b.inspections.isEmpty)
           const Text(
-            'Chưa có biên bản kiểm xe.',
+            'Chưa có dữ liệu kiểm xe.',
             style: TextStyle(color: AppColors.muted),
           )
-        else
-          ...b.inspections.map(_inspectionTile),
+        else ...[
+          if (handoverRow != null)
+            _inspectionTile(
+              '🚗 Tình trạng xe khi nhận',
+              handoverRow,
+              kmLabel: 'KM lúc nhận',
+            ),
+          if (returnRow != null)
+            _inspectionTile(
+              '🔧 Tình trạng xe khi trả',
+              returnRow,
+              kmLabel: 'KM lúc trả',
+              actualKm: actualKm,
+            ),
+        ],
       ],
     );
   }
 
-  Widget _inspectionTile(VehicleInspection i) {
+  Widget _inspectionTile(
+    String title,
+    VehicleInspection i, {
+    required String kmLabel,
+    num? actualKm,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -375,19 +403,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ),
         child: Column(
           children: [
-            _row('Loại', Formatters.inspectionTypeLabel(i.inspectionType)),
+            _row('Loại', title),
             _row('Thời điểm', Formatters.dt(i.actualAt)),
             if (i.odometerKm != null)
-              _row('Số km', '${i.odometerKm!.toStringAsFixed(0)} km'),
+              _row(kmLabel, '${i.odometerKm!.toStringAsFixed(0)} km'),
             if (i.fuelLevel != null)
               _row('Nhiên liệu', '${i.fuelLevel!.toStringAsFixed(0)}%'),
-            if (i.condition != null && i.condition!.isNotEmpty)
-              _row('Tình trạng', i.condition!),
             if (i.exteriorCondition != null && i.exteriorCondition!.isNotEmpty)
               _row('Ngoại thất', i.exteriorCondition!),
             if (i.technicalCondition != null && i.technicalCondition!.isNotEmpty)
               _row('Kỹ thuật', i.technicalCondition!),
             if (i.notes != null && i.notes!.isNotEmpty) _row('Ghi chú', i.notes!),
+            if (actualKm != null)
+              _row('KM thực tế', '${actualKm.toStringAsFixed(0)} km'),
           ],
         ),
       ),
@@ -413,7 +441,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           const SizedBox(height: 8),
           _row('Biển số', v.licensePlate),
           _row('Xe', '${v.brand} ${v.model}'),
-          _row('Trạng thái xe', v.status),
+          _row('Trạng thái xe', Formatters.vehicleStatusLabel(v.status)),
         ],
       );
     }

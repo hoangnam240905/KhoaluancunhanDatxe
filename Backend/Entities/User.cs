@@ -10,6 +10,15 @@ public class User
     public int RoleId { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsLocked { get; set; }
+    public string? LockReason { get; set; }
+    public DateTime? LockedAt { get; set; }
+    public int? LockedByUserId { get; set; }
+    public string? InactiveReason { get; set; }
+    public DateTime? InactivatedAt { get; set; }
+    public int? InactivatedByUserId { get; set; }
+    public bool IsEmailVerified { get; set; } = true;
+    public DateTime? EmailVerifiedAt { get; set; }
+    public string? GoogleSubject { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

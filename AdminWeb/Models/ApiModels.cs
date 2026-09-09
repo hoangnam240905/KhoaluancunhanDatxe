@@ -36,9 +36,30 @@ public record MaintenanceRecordResponse(
     int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
     int? OdometerAtMaintenance, decimal? Cost, string? Notes, DateTime CreatedAt);
 public record CreateMaintenanceRequest(
-    string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate, int? OdometerAtMaintenance, decimal? Cost, string? Notes);
+    string MaintenanceType, DateTime ScheduledDate, int? OdometerAtMaintenance, decimal? Cost, string? Notes);
+public record CompleteMaintenanceRequest(int? OdometerAtMaintenance);
 public record MaintenanceAlertResponse(
-    int VehicleId, string LicensePlate, int KmSinceLastMaintenance, int DaysSinceLastMaintenance, string Reason);
+    int VehicleId, string LicensePlate, int? KmSinceLastMaintenance, int DaysSinceLastMaintenance, string Reason);
+public record VehicleOperationalProfileResponse(
+    VehicleResponse Vehicle,
+    int SeatCapacity,
+    int CurrentKm,
+    decimal? LatestFuelLevel,
+    DateTime? LastOperationalUpdateAt,
+    string? LatestExteriorCondition,
+    string? LatestTechnicalCondition,
+    string? LatestNotes,
+    VehicleInspectionResponse? LatestHandover,
+    VehicleInspectionResponse? LatestReturn,
+    VehicleInspectionResponse? LatestInspection,
+    decimal? ActualKm,
+    MaintenanceRecordResponse? LatestMaintenance,
+    MaintenanceRecordResponse? OpenMaintenance,
+    bool HasOpenMaintenance,
+    string MaintenanceStatus,
+    string MaintenanceStatusLabel,
+    string? MaintenanceAlertReason,
+    IReadOnlyList<VehicleInspectionResponse>? RecentInspections);
 public record DashboardRange(DateTime From, DateTime To, bool DefaultRangeApplied, string TimeRangeNote, string SnapshotNote);
 public record DashboardSummary(int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel);
 public record DashboardDriverTrips(int Assigned, int Accepted, int InProgress, int Completed, int Cancelled);
@@ -67,7 +88,8 @@ public record BookingResponse(
     int BookingId, int CustomerId, string CustomerName, int VehicleTypeId, string VehicleTypeName,
     string PickupAddress, string DropoffAddress, DateTime StartDate, DateTime EndDate,
     decimal? EstimatedDistance, decimal TotalAmount, string Status, string? Notes, DateTime CreatedAt,
-    TripAssignmentResponse? Assignment);
+    TripAssignmentResponse? Assignment,
+    int? QuotedDays = null);
 
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
@@ -76,8 +98,9 @@ public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, dec
 public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive);
 public record CreateAdminDriverRequest(string FullName, string Email, string Phone, string Password);
 public record UpdateAdminDriverRequest(string? FullName, string? Phone, string? Status);
-public record AdminCustomerResponse(int CustomerId, string FullName, string Email, string? Phone, bool IsLocked, DateTime CreatedAt, bool IsActive = true, string? Address = null, string? IdNumber = null, DateOnly? DateOfBirth = null);
+public record AdminCustomerResponse(int CustomerId, string FullName, string Email, string? Phone, bool IsLocked, DateTime CreatedAt, bool IsActive = true, string? Address = null, string? IdNumber = null, DateOnly? DateOfBirth = null, string? LockReason = null, DateTime? LockedAt = null, int? LockedByUserId = null, string? LockedByName = null, string? InactiveReason = null, DateTime? InactivatedAt = null, int? InactivatedByUserId = null, string? InactivatedByName = null);
 public record AdminCustomerListResponse(List<AdminCustomerResponse> Items, int Total, int Page, int PageSize);
-public record LockCustomerRequest(bool IsLocked);
+public record LockCustomerRequest(bool IsLocked, string? Reason = null);
+public record DeactivateCustomerRequest(string? Reason);
 public record CreateAdminCustomerRequest(string FullName, string Email, string Phone, string Password, string? Address, string? IdNumber, DateOnly? DateOfBirth);
 public record UpdateAdminCustomerRequest(string FullName, string Email, string Phone, string? Address, string? IdNumber, DateOnly? DateOfBirth);

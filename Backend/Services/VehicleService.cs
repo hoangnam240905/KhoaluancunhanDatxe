@@ -117,11 +117,7 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
 
     public Task<(VehicleResponse? Data, string? Error, int StatusCode)> UpdateVehicleAsync(
         int id, UpdateVehicleRequest request)
-    {
-        if (request.Status == VehicleStatuses.Inactive)
-            return SqliteWriteLock.ExecuteAsync(db, () => UpdateVehicleCoreAsync(id, request));
-        return UpdateVehicleCoreAsync(id, request);
-    }
+        => SqliteWriteLock.ExecuteAsync(db, () => UpdateVehicleCoreAsync(id, request));
 
     private async Task<(VehicleResponse? Data, string? Error, int StatusCode)> UpdateVehicleCoreAsync(
         int id, UpdateVehicleRequest request)
@@ -157,6 +153,14 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
             && vehicle.Status != VehicleStatuses.Inactive
             && await schedule.IsVehicleOccupiedAsync(id))
             return (null, VehicleOccupancyRules.CannotDeactivate, StatusCodes.Status400BadRequest);
+
+        if (request.Status == VehicleStatuses.Available
+            && vehicle.Status == VehicleStatuses.Rented)
+            return (null, VehicleOccupancyRules.CannotReleaseRented, StatusCodes.Status400BadRequest);
+
+        if (request.Status == VehicleStatuses.Rented
+            && vehicle.Status != VehicleStatuses.Rented)
+            return (null, VehicleOccupancyRules.CannotSetRentedManually, StatusCodes.Status400BadRequest);
 
         vehicle.TypeId = request.TypeId;
         vehicle.LicensePlate = licensePlate!;

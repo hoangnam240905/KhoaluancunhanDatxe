@@ -19,7 +19,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
         <h2>Đơn #@b.BookingId · @b.VehicleTypeName</h2>
-        <div class="text-muted">@DetailsModel.RentalModeLabel(b.RentalMode) · @b.Status</div>
+        <div class="text-muted">@DetailsModel.RentalModeLabel(b.RentalMode) · @UiDisplay.BookingStatus(b.Status)</div>
     </div>
     <a asp-page="Index" class="btn btn-outline-secondary">Quay lại</a>
 </div>
@@ -40,8 +40,12 @@
             <div class="col-md-6"><div class="text-muted small">Điểm trả</div><div class="fw-semibold">@b.DropoffAddress</div></div>
             <div class="col-md-4">
                 <div class="text-muted small">Thời gian</div>
-                <div>@b.StartDate.ToString("dd/MM/yyyy HH:mm")</div>
-                <div class="small text-muted">đến @b.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+                <div>@UiDisplay.Rental(b.StartDate)</div>
+                <div class="small text-muted">đến @UiDisplay.Rental(b.EndDate)</div>
+                @if (b.QuotedDays is not null)
+                {
+                    <div class="small text-muted">@b.QuotedDays ngày</div>
+                }
             </div>
             <div class="col-md-4">
                 <div class="text-muted small">Giá lúc đặt</div>
@@ -160,37 +164,73 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <div class="fw-bold mb-2">Biên bản kiểm xe</div>
+        <div class="fw-bold mb-2">Tình trạng xe</div>
         @if (!Model.Inspections.Any())
         {
-            <div class="text-muted">Chưa có biên bản kiểm xe.</div>
+            <div class="text-muted">Chưa có dữ liệu kiểm xe.</div>
         }
         else
         {
-            @foreach (var i in Model.Inspections)
+            var handover = Model.Inspections.LastOrDefault(i => i.InspectionType == "Handover");
+            var returned = Model.Inspections.LastOrDefault(i => i.InspectionType == "Return");
+            @if (handover is not null)
             {
                 <div class="border rounded p-2 mb-2">
-                    <div class="fw-semibold">@DetailsModel.InspectionTypeLabel(i.InspectionType)</div>
-                    <div class="small text-muted">@i.ActualAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
-                    @if (i.OdometerKm is not null)
+                    <div class="fw-semibold">🚗 Tình trạng xe khi nhận</div>
+                    <div class="small text-muted">@UiDisplay.Timestamp(handover.ActualAt)</div>
+                    @if (handover.OdometerKm is not null)
                     {
-                        <div>Số km: @i.OdometerKm.Value.ToString("N0") km</div>
+                        <div>KM lúc nhận: @handover.OdometerKm.Value.ToString("N0") km</div>
                     }
-                    @if (i.FuelLevel is not null)
+                    @if (handover.FuelLevel is not null)
                     {
-                        <div>Nhiên liệu: @i.FuelLevel.Value.ToString("N0")%</div>
+                        <div>Nhiên liệu: @handover.FuelLevel.Value.ToString("N0")%</div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(i.Condition))
+                    @if (!string.IsNullOrWhiteSpace(handover.ExteriorCondition))
                     {
-                        <div>Tình trạng: @i.Condition</div>
+                        <div>Ngoại thất: @handover.ExteriorCondition</div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(i.ExteriorCondition))
+                    @if (!string.IsNullOrWhiteSpace(handover.TechnicalCondition))
                     {
-                        <div>Ngoại thất: @i.ExteriorCondition</div>
+                        <div>Kỹ thuật: @handover.TechnicalCondition</div>
                     }
-                    @if (!string.IsNullOrWhiteSpace(i.TechnicalCondition))
+                    @if (!string.IsNullOrWhiteSpace(handover.Notes))
                     {
-                        <div>Kỹ thuật: @i.TechnicalCondition</div>
+                        <div>Ghi chú: @handover.Notes</div>
+                    }
+                </div>
+            }
+            @if (returned is not null)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <div class="fw-semibold">🔧 Tình trạng xe khi trả</div>
+                    <div class="small text-muted">@UiDisplay.Timestamp(returned.ActualAt)</div>
+                    @if (returned.OdometerKm is not null)
+                    {
+                        <div>KM lúc trả: @returned.OdometerKm.Value.ToString("N0") km</div>
+                    }
+                    @if (returned.FuelLevel is not null)
+                    {
+                        <div>Nhiên liệu: @returned.FuelLevel.Value.ToString("N0")%</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(returned.ExteriorCondition))
+                    {
+                        <div>Ngoại thất: @returned.ExteriorCondition</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(returned.TechnicalCondition))
+                    {
+                        <div>Kỹ thuật: @returned.TechnicalCondition</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(returned.Notes))
+                    {
+                        <div>Ghi chú: @returned.Notes</div>
+                    }
+                    @{
+                        var actualKm = DetailsModel.ActualKm(Model.Inspections);
+                    }
+                    @if (actualKm is not null)
+                    {
+                        <div>KM thực tế: @actualKm.Value.ToString("N0") km</div>
                     }
                 </div>
             }
@@ -218,7 +258,7 @@
                 <div><strong>@c.ContractNumber</strong> · @DetailsModel.ContractStatusLabel(c.Status)</div>
                 <div class="small">Khách: @c.CustomerName · @DetailsModel.RentalModeLabel(c.RentalMode)</div>
                 <div class="small">@c.VehicleTypeName · @c.PickupAddress → @c.DropoffAddress</div>
-                <div class="small">@c.StartDate.ToString("dd/MM/yyyy HH:mm") — @c.EndDate.ToString("dd/MM/yyyy HH:mm")</div>
+                <div class="small">@UiDisplay.Rental(c.StartDate) — @UiDisplay.Rental(c.EndDate)</div>
                 <div class="small">Giá: @c.TotalAmount.ToString("N0") VND
                     @if (c.DepositAmount is not null)
                     {
@@ -227,7 +267,7 @@
                 </div>
                 @if (c.SignedAt is not null)
                 {
-                    <div class="small text-muted">Ký lúc: @c.SignedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                    <div class="small text-muted">Ký lúc: @UiDisplay.Timestamp(c.SignedAt.Value)</div>
                 }
             </div>
             @if (Model.CanSignContract)

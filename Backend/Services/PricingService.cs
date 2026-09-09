@@ -1,5 +1,6 @@
 using Backend.Constants;
 using Backend.Entities;
+using Backend.Validation;
 
 namespace Backend.Services;
 
@@ -29,7 +30,7 @@ public class PricingService
         DateTime endDate,
         decimal? estimatedDistance)
     {
-        var quotedDays = Math.Max(1, (int)Math.Ceiling((endDate - startDate).TotalDays));
+        var quotedDays = BookingDateRules.QuotedDays(startDate, endDate);
         var distance = estimatedDistance ?? 0;
 
         var driverFeePerDay = vehicleType.DriverFeePerDay ?? 0;
@@ -43,7 +44,7 @@ public class PricingService
             var includedKm = includedKmPerDay * quotedDays;
             var extraKm = Math.Max(0, distance - includedKm);
             var distanceAmount = extraKm * extraKmPrice;
-            var deposit = vehicleType.SelfDriveDepositAmount ?? 0;
+            var total = rentalAmount + distanceAmount;
 
             return new PricingQuote(
                 selfDrivePricePerDay,
@@ -56,17 +57,17 @@ public class PricingService
                 includedKm,
                 extraKm,
                 extraKmPrice,
-                deposit,
+                PricingDefaults.DepositFromTotal(total),
                 0,
                 includedKmPerDay,
                 extraKmPrice,
-                rentalAmount + distanceAmount);
+                total);
         }
 
         var withDriverRental = vehicleType.PricePerDay * quotedDays;
         var driverAmount = driverFeePerDay * quotedDays;
         var withDriverDistance = distance * vehicleType.PricePerKm;
-        var withDriverDeposit = vehicleType.WithDriverDepositAmount ?? 0;
+        var withDriverTotal = withDriverRental + driverAmount + withDriverDistance;
 
         return new PricingQuote(
             vehicleType.PricePerDay,
@@ -79,11 +80,11 @@ public class PricingService
             0,
             distance,
             vehicleType.PricePerKm,
-            withDriverDeposit,
+            PricingDefaults.DepositFromTotal(withDriverTotal),
             driverFeePerDay,
             0,
             extraKmPrice,
-            withDriverRental + driverAmount + withDriverDistance);
+            withDriverTotal);
     }
 
     /// <summary>

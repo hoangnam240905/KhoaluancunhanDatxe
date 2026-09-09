@@ -9,6 +9,9 @@ import '../config/api_config.dart';
 
 /// Minimal SignalR JSON client (negotiate + WebSocket). Avoids extra packages.
 class RealtimeService {
+  /// DEMO TEMP: SignalR client off. Set true next week to restore.
+  static const bool enabled = false;
+
   static const _rs = '\u001e';
 
   WebSocket? _socket;
@@ -32,6 +35,7 @@ class RealtimeService {
   }
 
   Future<void> connect(String token) async {
+    if (!enabled) return;
     _token = token;
     _closedByUs = false;
     if (kIsWeb) return;
@@ -46,7 +50,7 @@ class RealtimeService {
   }
 
   Future<void> _open() async {
-    if (kIsWeb || _token == null || _connecting) return;
+    if (!enabled || kIsWeb || _token == null || _connecting) return;
     _connecting = true;
     try {
       final negotiate = await http.post(

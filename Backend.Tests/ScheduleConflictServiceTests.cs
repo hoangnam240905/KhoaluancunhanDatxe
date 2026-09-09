@@ -300,6 +300,7 @@ public class ScheduleConflictServiceTests
         var target = AddBooking(
             iso, new DateTime(2026, 11, 1, 10, 0, 0), new DateTime(2026, 11, 1, 18, 0, 0),
             BookingStatuses.Confirmed, vehicleTypeId: 1);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
 
         var result = await Dispatch(iso).AssignTripAsync(
             target.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
@@ -325,6 +326,7 @@ public class ScheduleConflictServiceTests
             BookingStatuses.Confirmed, vehicleTypeId: 1);
         target.RentalMode = RentalModes.WithDriver;
         await iso.Db.SaveChangesAsync();
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
 
         var result = await Dispatch(iso).AssignTripAsync(
             target.BookingId, new AssignTripRequest(6, 2), dispatcherId: 2);
@@ -340,6 +342,7 @@ public class ScheduleConflictServiceTests
         var target = AddBooking(
             iso, new DateTime(2026, 11, 1, 8, 0, 0), new DateTime(2026, 11, 2, 8, 0, 0),
             BookingStatuses.Confirmed, vehicleTypeId: 1);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         var result = await Dispatch(iso).AssignTripAsync(
             target.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
         Assert.Null(result.Error);

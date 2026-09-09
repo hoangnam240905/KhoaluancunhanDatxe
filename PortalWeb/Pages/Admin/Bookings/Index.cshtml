@@ -30,11 +30,11 @@ else
                             <div class="fw-bold fs-5">#@b.BookingId · @b.VehicleTypeName</div>
                             <div class="text-muted small">
                                 Khách: <strong>@b.CustomerName</strong>
-                                · Tạo: @b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                · Tạo: @UiDisplay.Timestamp(b.CreatedAt)
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-secondary badge-status">@b.Status</span>
+                            <span class="badge bg-secondary badge-status">@UiDisplay.BookingStatus(b.Status)</span>
                             @if (b.Status is "Pending" or "Confirmed")
                             {
                                 <form method="post" asp-page-handler="Cancel" asp-route-id="@b.BookingId" class="d-inline">
@@ -51,7 +51,11 @@ else
                         </div>
                         <div class="col-md-4">
                             <div class="detail-label">Thời gian</div>
-                            <div>@b.StartDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm") → @b.EndDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                            <div>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</div>
+                            @if (b.QuotedDays is not null)
+                            {
+                                <div class="small text-muted">@b.QuotedDays ngày</div>
+                            }
                         </div>
                         <div class="col-md-3">
                             <div class="detail-label">Cước phí</div>
@@ -97,7 +101,7 @@ else
                                 </div>
                                 <div class="col-md-2">
                                     <div class="detail-label">Gán lúc</div>
-                                    <div class="small">@b.Assignment.AssignedAt.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                                    <div class="small">@UiDisplay.Timestamp(b.Assignment.AssignedAt)</div>
                                 </div>
                             </div>
                         }

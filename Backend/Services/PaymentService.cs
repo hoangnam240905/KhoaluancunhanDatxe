@@ -183,10 +183,11 @@ public class PaymentService(CarRentalDbContext db, ScheduleConflictService sched
         var vehicle = await db.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == vehicleId.Value);
         if (vehicle is null)
             return "Không tìm thấy xe.";
+        var maintenanceBlock = await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicle.VehicleId);
+        if (maintenanceBlock is not null)
+            return maintenanceBlock;
         if (vehicle.Status != VehicleStatuses.Available)
             return "Xe không khả dụng.";
-        if (await schedule.IsVehicleBlockedByMaintenanceDueAsync(vehicle.VehicleId))
-            return MaintenanceLock.BlockedForNewSchedule;
         if (vehicle.TypeId != booking.VehicleTypeId)
             return "Xe không thuộc loại xe được đặt.";
         if (await schedule.HasVehicleConflictAsync(

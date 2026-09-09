@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
+using Backend.DTOs.Dispatch;
 using Backend.DTOs.Incidents;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +18,17 @@ public class DispatchController(
     IncidentService incidents,
     VehicleInspectionService inspections) : ControllerBase
 {
+    [HttpGet("fleet-status")]
+    public async Task<ActionResult<DispatchFleetStatusResponse>> FleetStatus()
+        => Ok(await dispatchService.GetFleetStatusAsync());
+
+    [HttpGet("bookings/{id:int}/assignable")]
+    public async Task<ActionResult<DispatchAssignableResponse>> Assignable(int id)
+    {
+        var (data, error) = await dispatchService.GetAssignableAsync(id);
+        return data is null ? BadRequest(new { message = error ?? "Không thể lấy danh sách khả dụng." }) : Ok(data);
+    }
+
     [HttpPost("bookings/{id:int}/confirm")]
     public async Task<ActionResult<BookingResponse>> Confirm(int id)
     {

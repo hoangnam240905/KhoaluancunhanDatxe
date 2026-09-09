@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Customers;
 using Backend.Services;
@@ -48,7 +49,8 @@ public class AdminCustomersController(AdminCustomerService customers) : Controll
     [HttpPut("{id:int}/lock")]
     public async Task<ActionResult<AdminCustomerResponse>> Lock(int id, LockCustomerRequest request)
     {
-        var (data, error, status) = await customers.SetLockedAsync(id, request.IsLocked);
+        var (data, error, status) = await customers.SetLockedAsync(
+            id, request.IsLocked, request.Reason, CurrentUserId());
         if (data is not null)
             return Ok(data);
 
@@ -56,14 +58,17 @@ public class AdminCustomersController(AdminCustomerService customers) : Controll
     }
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Deactivate(int id)
+    public async Task<IActionResult> Deactivate(int id, [FromBody] DeactivateCustomerRequest? request)
     {
-        var (ok, error, status) = await customers.DeactivateAsync(id);
+        var (ok, error, status) = await customers.DeactivateAsync(id, request?.Reason, CurrentUserId());
         if (ok)
             return Ok(new { message = "Đã vô hiệu hóa khách hàng." });
 
         return Status(status, error);
     }
+
+    private int? CurrentUserId()
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
     private ActionResult Status(int status, string? error) => status switch
     {

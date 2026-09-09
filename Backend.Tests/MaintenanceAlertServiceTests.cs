@@ -15,24 +15,26 @@ public class MaintenanceAlertServiceTests
     private static MaintenanceAlertService Alerts(IsolatedCarRentalDb iso)
         => new(iso.Db);
 
-    private static async Task<MaintenanceRecord> AddCompletedAsync(
+    private static MaintenanceRecord AddCompleted(
         IsolatedCarRentalDb iso,
         int vehicleId,
         DateTime completedDate,
-        int odometer,
+        int? odometer,
         string type = MaintenanceTypes.Scheduled)
     {
-        var (data, error, status) = await Maintenance(iso).CreateAsync(vehicleId, new CreateMaintenanceRequest(
-            type,
-            completedDate,
-            completedDate,
-            odometer,
-            null,
-            null));
-        Assert.Equal(201, status);
-        Assert.Null(error);
-        Assert.NotNull(data);
-        return iso.Db.MaintenanceRecords.Single(m => m.MaintenanceId == data!.MaintenanceId);
+        iso.Db.MaintenanceRecords.Add(new MaintenanceRecord
+        {
+            VehicleId = vehicleId,
+            MaintenanceType = type,
+            ScheduledDate = completedDate,
+            CompletedDate = completedDate,
+            OdometerAtMaintenance = odometer,
+            CreatedAt = DateTime.UtcNow
+        });
+        iso.Db.SaveChanges();
+        return iso.Db.MaintenanceRecords
+            .OrderByDescending(m => m.MaintenanceId)
+            .First(m => m.VehicleId == vehicleId);
     }
 
     [Fact]
@@ -42,7 +44,7 @@ public class MaintenanceAlertServiceTests
         var vehicle = iso.Db.Vehicles.Find(1)!;
         iso.ClearMaintenanceRecords(1);
         var odo = vehicle.CurrentKm - 4999;
-        await AddCompletedAsync(iso, 1, DateTime.UtcNow.AddDays(-10), odo);
+        AddCompleted(iso, 1, DateTime.UtcNow.AddDays(-10), odo);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         Assert.DoesNotContain(alerts, a => a.VehicleId == 1);
@@ -54,7 +56,7 @@ public class MaintenanceAlertServiceTests
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(1)!;
         iso.ClearMaintenanceRecords(1);
-        await AddCompletedAsync(iso, 1, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
+        AddCompleted(iso, 1, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         var alert = Assert.Single(alerts, a => a.VehicleId == 1);
@@ -68,7 +70,7 @@ public class MaintenanceAlertServiceTests
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(1)!;
         iso.ClearMaintenanceRecords(1);
-        await AddCompletedAsync(iso, 1, DateTime.UtcNow.AddDays(-179), vehicle.CurrentKm - 100);
+        AddCompleted(iso, 1, DateTime.UtcNow.AddDays(-179), vehicle.CurrentKm - 100);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         Assert.DoesNotContain(alerts, a => a.VehicleId == 1);
@@ -80,7 +82,7 @@ public class MaintenanceAlertServiceTests
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(1)!;
         iso.ClearMaintenanceRecords(1);
-        await AddCompletedAsync(iso, 1, DateTime.UtcNow.AddDays(-180), vehicle.CurrentKm - 100);
+        AddCompleted(iso, 1, DateTime.UtcNow.AddDays(-180), vehicle.CurrentKm - 100);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         var alert = Assert.Single(alerts, a => a.VehicleId == 1);
@@ -94,7 +96,7 @@ public class MaintenanceAlertServiceTests
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(1)!;
         iso.ClearMaintenanceRecords(1);
-        await AddCompletedAsync(iso, 1, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 100);
+        AddCompleted(iso, 1, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 100);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         Assert.DoesNotContain(alerts, a => a.VehicleId == 1);
@@ -108,6 +110,7 @@ public class MaintenanceAlertServiceTests
         var alerts = await Alerts(iso).GetAlertsAsync();
         Assert.Equal(iso.Db.Vehicles.Count(), alerts.Count);
         Assert.All(alerts, a => Assert.Equal(int.MaxValue, a.DaysSinceLastMaintenance));
+        Assert.All(alerts, a => Assert.Null(a.KmSinceLastMaintenance));
     }
 
     [Fact]
@@ -118,16 +121,44 @@ public class MaintenanceAlertServiceTests
         var (data, _, status) = await Maintenance(iso).CreateAsync(1, new CreateMaintenanceRequest(
             MaintenanceTypes.Scheduled,
             DateTime.UtcNow.AddDays(7),
-            null,
+            DateTime.UtcNow,
             1000,
             null,
             "lịch"));
         Assert.Equal(201, status);
         Assert.NotNull(data);
+        Assert.Null(data!.CompletedDate);
 
         var alerts = await Alerts(iso).GetAlertsAsync();
         var alert = Assert.Single(alerts, a => a.VehicleId == 1);
         Assert.Equal("Chưa có lịch sử bảo trì hoàn thành.", alert.Reason);
+    }
+
+    [Fact]
+    public async Task Null_odometer_is_unknown_and_does_not_count_as_zero()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var vehicle = iso.Db.Vehicles.Find(4)!;
+        iso.ClearMaintenanceRecords(4);
+        AddCompleted(iso, 4, DateTime.UtcNow.AddDays(-10), null);
+
+        Assert.Null(MaintenanceAlertService.KmSince(vehicle.CurrentKm, iso.Db.MaintenanceRecords.Single(m => m.VehicleId == 4)));
+        var alerts = await Alerts(iso).GetAlertsAsync();
+        Assert.DoesNotContain(alerts, a => a.VehicleId == 4);
+    }
+
+    [Fact]
+    public async Task Null_odometer_still_alerts_by_180_days()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        iso.ClearMaintenanceRecords(4);
+        AddCompleted(iso, 4, DateTime.UtcNow.AddDays(-180), null);
+
+        var alerts = await Alerts(iso).GetAlertsAsync();
+        var alert = Assert.Single(alerts, a => a.VehicleId == 4);
+        Assert.Null(alert.KmSinceLastMaintenance);
+        Assert.True(alert.DaysSinceLastMaintenance >= 180);
+        Assert.Contains("thời gian", alert.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -171,10 +202,14 @@ public class MaintenanceAlertServiceTests
     {
         using var iso = new IsolatedCarRentalDb();
         iso.ClearMaintenanceRecords(1);
-        await Maintenance(iso).CreateAsync(1, new CreateMaintenanceRequest(
-            MaintenanceTypes.Scheduled, DateTime.UtcNow.AddDays(-2), DateTime.UtcNow.AddDays(-2), 1, null, "old"));
-        await Maintenance(iso).CreateAsync(1, new CreateMaintenanceRequest(
-            MaintenanceTypes.Inspection, DateTime.UtcNow, DateTime.UtcNow, 2, null, "new"));
+        var first = await Maintenance(iso).CreateAsync(1, new CreateMaintenanceRequest(
+            MaintenanceTypes.Scheduled, DateTime.UtcNow.AddDays(-2), null, null, null, "old"));
+        Assert.Equal(201, first.Status);
+        await Maintenance(iso).CompleteAsync(1, first.Data!.MaintenanceId, new CompleteMaintenanceRequest(null));
+
+        var second = await Maintenance(iso).CreateAsync(1, new CreateMaintenanceRequest(
+            MaintenanceTypes.Inspection, DateTime.UtcNow, null, null, null, "new"));
+        Assert.Equal(201, second.Status);
 
         var (history, error, status) = await Maintenance(iso).GetHistoryAsync(1);
         Assert.Equal(200, status);

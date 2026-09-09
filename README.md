@@ -68,7 +68,7 @@ Trạng thái trong bảng dưới: **Đã triển khai** = có trong source cu�
 
 | Thành phần | Role | Chức năng (thực tế trong source) | API | Trạng thái |
 |------------|------|--------------------------------|-----|------------|
-| Backend | — | JWT login/register Customer; GET me; đổi mật khẩu. Logout web = xóa cookie (không `POST /logout`) | `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/change-password` | Đã triển khai |
+| Backend | — | JWT login; register Customer + OTP Gmail; verify-email; resend OTP; forgot/reset password OTP; Google Customer login (id_token). GET me; đổi mật khẩu. Logout web = xóa cookie (không `POST /logout`) | `POST /api/auth/login`, `register`, `verify-email`, `resend-verification-otp`, `forgot-password`, `reset-password`, `google`; `GET /api/auth/login-options`, `me`; `POST /api/auth/change-password` | Đã triển khai |
 | Backend | Anonymous | Catalog loại xe; list/chi tiết xe; gợi ý (gọi Python) | `GET /api/vehicle-types`, `GET /api/vehicles`, `GET /api/vehicle-types/recommended` | Đã triển khai |
 | Backend | Admin | CRUD xe; giấy tờ xe (số ĐK + hạn ĐK/đăng kiểm/BH); Year 1990–2100; biển số unique NOCASE; không xóa/inactive xe đang hold/open assignment | `POST/PUT/DELETE /api/vehicles` | Đã triển khai |
 | Backend | Admin | Ghi bảo trì; badge alert | `POST /api/vehicles/{id}/maintenance` | Đã triển khai |
@@ -104,13 +104,13 @@ Trạng thái trong bảng dưới: **Đã triển khai** = có trong source cu�
 | Recommender | — | FastAPI `POST /recommend`, `GET /health` | `:8001` | Đã triển khai |
 | Database | — | SQLite + EnsureCreated + ALTER idempotent; script SQL Server `Database/` | — | Đã triển khai |
 
-**Không có trong source (limitation / ngoài phạm vi freeze):** Refund/Balance/settlement runtime; gateway MoMo/VNPay thật; OTP/email; GPS; đơn giá Late/Fuel/Damage; Admin tạo payment; POST inspection/fee công khai; RefreshToken; DriverVehicle; chữ ký số/PKI; FCM; Redis; utilization theo giờ; CTR/impression gợi ý; login riêng AdminWeb; Customer self-cancel.
+**Không có trong source (limitation):** Refund/Balance/settlement runtime; gateway MoMo/VNPay thật; GPS; đơn giá Late/Fuel/Damage; Admin tạo payment; POST inspection/fee công khai; RefreshToken/JWT blacklist; DriverVehicle; chữ ký số/PKI; FCM; Redis; utilization theo giờ; CTR/impression gợi ý; login riêng AdminWeb; Customer self-cancel; Google Sign-In native trên CustomerApp Windows (dùng Portal GIS); Gmail SMTP/Google OAuth thật nếu chưa cấu hình secret.
 
 ---
 
 ## 2. Chức năng theo Role
 
-**Customer:** Register (Gmail + SĐT 10 số + mật khẩu mạnh); Login; đổi mật khẩu; xem loại xe; **gợi ý** (ngày bắt buộc, chỗ/giá optional — Backend gọi Python); chọn WithDriver/SelfDrive; Quote; POST Booking (`fromRecommendation=true` nếu chọn từ gợi ý — flag query, client có thể gửi). Cọc Deposit (Pending) **giữ xe** nếu có `VehicleId`/hold; mô phỏng Paid/Failed; **không** tạo cọc khi đơn Cancelled. Lập/xem/ký giả lập hợp đồng. Review nếu Completed **và** có TripAssignment (SelfDrive không review). Theo dõi đơn / history qua list+chi tiết. Realtime status (web JS / app native). **Không** tự Cancel (chỉ Admin/Dispatcher PATCH).
+**Customer:** Register (Gmail + SĐT 10 số + mật khẩu mạnh) → OTP Gmail → xác minh mới login được (seed/demo đã verified). Forgot/reset password bằng OTP. Google “Tiếp tục với Google” (Portal GIS, chỉ tạo/login Role Customer). Login; đổi mật khẩu; xem loại xe; **gợi ý** (ngày bắt buộc, chỗ/giá optional — Backend gọi Python); chọn WithDriver/SelfDrive; Quote; POST Booking (`fromRecommendation=true` nếu chọn từ gợi ý — flag query, client có thể gửi). Cọc Deposit (Pending) **giữ xe** nếu có `VehicleId`/hold; mô phỏng Paid/Failed; **không** tạo cọc khi đơn Cancelled. Lập/xem/ký giả lập hợp đồng. Review nếu Completed **và** có TripAssignment (SelfDrive không review). Theo dõi đơn / history qua list+chi tiết. Realtime status (web JS / app native). **Không** tự Cancel (chỉ Admin/Dispatcher PATCH).
 
 **Driver:** Login (DriverApp bắt buộc role Driver; CustomerApp RoleRouter). GET me; PATCH status Available/Busy/Offline. GET trips **của mình**. Accept (Assigned → Accepted) / Start (**chỉ** Accepted → InProgress) / Complete. Complete trên DriverApp gửi odometer, fuel 0–100, ngoại thất, kỹ thuật, notes → Return inspection; `CurrentKm` cập nhật nếu km hợp lệ. Báo sự cố trên assignment của mình. `GET /api/bookings/{id}` chỉ khi assignment của mình; list `GET /api/bookings` → 403. Không Handover, không tạo booking/payment.
 
@@ -128,8 +128,11 @@ Chi tiết Tuần 3: `Tuan 3.md` mục 31. Bổ sung A–F2 + hardening: `Tuan 4
 
 | Route | Handler | Role | API | Side effect |
 |-------|---------|------|-----|-------------|
-| `/Account/Login` | GET, POST | Anon | POST `/api/auth/login` | Cookie; không đổi Users |
-| `/Account/Register` | GET, POST | Anon | POST `/api/auth/register` | INSERT Customer; cookie |
+| `/Account/Login` | GET, POST, POST Google | Anon | POST `/api/auth/login`; POST `/api/auth/google`; GET `/api/auth/login-options` | Cookie; Google chỉ Customer |
+| `/Account/Register` | GET, POST | Anon | POST `/api/auth/register` | INSERT Customer unverified; **không** cookie; → VerifyEmail |
+| `/Account/VerifyEmail` | GET, POST, POST Resend | Anon | POST `/api/auth/verify-email`, `resend-verification-otp` | Set verified + cookie JWT |
+| `/Account/ForgotPassword` | GET, POST | Anon | POST `/api/auth/forgot-password` | Không tiết lộ email tồn tại; → ResetPassword |
+| `/Account/ResetPassword` | GET, POST | Anon | POST `/api/auth/reset-password` | UPDATE PasswordHash; không revoke JWT |
 | `/Account/Logout` | GET | — | Không | Xóa cookie |
 | `/Account/ChangePassword` | GET, POST | Đã login | POST `/api/auth/change-password` | UPDATE `PasswordHash`; không revoke JWT |
 | `/` | GET | Anon/Customer | GET vehicle-types; GET recommended nếu có StartDate | Redirect Admin/Dispatcher |
@@ -173,7 +176,7 @@ Mirror Portal Admin + `/Inspections` + `/Incidents` + Customer Create/Edit. Logi
 
 ## 4. API (endpoint có trong source)
 
-**Auth:** `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/change-password`
+**Auth:** `POST /api/auth/login`, `POST /api/auth/register` (pending OTP, không JWT), `POST /api/auth/verify-email`, `POST /api/auth/resend-verification-otp`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `POST /api/auth/google`, `GET /api/auth/login-options`, `GET /api/auth/me`, `POST /api/auth/change-password`
 
 **Catalog / gợi ý:** `GET /api/vehicle-types`, `GET /api/vehicle-types/recommended?startDate&endDate&seats&priceMax&estimatedDistance`, `GET /api/vehicles`, `GET /api/vehicles/{id}`
 
@@ -265,7 +268,7 @@ Hard filter: type active, seats, priceMax, xe usable (không Inactive/Maintenanc
 
 ## 10. Testing
 
-Lần chạy đầy đủ gần nhất (code freeze): **`dotnet test Backend.Tests -c Release` → 361 passed / 0 failed / 0 skipped**.
+Lần chạy đầy đủ gần nhất: **`dotnet test Backend.Tests -c Release` → 385 passed / 0 failed / 0 skipped**.
 
 Phân loại (file test, không cộng tay từng Fact):
 
@@ -380,11 +383,52 @@ flutter pub get
 flutter run
 ```
 
-Tài khoản Core seed (mật khẩu `Password123!`): `admin@carrental.vn`, `dispatcher@carrental.vn`, `customer1@gmail.com`, `driver1@carrental.vn`.
+Tài khoản Core seed (mật khẩu `Password123!`): `admin@carrental.vn`, `dispatcher@carrental.vn`, `customer1@gmail.com`, `driver1@carrental.vn`. Seed/demo **không** phải xác minh email lại (`IsEmailVerified` mặc định 1).
 
 Tests Backend: `dotnet test Backend.Tests/Backend.Tests.csproj -c Release`.
 
 Chi tiết thứ tự, SignalR, Demo vs live DB, checklist: `HUONG_DAN_CHAY_PROJECT.txt`.
+
+## Google Login / Email OTP / Forgot Password
+
+Secret **không** commit. Placeholder: `Backend/appsettings.example.json`. Local: environment variables hoặc `dotnet user-secrets` (Development). `appsettings.json` giữ `Email:Enabled=false` và `SmtpPassword` rỗng.
+
+```bash
+cd Backend
+dotnet user-secrets set "Email:Enabled" "true"
+dotnet user-secrets set "Email:SmtpHost" "smtp.gmail.com"
+dotnet user-secrets set "Email:SmtpPort" "587"
+dotnet user-secrets set "Email:SmtpUsername" "YOUR_GMAIL_ADDRESS"
+dotnet user-secrets set "Email:SmtpPassword" "YOUR_GMAIL_APP_PASSWORD"
+dotnet user-secrets set "Email:FromEmail" "YOUR_GMAIL_ADDRESS"
+dotnet user-secrets set "Email:FromName" "Car Rental"
+```
+
+`YOUR_GMAIL_APP_PASSWORD` là Gmail App Password (2FA), không phải mật khẩu Gmail thường. Không commit, không đưa vào chat/log.
+
+| Biến môi trường | User Secrets | Ý nghĩa |
+|-----------------|--------------|--------|
+| `Email__Enabled` | `Email:Enabled` | `true` mới gửi Gmail SMTP |
+| `Email__SmtpHost` | `Email:SmtpHost` | Mặc định `smtp.gmail.com` |
+| `Email__SmtpPort` | `Email:SmtpPort` | Mặc định `587` (STARTTLS) |
+| `Email__SmtpUsername` | `Email:SmtpUsername` | Gmail gửi OTP |
+| `Email__SmtpPassword` | `Email:SmtpPassword` | **Gmail App Password** |
+| `Email__FromEmail` / `Email__FromName` | `Email:FromEmail` / `Email:FromName` | Người gửi |
+| `Email__OtpPepper` | `Email:OtpPepper` | Tùy chọn; nếu trống dùng `Jwt:Key` để HMAC OTP |
+| `Google__ClientId` | `Google:ClientId` | OAuth Client ID |
+| `Google__ClientSecret` | `Google:ClientSecret` | Không dùng cho GIS id_token; để trống được |
+
+Gmail App Password: Google Account → Bảo mật → Xác minh 2 bước → Mật khẩu ứng dụng. Restart Backend sau khi set secrets. Log khởi động: `Email delivery: SMTP.` hoặc `Email delivery: disabled (NullEmailSender).`
+
+Google OAuth (Customer, Portal): Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID loại **Web**. Authorized JavaScript origins: `http://localhost:5180`. Backend `POST /api/auth/google` nhận `idToken`, validate issuer/audience/signature qua `Google.Apis.Auth`. Chỉ tạo/login **Customer**. Email trùng Admin/Dispatcher/Driver → 403. Email trùng Customer hiện có → link `GoogleSubject`, **không** ghi đè password.
+
+Local không credential: `Email:Enabled=false` (mặc định trong repo) — OTP vẫn lưu hash, email không gửi. Tests dùng `CapturingEmailSender`, không gọi Gmail/Google thật. `GET /api/auth/login-options` trả `googleEnabled=false` nếu thiếu ClientId.
+
+Forgot password luôn trả: `Nếu email tồn tại, mã OTP đã được gửi.` Reset: `{ email, otp, newPassword, confirmPassword }`. JWT stateless — không blacklist token cũ (giống đổi mật khẩu hiện tại).
+
+CustomerApp Windows: nút Google hướng dẫn dùng Portal. Native Android/iOS cần thêm `google_sign_in` + google-services (chưa gắn trong repo).
+
+AdminWeb / DispatcherWeb / DriverApp: **không** thêm Google Customer login.
 
 ## Database (SQL Server — tùy chọn)
 

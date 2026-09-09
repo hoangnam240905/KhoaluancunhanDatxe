@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using PortalWeb.Models;
 
 namespace PortalWeb.Services;
@@ -8,6 +9,11 @@ namespace PortalWeb.Services;
 public class CarRentalApiClient(HttpClient http, AuthSession auth)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions WriteJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string url)
     {
@@ -35,11 +41,55 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
     }
 
-    public async Task<(AuthResponse? Data, string? Error)> RegisterAsync(RegisterCustomerRequest request)
+    public async Task<(RegisterPendingResponse? Data, string? Error)> RegisterAsync(RegisterCustomerRequest request)
     {
         var response = await http.PostAsJsonAsync("/api/auth/register", request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đăng ký thất bại.");
+        return (await response.Content.ReadFromJsonAsync<RegisterPendingResponse>(JsonOptions), null);
+    }
+
+    public async Task<(AuthResponse? Data, string? Error)> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/verify-email", request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Xác minh email thất bại.");
         return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
+    }
+
+    public async Task<(RegisterPendingResponse? Data, string? Error)> ResendVerificationAsync(string email)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/resend-verification-otp", new ResendVerificationRequest(email));
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không thể gửi lại mã OTP.");
+        return (await response.Content.ReadFromJsonAsync<RegisterPendingResponse>(JsonOptions), null);
+    }
+
+    public async Task<(MessageResponse? Data, string? Error)> ForgotPasswordAsync(string email)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/forgot-password", new ForgotPasswordRequest(email));
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không thể gửi mã OTP.");
+        return (await response.Content.ReadFromJsonAsync<MessageResponse>(JsonOptions), null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/reset-password", request);
+        if (!response.IsSuccessStatusCode) return (false, await GetErrorAsync(response) ?? "Không thể đặt lại mật khẩu.");
+        return (true, null);
+    }
+
+    public async Task<(AuthResponse? Data, string? Error)> GoogleLoginAsync(string idToken)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/google", new GoogleLoginRequest(idToken));
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đăng nhập Google thất bại.");
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
+    }
+
+    public async Task<LoginOptionsResponse> GetLoginOptionsAsync()
+    {
+        var response = await http.GetAsync("/api/auth/login-options");
+        if (!response.IsSuccessStatusCode)
+            return new LoginOptionsResponse(false, null);
+        return await response.Content.ReadFromJsonAsync<LoginOptionsResponse>(JsonOptions)
+               ?? new LoginOptionsResponse(false, null);
     }
 
     public async Task<List<VehicleTypeResponse>> GetVehicleTypesAsync()
@@ -51,7 +101,7 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     public async Task<(List<VehicleTypeRecommendationResponse> Data, string? Error)> GetRecommendedAsync(
         DateTime startDate, DateTime endDate, int? seats, decimal? priceMax, decimal? estimatedDistance)
     {
-        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("o"))}&endDate={Uri.EscapeDataString(endDate.ToString("o"))}";
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
         if (seats.HasValue) query += $"&seats={seats.Value}";
         if (priceMax.HasValue) query += $"&priceMax={priceMax.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         if (estimatedDistance.HasValue) query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
@@ -89,6 +139,17 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<MaintenanceRecordResponse>(JsonOptions), null);
     }
 
+    public async Task<(MaintenanceRecordResponse? Data, string? Error)> CompleteMaintenanceAsync(
+        int vehicleId, int maintenanceId, CompleteMaintenanceRequest body)
+    {
+        using var request = CreateRequest(
+            HttpMethod.Patch, $"/api/vehicles/{vehicleId}/maintenance/{maintenanceId}/complete");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<MaintenanceRecordResponse>(JsonOptions), null);
+    }
+
     public async Task<List<VehicleResponse>> GetVehiclesAsync(string? status = null)
     {
         var url = string.IsNullOrEmpty(status) ? "/api/vehicles" : $"/api/vehicles?status={Uri.EscapeDataString(status)}";
@@ -102,6 +163,14 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{id}");
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<VehicleResponse>(JsonOptions) : null;
+    }
+
+    public async Task<(VehicleOperationalProfileResponse? Data, string? Error)> GetVehicleOperationalProfileAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{id}/operational-profile");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<VehicleOperationalProfileResponse>(JsonOptions), null);
     }
 
     public async Task<(VehicleResponse? Data, string? Error)> CreateVehicleAsync(CreateVehicleRequest body)
@@ -161,8 +230,8 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
     {
         var query = $"vehicleTypeId={vehicleTypeId}" +
-                    $"&startDate={Uri.EscapeDataString(startDate.ToString("o"))}" +
-                    $"&endDate={Uri.EscapeDataString(endDate.ToString("o"))}" +
+                    $"&startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
                     $"&rentalMode={Uri.EscapeDataString(rentalMode)}";
         if (estimatedDistance.HasValue)
             query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
@@ -283,6 +352,22 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<(DispatchFleetStatusResponse? Data, string? Error)> GetFleetStatusAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/dispatch/fleet-status");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<DispatchFleetStatusResponse>(JsonOptions), null);
+    }
+
+    public async Task<(DispatchAssignableResponse? Data, string? Error)> GetAssignableAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/dispatch/bookings/{bookingId}/assignable");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<DispatchAssignableResponse>(JsonOptions), null);
+    }
+
     public async Task<(BookingResponse? Data, string? Error, AssignConflictResponse? Conflict)> AssignTripAsync(int id, AssignTripRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/assign");
@@ -311,20 +396,28 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (null, $"Loi API ({(int)response.StatusCode})", null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id)
+    public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id, VehicleConditionRequest? condition = null)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/handover");
+        ApplyConditionBody(request, condition);
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> CompleteSelfDriveAsync(int id)
+    public async Task<(BookingResponse? Data, string? Error)> CompleteSelfDriveAsync(int id, VehicleConditionRequest? condition = null)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/complete");
+        ApplyConditionBody(request, condition);
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
+    private static void ApplyConditionBody(HttpRequestMessage request, VehicleConditionRequest? condition)
+    {
+        var body = condition?.ForApi() ?? new VehicleConditionRequest();
+        request.Content = JsonContent.Create(body, options: WriteJson);
     }
 
     public async Task<List<DriverResponse>> GetDriversAsync(string? status = "Available")
@@ -501,17 +594,18 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
     }
 
-    public async Task<(bool Success, string? Error)> DeactivateAdminCustomerAsync(int id)
+    public async Task<(bool Success, string? Error)> DeactivateAdminCustomerAsync(int id, string reason)
     {
         using var request = CreateRequest(HttpMethod.Delete, $"/api/admin/customers/{id}");
+        request.Content = JsonContent.Create(new DeactivateCustomerRequest(reason));
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
     }
 
-    public async Task<(AdminCustomerResponse? Data, string? Error)> SetCustomerLockedAsync(int id, bool isLocked)
+    public async Task<(AdminCustomerResponse? Data, string? Error)> SetCustomerLockedAsync(int id, bool isLocked, string? reason = null)
     {
         using var request = CreateRequest(HttpMethod.Put, $"/api/admin/customers/{id}/lock");
-        request.Content = JsonContent.Create(new LockCustomerRequest(isLocked));
+        request.Content = JsonContent.Create(new LockCustomerRequest(isLocked, reason));
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);

@@ -2,6 +2,7 @@
 @model PortalWeb.Pages.Admin.Vehicles.IndexModel
 @{ ViewData["Title"] = "Quản lý xe"; }
 <div class="d-flex justify-content-between mb-3"><h2>Quản lý xe</h2><a asp-page="Create" class="btn btn-primary">Thêm xe</a></div>
+@if (!string.IsNullOrEmpty(Model.SuccessMessage)) { <div class="alert alert-success">@Model.SuccessMessage</div> }
 @if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
 <table class="table table-striped">
     <thead><tr><th>Biển số</th><th>Loai</th><th>Hãng</th><th>Trạng thái</th><th>Bảo trì</th><th></th></tr></thead>
@@ -10,7 +11,7 @@
             <td>@v.LicensePlate</td>
             <td>@v.TypeName</td>
             <td>@v.Brand @v.Model</td>
-            <td>@v.Status</td>
+            <td>@UiDisplay.VehicleStatus(v.Status)</td>
             <td>
                 @if (Model.AlertVehicleIds.Contains(v.VehicleId))
                 {
@@ -18,6 +19,7 @@
                 }
             </td>
             <td>
+                <a asp-page="Details" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-info">👁 Xem chi tiết</a>
                 <a asp-page="Edit" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-primary">Sửa</a>
                 <a asp-page="Maintenance" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-warning">Bảo trì</a>
                 <form method="post" asp-page-handler="Delete" asp-route-id="@v.VehicleId" class="d-inline"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>

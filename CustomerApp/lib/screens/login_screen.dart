@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../navigation/role_router.dart';
 import '../services/api_service.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -162,6 +163,35 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : const Text('Đăng nhập'),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Đăng nhập Google trên Windows/desktop dùng Portal Web (http://localhost:5180). Android/iOS cần Google ClientId và cấu hình native.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                          child: const Text('Tiếp tục với Google'),
+                        ),
+                        TextButton(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ForgotPasswordScreen(),
+                                    ),
+                                  );
+                                },
+                          child: const Text('Quên mật khẩu?'),
                         ),
                         const SizedBox(height: 8),
                         TextButton(

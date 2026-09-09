@@ -33,7 +33,8 @@
     }
     <div class="container pb-4">@RenderBody()</div>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+    @* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
+    @if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
     {
         <script>
             window.carRentalRealtime = {

@@ -191,7 +191,7 @@ public class PhaseCustomerCrudTests
         var contractCount = await iso.Db.Contracts.CountAsync();
         var reviewCount = await iso.Db.Reviews.CountAsync();
 
-        var (ok, error, status) = await new AdminCustomerService(iso.Db).DeactivateAsync(3);
+        var (ok, error, status) = await new AdminCustomerService(iso.Db).DeactivateAsync(3, "Khách hàng yêu cầu đóng tài khoản", 1);
         Assert.True(ok);
         Assert.Null(error);
         Assert.Equal(200, status);
@@ -210,7 +210,7 @@ public class PhaseCustomerCrudTests
     {
         using var iso = new IsolatedCarRentalDb();
         Assert.True(await iso.Db.Payments.AnyAsync(p => p.BookingId == 2));
-        var (ok, _, status) = await new AdminCustomerService(iso.Db).DeactivateAsync(4);
+        var (ok, _, status) = await new AdminCustomerService(iso.Db).DeactivateAsync(4, "Khách hàng yêu cầu đóng tài khoản", 1);
         Assert.True(ok);
         Assert.Equal(200, status);
         Assert.True(await iso.Db.Payments.AnyAsync(p => p.BookingId == 2 && p.Booking.CustomerId == 4));
@@ -225,7 +225,7 @@ public class PhaseCustomerCrudTests
         var auth = Auth(iso);
         var customers = new AdminCustomerService(iso.Db);
 
-        var locked = await customers.SetLockedAsync(3, true);
+        var locked = await customers.SetLockedAsync(3, true, "Vi phạm quy định sử dụng hệ thống", 1);
         Assert.Equal(200, locked.StatusCode);
         var (data, error, status) = await auth.LoginAsync(new LoginRequest("customer1@gmail.com", "Password123!"));
         Assert.Null(data);
@@ -239,7 +239,7 @@ public class PhaseCustomerCrudTests
         Assert.Null(okError);
         Assert.NotNull(okLogin);
 
-        await customers.DeactivateAsync(3);
+        await customers.DeactivateAsync(3, "Khách hàng yêu cầu đóng tài khoản", 1);
         var (off, offError, offStatus) = await auth.LoginAsync(new LoginRequest("customer1@gmail.com", "Password123!"));
         Assert.Null(off);
         Assert.Equal(403, offStatus);
@@ -261,7 +261,8 @@ public class PhaseCustomerCrudTests
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
         var body = await created.Content.ReadFromJsonAsync<AdminCustomerResponse>(Json);
-        var del = await client.SendAsync(Authed(HttpMethod.Delete, $"/api/admin/customers/{body!.CustomerId}", admin));
+        var del = await client.SendAsync(Authed(HttpMethod.Delete, $"/api/admin/customers/{body!.CustomerId}", admin,
+            JsonContent.Create(new DeactivateCustomerRequest("Khách hàng yêu cầu đóng tài khoản"))));
         Assert.Equal(HttpStatusCode.OK, del.StatusCode);
 
         var after = await client.PostAsJsonAsync("/api/auth/login",
@@ -276,6 +277,6 @@ public class PhaseCustomerCrudTests
         config["Jwt:Issuer"] = "CarRentalAPI";
         config["Jwt:Audience"] = "CarRentalClients";
         config["Jwt:ExpireHours"] = "8";
-        return new AuthService(iso.Db, new JwtTokenService(config));
+        return TestAuthFactory.Create(iso.Db, config);
     }
 }

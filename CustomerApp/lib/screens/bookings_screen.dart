@@ -167,7 +167,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             Text('${b.pickupAddress} → ${b.dropoffAddress}'),
             const SizedBox(height: 4),
             Text(
-              '${Formatters.dt(b.startDate)}  →  ${Formatters.dt(b.endDate)}',
+              '${Formatters.rentalDt(b.startDate)}  →  ${Formatters.rentalDt(b.endDate)}',
               style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 8),

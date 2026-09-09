@@ -144,7 +144,7 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '${Formatters.dt(t.startDate)}  →  ${Formatters.dt(t.endDate)}',
+              '${Formatters.rentalDt(t.startDate)}  →  ${Formatters.rentalDt(t.endDate)}',
               style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 8),

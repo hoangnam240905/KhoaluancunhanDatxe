@@ -64,6 +64,23 @@ public static class VehicleStatuses
     public const string Inactive = "Inactive";
 }
 
+public static class VehicleMaintenanceDisplayStatuses
+{
+    public const string Ready = "SanSang";
+    public const string Due = "CanBaoTri";
+    public const string InMaintenance = "DangBaoTri";
+    public const string Inactive = "NgungHoatDong";
+
+    public static string Label(string status) => status switch
+    {
+        Ready => "Sẵn sàng",
+        Due => "Cần bảo trì",
+        InMaintenance => "Đang bảo trì",
+        Inactive => "Ngừng hoạt động",
+        _ => status
+    };
+}
+
 public static class TripAssignmentStatuses
 {
     public const string Assigned = "Assigned";
@@ -92,6 +109,12 @@ public static class PricingDefaults
     public static decimal WithDriverDeposit(decimal pricePerDay) => pricePerDay;
 
     public static decimal SelfDriveDeposit(decimal pricePerDay) => pricePerDay * 5;
+
+    /// Quote / booking deposit is always 50% of TotalAmount (not catalog VehicleType deposit columns).
+    public const decimal QuoteDepositRate = 0.5m;
+
+    public static decimal DepositFromTotal(decimal totalAmount) =>
+        Math.Round(totalAmount * QuoteDepositRate, 0, MidpointRounding.AwayFromZero);
 }
 
 public static class PaymentTypes
@@ -229,6 +252,10 @@ public static class MaintenanceAlertThresholds
 public static class MaintenanceLock
 {
     public const string BlockedForNewSchedule = "Xe đã đến hạn bảo trì, không nhận lịch mới.";
+    public const string BlockedBecauseOpen = "Xe đang được bảo trì, không thể nhận lịch mới.";
+    public const string AlreadyHasOpen = "Xe đang có lịch bảo trì chưa hoàn tất.";
+    public const string AlreadyCompleted = "Bảo trì này đã hoàn tất.";
+    public const string RecordNotFound = "Không tìm thấy bản ghi bảo trì.";
 }
 
 public static class RecommendationWeights
@@ -308,4 +335,10 @@ public static class BookingFeeTypes
         resolved = string.Empty;
         return false;
     }
+}
+
+public static class OtpPurposes
+{
+    public const string EmailVerification = "EmailVerification";
+    public const string PasswordReset = "PasswordReset";
 }

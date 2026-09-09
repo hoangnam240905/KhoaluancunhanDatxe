@@ -50,6 +50,7 @@ public class PhaseP0VehicleDeleteProtectionTests
         iso.SetLastCompletedMaintenance(vehicleId, DateTime.UtcNow.AddDays(-10), 1000);
         var created = await bookings.CreateBookingAsync(3, WithDriver());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(6, vehicleId), 2);
         Assert.Null(assigned.Error);
         Assert.True(await schedule.IsVehicleOccupiedAsync(vehicleId));
@@ -115,6 +116,7 @@ public class PhaseP0VehicleDeleteProtectionTests
         Assert.False(blockedConfirmed.Ok);
         Assert.Equal(VehicleOccupancyRules.CannotDelete, blockedConfirmed.Error);
 
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, vehicleId), 2);
         Assert.Null(assigned.Error);
         Assert.Equal(BookingStatuses.Assigned, iso.Db.Bookings.Find(created.BookingId)!.Status);
@@ -134,9 +136,12 @@ public class PhaseP0VehicleDeleteProtectionTests
         var completedBooking = await bookings.CreateBookingAsync(3, SelfDrive(completedId));
         await payments.CreateAsync(3, Deposit(completedBooking!.BookingId));
         await dispatch.ConfirmBookingAsync(completedBooking.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, completedBooking.BookingId);
         await dispatch.AssignTripAsync(completedBooking.BookingId, new AssignTripRequest(null, completedId), 2);
-        await dispatch.HandoverSelfDriveAsync(completedBooking.BookingId, 2, null);
-        await dispatch.CompleteSelfDriveAsync(completedBooking.BookingId, 2, null);
+        await dispatch.HandoverSelfDriveAsync(
+            completedBooking.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, completedBooking.BookingId));
+        await dispatch.CompleteSelfDriveAsync(
+            completedBooking.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, completedBooking.BookingId, extraKm: 100));
         Assert.Equal(BookingStatuses.Completed, iso.Db.Bookings.Find(completedBooking.BookingId)!.Status);
         Assert.False(await schedule.IsVehicleOccupiedAsync(completedId));
 
@@ -168,6 +173,7 @@ public class PhaseP0VehicleDeleteProtectionTests
         iso.SetLastCompletedMaintenance(tripId, DateTime.UtcNow.AddDays(-10), 1000);
         var trip = await bookings.CreateBookingAsync(3, WithDriver());
         await dispatch.ConfirmBookingAsync(trip!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, trip.BookingId);
         await dispatch.AssignTripAsync(trip.BookingId, new AssignTripRequest(6, tripId), 2);
         var assignedInactive = await SetInactiveAsync(iso, vehicles, tripId);
         Assert.Equal(400, assignedInactive.StatusCode);

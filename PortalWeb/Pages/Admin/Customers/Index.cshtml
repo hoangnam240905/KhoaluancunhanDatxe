@@ -6,13 +6,14 @@
     <h2>Khách hàng</h2>
     <a asp-page="Create" class="btn btn-primary">Thêm khách hàng</a>
 </div>
-@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+@if (!string.IsNullOrEmpty(Model.SuccessMessage)) { <div class="alert alert-success">@Model.SuccessMessage</div> }
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
 <form method="get" class="row g-2 mb-3">
     <div class="col-md-4"><input name="keyword" value="@Model.Keyword" class="form-control" placeholder="Tên, email, SĐT" /></div>
     <div class="col-md-2"><button class="btn btn-primary">Tìm</button></div>
 </form>
 <table class="table table-striped">
-    <thead><tr><th>Mã</th><th>Tên</th><th>Email</th><th>SĐT</th><th>Khóa</th><th>Hoạt động</th><th></th></tr></thead>
+    <thead><tr><th>Mã</th><th>Tên</th><th>Email</th><th>SĐT</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
     @foreach (var c in Model.Result.Items)
     {
@@ -21,25 +22,36 @@
             <td>@c.FullName</td>
             <td>@c.Email</td>
             <td>@c.Phone</td>
-            <td>@(c.IsLocked ? "Có" : "Không")</td>
-            <td>@(c.IsActive ? "Có" : "Không")</td>
+            <td>
+                <div>@UiDisplay.CustomerAccount(c.IsActive, c.IsLocked)</div>
+                @if (!c.IsActive && c.IsLocked)
+                {
+                    <div class="small text-muted">Đã khóa</div>
+                }
+                @if (c.IsLocked && !string.IsNullOrEmpty(c.LockReason))
+                {
+                    <div class="small text-muted">Lý do khóa: @c.LockReason</div>
+                    <div class="small text-muted">@UiDisplay.Timestamp(c.LockedAt)@(string.IsNullOrEmpty(c.LockedByName) ? "" : " — " + c.LockedByName)</div>
+                }
+                @if (!c.IsActive && !string.IsNullOrEmpty(c.InactiveReason))
+                {
+                    <div class="small text-muted">Lý do vô hiệu hóa: @c.InactiveReason</div>
+                    <div class="small text-muted">@UiDisplay.Timestamp(c.InactivatedAt)@(string.IsNullOrEmpty(c.InactivatedByName) ? "" : " — " + c.InactivatedByName)</div>
+                }
+            </td>
             <td>
                 <a asp-page="Edit" asp-route-id="@c.CustomerId" class="btn btn-sm btn-outline-primary">Sửa</a>
-                <form method="post" asp-page-handler="Lock" asp-route-id="@c.CustomerId" class="d-inline">
-                    <input type="hidden" name="isLocked" value="@((!c.IsLocked).ToString().ToLowerInvariant())" />
-                    <input type="hidden" name="keyword" value="@Model.Keyword" />
-                    <input type="hidden" name="page" value="@Model.Result.Page" />
-                    <button class="btn btn-sm @(c.IsLocked ? "btn-success" : "btn-outline-danger")">
-                        @(c.IsLocked ? "Mở khóa" : "Khóa")
-                    </button>
-                </form>
+                @if (c.IsLocked)
+                {
+                    <button type="button" class="btn btn-sm btn-success" data-open-unlock data-id="@c.CustomerId">🔓 Mở khóa</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-open-lock data-id="@c.CustomerId">🔒 Khóa tài khoản</button>
+                }
                 @if (c.IsActive)
                 {
-                    <form method="post" asp-page-handler="Deactivate" asp-route-id="@c.CustomerId" class="d-inline">
-                        <input type="hidden" name="keyword" value="@Model.Keyword" />
-                        <input type="hidden" name="page" value="@Model.Result.Page" />
-                        <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Vô hiệu hóa tài khoản này? Lịch sử thuê sẽ được giữ.');">Vô hiệu hóa</button>
-                    </form>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-open-inactive data-id="@c.CustomerId">🚫 Vô hiệu hóa tài khoản</button>
                 }
             </td>
         </tr>
@@ -47,3 +59,116 @@
     </tbody>
 </table>
 <p class="text-muted small">Tổng @Model.Result.Total — trang @Model.Result.Page. Vô hiệu hóa là soft-delete (Users.IsActive=false), không xóa Booking/Payment/Contract.</p>
+
+<div class="modal fade" id="lockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" asp-page-handler="Lock" class="modal-content js-once-submit" data-require-reason="lockReason">
+            <input type="hidden" name="id" id="lockId" />
+            <input type="hidden" name="isLocked" value="true" />
+            <input type="hidden" name="keyword" value="@Model.Keyword" />
+            <input type="hidden" name="page" value="@Model.Result.Page" />
+            <div class="modal-header">
+                <h5 class="modal-title">Lý do khóa tài khoản</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="lockReason">Lý do khóa</label>
+                <textarea id="lockReason" name="reason" class="form-control" maxlength="255" rows="3" required></textarea>
+                <div class="invalid-feedback">Vui lòng nhập lý do khóa tài khoản.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-danger" data-loading-text="Đang xử lý...">Xác nhận khóa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="unlockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" asp-page-handler="Lock" class="modal-content js-once-submit">
+            <input type="hidden" name="id" id="unlockId" />
+            <input type="hidden" name="isLocked" value="false" />
+            <input type="hidden" name="keyword" value="@Model.Keyword" />
+            <input type="hidden" name="page" value="@Model.Result.Page" />
+            <div class="modal-header">
+                <h5 class="modal-title">Mở khóa tài khoản</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">Bạn chắc chắn muốn mở khóa tài khoản này?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-success" data-loading-text="Đang xử lý...">Xác nhận mở khóa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="inactiveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" asp-page-handler="Deactivate" class="modal-content js-once-submit" data-require-reason="inactiveReason">
+            <input type="hidden" name="id" id="inactiveId" />
+            <input type="hidden" name="keyword" value="@Model.Keyword" />
+            <input type="hidden" name="page" value="@Model.Result.Page" />
+            <div class="modal-header">
+                <h5 class="modal-title">Lý do vô hiệu hóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="inactiveReason">Lý do vô hiệu hóa</label>
+                <textarea id="inactiveReason" name="reason" class="form-control" maxlength="255" rows="3" required></textarea>
+                <div class="invalid-feedback">Vui lòng nhập lý do vô hiệu hóa.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="submit" class="btn btn-outline-secondary" data-loading-text="Đang xử lý...">Xác nhận vô hiệu hóa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll("[data-open-lock]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.getElementById("lockReason").value = "";
+            document.getElementById("lockReason").classList.remove("is-invalid");
+            document.getElementById("lockId").value = btn.dataset.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("lockModal")).show();
+        });
+    });
+    document.querySelectorAll("[data-open-unlock]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.getElementById("unlockId").value = btn.dataset.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("unlockModal")).show();
+        });
+    });
+    document.querySelectorAll("[data-open-inactive]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.getElementById("inactiveReason").value = "";
+            document.getElementById("inactiveReason").classList.remove("is-invalid");
+            document.getElementById("inactiveId").value = btn.dataset.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("inactiveModal")).show();
+        });
+    });
+    document.querySelectorAll("form.js-once-submit").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+            var reasonId = form.getAttribute("data-require-reason");
+            if (reasonId) {
+                var input = document.getElementById(reasonId);
+                if (!input.value.trim()) {
+                    e.preventDefault();
+                    input.classList.add("is-invalid");
+                    return;
+                }
+            }
+            if (form.dataset.submitting === "1") { e.preventDefault(); return; }
+            form.dataset.submitting = "1";
+            form.querySelectorAll("button[type=submit]").forEach(function (btn) {
+                btn.disabled = true;
+                if (btn.dataset.loadingText) btn.textContent = btn.dataset.loadingText;
+            });
+        });
+    });
+</script>
+}

@@ -11,6 +11,8 @@ public static class CustomerRegistrationRules
     public const string InvalidPassword = "Mật khẩu phải có ít nhất 8 ký tự, 1 chữ hoa và 1 ký tự đặc biệt.";
     public const string EmailInUse = "Email đã được sử dụng.";
     public const string PhoneInUse = "Số điện thoại đã được sử dụng.";
+    public const string ConfirmPasswordMismatch = "Xác nhận mật khẩu không khớp.";
+    public const string EmailNotVerified = "Vui lòng xác minh email trước khi đăng nhập.";
 
     private static readonly CultureInfo Vietnamese = CultureInfo.GetCultureInfo("vi-VN");
     private static readonly Regex GmailRegex = new(@"^[^@\s]+@gmail\.com$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);

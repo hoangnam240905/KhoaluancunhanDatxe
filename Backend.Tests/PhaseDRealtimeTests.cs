@@ -96,6 +96,7 @@ public class PhaseDRealtimeTests
         Assert.NotNull(bookingJson);
         var confirm = Authed(HttpMethod.Post, $"/api/dispatch/bookings/{bookingJson!.BookingId}/confirm", dispatcher);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(confirm)).StatusCode);
+        await TestDispatchReady.EnsureSignedAndPaidHttpAsync(client, customer, bookingJson.BookingId);
 
         await using var hubA = await ConnectAsync(factory, driverA);
         await using var hubB = await ConnectAsync(factory, driverB);
@@ -146,6 +147,7 @@ public class PhaseDRealtimeTests
 
         var target = await bookings.CreateBookingAsync(3, SelfDrive(null));
         await dispatch.ConfirmBookingAsync(target!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         capture.Clear();
 
         var conflicted = await dispatch.AssignTripAsync(
@@ -157,6 +159,7 @@ public class PhaseDRealtimeTests
         var created = await bookings.CreateBookingAsync(3, new CreateBookingRequest(
             1, "A", "B", null, null, null, null, Start.AddDays(2), End.AddDays(2), 20, null, RentalModes.SelfDrive));
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         capture.Clear();
         var ok = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
         Assert.Null(ok.Error);
@@ -206,6 +209,7 @@ public class PhaseDRealtimeTests
 
         var created = await bookings.CreateBookingAsync(3, WithDriver());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(
             created.BookingId, new AssignTripRequest(6, 2), 2);
         Assert.Null(assigned.Error);

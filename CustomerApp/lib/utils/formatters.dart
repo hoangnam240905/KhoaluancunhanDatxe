@@ -8,7 +8,52 @@ class Formatters {
 
   static String vnd(double value) => '${money.format(value)} VND';
 
+  static String rentalDt(DateTime value) {
+    final wall = DateTime(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+    );
+    return dateTime.format(wall);
+  }
+
   static String dt(DateTime value) => dateTime.format(value.toLocal());
+
+  static String vehicleStatusLabel(String status) {
+    switch (status) {
+      case 'Available':
+        return 'Sẵn sàng';
+      case 'Rented':
+        return 'Đang cho thuê';
+      case 'Maintenance':
+        return 'Bảo trì';
+      case 'Inactive':
+        return 'Ngừng hoạt động';
+      default:
+        return status;
+    }
+  }
+
+  static String legalExpiryLabel(DateTime? date, DateTime today) {
+    if (date == null) return '—';
+    final day = DateTime(date.year, date.month, date.day);
+    final now = DateTime(today.year, today.month, today.day);
+    return day.isBefore(now) ? 'Đã hết hạn' : 'Còn hiệu lực';
+  }
+
+  static String rentalQuery(DateTime value) {
+    final wall = DateTime(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+      value.second,
+    );
+    return DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(wall);
+  }
 
   static String rentalModeLabel(String? mode) {
     switch (mode) {

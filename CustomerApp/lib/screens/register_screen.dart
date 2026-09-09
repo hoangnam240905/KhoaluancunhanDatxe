@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../navigation/role_router.dart';
 import '../services/api_service.dart';
+import 'verify_email_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,6 +13,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _fullName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
   final _phone = TextEditingController();
   final _api = ApiService();
   bool _loading = false;
@@ -29,6 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _fullName.dispose();
     _email.dispose();
     _password.dispose();
+    _confirm.dispose();
     _phone.dispose();
     super.dispose();
   }
@@ -64,20 +66,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
+    if (_confirm.text != _password.text) {
+      setState(() => _error = 'Xác nhận mật khẩu không khớp.');
+      return;
+    }
 
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final auth = await _api.register(
+      final pending = await _api.register(
         email: _email.text.trim(),
         password: _password.text,
         fullName: _fullName.text.trim(),
         phone: _phone.text.trim(),
+        confirmPassword: _confirm.text,
       );
       if (!mounted) return;
-      RoleRouter.goHome(context, _api, auth);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerifyEmailScreen(email: pending.email),
+        ),
+      );
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -212,6 +224,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _rule(
                           _specialOk,
                           'Có ít nhất 1 ký tự đặc biệt (!@#\$...)',
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _confirm,
+                          obscureText: !_showPassword,
+                          decoration: InputDecoration(
+                            labelText: 'Xác nhận mật khẩu',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         TextField(

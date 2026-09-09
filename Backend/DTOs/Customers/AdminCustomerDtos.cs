@@ -10,7 +10,15 @@ public record AdminCustomerResponse(
     bool IsActive = true,
     string? Address = null,
     string? IdNumber = null,
-    DateOnly? DateOfBirth = null);
+    DateOnly? DateOfBirth = null,
+    string? LockReason = null,
+    DateTime? LockedAt = null,
+    int? LockedByUserId = null,
+    string? LockedByName = null,
+    string? InactiveReason = null,
+    DateTime? InactivatedAt = null,
+    int? InactivatedByUserId = null,
+    string? InactivatedByName = null);
 
 public record AdminCustomerListResponse(
     List<AdminCustomerResponse> Items,
@@ -18,7 +26,9 @@ public record AdminCustomerListResponse(
     int Page,
     int PageSize);
 
-public record LockCustomerRequest(bool IsLocked);
+public record LockCustomerRequest(bool IsLocked, string? Reason = null);
+
+public record DeactivateCustomerRequest(string? Reason);
 
 public record CreateAdminCustomerRequest(
     string FullName,

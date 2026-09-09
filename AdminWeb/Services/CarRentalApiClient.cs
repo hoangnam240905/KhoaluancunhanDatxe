@@ -62,6 +62,14 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             : null;
     }
 
+    public async Task<(VehicleOperationalProfileResponse? Data, string? Error)> GetVehicleOperationalProfileAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{id}/operational-profile");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<VehicleOperationalProfileResponse>(JsonOptions), null);
+    }
+
     public async Task<(VehicleResponse? Data, string? Error)> CreateVehicleAsync(CreateVehicleRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, "/api/vehicles");
@@ -108,6 +116,17 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     public async Task<(MaintenanceRecordResponse? Data, string? Error)> CreateMaintenanceAsync(int vehicleId, CreateMaintenanceRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/vehicles/{vehicleId}/maintenance");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<MaintenanceRecordResponse>(JsonOptions), null);
+    }
+
+    public async Task<(MaintenanceRecordResponse? Data, string? Error)> CompleteMaintenanceAsync(
+        int vehicleId, int maintenanceId, CompleteMaintenanceRequest body)
+    {
+        using var request = CreateRequest(
+            HttpMethod.Patch, $"/api/vehicles/{vehicleId}/maintenance/{maintenanceId}/complete");
         request.Content = JsonContent.Create(body);
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
@@ -328,17 +347,18 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
     }
 
-    public async Task<(bool Success, string? Error)> DeactivateAdminCustomerAsync(int id)
+    public async Task<(bool Success, string? Error)> DeactivateAdminCustomerAsync(int id, string reason)
     {
         using var request = CreateRequest(HttpMethod.Delete, $"/api/admin/customers/{id}");
+        request.Content = JsonContent.Create(new DeactivateCustomerRequest(reason));
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
     }
 
-    public async Task<(AdminCustomerResponse? Data, string? Error)> SetCustomerLockedAsync(int id, bool isLocked)
+    public async Task<(AdminCustomerResponse? Data, string? Error)> SetCustomerLockedAsync(int id, bool isLocked, string? reason = null)
     {
         using var request = CreateRequest(HttpMethod.Put, $"/api/admin/customers/{id}/lock");
-        request.Content = JsonContent.Create(new LockCustomerRequest(isLocked));
+        request.Content = JsonContent.Create(new LockCustomerRequest(isLocked, reason));
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);

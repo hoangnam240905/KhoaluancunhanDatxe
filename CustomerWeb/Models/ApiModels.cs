@@ -9,7 +9,8 @@ public record RegisterCustomerRequest(
     string? Phone,
     string? Address,
     string? IdNumber,
-    DateOnly? DateOfBirth);
+    DateOnly? DateOfBirth,
+    string? ConfirmPassword = null);
 
 public record AuthResponse(
     string Token,
@@ -18,6 +19,15 @@ public record AuthResponse(
     string FullName,
     string Role,
     DateTime ExpiresAt);
+
+public record RegisterPendingResponse(string Email, string Message, bool RequiresVerification);
+public record VerifyEmailRequest(string Email, string Otp);
+public record ResendVerificationRequest(string Email);
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Otp, string NewPassword, string? ConfirmPassword);
+public record MessageResponse(string Message);
+public record GoogleLoginRequest(string IdToken);
+public record LoginOptionsResponse(bool GoogleEnabled, string? GoogleClientId);
 
 public record VehicleTypeResponse(
     int TypeId,

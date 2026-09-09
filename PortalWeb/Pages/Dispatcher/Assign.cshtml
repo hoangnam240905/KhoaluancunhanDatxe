@@ -8,7 +8,7 @@
         <strong>Khách:</strong> @Model.Booking.CustomerName
         · <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
         · <strong>Hình thức:</strong> @AssignModel.RentalModeLabel(Model.Booking.RentalMode)
-        · <strong>Thời gian:</strong> @Model.Booking.StartDate.ToString("dd/MM HH:mm") → @Model.Booking.EndDate.ToString("dd/MM HH:mm")
+        · <strong>Thời gian:</strong> @UiDisplay.Rental(Model.Booking.StartDate) → @UiDisplay.Rental(Model.Booking.EndDate)
     </p>
 }
 @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
@@ -81,7 +81,11 @@
             </select>
             @if (!Model.Drivers.Any())
             {
-                <div class="form-text text-danger">Không có tài xế đang rảnh.</div>
+                <div class="form-text text-danger">Không có tài xế Available, không trùng lịch (đệm 2 giờ).</div>
+            }
+            else
+            {
+                <div class="form-text">Chỉ hiện tài xế Available, không Offline/Busy, không trùng lịch (đệm 2 giờ).</div>
             }
         </div>
     }
@@ -93,10 +97,14 @@
                 <option value="@v.VehicleId">@v.LicensePlate - @v.Brand @v.Model</option>
             }
         </select>
-        @if (!Model.Vehicles.Any())
-        {
-            <div class="form-text text-danger">Không có xe trống đúng loại đơn đặt.</div>
-        }
+            @if (!Model.Vehicles.Any())
+            {
+                <div class="form-text text-danger">Không có xe Available đúng loại, không bảo trì, không trùng lịch (đệm 2 giờ).</div>
+            }
+            else
+            {
+                <div class="form-text">Chỉ hiện xe Available đúng loại, không Rented/Maintenance/Inactive, không trùng lịch (đệm 2 giờ).</div>
+            }
     </div>
     <button type="submit" class="btn btn-primary">@(Model.IsSelfDrive ? "Gán xe" : "Phân công")</button>
     <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lại</a>

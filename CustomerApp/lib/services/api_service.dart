@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
+import '../utils/formatters.dart';
 import 'realtime_service.dart';
 
 class AuthService {
@@ -128,12 +129,13 @@ class ApiService {
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 
-  Future<AuthResponse> register({
+  Future<RegisterPendingResponse> register({
     required String email,
     required String password,
     required String fullName,
     String? phone,
     String? address,
+    String? confirmPassword,
   }) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/auth/register'),
@@ -144,7 +146,92 @@ class ApiService {
         'fullName': fullName,
         'phone': phone,
         'address': address,
+        'confirmPassword': confirmPassword,
       }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return RegisterPendingResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<AuthResponse> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/verify-email'),
+      headers: await _headers(),
+      body: jsonEncode({'email': email, 'otp': otp}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final auth = AuthResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+    await authService.saveAuth(auth);
+    return auth;
+  }
+
+  Future<String> resendVerificationOtp(String email) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/resend-verification-otp'),
+      headers: await _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['message'] as String? ?? 'Đã gửi mã OTP.';
+  }
+
+  Future<String> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/forgot-password'),
+      headers: await _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['message'] as String? ??
+        'Nếu email tồn tại, mã OTP đã được gửi.';
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/reset-password'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  Future<LoginOptionsResponse> getLoginOptions() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/login-options'),
+      headers: await _headers(),
+    );
+    if (response.statusCode != 200) {
+      return LoginOptionsResponse(googleEnabled: false);
+    }
+    return LoginOptionsResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<AuthResponse> googleLogin(String idToken) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/google'),
+      headers: await _headers(),
+      body: jsonEncode({'idToken': idToken}),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final auth = AuthResponse.fromJson(
@@ -196,8 +283,8 @@ class ApiService {
     double? estimatedDistance,
   }) async {
     final params = <String, String>{
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
+      'startDate': Formatters.rentalQuery(startDate),
+      'endDate': Formatters.rentalQuery(endDate),
     };
     if (seats != null) params['seats'] = '$seats';
     if (priceMax != null) params['priceMax'] = '$priceMax';
@@ -249,8 +336,8 @@ class ApiService {
   }) async {
     final params = <String, String>{
       'vehicleTypeId': '$vehicleTypeId',
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
+      'startDate': Formatters.rentalQuery(startDate),
+      'endDate': Formatters.rentalQuery(endDate),
       'rentalMode': rentalMode,
     };
     if (estimatedDistance != null) {
@@ -293,8 +380,8 @@ class ApiService {
         'rentalMode': rentalMode,
         'pickupAddress': pickupAddress,
         'dropoffAddress': dropoffAddress,
-        'startDate': startDate.toIso8601String(),
-        'endDate': endDate.toIso8601String(),
+        'startDate': Formatters.rentalQuery(startDate),
+        'endDate': Formatters.rentalQuery(endDate),
         'estimatedDistance': estimatedDistance,
         'notes': notes,
         if (vehicleId != null) 'vehicleId': vehicleId,

@@ -51,8 +51,8 @@
             <td>@p.Method</td>
             <td>@p.Status</td>
             <td>@(p.TransactionRef ?? "—")</td>
-            <td>@(p.PaidAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
-            <td>@p.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+            <td>@(p.PaidAt is DateTime paidAt ? UiDisplay.Timestamp(paidAt) : "—")</td>
+            <td>@UiDisplay.Timestamp(p.CreatedAt)</td>
         </tr>
     }
     </tbody>

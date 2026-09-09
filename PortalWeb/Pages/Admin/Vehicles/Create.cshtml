@@ -3,16 +3,90 @@
 @{ ViewData["Title"] = "Thêm xe"; }
 <h2 class="mb-3">Thêm xe</h2>
 @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
-<form method="post" class="row g-3 col-md-8">
-    <div class="col-md-6"><label class="form-label">Loại xe</label><select asp-for="Input.TypeId" class="form-select">@foreach (var t in Model.VehicleTypes) { <option value="@t.TypeId">@t.TypeName</option> }</select></div>
-    <div class="col-md-6"><label class="form-label">Biển số</label><input asp-for="Input.LicensePlate" class="form-control" /></div>
-    <div class="col-md-4"><label class="form-label">Hãng</label><input asp-for="Input.Brand" class="form-control" /></div>
-    <div class="col-md-4"><label class="form-label">Model</label><input asp-for="Input.Model" class="form-control" /></div>
-    <div class="col-md-4"><label class="form-label">Năm</label><input asp-for="Input.Year" class="form-control" type="number" /></div>
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<form method="post" class="row g-3 col-md-8 js-once-submit">
+    <div class="col-md-6">
+        <label class="form-label">Loại xe</label>
+        <select asp-for="Input.TypeId" class="form-select">
+            @foreach (var t in Model.VehicleTypes) { <option value="@t.TypeId">@t.TypeName</option> }
+        </select>
+        <span asp-validation-for="Input.TypeId" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Biển số</label>
+        <input asp-for="Input.LicensePlate" class="form-control" placeholder="51A-12345" />
+        <span asp-validation-for="Input.LicensePlate" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Hãng</label>
+        <input asp-for="Input.Brand" class="form-control" />
+        <span asp-validation-for="Input.Brand" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Model</label>
+        <input asp-for="Input.Model" class="form-control" />
+        <span asp-validation-for="Input.Model" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Năm</label>
+        <input asp-for="Input.Year" class="form-control" type="number" />
+        <span asp-validation-for="Input.Year" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Màu</label>
+        <input asp-for="Input.Color" class="form-control" />
+        <span asp-validation-for="Input.Color" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Km hiện tại</label>
+        <input asp-for="Input.CurrentKm" class="form-control" type="number" />
+        <span asp-validation-for="Input.CurrentKm" class="text-danger"></span>
+    </div>
     <div class="col-12"><h5 class="mt-2 mb-0">Giấy tờ lưu hành</h5></div>
-    <div class="col-md-6"><label class="form-label">Số giấy đăng ký</label><input asp-for="Input.RegistrationNumber" class="form-control" /></div>
-    <div class="col-md-6"><label class="form-label">Hạn đăng ký</label><input asp-for="Input.RegistrationExpiryDate" class="form-control" type="date" /></div>
-    <div class="col-md-6"><label class="form-label">Hạn đăng kiểm</label><input asp-for="Input.InspectionExpiryDate" class="form-control" type="date" /></div>
-    <div class="col-md-6"><label class="form-label">Hạn bảo hiểm</label><input asp-for="Input.InsuranceExpiryDate" class="form-control" type="date" /></div>
-    <div class="col-12"><button type="submit" class="btn btn-primary">Lưu</button></div>
+    <div class="col-md-6">
+        <label class="form-label">Số giấy đăng ký</label>
+        <input asp-for="Input.RegistrationNumber" class="form-control" />
+        <span asp-validation-for="Input.RegistrationNumber" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Hạn đăng ký</label>
+        <input asp-for="Input.RegistrationExpiryDate" class="form-control" type="date" />
+        <div class="form-text">@UiDisplay.LegalExpiry(Model.Input.RegistrationExpiryDate, DateOnly.FromDateTime(DateTime.Now))</div>
+        <span asp-validation-for="Input.RegistrationExpiryDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Hạn đăng kiểm</label>
+        <input asp-for="Input.InspectionExpiryDate" class="form-control" type="date" />
+        <div class="form-text">@UiDisplay.LegalExpiry(Model.Input.InspectionExpiryDate, DateOnly.FromDateTime(DateTime.Now))</div>
+        <span asp-validation-for="Input.InspectionExpiryDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Hạn bảo hiểm</label>
+        <input asp-for="Input.InsuranceExpiryDate" class="form-control" type="date" />
+        <div class="form-text">@UiDisplay.LegalExpiry(Model.Input.InsuranceExpiryDate, DateOnly.FromDateTime(DateTime.Now))</div>
+        <span asp-validation-for="Input.InsuranceExpiryDate" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary" data-loading-text="Đang lưu...">Lưu</button>
+        <a asp-page="Index" class="btn btn-secondary">Hủy</a>
+    </div>
 </form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll("form.js-once-submit").forEach(function (form) {
+            form.addEventListener("submit", function (e) {
+                if (window.jQuery) {
+                    var $form = window.jQuery(form);
+                    if ($form.data("validator") && !$form.valid()) return;
+                }
+                if (form.dataset.submitting === "1") { e.preventDefault(); return; }
+                form.dataset.submitting = "1";
+                form.querySelectorAll("button[type=submit]").forEach(function (btn) {
+                    btn.disabled = true;
+                    if (btn.dataset.loadingText) btn.textContent = btn.dataset.loadingText;
+                });
+            });
+        });
+    </script>
+}

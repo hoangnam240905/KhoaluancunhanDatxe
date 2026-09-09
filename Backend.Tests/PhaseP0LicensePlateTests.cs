@@ -38,6 +38,23 @@ public class PhaseP0LicensePlateTests
             VehicleLegalRules.ValidateLicensePlate("  ", out _));
         Assert.Equal(VehicleLegalRules.LicensePlateTooLong,
             VehicleLegalRules.ValidateLicensePlate(new string('A', 21), out _));
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat,
+            VehicleLegalRules.ValidateLicensePlate("51A-12345!!!", out _));
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat,
+            VehicleLegalRules.ValidateLicensePlate("HELLO", out _));
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat,
+            VehicleLegalRules.ValidateLicensePlate("51A 12345", out _));
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat,
+            VehicleLegalRules.ValidateLicensePlate("51A12345", out _));
+        Assert.Null(VehicleLegalRules.ValidateLicensePlate("51A-12345", out var ok));
+        Assert.Equal("51A-12345", ok);
+        Assert.Null(VehicleLegalRules.ValidateLicensePlate("  13D-12312  ", out var trimmed));
+        Assert.Equal("13D-12312", trimmed);
+        Assert.Null(VehicleLegalRules.ValidateLicensePlate("51Z-P1FB01", out _));
+        Assert.Null(VehicleLegalRules.ValidateLicensePlate("51P-P0301", out _));
+        Assert.Null(VehicleLegalRules.ValidateLicensePlate("51Z-HOLD01", out _));
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat,
+            VehicleLegalRules.ValidateLicensePlate("51A-12345abc", out _));
     }
 
     [Fact]
@@ -322,6 +339,29 @@ public class PhaseP0LicensePlateTests
         var plates = iso.Db.Vehicles.Select(v => v.LicensePlate.ToLower()).ToList();
         Assert.Equal(plates.Count, plates.Distinct().Count());
         Assert.Contains("51a-12345", plates);
+    }
+
+    [Fact]
+    public void Seed_and_demo_rich_plates_match_project_format()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        foreach (var plate in iso.Db.Vehicles.Select(v => v.LicensePlate))
+            Assert.Null(VehicleLegalRules.ValidateLicensePlate(plate, out _));
+
+        DemoRichSeeder.Seed(iso.Db);
+        foreach (var plate in iso.Db.Vehicles.Select(v => v.LicensePlate).ToList())
+            Assert.Null(VehicleLegalRules.ValidateLicensePlate(plate, out _));
+    }
+
+    [Fact]
+    public async Task Create_rejects_invalid_plate_format()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var (data, error, status) = await new VehicleService(iso.Db)
+            .CreateVehicleAsync(NewVehicle("51A-12345abc"));
+        Assert.Equal(400, status);
+        Assert.Equal(VehicleLegalRules.LicensePlateInvalidFormat, error);
+        Assert.Null(data);
     }
 
     private static Vehicle Spare(int typeId, string plate) => new()

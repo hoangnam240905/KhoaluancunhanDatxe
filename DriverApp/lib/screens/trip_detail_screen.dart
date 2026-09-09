@@ -4,6 +4,8 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
+import '../widgets/complete_trip_dialog.dart';
+import '../widgets/incident_report_dialog.dart';
 
 class TripDetailScreen extends StatefulWidget {
   final ApiService api;
@@ -74,251 +76,70 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<void> _complete() async {
     final aid = _trip.assignmentId;
     if (aid == null) return;
-    final odo = TextEditingController();
-    final fuel = TextEditingController();
-    final exterior = TextEditingController();
-    final technical = TextEditingController();
-    final notes = TextEditingController();
-    String? localError;
-    final ok = await showDialog<bool>(
+    final message = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setLocal) {
-            return AlertDialog(
-              title: const Text('Hoàn thành chuyến'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ghi nhận dữ liệu vận hành khi trả xe: số km, nhiên liệu, ngoại thất, kỹ thuật. Trường để trống thì không gửi.',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: odo,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Số km (odometerKm)',
-                      ),
-                    ),
-                    TextField(
-                      controller: fuel,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Nhiên liệu % (fuelLevel)',
-                      ),
-                    ),
-                    TextField(
-                      controller: exterior,
-                      maxLength: 100,
-                      decoration: const InputDecoration(
-                        labelText: 'Tình trạng ngoại thất',
-                      ),
-                    ),
-                    TextField(
-                      controller: technical,
-                      maxLength: 100,
-                      decoration: const InputDecoration(
-                        labelText: 'Tình trạng kỹ thuật',
-                      ),
-                    ),
-                    TextField(
-                      controller: notes,
-                      maxLength: 500,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Ghi chú (notes)',
-                      ),
-                    ),
-                    if (localError != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        localError!,
-                        style: const TextStyle(color: AppColors.danger),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Hủy'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final parsed = _parseCompleteFields(odo.text, fuel.text);
-                    if (parsed.error != null) {
-                      setLocal(() => localError = parsed.error);
-                      return;
-                    }
-                    Navigator.pop(context, true);
-                  },
-                  child: const Text('Hoàn thành'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    final odoText = odo.text;
-    final fuelText = fuel.text;
-    final exteriorText = exterior.text;
-    final technicalText = technical.text;
-    final notesText = notes.text;
-    odo.dispose();
-    fuel.dispose();
-    exterior.dispose();
-    technical.dispose();
-    notes.dispose();
-    if (ok != true || !mounted) return;
-    final parsed = _parseCompleteFields(odoText, fuelText);
-    if (parsed.error != null) return;
-    await _run(
-      () => widget.api.completeTrip(
-        aid,
-        odometerKm: parsed.odometerKm,
-        fuelLevel: parsed.fuelLevel,
-        exteriorCondition: exteriorText,
-        technicalCondition: technicalText,
-        notes: notesText,
+      barrierDismissible: false,
+      builder: (dialogContext) => CompleteTripDialog(
+        onSubmit:
+            ({
+              required odometerKm,
+              required fuelLevel,
+              exteriorCondition,
+              technicalCondition,
+              notes,
+            }) => widget.api.completeTrip(
+              aid,
+              odometerKm: odometerKm,
+              fuelLevel: fuelLevel,
+              exteriorCondition: exteriorCondition,
+              technicalCondition: technicalCondition,
+              notes: notes,
+            ),
       ),
     );
-  }
-
-  ({double? odometerKm, double? fuelLevel, String? error}) _parseCompleteFields(
-    String odoRaw,
-    String fuelRaw,
-  ) {
-    double? odometerKm;
-    double? fuelLevel;
-    final odo = odoRaw.trim().replaceAll(',', '.');
-    if (odo.isNotEmpty) {
-      odometerKm = double.tryParse(odo);
-      if (odometerKm == null || odometerKm < 0) {
-        return (
-          odometerKm: null,
-          fuelLevel: null,
-          error: 'Số km không hợp lệ.',
-        );
-      }
+    if (!mounted || message == null) return;
+    try {
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
     }
-    final fuel = fuelRaw.trim().replaceAll(',', '.');
-    if (fuel.isNotEmpty) {
-      fuelLevel = double.tryParse(fuel);
-      if (fuelLevel == null || fuelLevel < 0 || fuelLevel > 100) {
-        return (
-          odometerKm: null,
-          fuelLevel: null,
-          error: 'Nhiên liệu phải từ 0 đến 100.',
-        );
-      }
-    }
-    return (odometerKm: odometerKm, fuelLevel: fuelLevel, error: null);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _reportIncident() async {
     final aid = _trip.assignmentId;
     if (aid == null) return;
-    var type = 'VehicleIssue';
-    final description = TextEditingController();
-    String? localError;
-    const types = {
-      'Accident': 'Tai nạn',
-      'VehicleIssue': 'Sự cố xe',
-      'CustomerIssue': 'Sự cố khách',
-      'Other': 'Khác',
-    };
-    final ok = await showDialog<bool>(
+    final message = await showDialog<String>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setLocal) {
-            return AlertDialog(
-              title: const Text('Báo cáo sự cố'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RadioGroup<String>(
-                      groupValue: type,
-                      onChanged: (v) => setLocal(() => type = v ?? type),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ...types.entries.map(
-                            (e) => RadioListTile<String>(
-                              dense: true,
-                              title: Text(e.value),
-                              value: e.key,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    TextField(
-                      controller: description,
-                      maxLines: 3,
-                      maxLength: 500,
-                      decoration: const InputDecoration(
-                        labelText: 'Mô tả',
-                      ),
-                    ),
-                    if (localError != null)
-                      Text(
-                        localError!,
-                        style: const TextStyle(color: AppColors.danger),
-                      ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Hủy'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    if (description.text.trim().isEmpty) {
-                      setLocal(() => localError = 'Nhập mô tả sự cố.');
-                      return;
-                    }
-                    Navigator.pop(context, true);
-                  },
-                  child: const Text('Gửi'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      barrierDismissible: false,
+      builder: (dialogContext) => IncidentReportDialog(
+        onSubmit: ({required incidentType, required description}) async {
+          await widget.api.reportIncident(
+            assignmentId: aid,
+            incidentType: incidentType,
+            description: description,
+          );
+          return 'Đã gửi báo cáo sự cố.';
+        },
+      ),
     );
-    final text = description.text;
-    description.dispose();
-    if (ok != true || !mounted) return;
-    await _run(
-      () async {
-        await widget.api.reportIncident(
-          assignmentId: aid,
-          incidentType: type,
-          description: text,
-        );
-        return 'Đã gửi báo cáo sự cố.';
-      },
-    );
+    if (!mounted || message == null) return;
+    try {
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -395,8 +216,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               children: [
                 const Text('THỜI GIAN', style: _section),
                 const SizedBox(height: 10),
-                _row('Giờ nhận', Formatters.dt(t.startDate)),
-                _row('Giờ trả', Formatters.dt(t.endDate)),
+                _row('Giờ nhận', Formatters.rentalDt(t.startDate)),
+                _row('Giờ trả', Formatters.rentalDt(t.endDate)),
               ],
             ),
           ),

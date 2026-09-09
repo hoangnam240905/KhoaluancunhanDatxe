@@ -34,10 +34,18 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public static string InspectionTypeLabel(string type) => type switch
     {
-        "Handover" => "Giao xe",
-        "Return" => "Trả xe",
+        "Handover" => "Tình trạng xe khi nhận",
+        "Return" => "Tình trạng xe khi trả",
         _ => type
     };
+
+    public static decimal? ActualKm(IReadOnlyList<VehicleInspectionResponse> inspections)
+    {
+        var handover = inspections.LastOrDefault(i => i.InspectionType == "Handover")?.OdometerKm;
+        var ret = inspections.LastOrDefault(i => i.InspectionType == "Return")?.OdometerKm;
+        if (handover is null || ret is null) return null;
+        return Math.Max(0, ret.Value - handover.Value);
+    }
 
     public static string PaymentTypeLabel(string? type) => type switch
     {

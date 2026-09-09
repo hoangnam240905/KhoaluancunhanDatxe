@@ -5,6 +5,7 @@
     <h2>Quan ly xe</h2>
     <a asp-page="Create" class="btn btn-primary">Them xe moi</a>
 </div>
+@if (!string.IsNullOrEmpty(Model.SuccessMessage)) { <div class="alert alert-success">@Model.SuccessMessage</div> }
 @if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
 <table class="table table-striped">
     <thead><tr><th>Bien so</th><th>Loai</th><th>Hang</th><th>Trang thai</th><th>Bao tri</th><th></th></tr></thead>
@@ -15,14 +16,15 @@
             <td>@v.LicensePlate</td>
             <td>@v.TypeName</td>
             <td>@v.Brand @v.Model (@v.Year)</td>
-            <td><span class="badge bg-secondary">@v.Status</span></td>
+            <td><span class="badge bg-secondary">@UiDisplay.VehicleStatus(v.Status)</span></td>
             <td>
                 @if (Model.AlertVehicleIds.Contains(v.VehicleId))
                 {
-                    <span class="badge bg-danger">Can bao tri</span>
+                    <span class="badge bg-danger">Đến hạn bảo trì</span>
                 }
             </td>
             <td>
+                <a asp-page="Details" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-info">👁 Xem chi tiết</a>
                 <a asp-page="Edit" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-primary">Sua</a>
                 <a asp-page="Maintenance" asp-route-id="@v.VehicleId" class="btn btn-sm btn-outline-warning">Bao tri</a>
                 <form method="post" asp-page-handler="Delete" asp-route-id="@v.VehicleId" class="d-inline" onsubmit="return confirm('Xoa xe nay?')">

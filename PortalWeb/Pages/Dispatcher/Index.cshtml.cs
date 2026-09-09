@@ -10,6 +10,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
     public List<BookingResponse> ConfirmedBookings { get; set; } = [];
     public List<BookingResponse> SelfDriveAssigned { get; set; } = [];
     public List<BookingResponse> SelfDriveInProgress { get; set; } = [];
+    public DispatchFleetStatusResponse Fleet { get; set; } = new([], []);
     public string? Message { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -30,24 +31,18 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         return Page();
     }
 
-    public async Task<IActionResult> OnPostHandoverAsync(int id)
+    public IActionResult OnGetHandover(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
-        var (_, error) = await api.HandoverBookingAsync(id);
-        Message = error ?? "Đã giao xe.";
-        await LoadAsync();
-        return Page();
+        return RedirectToPage("/Dispatcher/Handover", new { id });
     }
 
-    public async Task<IActionResult> OnPostCompleteAsync(int id)
+    public IActionResult OnPostHandover(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
-        var (_, error) = await api.CompleteSelfDriveAsync(id);
-        Message = error ?? "Đã hoàn thành trả xe.";
-        await LoadAsync();
-        return Page();
+        return RedirectToPage("/Dispatcher/Handover", new { id });
     }
 
     public static string RentalModeLabel(string? mode)
@@ -63,5 +58,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         SelfDriveInProgress = (await api.GetBookingsAsync("InProgress"))
             .Where(b => b.RentalMode == "SelfDrive")
             .ToList();
+        var (fleet, _) = await api.GetFleetStatusAsync();
+        Fleet = new(fleet?.Vehicles ?? [], fleet?.Drivers ?? []);
     }
 }

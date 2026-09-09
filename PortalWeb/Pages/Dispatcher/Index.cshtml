@@ -41,8 +41,8 @@
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
                         <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
-                        <td>@b.StartDate.ToString("dd/MM HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
-                        <td>@b.Status</td>
+                        <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
+                        <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td>
                             <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" class="d-inline">
                                 <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Xác nhận</button>
@@ -85,8 +85,8 @@
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
                         <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
-                        <td>@b.StartDate.ToString("dd/MM HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
-                        <td>@b.Status</td>
+                        <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
+                        <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td><a asp-page="/Dispatcher/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-primary rounded-pill px-3">Phân công</a></td>
                     </tr>
                 }
@@ -125,12 +125,10 @@
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
                         <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
-                        <td>@b.StartDate.ToString("dd/MM HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
-                        <td>@b.Status</td>
+                        <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
+                        <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td>
-                            <form method="post" asp-page-handler="Handover" asp-route-id="@b.BookingId" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-info rounded-pill px-3">Giao xe</button>
-                            </form>
+                            <a asp-page="/Dispatcher/Handover" asp-route-id="@b.BookingId" class="btn btn-sm btn-info rounded-pill px-3">Giao xe</a>
                         </td>
                     </tr>
                 }
@@ -140,7 +138,7 @@
     }
 </div>
 
-<div class="modern-card p-4">
+<div class="modern-card p-4 mb-4">
     <h5 class="fw-bold text-success mb-3">Tự lái — đang thuê (@Model.SelfDriveInProgress.Count)</h5>
     @if (!Model.SelfDriveInProgress.Any())
     {
@@ -169,13 +167,112 @@
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
                         <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
-                        <td>@b.StartDate.ToString("dd/MM HH:mm") → @b.EndDate.ToString("dd/MM HH:mm")</td>
-                        <td>@b.Status</td>
+                        <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
+                        <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td>
-                            <form method="post" asp-page-handler="Complete" asp-route-id="@b.BookingId" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Hoàn thành trả xe</button>
-                            </form>
+                            <a asp-page="/Dispatcher/Complete" asp-route-id="@b.BookingId" class="btn btn-sm btn-success rounded-pill px-3">Tiếp nhận trả xe</a>
                         </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="modern-card p-4 mb-4">
+    <h5 class="fw-bold mb-3">📊 Tình trạng xe &amp; tài xế</h5>
+    <p class="text-muted small mb-3">Trạng thái lấy từ Backend. SelfDrive không gắn tài xế; WithDriver hiện tài xế của assignment đang mở.</p>
+    @if (!Model.Fleet.Vehicles.Any())
+    {
+        <p class="text-muted mb-0">Không có dữ liệu xe.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Biển số</th>
+                        <th>Loại xe</th>
+                        <th>Trạng thái xe</th>
+                        <th>Tài xế hiện tại</th>
+                        <th>Trạng thái tài xế</th>
+                        <th>Chuyến</th>
+                        <th>Thời gian</th>
+                        <th>Hình thức</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var v in Model.Fleet.Vehicles)
+                {
+                    <tr>
+                        <td class="fw-semibold">@v.LicensePlate</td>
+                        <td>@v.TypeName</td>
+                        <td>@UiDisplay.VehicleStatus(v.VehicleStatus)</td>
+                        <td>@(v.DriverName ?? "—")</td>
+                        <td>@(string.IsNullOrEmpty(v.DriverStatus) ? "—" : UiDisplay.DriverStatus(v.DriverStatus))</td>
+                        <td>@(v.BookingId is int bid ? $"#{bid}" : "—")</td>
+                        <td>
+                            @if (v.StartDate is DateTime start && v.EndDate is DateTime end)
+                            {
+                                @UiDisplay.Rental(start) <text>→</text> @UiDisplay.Rental(end)
+                            }
+                            else
+                            {
+                                <text>—</text>
+                            }
+                        </td>
+                        <td>@UiDisplay.RentalMode(v.RentalMode)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="modern-card p-4">
+    <h5 class="fw-bold mb-3">Tài xế</h5>
+    @if (!Model.Fleet.Drivers.Any())
+    {
+        <p class="text-muted mb-0">Không có dữ liệu tài xế.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Tài xế</th>
+                        <th>Trạng thái</th>
+                        <th>Hoạt động</th>
+                        <th>Xe hiện tại</th>
+                        <th>Chuyến</th>
+                        <th>Thời gian</th>
+                        <th>Hình thức</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Fleet.Drivers)
+                {
+                    <tr>
+                        <td class="fw-semibold">@d.FullName</td>
+                        <td>@UiDisplay.DriverStatus(d.DriverStatus)</td>
+                        <td>@(d.IsActive ? "Có" : "Không")</td>
+                        <td>@(d.LicensePlate ?? "—")</td>
+                        <td>@(d.BookingId is int did ? $"#{did}" : "—")</td>
+                        <td>
+                            @if (d.StartDate is DateTime start && d.EndDate is DateTime end)
+                            {
+                                @UiDisplay.Rental(start) <text>→</text> @UiDisplay.Rental(end)
+                            }
+                            else
+                            {
+                                <text>—</text>
+                            }
+                        </td>
+                        <td>@UiDisplay.RentalMode(d.RentalMode)</td>
                     </tr>
                 }
                 </tbody>

@@ -7,6 +7,17 @@ class Formatters {
 
   static String dt(DateTime value) => dateTime.format(value.toLocal());
 
+  static String rentalDt(DateTime value) {
+    final wall = DateTime(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+    );
+    return dateTime.format(wall);
+  }
+
   static String bookingStatus(String status) {
     switch (status) {
       case 'Pending':

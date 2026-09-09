@@ -1,0 +1,26 @@
+﻿PortalWeb\Services\CarRentalApiClient.cs:339:    public async Task<(bool Success, string? Error)> CreateReviewAsync(int bookingId, CreateReviewRequest request)
+PortalWeb\Display\BookingSubmitUi.cs:9:    public const string NeedQuoteReview =
+PortalWeb\Models\ApiModels.cs:70:public record DashboardDriverRow(int DriverId, string FullName, int CompletedAssignments, int CancelledAssignments, int IncidentCount, decimal? AverageReviewRating, decimal? AssignmentCompletionRate);
+PortalWeb\Models\ApiModels.cs:74:public record DashboardRecommendation(int TotalBookings, int RecommendedBookings, decimal? AttributionShare, int RecommendedCompletedBookings, decimal? AverageRatingRecommendedReviewed, string MetricNote);
+PortalWeb\Models\ApiModels.cs:199:public record CreateReviewRequest(byte Rating, string? Comment);
+PortalWeb\Pages\Customer\Bookings\Create.cshtml.cs:116:                InfoMessage = BookingSubmitUi.NeedQuoteReview;
+PortalWeb\Pages\Customer\Bookings\Index.cshtml:37:                        @if (IndexModel.CanOfferReview(b))
+PortalWeb\Pages\Customer\Bookings\Index.cshtml:39:                            <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">─É├ính gi├í chuyß║┐n</a>
+PortalWeb\Pages\Customer\Bookings\Details.cshtml:23:        @if (IndexModel.CanOfferReview(b))
+PortalWeb\Pages\Customer\Bookings\Details.cshtml:25:            <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-warning">─É├ính gi├í chuyß║┐n</a>
+PortalWeb\Pages\Customer\Bookings\Index.cshtml.cs:17:    public static bool CanOfferReview(BookingResponse b)
+PortalWeb\Pages\Customer\Bookings\Review.cshtml:1:@page "/Customer/Bookings/Review/{id:int}"
+PortalWeb\Pages\Customer\Bookings\Review.cshtml:2:@model PortalWeb.Pages.Customer.Bookings.ReviewModel
+PortalWeb\Pages\Customer\Bookings\Review.cshtml:29:    @if (Model.CanReview)
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:8:public class ReviewModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:17:    public bool CanReview { get; set; }
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:43:        if (!CanReview) return Page();
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:47:        var (success, error) = await api.CreateReviewAsync(id, new CreateReviewRequest(Input.Rating, Input.Comment));
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:54:        CanReview = false;
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:70:            CanReview = false;
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:76:            CanReview = false;
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:81:        if (!IndexModel.CanOfferReview(Booking))
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:83:            CanReview = false;
+PortalWeb\Pages\Customer\Bookings\Review.cshtml.cs:88:        CanReview = true;
+PortalWeb\Pages\Admin\Index.cshtml:142:                    <li>─Éiß╗âm TB: @(d.Recommendation.AverageRatingRecommendedReviewed?.ToString("0.00") ?? "Ch╞░a c├│ ─æ├ính gi├í")</li>
+PortalWeb\Pages\Admin\Index.cshtml:166:                        <td>@(row.AverageReviewRating?.ToString("0.00") ?? "Ch╞░a c├│ ─æ├ính gi├í")</td>

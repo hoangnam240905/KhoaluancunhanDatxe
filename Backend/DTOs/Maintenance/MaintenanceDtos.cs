@@ -8,6 +8,8 @@ public record CreateMaintenanceRequest(
     decimal? Cost,
     string? Notes);
 
+public record CompleteMaintenanceRequest(int? OdometerAtMaintenance);
+
 public record MaintenanceRecordResponse(
     int MaintenanceId,
     int VehicleId,
@@ -22,6 +24,6 @@ public record MaintenanceRecordResponse(
 public record MaintenanceAlertResponse(
     int VehicleId,
     string LicensePlate,
-    int KmSinceLastMaintenance,
+    int? KmSinceLastMaintenance,
     int DaysSinceLastMaintenance,
     string Reason);

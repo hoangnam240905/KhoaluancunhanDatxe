@@ -124,8 +124,10 @@ Nguồn: screens/, services/api_service.dart, navigation/role_router.dart,
 
 Khách hàng (role Customer):
 - Màn hình chờ / khôi phục phiên (Splash + SharedPreferences)
-- Đăng ký (POST /api/auth/register)
+- Đăng ký (POST /api/auth/register) → OTP Gmail → POST /api/auth/verify-email
+- Quên mật khẩu / đặt lại: forgot-password + reset-password (OTP)
 - Đăng nhập / đăng xuất (logout = xóa token local; không POST /logout)
+- Nút Google trên Windows: dùng Portal Web (GIS). Native Google Sign-In chưa cấu hình.
 - Trang chủ: loại xe + form gợi ý (start/end bắt buộc, seats/priceMax optional) → GET /api/vehicle-types/recommended
 - KHÔNG gọi GET /api/vehicles (không xem đội xe theo biển số)
 - Tạo đơn: GET /api/bookings/quote rồi POST /api/bookings (fromRecommendation nếu chọn từ gợi ý)
@@ -263,16 +265,27 @@ Chỉ page có trong source. Chi tiết đầy đủ: Tuan 3.md mục 31.
 
 PORTALWEB (CarRentalPortalAuth)
 
-GET/POST /Account/Login     POST /api/auth/login
+GET/POST /Account/Login     POST /api/auth/login; POST /api/auth/google (handler Google)
   Pre: chưa login (đã login → RoleRoutes.HomeFor)
-  Post: cookie JWT. DB: không đổi.
+  Post: cookie JWT. DB: không đổi (trừ Google user mới / link GoogleSubject).
   Redirect: Admin /Admin | Dispatcher /Dispatcher | Customer /
   401: "Email hoặc mật khẩu không đúng."
+  403 Customer chưa verify: "Vui lòng xác minh email trước khi đăng nhập."
+  Google chỉ Customer. AdminWeb/DriverApp không có nút này.
 
 GET/POST /Account/Register  POST /api/auth/register
-  Pre: Gmail, SĐT 0 + 9 số, StrongPassword
-  Post: INSERT Users+Customers Role=Customer; cookie; → /
-  Address/idNumber/dob gửi null.
+  Pre: Gmail, SĐT 0 + 9 số, StrongPassword, ConfirmPassword
+  Post: INSERT Users+Customers Role=Customer, IsEmailVerified=false; gửi OTP; KHÔNG cookie
+  Redirect /Account/VerifyEmail?email=
+
+GET/POST /Account/VerifyEmail  POST /api/auth/verify-email (+ Resend)
+  Post: IsEmailVerified=true; cookie JWT → /
+
+GET/POST /Account/ForgotPassword  POST /api/auth/forgot-password
+  Response chung, không tiết lộ email tồn tại → ResetPassword
+
+GET/POST /Account/ResetPassword  POST /api/auth/reset-password
+  UPDATE PasswordHash. JWT cũ vẫn hạn đến ExpireHours (không blacklist).
 
 GET /Account/Logout          xóa cookie → Login. Không API.
 
@@ -740,7 +753,8 @@ Cấu hình cần thay đổi:
 - Thường không cần sửa nếu Backend chạy http://localhost:5199
 
 Đăng nhập: KHÔNG còn Pages/Account/Login. Link/redirect → http://localhost:5180/Account/Login
-Đăng ký: vẫn còn Pages/Account/Register (ghi cookie local sau khi đăng ký).
+Đăng ký: Pages/Account/Register → VerifyEmail (OTP) rồi cookie local. Forgot/Reset password local.
+Google Customer login: trên Portal, không nhúng vào CustomerWeb login (không có trang Login).
 Chức năng: xem mục 2.1.G (loại xe, đặt xe có hình thức, xem đơn, đánh giá Completed).
 
 ==================================================
@@ -882,6 +896,12 @@ Mật khẩu Password123! (cùng bcrypt hash với Database/03_SeedData.sql):
 Endpoint (từ Controllers):
 - POST /api/auth/login
 - POST /api/auth/register
+- POST /api/auth/verify-email
+- POST /api/auth/resend-verification-otp
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password
+- POST /api/auth/google
+- GET  /api/auth/login-options
 - GET  /api/auth/me
 - GET  /api/vehicle-types
 - GET  /api/vehicles
@@ -911,7 +931,7 @@ Endpoint (từ Controllers):
 
 Tests:
   dotnet test Backend.Tests/Backend.Tests.csproj -c Release
-  Kết quả freeze: 361 passed / 0 failed / 0 skipped.
+  Kết quả: 385 passed / 0 failed / 0 skipped.
 
 Nếu Backend đang `dotnet run` (lock Backend.dll), test/build Release có thể fail MSB3027.
 Không kill process đang giữ port 5199 trừ khi được giao.
@@ -931,6 +951,32 @@ Giá trị live/dev (appsettings.json):
 - DatabaseProvider: Sqlite
 - SeedDemoRich: false
 - ConnectionStrings:DefaultConnection: Data Source=carrental.db
+- Email:Enabled = false (mặc định, không gửi Gmail)
+- Google:ClientId / ClientSecret = rỗng (nút Google ẩn)
+
+Email OTP / Google OAuth (KHÔNG commit secret):
+- Placeholder: Backend/appsettings.example.json
+- Repo mặc định: Email:Enabled=false, SmtpPassword rỗng → NullEmailSender
+- User Secrets (Development), cd Backend:
+
+    dotnet user-secrets set "Email:Enabled" "true"
+    dotnet user-secrets set "Email:SmtpHost" "smtp.gmail.com"
+    dotnet user-secrets set "Email:SmtpPort" "587"
+    dotnet user-secrets set "Email:SmtpUsername" "YOUR_GMAIL_ADDRESS"
+    dotnet user-secrets set "Email:SmtpPassword" "YOUR_GMAIL_APP_PASSWORD"
+    dotnet user-secrets set "Email:FromEmail" "YOUR_GMAIL_ADDRESS"
+    dotnet user-secrets set "Email:FromName" "Car Rental"
+
+- Environment (ví dụ PowerShell):
+    $env:Email__Enabled = "true"
+    $env:Email__SmtpUsername = "YOUR_GMAIL_ADDRESS"
+    $env:Email__SmtpPassword = "YOUR_GMAIL_APP_PASSWORD"
+    $env:Email__FromEmail = "YOUR_GMAIL_ADDRESS"
+- YOUR_GMAIL_APP_PASSWORD = Gmail App Password (2FA), KHÔNG phải mật khẩu Gmail thường.
+- Không commit App Password. Restart Backend. Log: "Email delivery: SMTP."
+- Tests không gọi Gmail/Google thật (CapturingEmailSender + FakeGoogleIdTokenValidator).
+- Schema SQLite thêm: Users.IsEmailVerified (DEFAULT 1), EmailVerifiedAt, GoogleSubject; bảng EmailOtps.
+  Không reset carrental.db. Seed/demo vẫn login được.
 
 Hai file SQLite:
 

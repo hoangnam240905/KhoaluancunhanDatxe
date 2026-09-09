@@ -106,6 +106,7 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive(null));
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
         Assert.Null(assigned.Error);
         Assert.Equal(BookingStatuses.Assigned, assigned.Booking!.Status);
@@ -118,13 +119,16 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
 
-        var handover = await dispatch.HandoverSelfDriveAsync(created.BookingId, 2, null);
+        var handover = await dispatch.HandoverSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId));
         Assert.Null(handover.Error);
         Assert.Equal(BookingStatuses.InProgress, handover.Booking!.Status);
 
-        var complete = await dispatch.CompleteSelfDriveAsync(created.BookingId, 2, null);
+        var complete = await dispatch.CompleteSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId, extraKm: 300));
         Assert.Null(complete.Error);
         Assert.Equal(BookingStatuses.Completed, complete.Booking!.Status);
     }
@@ -136,6 +140,7 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, drivers, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, WithDriver());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(6, 2), 2);
         Assert.Null(assigned.Error);
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId).AssignmentId;
@@ -144,7 +149,8 @@ public class PhaseP0BookingStateMachineTests
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(BookingStatuses.InProgress, iso.Db.Bookings.Find(created.BookingId)!.Status);
 
-        var complete = await drivers.CompleteTripAsync(6, assignmentId, null);
+        var complete = await drivers.CompleteTripAsync(
+            6, assignmentId, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId, extraKm: 50));
         Assert.True(complete.Ok);
         Assert.Equal(BookingStatuses.Completed, iso.Db.Bookings.Find(created.BookingId)!.Status);
     }
@@ -236,6 +242,7 @@ public class PhaseP0BookingStateMachineTests
         var booking = await (await PostBookingAsync(client, customer, WithDriver()))
             .Content.ReadFromJsonAsync<BookingResponse>();
         await client.SendAsync(Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking!.BookingId}/confirm", dispatcher));
+        await TestDispatchReady.EnsureSignedAndPaidHttpAsync(client, customer, booking.BookingId);
         await client.SendAsync(Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking.BookingId}/assign", dispatcher,
             JsonContent.Create(new AssignTripRequest(6, 2))));
 
@@ -278,6 +285,7 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var (data, error, status) = await bookings.UpdateStatusAsync(
             created.BookingId, BookingStatuses.Assigned, 2, "force assign");
@@ -316,6 +324,7 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var (data, _, status) = await bookings.UpdateStatusAsync(
             created.BookingId, BookingStatuses.Assigned, 2, "force");
@@ -357,9 +366,12 @@ public class PhaseP0BookingStateMachineTests
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
-        await dispatch.HandoverSelfDriveAsync(created.BookingId, 2, null);
-        await dispatch.CompleteSelfDriveAsync(created.BookingId, 2, null);
+        await dispatch.HandoverSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId));
+        await dispatch.CompleteSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId, extraKm: 300));
 
         var (again, error, status) = await bookings.UpdateStatusAsync(
             created.BookingId, BookingStatuses.Cancelled, 2, "after complete");

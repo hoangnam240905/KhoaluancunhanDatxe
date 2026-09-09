@@ -20,7 +20,7 @@ public class AdminPhase4Group1Tests
         config["Jwt:Issuer"] = "CarRentalAPI";
         config["Jwt:Audience"] = "CarRentalClients";
         config["Jwt:ExpireHours"] = "8";
-        return new AuthService(iso.Db, new JwtTokenService(config));
+        return TestAuthFactory.Create(iso.Db, config);
     }
 
     private static DriverService Drivers(IsolatedCarRentalDb iso)
@@ -68,7 +68,7 @@ public class AdminPhase4Group1Tests
     {
         using var iso = new IsolatedCarRentalDb();
         var customers = new AdminCustomerService(iso.Db);
-        var (locked, lockError, lockStatus) = await customers.SetLockedAsync(3, true);
+        var (locked, lockError, lockStatus) = await customers.SetLockedAsync(3, true, "Vi phạm quy định sử dụng hệ thống", 1);
         Assert.Equal(200, lockStatus);
         Assert.Null(lockError);
         Assert.True(locked!.IsLocked);
@@ -85,7 +85,7 @@ public class AdminPhase4Group1Tests
     public async Task Locked_customer_wrong_password_is_still_401()
     {
         using var iso = new IsolatedCarRentalDb();
-        await new AdminCustomerService(iso.Db).SetLockedAsync(3, true);
+        await new AdminCustomerService(iso.Db).SetLockedAsync(3, true, "Vi phạm quy định sử dụng hệ thống", 1);
         var (data, error, status) = await Auth(iso).LoginAsync(
             new LoginRequest("customer1@gmail.com", "WrongPass1!"));
         Assert.Null(data);

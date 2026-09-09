@@ -4,34 +4,71 @@
 
 <div class="page-header">
     <h2>Đặt xe</h2>
-    <p>Chọn hình thức thuê, loại xe và thông tin chuyến đi</p>
+    <p>@(Model.CreatedBooking is null ? "Chọn hình thức thuê, loại xe và thông tin chuyến đi" : "Kết quả gửi yêu cầu đặt xe")</p>
 </div>
 
-@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+<div id="booking-feedback">
+@if (Model.CreatedBooking is not null)
 {
-    <div class="alert alert-danger">@Model.ErrorMessage</div>
+    var created = Model.CreatedBooking;
+    <div class="alert alert-success">
+        <div class="fw-bold fs-5 mb-2">🎉 Đặt xe thành công!</div>
+        <div class="row g-2">
+            <div class="col-md-4"><div class="detail-label">Mã đơn</div><div class="fw-semibold">#@created.BookingId</div></div>
+            <div class="col-md-4"><div class="detail-label">Trạng thái</div><div>@UiDisplay.BookingStatus(created.Status)</div></div>
+            <div class="col-md-4"><div class="detail-label">Loại xe</div><div>@created.VehicleTypeName</div></div>
+            <div class="col-md-4"><div class="detail-label">Hình thức</div><div>@CreateModel.RentalModeLabel(created.RentalMode)</div></div>
+            <div class="col-md-4"><div class="detail-label">Ngày bắt đầu</div><div>@UiDisplay.Rental(created.StartDate)</div></div>
+            <div class="col-md-4"><div class="detail-label">Ngày kết thúc</div><div>@UiDisplay.Rental(created.EndDate)</div></div>
+        </div>
+        <div class="mt-3 d-flex flex-wrap gap-2">
+            <a asp-page="Details" asp-route-id="@created.BookingId" class="btn btn-primary">Xem chi tiết đơn</a>
+            <a asp-page="Index" class="btn btn-outline-secondary">Danh sách đơn</a>
+            <a asp-page="Create" class="btn btn-outline-primary">Đặt xe khác</a>
+        </div>
+    </div>
 }
-@if (!string.IsNullOrEmpty(Model.InfoMessage))
+else
 {
-    <div class="alert alert-info">@Model.InfoMessage</div>
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <div class="fw-semibold">⚠️ Đặt xe không thành công</div>
+            <div>@Model.ErrorMessage</div>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.InfoMessage))
+    {
+        <div class="alert alert-info">@Model.InfoMessage</div>
+    }
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-warning">
+            <div class="fw-semibold">Vui lòng kiểm tra lại thông tin đặt xe.</div>
+            <div asp-validation-summary="All" class="mb-0 mt-2"></div>
+        </div>
+    }
+    <div class="alert alert-warning d-none" id="client-validation-banner">Vui lòng kiểm tra lại thông tin.</div>
 }
-<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+</div>
 
+@if (Model.CreatedBooking is null)
+{
 <div class="modern-card p-4 col-lg-9">
-    <form method="post" class="row g-4">
+    <form method="post" asp-page="/Customer/Bookings/Create" class="row g-4" id="booking-create-form">
         <input type="hidden" asp-for="FromRecommendation" />
         <div class="col-12">
             <div class="fw-semibold mb-2">Hình thức thuê</div>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <input class="btn-check" type="radio" asp-for="Input.RentalMode" value="WithDriver" id="rentalWithDriver" />
+                    <input class="btn-check js-quote-input" type="radio" asp-for="Input.RentalMode" value="WithDriver" id="rentalWithDriver" />
                     <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalWithDriver">
                         <div class="fw-bold">Có tài xế</div>
                         <div class="small fw-normal text-muted mt-1">Thuê xe kèm tài xế. Tài xế sẽ được hệ thống điều phối và phân công cho chuyến.</div>
                     </label>
                 </div>
                 <div class="col-md-6">
-                    <input class="btn-check" type="radio" asp-for="Input.RentalMode" value="SelfDrive" id="rentalSelfDrive" />
+                    <input class="btn-check js-quote-input" type="radio" asp-for="Input.RentalMode" value="SelfDrive" id="rentalSelfDrive" />
                     <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalSelfDrive">
                         <div class="fw-bold">Tự lái</div>
                         <div class="small fw-normal text-muted mt-1">Tự lái xe. Khách nhận xe và tự sử dụng trong thời gian thuê.</div>
@@ -53,7 +90,7 @@
                     @foreach (var t in Model.VehicleTypes)
                     {
                         <div class="col-md-6">
-                            <input class="btn-check" type="radio" asp-for="Input.VehicleTypeId" value="@t.TypeId" id="vt-@t.TypeId" />
+                            <input class="btn-check js-quote-input" type="radio" asp-for="Input.VehicleTypeId" value="@t.TypeId" id="vt-@t.TypeId" />
                             <label class="btn btn-outline-secondary w-100 text-start p-3 h-100" for="vt-@t.TypeId">
                                 @if (!string.IsNullOrWhiteSpace(t.ImageUrl))
                                 {
@@ -76,7 +113,7 @@
         }
         <div class="col-12">
             <label asp-for="Input.VehicleId" class="form-label">Xe cụ thể (không bắt buộc)</label>
-            <select asp-for="Input.VehicleId" class="form-select">
+            <select asp-for="Input.VehicleId" class="form-select js-quote-input">
                 <option value="">Để điều phối chọn sau</option>
                 @foreach (var vehicle in availableVehicles)
                 {
@@ -88,13 +125,17 @@
         </div>
 
         <div class="col-md-6">
-            <label asp-for="Input.StartDate" class="form-label">Bắt đầu</label>
-            <input asp-for="Input.StartDate" class="form-control" type="datetime-local" value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+            <label asp-for="Input.StartDate" class="form-label">Ngày bắt đầu</label>
+            <input asp-for="Input.StartDate" class="form-control js-quote-input" type="datetime-local"
+                   min="@(DateTime.Now.Date.ToString("yyyy-MM-dd") + "T00:00")"
+                   value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
             <span asp-validation-for="Input.StartDate" class="text-danger"></span>
         </div>
         <div class="col-md-6">
-            <label asp-for="Input.EndDate" class="form-label">Kết thúc</label>
-            <input asp-for="Input.EndDate" class="form-control" type="datetime-local" value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+            <label asp-for="Input.EndDate" class="form-label">Ngày kết thúc</label>
+            <input asp-for="Input.EndDate" class="form-control js-quote-input" type="datetime-local"
+                   min="@(DateTime.Now.Date.ToString("yyyy-MM-dd") + "T00:00")"
+                   value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
             <span asp-validation-for="Input.EndDate" class="text-danger"></span>
         </div>
         <div class="col-md-6">
@@ -109,7 +150,8 @@
         </div>
         <div class="col-md-6">
             <label asp-for="Input.EstimatedDistance" class="form-label">Km ước tính (không bắt buộc)</label>
-            <input asp-for="Input.EstimatedDistance" class="form-control" type="number" step="0.1" min="0" />
+            <input asp-for="Input.EstimatedDistance" class="form-control js-quote-input" type="number" step="0.1" min="0" />
+            <span asp-validation-for="Input.EstimatedDistance" class="text-danger"></span>
         </div>
         <div class="col-12">
             <label asp-for="Input.Notes" class="form-label">Ghi chú</label>
@@ -122,7 +164,7 @@
         {
             var q = Model.Quote;
             var selfDrive = CreateModel.IsSelfDrive(q.RentalMode);
-            <div class="col-12">
+            <div class="col-12" id="quote-result">
                 <div class="driver-box">
                     <div class="fw-bold mb-2">Báo giá từ máy chủ</div>
                     <div class="small text-muted mb-3">Giá lấy từ GET /api/bookings/quote. Trang không tự tính tổng.</div>
@@ -148,15 +190,109 @@
                 </div>
             </div>
         }
+        <div class="col-12 d-none" id="quote-stale">
+            <div class="alert alert-warning py-2 mb-0">Thông tin đã đổi. Bấm «Xem báo giá» để tính lại tạm tính và cọc.</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="col-12">
+                <div class="alert alert-danger mb-0">
+                    <div class="fw-semibold">⚠️ Đặt xe không thành công</div>
+                    <div>@Model.ErrorMessage</div>
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.InfoMessage))
+        {
+            <div class="col-12">
+                <div class="alert alert-info mb-0">@Model.InfoMessage</div>
+            </div>
+        }
 
         <div class="col-12">
-            <button type="submit" asp-page-handler="Quote" class="btn btn-outline-primary px-4">Xem báo giá</button>
-            <button type="submit" class="btn btn-primary px-4">Gửi yêu cầu đặt xe</button>
+            <button type="submit" asp-page-handler="Quote" class="btn btn-outline-primary px-4" id="btn-quote">Xem báo giá</button>
+            <button type="submit" class="btn btn-primary px-4" id="btn-submit-booking">Gửi yêu cầu đặt xe</button>
             <a asp-page="/Customer/Bookings/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
         </div>
     </form>
 </div>
+}
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var feedback = document.getElementById('booking-feedback');
+            if (feedback && feedback.querySelector('.alert:not(.d-none)')) {
+                feedback.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            var form = document.getElementById('booking-create-form');
+            if (!form) return;
+
+            var quoteBox = document.getElementById('quote-result');
+            var stale = document.getElementById('quote-stale');
+            var confirmed = document.querySelector('[name="QuoteConfirmed"]');
+            var fingerprint = document.querySelector('[name="QuotedFingerprint"]');
+            function invalidateQuote() {
+                if (quoteBox) quoteBox.classList.add('d-none');
+                if (stale) stale.classList.remove('d-none');
+                if (confirmed) confirmed.value = 'false';
+                if (fingerprint) fingerprint.value = '';
+            }
+            document.querySelectorAll('.js-quote-input').forEach(function (el) {
+                el.addEventListener('change', invalidateQuote);
+                el.addEventListener('input', invalidateQuote);
+            });
+
+            var submitBtn = document.getElementById('btn-submit-booking');
+            var quoteBtn = document.getElementById('btn-quote');
+            var clientBanner = document.getElementById('client-validation-banner');
+            var submitting = false;
+            var submitLabel = submitBtn ? submitBtn.textContent : 'Gửi yêu cầu đặt xe';
+
+            function restoreButtons() {
+                submitting = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = submitLabel;
+                }
+                if (quoteBtn) quoteBtn.disabled = false;
+            }
+
+            function lockSubmit() {
+                submitting = true;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Đang xử lý...';
+                }
+                if (quoteBtn) quoteBtn.disabled = true;
+            }
+
+            if (window.jQuery) {
+                jQuery(form).on('invalid-form.validate', function () {
+                    restoreButtons();
+                    if (clientBanner) {
+                        clientBanner.classList.remove('d-none');
+                        clientBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            }
+
+            form.addEventListener('submit', function (e) {
+                if (window.jQuery && jQuery(form).valid && !jQuery(form).valid()) {
+                    restoreButtons();
+                    return;
+                }
+                var submitter = e.submitter;
+                if (submitter && submitter.id === 'btn-quote') return;
+                if (submitting) {
+                    e.preventDefault();
+                    return;
+                }
+                lockSubmit();
+            });
+        })();
+    </script>
 }

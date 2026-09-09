@@ -1,6 +1,9 @@
 using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
+using Backend.DTOs.Dispatch;
+using Backend.DTOs.Drivers;
+using Backend.DTOs.Vehicles;
 using Backend.Entities;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +32,117 @@ public class DispatchService(
         return result is null ? Fail(error ?? "Không thể xác nhận đơn.") : Ok(result);
     }
 
+    public async Task<DispatchFleetStatusResponse> GetFleetStatusAsync()
+    {
+        var vehicles = await db.Vehicles.AsNoTracking()
+            .Include(v => v.VehicleType)
+            .OrderBy(v => v.LicensePlate)
+            .ToListAsync();
+        var occupying = await schedule.ListOccupyingBookingsAsync();
+        var openAssignments = await db.TripAssignments.AsNoTracking()
+            .Include(t => t.Driver).ThenInclude(d => d.User)
+            .Include(t => t.Booking)
+            .Include(t => t.Vehicle)
+            .Where(t =>
+                t.Status == TripAssignmentStatuses.Assigned
+                || t.Status == TripAssignmentStatuses.Accepted
+                || t.Status == TripAssignmentStatuses.InProgress)
+            .ToListAsync();
+
+        var vehicleRows = vehicles.Select(vehicle =>
+        {
+            var booking = occupying
+                .Where(b =>
+                    b.AssignedVehicleId == vehicle.VehicleId
+                    || (b.TripAssignment != null && b.TripAssignment.VehicleId == vehicle.VehicleId))
+                .OrderBy(b => OccupancyRank(b.Status))
+                .ThenBy(b => b.StartDate)
+                .FirstOrDefault();
+            var assignment = openAssignments.FirstOrDefault(t => t.VehicleId == vehicle.VehicleId)
+                ?? booking?.TripAssignment;
+            var rentalMode = booking is null ? null : ResolveMode(booking.RentalMode);
+            var withDriver = rentalMode == RentalModes.WithDriver;
+            return new DispatchVehicleStatusResponse(
+                vehicle.VehicleId,
+                vehicle.LicensePlate,
+                vehicle.VehicleType?.TypeName ?? string.Empty,
+                vehicle.Status,
+                withDriver ? assignment?.Driver?.User?.FullName : null,
+                withDriver ? assignment?.Driver?.Status : null,
+                booking?.BookingId,
+                withDriver ? assignment?.AssignmentId : null,
+                booking?.StartDate,
+                booking?.EndDate,
+                rentalMode);
+        }).ToList();
+
+        var drivers = await db.Drivers.AsNoTracking()
+            .Include(d => d.User)
+            .OrderBy(d => d.User.FullName)
+            .ToListAsync();
+        var driverRows = drivers.Select(driver =>
+        {
+            var assignment = openAssignments
+                .Where(t => t.DriverId == driver.DriverId)
+                .OrderBy(t => OccupancyRank(t.Booking?.Status))
+                .ThenBy(t => t.Booking?.StartDate ?? DateTime.MaxValue)
+                .FirstOrDefault();
+            return new DispatchDriverStatusResponse(
+                driver.DriverId,
+                driver.User.FullName,
+                driver.Status,
+                driver.IsActive,
+                assignment?.Vehicle?.LicensePlate,
+                assignment?.BookingId,
+                assignment?.Booking?.StartDate,
+                assignment?.Booking?.EndDate,
+                assignment?.Booking is null ? null : ResolveMode(assignment.Booking.RentalMode));
+        }).ToList();
+
+        return new DispatchFleetStatusResponse(vehicleRows, driverRows);
+    }
+
+    public async Task<(DispatchAssignableResponse? Data, string? Error)> GetAssignableAsync(int bookingId)
+    {
+        var booking = await db.Bookings.AsNoTracking().FirstOrDefaultAsync(b => b.BookingId == bookingId);
+        if (booking is null)
+            return (null, "Không tìm thấy đơn.");
+        if (booking.Status != BookingStatuses.Confirmed)
+            return (null, "Chỉ lấy danh sách khả dụng cho đơn đã xác nhận.");
+
+        var vehicles = await schedule.FindAssignableVehiclesAsync(
+            booking.VehicleTypeId, booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+        var vehicleRows = vehicles.Select(v => new VehicleResponse(
+            v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
+            v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
+            v.RegistrationNumber, v.RegistrationExpiryDate,
+            v.InspectionExpiryDate, v.InsuranceExpiryDate)).ToList();
+
+        var driverRows = new List<DriverResponse>();
+        if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
+        {
+            var drivers = await schedule.FindAssignableDriversAsync(
+                booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+            foreach (var driver in drivers)
+            {
+                if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
+                    continue;
+                driverRows.Add(new DriverResponse(
+                    driver.DriverId,
+                    driver.User.FullName,
+                    driver.User.Email,
+                    driver.User.Phone,
+                    driver.LicenseNumber,
+                    driver.LicenseExpiry,
+                    driver.Status,
+                    driver.AverageRating,
+                    driver.TotalTrips));
+            }
+        }
+
+        return (new DispatchAssignableResponse(vehicleRows, driverRows), null);
+    }
+
     public Task<AssignTripResult> AssignTripAsync(
         int bookingId, AssignTripRequest request, int dispatcherId)
         => SqliteWriteLock.ExecuteAsync(db, () => AssignTripCoreAsync(bookingId, request, dispatcherId));
@@ -45,6 +159,10 @@ public class DispatchService(
                 ? AssignTripResult.Fail("Đơn đã kết thúc, không thể phân công.")
                 : AssignTripResult.Fail("Đơn không thể phân công.");
         }
+
+        var readiness = await BookingDispatchReadinessRules.GetBlockReasonAsync(db, bookingId);
+        if (readiness is not null)
+            return AssignTripResult.Fail(readiness);
 
         if (request.VehicleId <= 0)
             return AssignTripResult.Fail("Cần chọn xe.");
@@ -67,6 +185,10 @@ public class DispatchService(
             return Fail("Chỉ giao xe khi đơn đã được gán xe.");
         if (booking.AssignedVehicleId is null)
             return Fail("Đơn chưa được gán xe.");
+
+        var readiness = await BookingDispatchReadinessRules.GetBlockReasonAsync(db, bookingId);
+        if (readiness is not null)
+            return Fail(readiness);
 
         var (inspection, inspectError) = await inspections.AddAsync(
             bookingId,
@@ -111,6 +233,9 @@ public class DispatchService(
             return Fail("Không tìm thấy xe đã gán.");
 
         var handover = await inspections.GetHandoverAsync(bookingId);
+        if (handover is null)
+            return Fail(VehicleInspectionRules.HandoverRequired);
+
         var (inspection, inspectError) = await inspections.AddAsync(
             bookingId,
             VehicleInspectionTypes.Return,
@@ -154,14 +279,9 @@ public class DispatchService(
         if (await db.TripAssignments.AnyAsync(t => t.BookingId == booking.BookingId))
             return AssignTripResult.Fail("Đơn đã được phân công tài xế và xe.");
 
-        var vehicle = await db.Vehicles
-            .FirstOrDefaultAsync(v => v.VehicleId == request.VehicleId && v.Status == VehicleStatuses.Available);
+        var (vehicle, vehicleFail) = await LoadAssignableVehicleAsync(request.VehicleId, booking.VehicleTypeId);
         if (vehicle is null)
-            return AssignTripResult.Fail("Xe không khả dụng.");
-        if (await schedule.IsVehicleBlockedByMaintenanceDueAsync(vehicle.VehicleId))
-            return AssignTripResult.Fail(MaintenanceLock.BlockedForNewSchedule);
-        if (vehicle.TypeId != booking.VehicleTypeId)
-            return AssignTripResult.Fail("Xe không thuộc loại xe được đặt.");
+            return vehicleFail ?? AssignTripResult.Fail("Xe không khả dụng.");
         if (await schedule.HasVehicleConflictAsync(
             request.VehicleId, booking.StartDate, booking.EndDate, booking.BookingId))
         {
@@ -248,14 +368,9 @@ public class DispatchService(
         if (await db.TripAssignments.AnyAsync(t => t.BookingId == booking.BookingId))
             return AssignTripResult.Fail("Đơn đã có phân công chuyến.");
 
-        var vehicle = await db.Vehicles
-            .FirstOrDefaultAsync(v => v.VehicleId == request.VehicleId && v.Status == VehicleStatuses.Available);
+        var (vehicle, vehicleFail) = await LoadAssignableVehicleAsync(request.VehicleId, booking.VehicleTypeId);
         if (vehicle is null)
-            return AssignTripResult.Fail("Xe không khả dụng.");
-        if (await schedule.IsVehicleBlockedByMaintenanceDueAsync(vehicle.VehicleId))
-            return AssignTripResult.Fail(MaintenanceLock.BlockedForNewSchedule);
-        if (vehicle.TypeId != booking.VehicleTypeId)
-            return AssignTripResult.Fail("Xe không thuộc loại xe được đặt.");
+            return vehicleFail ?? AssignTripResult.Fail("Xe không khả dụng.");
         if (await schedule.HasVehicleConflictAsync(
             request.VehicleId, booking.StartDate, booking.EndDate, booking.BookingId))
         {
@@ -291,6 +406,24 @@ public class DispatchService(
         return result is null
             ? AssignTripResult.Fail("Không thể gán xe.")
             : AssignTripResult.Ok(result);
+    }
+
+    private async Task<(Vehicle? Vehicle, AssignTripResult? Fail)> LoadAssignableVehicleAsync(
+        int vehicleId, int expectedTypeId)
+    {
+        var vehicle = await db.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == vehicleId);
+        if (vehicle is null)
+            return (null, AssignTripResult.Fail("Xe không khả dụng."));
+
+        var block = await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicle.VehicleId);
+        if (block is not null)
+            return (null, AssignTripResult.Fail(block));
+        if (vehicle.Status != VehicleStatuses.Available)
+            return (null, AssignTripResult.Fail("Xe không khả dụng."));
+        if (vehicle.TypeId != expectedTypeId)
+            return (null, AssignTripResult.Fail("Xe không thuộc loại xe được đặt."));
+
+        return (vehicle, null);
     }
 
     private async Task<AssignConflictResponse> BuildConflictAsync(
@@ -336,6 +469,15 @@ public class DispatchService(
             ChangedAt = DateTime.UtcNow
         });
     }
+
+    private static int OccupancyRank(string? status) => status switch
+    {
+        BookingStatuses.InProgress => 0,
+        BookingStatuses.Assigned => 1,
+        BookingStatuses.Confirmed => 2,
+        BookingStatuses.Pending => 3,
+        _ => 9
+    };
 
     private static string ResolveMode(string? rentalMode)
         => RentalModes.TryResolve(rentalMode, out var resolved) ? resolved : RentalModes.WithDriver;

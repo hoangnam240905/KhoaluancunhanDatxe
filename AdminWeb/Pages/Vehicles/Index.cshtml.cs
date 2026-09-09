@@ -9,11 +9,13 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 {
     public List<VehicleResponse> Vehicles { get; set; } = [];
     public HashSet<int> AlertVehicleIds { get; set; } = [];
+    public string? SuccessMessage { get; set; }
     public string? Message { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        SuccessMessage = TempData["Message"] as string;
         Vehicles = await api.GetVehiclesAsync();
         AlertVehicleIds = (await api.GetMaintenanceAlertsAsync()).Select(a => a.VehicleId).ToHashSet();
         return Page();

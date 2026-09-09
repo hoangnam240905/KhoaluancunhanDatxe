@@ -312,14 +312,14 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _pickStart,
-                child: Text('Từ ${Formatters.dt(_start)}'),
+                child: Text('Từ ${Formatters.rentalDt(_start)}'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton(
                 onPressed: _pickEnd,
-                child: Text('Đến ${Formatters.dt(_end)}'),
+                child: Text('Đến ${Formatters.rentalDt(_end)}'),
               ),
             ),
           ],

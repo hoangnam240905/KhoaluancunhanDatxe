@@ -53,6 +53,25 @@ public class ScheduleConflictService(CarRentalDbContext db)
                 && end > b.StartDate.AddHours(-bufferHours));
     }
 
+    public Task<bool> HasOpenMaintenanceAsync(int vehicleId)
+        => db.MaintenanceRecords.AnyAsync(m => m.VehicleId == vehicleId && m.CompletedDate == null);
+
+    public async Task<HashSet<int>> GetOpenMaintenanceVehicleIdsAsync()
+        => (await db.MaintenanceRecords
+            .Where(m => m.CompletedDate == null)
+            .Select(m => m.VehicleId)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+
+    public async Task<string?> GetMaintenanceNewScheduleBlockReasonAsync(int vehicleId)
+    {
+        if (await HasOpenMaintenanceAsync(vehicleId))
+            return MaintenanceLock.BlockedBecauseOpen;
+        if (await IsVehicleBlockedByMaintenanceDueAsync(vehicleId))
+            return MaintenanceLock.BlockedForNewSchedule;
+        return null;
+    }
+
     public async Task<bool> IsVehicleBlockedByMaintenanceDueAsync(int vehicleId)
     {
         var vehicle = await db.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.VehicleId == vehicleId);
@@ -68,7 +87,7 @@ public class ScheduleConflictService(CarRentalDbContext db)
         var vehicles = await db.Vehicles.AsNoTracking().ToListAsync();
         var lastByVehicle = await _alerts.GetLastCompletedByVehicleAsync();
         var utcNow = DateTime.UtcNow;
-        return vehicles
+        var blocked = vehicles
             .Where(v =>
             {
                 lastByVehicle.TryGetValue(v.VehicleId, out var last);
@@ -76,6 +95,8 @@ public class ScheduleConflictService(CarRentalDbContext db)
             })
             .Select(v => v.VehicleId)
             .ToHashSet();
+        blocked.UnionWith(await GetOpenMaintenanceVehicleIdsAsync());
+        return blocked;
     }
 
     public async Task<List<Vehicle>> FindAvailableVehiclesAsync(
@@ -87,10 +108,13 @@ public class ScheduleConflictService(CarRentalDbContext db)
             .ToListAsync();
 
         var lastByVehicle = await _alerts.GetLastCompletedByVehicleAsync();
+        var openIds = await GetOpenMaintenanceVehicleIdsAsync();
         var utcNow = DateTime.UtcNow;
         var available = new List<Vehicle>();
         foreach (var vehicle in candidates)
         {
+            if (openIds.Contains(vehicle.VehicleId))
+                continue;
             lastByVehicle.TryGetValue(vehicle.VehicleId, out var last);
             if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
                 continue;
@@ -130,17 +154,21 @@ public class ScheduleConflictService(CarRentalDbContext db)
         int? excludeVehicleId = null,
         int? excludeBookingId = null)
     {
-        var query = db.Vehicles.Where(v =>
-            v.TypeId == vehicleTypeId && v.Status == VehicleStatuses.Available);
+        var query = db.Vehicles
+            .Include(v => v.VehicleType)
+            .Where(v => v.TypeId == vehicleTypeId && v.Status == VehicleStatuses.Available);
         if (excludeVehicleId is int skipVehicle)
             query = query.Where(v => v.VehicleId != skipVehicle);
 
         var candidates = await query.OrderBy(v => v.VehicleId).ToListAsync();
         var lastByVehicle = await _alerts.GetLastCompletedByVehicleAsync();
+        var openIds = await GetOpenMaintenanceVehicleIdsAsync();
         var utcNow = DateTime.UtcNow;
         var available = new List<Vehicle>();
         foreach (var vehicle in candidates)
         {
+            if (openIds.Contains(vehicle.VehicleId))
+                continue;
             lastByVehicle.TryGetValue(vehicle.VehicleId, out var last);
             if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
                 continue;
@@ -176,6 +204,23 @@ public class ScheduleConflictService(CarRentalDbContext db)
 
         return available;
     }
+
+    public Task<List<Booking>> ListOccupyingBookingsAsync()
+        => db.Bookings.AsNoTracking()
+            .Include(b => b.TripAssignment)
+                .ThenInclude(t => t!.Driver)
+                .ThenInclude(d => d.User)
+            .Where(b =>
+                b.Status == BookingStatuses.Confirmed
+                || b.Status == BookingStatuses.Assigned
+                || b.Status == BookingStatuses.InProgress
+                || (b.Status == BookingStatuses.Pending
+                    && b.AssignedVehicleId != null
+                    && b.Payments.Any(p =>
+                        p.PaymentType == PaymentTypes.Deposit
+                        && (p.Status == PaymentStatuses.Pending
+                            || p.Status == PaymentStatuses.Paid))))
+            .ToListAsync();
 
     private IQueryable<Booking> OccupyingQuery(int? excludeBookingId)
     {

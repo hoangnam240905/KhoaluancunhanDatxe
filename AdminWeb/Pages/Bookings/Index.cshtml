@@ -10,7 +10,7 @@
     <a asp-page="Index" asp-route-status="Completed" class="btn btn-sm btn-outline-success">Completed</a>
 </div>
 <table class="table table-hover">
-    <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th>Tuyen</th><th>Tien</th><th>Trang thai</th><th></th></tr></thead>
+    <thead><tr><th>Ma</th><th>Khach</th><th>Loai xe</th><th>Tuyen</th><th>Thoi gian</th><th>Tien</th><th>Trang thai</th><th></th></tr></thead>
     <tbody>
     @foreach (var b in Model.Bookings)
     {
@@ -19,8 +19,15 @@
             <td>@b.CustomerName</td>
             <td>@b.VehicleTypeName</td>
             <td>@b.PickupAddress → @b.DropoffAddress</td>
+            <td>
+                @UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)
+                @if (b.QuotedDays is not null)
+                {
+                    <div class="small text-muted">@b.QuotedDays ngày</div>
+                }
+            </td>
             <td>@b.TotalAmount.ToString("N0")</td>
-            <td><span class="badge bg-secondary">@b.Status</span></td>
+            <td><span class="badge bg-secondary">@UiDisplay.BookingStatus(b.Status)</span></td>
             <td>
                 @if (b.Status is "Pending" or "Confirmed")
                 {

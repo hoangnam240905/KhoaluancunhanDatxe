@@ -17,17 +17,33 @@ CREATE TABLE Roles (
 );
 
 CREATE TABLE Users (
-    UserId       INT IDENTITY(1,1) PRIMARY KEY,
-    Email        NVARCHAR(100) NOT NULL UNIQUE,
-    PasswordHash NVARCHAR(256) NOT NULL,
-    FullName     NVARCHAR(100) NOT NULL,
-    Phone        NVARCHAR(20)  NULL,
-    RoleId       INT           NOT NULL,
-    IsActive     BIT           NOT NULL DEFAULT 1,
-    CreatedAt    DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt    DATETIME2     NULL,
+    UserId           INT IDENTITY(1,1) PRIMARY KEY,
+    Email            NVARCHAR(100) NOT NULL UNIQUE,
+    PasswordHash     NVARCHAR(256) NOT NULL,
+    FullName         NVARCHAR(100) NOT NULL,
+    Phone            NVARCHAR(20)  NULL,
+    RoleId           INT           NOT NULL,
+    IsActive         BIT           NOT NULL DEFAULT 1,
+    IsEmailVerified  BIT           NOT NULL DEFAULT 1,
+    EmailVerifiedAt  DATETIME2     NULL,
+    GoogleSubject    NVARCHAR(128) NULL,
+    CreatedAt        DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAt        DATETIME2     NULL,
     CONSTRAINT FK_Users_Roles FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
 );
+CREATE UNIQUE INDEX IX_Users_GoogleSubject ON Users(GoogleSubject) WHERE GoogleSubject IS NOT NULL;
+
+CREATE TABLE EmailOtps (
+    EmailOtpId   INT IDENTITY(1,1) PRIMARY KEY,
+    Email        NVARCHAR(100) NOT NULL,
+    Purpose      NVARCHAR(40)  NOT NULL,
+    CodeHash     NVARCHAR(128) NOT NULL,
+    ExpiresAt    DATETIME2     NOT NULL,
+    AttemptCount INT           NOT NULL DEFAULT 0,
+    UsedAt       DATETIME2     NULL,
+    CreatedAt    DATETIME2     NOT NULL
+);
+CREATE INDEX IX_EmailOtps_Email_Purpose_CreatedAt ON EmailOtps(Email, Purpose, CreatedAt);
 
 CREATE TABLE Customers (
     CustomerId  INT PRIMARY KEY,

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using AdminWeb.Display;
 using AdminWeb.Models;
 using AdminWeb.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,37 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public class InputModel
     {
-        [Required] public int TypeId { get; set; }
-        [Required] public string LicensePlate { get; set; } = string.Empty;
-        [Required] public string Brand { get; set; } = string.Empty;
-        [Required] public string Model { get; set; } = string.Empty;
-        [Required] public int Year { get; set; }
+        [Required(ErrorMessage = "Vui lòng chọn loại xe.")]
+        public int TypeId { get; set; }
+
+        [Required(ErrorMessage = "Vui lòng nhập biển số xe.")]
+        [MaxLength(20, ErrorMessage = "Biển số xe không được vượt quá 20 ký tự.")]
+        [RegularExpression(@"^[0-9]{2}[A-Za-z]-([0-9]{4,5}|[A-Za-z][A-Za-z0-9]{3,7})$", ErrorMessage = "Biển số không đúng định dạng (ví dụ 51A-12345).")]
+        public string LicensePlate
+        {
+            get => _licensePlate;
+            set => _licensePlate = (value ?? string.Empty).Trim();
+        }
+        private string _licensePlate = string.Empty;
+
+        [Required(ErrorMessage = "Vui lòng nhập hãng xe.")]
+        public string Brand { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vui lòng nhập model.")]
+        public string Model { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vui lòng nhập năm sản xuất.")]
+        [Range(1990, 2100, ErrorMessage = "Năm sản xuất phải từ 1990 đến 2100.")]
+        public int Year { get; set; }
+
         public string? Color { get; set; }
-        [Required] public string Status { get; set; } = "Available";
+
+        [Required(ErrorMessage = "Vui lòng chọn trạng thái.")]
+        public string Status { get; set; } = "Available";
+
         public int CurrentKm { get; set; }
+
+        [MaxLength(30, ErrorMessage = "Số giấy đăng ký không được vượt quá 30 ký tự.")]
         public string? RegistrationNumber { get; set; }
         public DateOnly? RegistrationExpiryDate { get; set; }
         public DateOnly? InspectionExpiryDate { get; set; }
@@ -55,11 +79,33 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : PageModel
         VehicleId = id;
         VehicleTypes = await api.GetVehicleTypesAsync();
         if (!ModelState.IsValid) return Page();
-        var (data, error) = await api.UpdateVehicleAsync(id, new UpdateVehicleRequest(
-            Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year,
-            Input.Color, Input.Status, Input.CurrentKm,
-            Input.RegistrationNumber, Input.RegistrationExpiryDate, Input.InspectionExpiryDate, Input.InsuranceExpiryDate));
-        if (data is null) { ErrorMessage = error; return Page(); }
+        VehicleResponse? data;
+        string? error;
+        try
+        {
+            (data, error) = await api.UpdateVehicleAsync(id, new UpdateVehicleRequest(
+                Input.TypeId, Input.LicensePlate, Input.Brand, Input.Model, Input.Year,
+                Input.Color, Input.Status, Input.CurrentKm,
+                Input.RegistrationNumber, Input.RegistrationExpiryDate, Input.InspectionExpiryDate, Input.InsuranceExpiryDate));
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage = UiDisplay.ApiFailure("⚠️ Không thể cập nhật xe.", "Không kết nối được máy chủ.");
+            return Page();
+        }
+        catch (TaskCanceledException)
+        {
+            ErrorMessage = UiDisplay.ApiFailure("⚠️ Không thể cập nhật xe.", "Hết thời gian chờ máy chủ.");
+            return Page();
+        }
+
+        if (data is null)
+        {
+            ErrorMessage = UiDisplay.ApiFailure("⚠️ Không thể cập nhật xe.", error);
+            return Page();
+        }
+
+        TempData["Message"] = "✅ Cập nhật xe thành công.";
         return RedirectToPage("Index");
     }
 }

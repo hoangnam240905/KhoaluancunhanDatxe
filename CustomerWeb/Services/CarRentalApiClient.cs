@@ -39,13 +39,66 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
     }
 
-    public async Task<(AuthResponse? Data, string? Error)> RegisterAsync(RegisterCustomerRequest request)
+    public async Task<(RegisterPendingResponse? Data, string? Error)> RegisterAsync(RegisterCustomerRequest request)
     {
         var response = await http.PostAsJsonAsync("/api/auth/register", request);
         if (!response.IsSuccessStatusCode)
             return (null, await GetErrorAsync(response) ?? "Dang ky that bai.");
+        var data = await response.Content.ReadFromJsonAsync<RegisterPendingResponse>(JsonOptions);
+        return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
+    }
+
+    public async Task<(AuthResponse? Data, string? Error)> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/verify-email", request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Xac minh email that bai.");
         var data = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
         return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
+    }
+
+    public async Task<(RegisterPendingResponse? Data, string? Error)> ResendVerificationAsync(string email)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/resend-verification-otp", new ResendVerificationRequest(email));
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong the gui lai ma OTP.");
+        var data = await response.Content.ReadFromJsonAsync<RegisterPendingResponse>(JsonOptions);
+        return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
+    }
+
+    public async Task<(MessageResponse? Data, string? Error)> ForgotPasswordAsync(string email)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/forgot-password", new ForgotPasswordRequest(email));
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Khong the gui ma OTP.");
+        var data = await response.Content.ReadFromJsonAsync<MessageResponse>(JsonOptions);
+        return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/reset-password", request);
+        if (!response.IsSuccessStatusCode)
+            return (false, await GetErrorAsync(response) ?? "Khong the dat lai mat khau.");
+        return (true, null);
+    }
+
+    public async Task<(AuthResponse? Data, string? Error)> GoogleLoginAsync(string idToken)
+    {
+        var response = await http.PostAsJsonAsync("/api/auth/google", new GoogleLoginRequest(idToken));
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Dang nhap Google that bai.");
+        var data = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        return data is null ? (null, "Phan hoi khong hop le.") : (data, null);
+    }
+
+    public async Task<LoginOptionsResponse> GetLoginOptionsAsync()
+    {
+        var response = await http.GetAsync("/api/auth/login-options");
+        if (!response.IsSuccessStatusCode)
+            return new LoginOptionsResponse(false, null);
+        return await response.Content.ReadFromJsonAsync<LoginOptionsResponse>(JsonOptions)
+               ?? new LoginOptionsResponse(false, null);
     }
 
     public async Task<List<VehicleTypeResponse>> GetVehicleTypesAsync()
@@ -66,7 +119,7 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     public async Task<(List<VehicleTypeRecommendationResponse> Data, string? Error)> GetRecommendedAsync(
         DateTime startDate, DateTime endDate, int? seats, decimal? priceMax, decimal? estimatedDistance)
     {
-        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("o"))}&endDate={Uri.EscapeDataString(endDate.ToString("o"))}";
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
         if (seats.HasValue) query += $"&seats={seats.Value}";
         if (priceMax.HasValue) query += $"&priceMax={priceMax.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         if (estimatedDistance.HasValue) query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
@@ -112,8 +165,8 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
     {
         var query = $"vehicleTypeId={vehicleTypeId}" +
-                    $"&startDate={Uri.EscapeDataString(startDate.ToString("o"))}" +
-                    $"&endDate={Uri.EscapeDataString(endDate.ToString("o"))}" +
+                    $"&startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
                     $"&rentalMode={Uri.EscapeDataString(rentalMode)}";
         if (estimatedDistance.HasValue)
             query += $"&estimatedDistance={estimatedDistance.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";

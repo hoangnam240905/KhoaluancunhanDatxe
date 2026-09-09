@@ -22,6 +22,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<BookingFee> BookingFees => Set<BookingFee>();
     public DbSet<MaintenanceRecord> MaintenanceRecords => Set<MaintenanceRecord>();
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
+    public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,7 +40,21 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.PasswordHash).HasMaxLength(256);
             e.Property(x => x.FullName).HasMaxLength(100);
             e.Property(x => x.Phone).HasMaxLength(20);
+            e.Property(x => x.IsEmailVerified).HasDefaultValue(true);
+            e.Property(x => x.LockReason).HasMaxLength(255);
+            e.Property(x => x.InactiveReason).HasMaxLength(255);
+            e.Property(x => x.GoogleSubject).HasMaxLength(128);
+            e.HasIndex(x => x.GoogleSubject);
             e.HasOne(x => x.Role).WithMany(x => x.Users).HasForeignKey(x => x.RoleId);
+        });
+
+        modelBuilder.Entity<EmailOtp>(e =>
+        {
+            e.ToTable("EmailOtps");
+            e.Property(x => x.Email).HasMaxLength(100);
+            e.Property(x => x.Purpose).HasMaxLength(40);
+            e.Property(x => x.CodeHash).HasMaxLength(128);
+            e.HasIndex(x => new { x.Email, x.Purpose, x.CreatedAt });
         });
 
         modelBuilder.Entity<Customer>(e =>
@@ -513,6 +528,114 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
 
         if (!columns.Contains("IsLocked"))
             Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN IsLocked INTEGER NOT NULL DEFAULT 0");
+    }
+
+    /// <summary>
+    /// Adds current lock/inactive reason columns on existing SQLite Users. No history table.
+    /// </summary>
+    public void EnsureSqliteUsersAccountStatusColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Users')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (columns.Count == 0)
+            return;
+
+        if (!columns.Contains("LockReason"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockReason TEXT NULL");
+        if (!columns.Contains("LockedAt"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockedAt TEXT NULL");
+        if (!columns.Contains("LockedByUserId"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN LockedByUserId INTEGER NULL");
+        if (!columns.Contains("InactiveReason"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN InactiveReason TEXT NULL");
+        if (!columns.Contains("InactivatedAt"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN InactivatedAt TEXT NULL");
+        if (!columns.Contains("InactivatedByUserId"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN InactivatedByUserId INTEGER NULL");
+    }
+
+    /// <summary>
+    /// Adds email-verification / Google identity columns on existing SQLite Users.
+    /// Default IsEmailVerified=1 so seed/demo accounts stay able to log in.
+    /// </summary>
+    public void EnsureSqliteUsersAuthColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Users')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (columns.Count == 0)
+            return;
+
+        if (!columns.Contains("IsEmailVerified"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN IsEmailVerified INTEGER NOT NULL DEFAULT 1");
+        if (!columns.Contains("EmailVerifiedAt"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN EmailVerifiedAt TEXT NULL");
+        if (!columns.Contains("GoogleSubject"))
+            Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN GoogleSubject TEXT NULL");
+
+        Database.ExecuteSqlRaw(
+            """CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_GoogleSubject" ON "Users" ("GoogleSubject") WHERE "GoogleSubject" IS NOT NULL;""");
+    }
+
+    /// <summary>
+    /// Creates EmailOtps on an existing SQLite database. No backfill.
+    /// </summary>
+    public void EnsureSqliteEmailOtpsTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var exists = false;
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText =
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'EmailOtps' LIMIT 1";
+            exists = cmd.ExecuteScalar() is not null;
+        }
+
+        if (!exists)
+        {
+            Database.ExecuteSqlRaw("""
+                CREATE TABLE "EmailOtps" (
+                    "EmailOtpId" INTEGER NOT NULL CONSTRAINT "PK_EmailOtps" PRIMARY KEY AUTOINCREMENT,
+                    "Email" TEXT NOT NULL,
+                    "Purpose" TEXT NOT NULL,
+                    "CodeHash" TEXT NOT NULL,
+                    "ExpiresAt" TEXT NOT NULL,
+                    "AttemptCount" INTEGER NOT NULL,
+                    "UsedAt" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL
+                );
+                """);
+        }
+
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_EmailOtps_Email_Purpose_CreatedAt" ON "EmailOtps" ("Email", "Purpose", "CreatedAt");""");
     }
 
     public void EnsureSqliteDriversActiveColumn()

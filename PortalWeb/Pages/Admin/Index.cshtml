@@ -89,16 +89,16 @@ else if (Model.Dashboard is { } d)
                 </ul>
                 <h6>Xe (snapshot)</h6>
                 <ul>
-                    <li>Available: @d.Vehicles.Available</li>
-                    <li>Rented: @d.Vehicles.Rented</li>
-                    <li>Maintenance: @d.Vehicles.Maintenance</li>
-                    <li>Inactive: @d.Vehicles.Inactive</li>
+                    <li>@UiDisplay.VehicleStatus("Available"): @d.Vehicles.Available</li>
+                    <li>@UiDisplay.VehicleStatus("Rented"): @d.Vehicles.Rented</li>
+                    <li>@UiDisplay.VehicleStatus("Maintenance"): @d.Vehicles.Maintenance</li>
+                    <li>@UiDisplay.VehicleStatus("Inactive"): @d.Vehicles.Inactive</li>
                 </ul>
                 <h6>Tài xế (snapshot)</h6>
                 <ul class="mb-0">
-                    <li>Available: @d.Drivers.Available</li>
-                    <li>Busy: @d.Drivers.Busy</li>
-                    <li>Offline: @d.Drivers.Offline</li>
+                    <li>@UiDisplay.DriverStatus("Available"): @d.Drivers.Available</li>
+                    <li>@UiDisplay.DriverStatus("Busy"): @d.Drivers.Busy</li>
+                    <li>@UiDisplay.DriverStatus("Offline"): @d.Drivers.Offline</li>
                 </ul>
             </div></div>
         </div>

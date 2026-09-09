@@ -44,6 +44,16 @@
                 </ul>
             </div>
             <div class="mb-3">
+                <label asp-for="Input.ConfirmPassword" class="form-label">Xác nhận mật khẩu</label>
+                <div class="input-group">
+                    <input asp-for="Input.ConfirmPassword" type="password" class="form-control" placeholder="••••••••" autocomplete="new-password" />
+                    <button type="button" class="btn btn-toggle-password" aria-label="Hiện mật khẩu">
+                        <span class="toggle-label">Hiện</span>
+                    </button>
+                </div>
+                <span asp-validation-for="Input.ConfirmPassword" class="field-validation-error"></span>
+            </div>
+            <div class="mb-3">
                 <label asp-for="Input.Phone" class="form-label">Số điện thoại</label>
                 <input asp-for="Input.Phone" class="form-control" placeholder="09xxxxxxxx" />
                 <span asp-validation-for="Input.Phone" class="field-validation-error"></span>

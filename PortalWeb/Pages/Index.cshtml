@@ -240,8 +240,8 @@
                             {
                                 <a asp-page="/Customer/Bookings/Create"
                                    asp-route-typeId="@t.VehicleTypeId"
-                                   asp-route-start="@Model.StartDate?.ToString("o")"
-                                   asp-route-end="@Model.EndDate?.ToString("o")"
+                                   asp-route-start="@Model.StartDate?.ToString("yyyy-MM-ddTHH:mm")"
+                                   asp-route-end="@Model.EndDate?.ToString("yyyy-MM-ddTHH:mm")"
                                    asp-route-distance="@Model.EstimatedDistance"
                                    asp-route-fromRecommendation="true"
                                    class="btn btn-primary w-100 rounded-pill">Chọn và đặt</a>

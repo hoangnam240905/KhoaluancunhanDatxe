@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/booking_pricing.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
+import 'booking_detail_screen.dart';
 
 class CreateBookingScreen extends StatefulWidget {
   final ApiService api;
@@ -177,10 +178,15 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     setState(() {
       if (start) {
         _start = selected;
+        if (_end != null && !_end!.isAfter(_start!)) {
+          _end = _start!.add(const Duration(hours: 8));
+        }
       } else {
         _end = selected;
       }
       _formError = null;
+      _quote = null;
+      _quoteError = null;
     });
   }
 
@@ -192,6 +198,12 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         if (_start == null || _end == null) {
           return 'Vui lòng chọn thời gian nhận và trả xe.';
         }
+        final clock = DateTime.now();
+        final today = DateTime(clock.year, clock.month, clock.day);
+        final startDay = DateTime(_start!.year, _start!.month, _start!.day);
+        if (startDay.isBefore(today)) {
+          return 'Ngày bắt đầu không được trong quá khứ.';
+        }
         if (!_end!.isAfter(_start!)) {
           return 'Thời gian trả phải sau thời gian nhận.';
         }
@@ -202,6 +214,29 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         if (km.isNotEmpty && double.tryParse(km.replaceAll(',', '.')) == null) {
           return 'Km dự kiến không hợp lệ.';
         }
+    }
+    return null;
+  }
+
+  String? _validateSubmit() {
+    if (_type == null) return 'Vui lòng chọn loại xe.';
+    if (_start == null || _end == null) {
+      return 'Vui lòng chọn thời gian nhận và trả xe.';
+    }
+    final clock = DateTime.now();
+    final today = DateTime(clock.year, clock.month, clock.day);
+    final startDay = DateTime(_start!.year, _start!.month, _start!.day);
+    if (startDay.isBefore(today)) {
+      return 'Ngày bắt đầu không được trong quá khứ.';
+    }
+    if (!_end!.isAfter(_start!)) {
+      return 'Thời gian trả phải sau thời gian nhận.';
+    }
+    if (_pickup.text.trim().isEmpty) return 'Vui lòng nhập điểm đón.';
+    if (_dropoff.text.trim().isEmpty) return 'Vui lòng nhập điểm trả.';
+    final km = _distance.text.trim();
+    if (km.isNotEmpty && double.tryParse(km.replaceAll(',', '.')) == null) {
+      return 'Km dự kiến không hợp lệ.';
     }
     return null;
   }
@@ -269,9 +304,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   }
 
   Future<void> _submit() async {
-    final error = _validateStep();
+    if (_submitting) return;
+    final error = _validateSubmit();
     if (error != null || _type == null || _start == null || _end == null) {
-      setState(() => _formError = error ?? 'Thiếu thông tin đặt xe.');
+      setState(() => _formError = error ?? 'Vui lòng kiểm tra lại thông tin đặt xe.');
       return;
     }
     setState(() {
@@ -279,7 +315,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       _formError = null;
     });
     try {
-      await widget.api.createBooking(
+      final booking = await widget.api.createBooking(
         vehicleTypeId: _type!.typeId,
         rentalMode: _rentalMode,
         pickupAddress: _pickup.text.trim(),
@@ -292,17 +328,79 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         vehicleId: _vehicle?.vehicleId,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đặt xe thành công. Đơn đang chờ xác nhận.'),
+      if (booking.bookingId <= 0) {
+        setState(() {
+          _formError = 'Không thể tạo đơn thuê. Vui lòng thử lại.';
+          _submitting = false;
+        });
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('🎉 Đặt xe thành công!'),
+          content: Text(
+            'Mã đơn: #${booking.bookingId}\n'
+            'Trạng thái: ${Formatters.statusLabel(booking.status)}\n'
+            'Loại xe: ${booking.vehicleTypeName}\n'
+            'Hình thức: ${Formatters.rentalModeLabel(booking.rentalMode)}\n'
+            'Ngày bắt đầu: ${Formatters.rentalDt(booking.startDate)}\n'
+            'Ngày kết thúc: ${Formatters.rentalDt(booking.endDate)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context, true);
+              },
+              child: const Text('Đóng'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BookingDetailScreen(
+                      api: widget.api,
+                      booking: booking,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Xem chi tiết đơn'),
+            ),
+          ],
         ),
       );
-      Navigator.pop(context, true);
     } catch (e) {
-      setState(() => _formError = e.toString().replaceFirst('Exception: ', ''));
+      if (!mounted) return;
+      setState(() => _formError = _friendlyCreateError(e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  String _friendlyCreateError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    final lower = raw.toLowerCase();
+    if (raw.isEmpty ||
+        raw.startsWith('Lỗi API') ||
+        raw.startsWith('Loi API') ||
+        RegExp(r'^Lỗi \d+').hasMatch(raw) ||
+        lower.contains('socket') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('connection') ||
+        lower.contains('failed host') ||
+        lower.contains('xmlhttprequest') ||
+        lower.contains('exception') ||
+        lower.contains('stacktrace') ||
+        raw.length > 280) {
+      return '⚠️ Đặt xe không thành công\nKhông thể tạo đơn thuê. Vui lòng thử lại.';
+    }
+    return '⚠️ Đặt xe không thành công\n$raw';
   }
 
   @override
@@ -385,16 +483,25 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                               ? null
                               : (_step == 4 ? _submit : _next),
                           child: _submitting
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Đang xử lý...'),
+                                  ],
                                 )
                               : Text(
-                                  _step == 4 ? 'Xác nhận đặt xe' : 'Tiếp tục',
+                                  _step == 4
+                                      ? 'Gửi yêu cầu đặt xe'
+                                      : 'Tiếp tục',
                                 ),
                         ),
                       ),
@@ -418,9 +525,13 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
           style: TextStyle(color: AppColors.muted),
         ),
         const SizedBox(height: 12),
-        RentalModeToggle(
+          RentalModeToggle(
           value: _rentalMode,
-          onChanged: (v) => setState(() => _rentalMode = v),
+          onChanged: (v) => setState(() {
+            _rentalMode = v;
+            _quote = null;
+            _quoteError = null;
+          }),
         ),
       ],
     );
@@ -445,6 +556,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
               setState(() {
                 _type = type;
                 _vehicle = null;
+                _quote = null;
+                _quoteError = null;
               });
               _loadVehicles();
             },
@@ -584,7 +697,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                   style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
                 Text(
-                  value == null ? 'Chọn thời gian' : Formatters.dt(value),
+                  value == null ? 'Chọn thời gian' : Formatters.rentalDt(value),
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -654,8 +767,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
               _row('Hình thức', Formatters.rentalModeLabel(_rentalMode)),
               _row('Loại xe', _type?.typeName ?? '—'),
               _row('Xe cụ thể', _vehicle?.label ?? 'Để điều phối chọn sau'),
-              _row('Nhận xe', _start == null ? '—' : Formatters.dt(_start!)),
-              _row('Trả xe', _end == null ? '—' : Formatters.dt(_end!)),
+              _row('Nhận xe', _start == null ? '—' : Formatters.rentalDt(_start!)),
+              _row('Trả xe', _end == null ? '—' : Formatters.rentalDt(_end!)),
               _row(
                 'Điểm đón',
                 _pickup.text.trim().isEmpty ? '—' : _pickup.text.trim(),

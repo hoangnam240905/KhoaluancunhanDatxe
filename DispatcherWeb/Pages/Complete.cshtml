@@ -17,9 +17,7 @@
 <div class="alert alert-info">
     <div class="fw-bold">Biên bản kiểm xe (VehicleInspection) — Trả xe (Return)</div>
     <div class="small mb-0">
-        Thời điểm kiểm xe do máy chủ ghi UTC. Không nhập ActualAt / loại biên bản.
-        Giá chốt (FinalAmount) và phí do máy chủ tính khi hoàn thành — trang này không cộng tiền.
-        Bốn trường dưới đây không bắt buộc. Có thể gửi trống như trước.
+        Số km lúc trả không được nhỏ hơn số km lúc giao. Nhiên liệu từ 0 đến 100.
     </div>
 </div>
 
@@ -31,13 +29,13 @@
 
 <form method="post" class="col-lg-6">
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.OdometerKm">Số km (odometerKm)</label>
-        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" />
+        <label class="form-label" asp-for="Input.OdometerKm">Số km lúc trả</label>
+        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" required />
         <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % (fuelLevel)</label>
-        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" />
+        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % lúc trả</label>
+        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" required />
         <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
     </div>
     <div class="mb-3">
@@ -58,6 +56,6 @@
         <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
         <span asp-validation-for="Input.Notes" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-success">Hoàn thành trả xe</button>
+    <button type="submit" class="btn btn-success">Tiếp nhận trả xe</button>
     <a asp-page="/Index" class="btn btn-secondary">Quay lại</a>
 </form>

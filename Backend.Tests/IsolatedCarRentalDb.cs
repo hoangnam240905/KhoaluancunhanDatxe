@@ -29,6 +29,9 @@ internal sealed class IsolatedCarRentalDb : IDisposable
         Db.EnsureSqliteIncidentReportsTable();
         Db.EnsureSqliteVehicleLegalColumns();
         Db.EnsureSqliteLicensePlateUniqueIndex();
+        Db.EnsureSqliteUsersAccountStatusColumns();
+        Db.EnsureSqliteUsersAuthColumns();
+        Db.EnsureSqliteEmailOtpsTable();
         if (!seed)
             return;
         DbSeeder.Seed(Db);

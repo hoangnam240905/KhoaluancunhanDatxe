@@ -136,6 +136,7 @@ public class PhaseCMaintenanceLockTests
         MarkKmSince(iso, 2, 5000);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: null));
         await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var result = await Dispatch(iso.Db).AssignTripAsync(
             created.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
@@ -157,6 +158,7 @@ public class PhaseCMaintenanceLockTests
 
         MarkKmSince(iso, 2, 5000);
         await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var result = await Dispatch(iso.Db).AssignTripAsync(
             created.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
 
@@ -219,6 +221,7 @@ public class PhaseCMaintenanceLockTests
 
         var target = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: null));
         await Dispatch(iso.Db).ConfirmBookingAsync(target!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         var result = await Dispatch(iso.Db).AssignTripAsync(
             target.BookingId, new AssignTripRequest(null, spareId), dispatcherId: 2);
 

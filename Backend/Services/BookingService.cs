@@ -12,7 +12,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
     public async Task<BookingResponse?> CreateBookingAsync(
         int customerId, CreateBookingRequest request, bool fromRecommendation = false)
     {
-        if (request.EndDate <= request.StartDate)
+        if (BookingDateRules.ValidateNewRental(request.StartDate, request.EndDate) is not null)
             return null;
 
         if (!RentalModes.TryResolve(request.RentalMode, out var rentalMode))
@@ -87,8 +87,9 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
         if (vehicleTypeId <= 0)
             return (null, "Loại xe không hợp lệ.");
 
-        if (endDate <= startDate)
-            return (null, "Thời gian kết thúc phải sau thời gian bắt đầu.");
+        var dateError = BookingDateRules.ValidateNewRental(startDate, endDate);
+        if (dateError is not null)
+            return (null, dateError);
 
         if (estimatedDistance is < 0)
             return (null, "Km dự kiến không được âm.");

@@ -25,6 +25,20 @@ public class VehicleMaintenanceController(
         };
     }
 
+    [Authorize(Roles = RoleNames.Admin)]
+    [HttpPatch("{id:int}/maintenance/{maintenanceId:int}/complete")]
+    public async Task<ActionResult<MaintenanceRecordResponse>> Complete(
+        int id, int maintenanceId, [FromBody] CompleteMaintenanceRequest? request)
+    {
+        var (data, error, status) = await maintenance.CompleteAsync(id, maintenanceId, request);
+        return status switch
+        {
+            200 => Ok(data),
+            404 => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error })
+        };
+    }
+
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
     [HttpGet("{id:int}/maintenance-history")]
     public async Task<ActionResult<List<MaintenanceRecordResponse>>> GetHistory(int id)

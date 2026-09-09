@@ -45,6 +45,10 @@ public class BookingsController(
         if (startDate is null || endDate is null)
             return BadRequest(new { message = "Thời gian thuê không hợp lệ." });
 
+        var dateError = BookingDateRules.ValidateNewRental(startDate.Value, endDate.Value);
+        if (dateError is not null)
+            return BadRequest(new { message = dateError });
+
         var (quote, error) = await bookingService.GetQuoteAsync(
             vehicleTypeId.Value,
             startDate.Value,
@@ -107,6 +111,10 @@ public class BookingsController(
     {
         if (!RentalModes.TryResolve(request.RentalMode, out _))
             return BadRequest(new { message = "Hình thức thuê không hợp lệ." });
+
+        var dateError = BookingDateRules.ValidateNewRental(request.StartDate, request.EndDate);
+        if (dateError is not null)
+            return BadRequest(new { message = dateError });
 
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var booking = await bookingService.CreateBookingAsync(userId, request, fromRecommendation);

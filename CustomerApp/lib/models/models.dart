@@ -25,6 +25,38 @@ class AuthResponse {
   );
 }
 
+class RegisterPendingResponse {
+  final String email;
+  final String message;
+  final bool requiresVerification;
+
+  RegisterPendingResponse({
+    required this.email,
+    required this.message,
+    required this.requiresVerification,
+  });
+
+  factory RegisterPendingResponse.fromJson(Map<String, dynamic> json) =>
+      RegisterPendingResponse(
+        email: json['email'] as String,
+        message: json['message'] as String,
+        requiresVerification: json['requiresVerification'] as bool? ?? true,
+      );
+}
+
+class LoginOptionsResponse {
+  final bool googleEnabled;
+  final String? googleClientId;
+
+  LoginOptionsResponse({required this.googleEnabled, this.googleClientId});
+
+  factory LoginOptionsResponse.fromJson(Map<String, dynamic> json) =>
+      LoginOptionsResponse(
+        googleEnabled: json['googleEnabled'] as bool? ?? false,
+        googleClientId: json['googleClientId'] as String?,
+      );
+}
+
 class UserProfile {
   final int userId;
   final String email;

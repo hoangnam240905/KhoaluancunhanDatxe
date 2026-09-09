@@ -17,8 +17,7 @@
 <div class="alert alert-info">
     <div class="fw-bold">Biên bản kiểm xe (VehicleInspection) — Giao xe (Handover)</div>
     <div class="small mb-0">
-        Thời điểm kiểm xe do máy chủ ghi UTC. Không nhập ActualAt / loại biên bản.
-        Không tính giá chốt trên trang này. Bốn trường dưới đây không bắt buộc.
+        Thời điểm kiểm xe do máy chủ ghi UTC. Số km và nhiên liệu là bắt buộc.
     </div>
 </div>
 
@@ -28,15 +27,15 @@
 }
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-<form method="post" class="col-lg-6">
+<form method="post" asp-page="/Handover" asp-route-id="@Model.Booking?.BookingId" class="col-lg-6">
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.OdometerKm">Số km (odometerKm)</label>
-        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" />
+        <label class="form-label" asp-for="Input.OdometerKm">Số km lúc giao</label>
+        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" required />
         <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % (fuelLevel)</label>
-        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" />
+        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % lúc giao</label>
+        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" required />
         <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
     </div>
     <div class="mb-3">
@@ -57,6 +56,6 @@
         <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
         <span asp-validation-for="Input.Notes" class="text-danger"></span>
     </div>
-    <button type="submit" class="btn btn-info">Ghi nhận giao xe</button>
+    <button type="submit" class="btn btn-info">Bàn giao xe</button>
     <a asp-page="/Index" class="btn btn-secondary">Quay lại</a>
 </form>

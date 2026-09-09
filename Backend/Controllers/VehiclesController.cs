@@ -42,7 +42,7 @@ public class VehicleTypesController(VehicleService vehicleService, Recommendatio
 
 [ApiController]
 [Route("api/vehicles")]
-public class VehiclesController(VehicleService vehicleService) : ControllerBase
+public class VehiclesController(VehicleService vehicleService, VehicleOperationalProfileService profiles) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet]
@@ -55,6 +55,19 @@ public class VehiclesController(VehicleService vehicleService) : ControllerBase
     {
         var vehicle = await vehicleService.GetVehicleByIdAsync(id);
         return vehicle is null ? NotFound() : Ok(vehicle);
+    }
+
+    [Authorize(Roles = RoleNames.Admin)]
+    [HttpGet("{id:int}/operational-profile")]
+    public async Task<ActionResult<VehicleOperationalProfileResponse>> GetOperationalProfile(int id)
+    {
+        var (profile, error, status) = await profiles.GetAsync(id);
+        return status switch
+        {
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            StatusCodes.Status200OK when profile is not null => Ok(profile),
+            _ => BadRequest(new { message = error ?? "Không thể lấy hồ sơ xe." })
+        };
     }
 
     [Authorize(Roles = RoleNames.Admin)]

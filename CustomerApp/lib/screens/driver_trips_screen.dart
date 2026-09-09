@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../utils/driver_trip_actions.dart';
+import '../utils/formatters.dart';
 import 'customer_shell.dart';
 
 class DriverTripsScreen extends StatefulWidget {
@@ -120,7 +121,6 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('dd/MM/yyyy HH:mm');
     final money = NumberFormat.currency(locale: 'vi_VN', symbol: 'd');
 
     return Scaffold(
@@ -204,7 +204,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
                                       Text(
                                         '${t.pickupAddress} → ${t.dropoffAddress}',
                                       ),
-                                      Text(fmt.format(t.startDate.toLocal())),
+                                      Text(Formatters.rentalDt(t.startDate)),
                                       Text(
                                         'Cước: ${money.format(t.totalAmount)}',
                                       ),

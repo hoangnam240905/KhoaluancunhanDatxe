@@ -5,8 +5,11 @@ namespace Backend.Validation;
 public static class VehicleInspectionRules
 {
     public const string InvalidType = "Loại kiểm tra xe không hợp lệ.";
+    public const string OdometerRequired = "Vui lòng nhập số km hợp lệ.";
+    public const string FuelRequired = "Vui lòng nhập mức nhiên liệu từ 0 đến 100.";
     public const string NegativeOdometer = "Số km không được âm.";
     public const string InvalidFuel = "Mức nhiên liệu phải từ 0 đến 100.";
+    public const string HandoverRequired = "Chưa có biên bản bàn giao xe.";
     public const string ConditionTooLong = "Tình trạng xe quá dài.";
     public const string NotesTooLong = "Ghi chú quá dài.";
     public const string OdometerBelowCurrent = "Số km trả xe không được nhỏ hơn số km hiện tại của xe.";
@@ -34,6 +37,12 @@ public static class VehicleInspectionRules
         if (fuelLevel is < 0 or > 100)
             return InvalidFuel;
 
+        if (odometerKm is null)
+            return OdometerRequired;
+
+        if (fuelLevel is null)
+            return FuelRequired;
+
         if (condition is { Length: > ConditionMaxLength })
             return ConditionTooLong;
 
@@ -49,7 +58,9 @@ public static class VehicleInspectionRules
 
     public static string? ValidateReturnOdometer(decimal? odometerKm, int currentKm)
     {
-        if (odometerKm is not null && odometerKm < currentKm)
+        if (odometerKm is null)
+            return OdometerRequired;
+        if (odometerKm < currentKm)
             return OdometerBelowCurrent;
         return null;
     }

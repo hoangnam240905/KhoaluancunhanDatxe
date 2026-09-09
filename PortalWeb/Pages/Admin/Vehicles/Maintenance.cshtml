@@ -12,27 +12,19 @@
 <div class="row g-4">
     <div class="col-lg-5">
         <div class="card"><div class="card-body">
-            <h5>Ghi nhận bảo trì</h5>
-            <form method="post" class="row g-3">
+            <h5>Tạo lịch bảo trì</h5>
+            <form method="post" class="row g-3 js-once-submit">
                 <div class="col-12">
                     <label class="form-label">Loại</label>
                     <select asp-for="Input.MaintenanceType" class="form-select">
-                        <option>Scheduled</option>
-                        <option>Repair</option>
-                        <option>Inspection</option>
+                        <option value="Scheduled">Định kỳ</option>
+                        <option value="Repair">Sửa chữa</option>
+                        <option value="Inspection">Kiểm tra</option>
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-12">
                     <label class="form-label">Ngày lên lịch</label>
                     <input asp-for="Input.ScheduledDate" type="datetime-local" class="form-control" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Hoàn thành (nếu đã xong)</label>
-                    <input asp-for="Input.CompletedDate" type="datetime-local" class="form-control" />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Km tại bảo trì</label>
-                    <input asp-for="Input.OdometerAtMaintenance" class="form-control" />
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Chi phí</label>
@@ -43,7 +35,7 @@
                     <textarea asp-for="Input.Notes" class="form-control" maxlength="500"></textarea>
                 </div>
                 <div class="col-12">
-                    <button class="btn btn-primary">Lưu</button>
+                    <button type="submit" class="btn btn-primary" data-loading-text="Đang lưu...">Lưu</button>
                 </div>
             </form>
         </div></div>
@@ -51,17 +43,29 @@
     <div class="col-lg-7">
         <h5>Lịch sử</h5>
         <table class="table table-sm">
-            <thead><tr><th>Loại</th><th>Lịch</th><th>Xong</th><th>Km</th><th>Chi phí</th><th>Ghi chú</th></tr></thead>
+            <thead><tr><th>Loại</th><th>Trạng thái</th><th>Lịch</th><th>Xong</th><th>Km</th><th>Chi phí</th><th></th></tr></thead>
             <tbody>
             @foreach (var row in Model.History)
             {
+                var isOpen = row.CompletedDate is null;
                 <tr>
-                    <td>@row.MaintenanceType</td>
-                    <td>@row.ScheduledDate.ToString("g")</td>
-                    <td>@(row.CompletedDate?.ToString("g") ?? "—")</td>
-                    <td>@row.OdometerAtMaintenance</td>
+                    <td>@UiDisplay.MaintenanceType(row.MaintenanceType)</td>
+                    <td>@(isOpen ? "Đang bảo trì" : "Đã hoàn tất")</td>
+                    <td>@UiDisplay.Timestamp(row.ScheduledDate)</td>
+                    <td>@(row.CompletedDate is DateTime done ? UiDisplay.Timestamp(done) : "—")</td>
+                    <td>@(row.OdometerAtMaintenance?.ToString() ?? "—")</td>
                     <td>@(row.Cost?.ToString("N0"))</td>
-                    <td>@row.Notes</td>
+                    <td>
+                        @if (isOpen)
+                        {
+                            <form method="post" asp-page-handler="Complete" class="d-flex gap-1 align-items-center js-once-submit"
+                                  data-confirm="Xác nhận bảo trì đã hoàn tất?">
+                                <input type="hidden" name="maintenanceId" value="@row.MaintenanceId" />
+                                <input name="odometerKm" class="form-control form-control-sm" style="width:7rem" placeholder="Km" />
+                                <button type="submit" class="btn btn-success btn-sm" data-loading-text="Đang lưu...">✅ Bảo trì hoàn tất</button>
+                            </form>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>
@@ -69,3 +73,25 @@
         @if (!Model.History.Any()) { <p class="text-muted">Chưa có bản ghi.</p> }
     </div>
 </div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll("form.js-once-submit").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+            if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+                e.preventDefault();
+                return;
+            }
+            if (form.dataset.submitting === "1") {
+                e.preventDefault();
+                return;
+            }
+            form.dataset.submitting = "1";
+            form.querySelectorAll("button[type=submit]").forEach(function (btn) {
+                btn.disabled = true;
+                if (btn.dataset.loadingText) btn.textContent = btn.dataset.loadingText;
+            });
+        });
+    });
+</script>
+}

@@ -54,10 +54,10 @@ else
                     <td>@c.ContractNumber</td>
                     <td>#@c.BookingId</td>
                     <td>@c.CustomerName</td>
-                    <td>@c.Status</td>
+                    <td>@UiDisplay.ContractStatus(c.Status)</td>
                     <td>@c.TotalAmount.ToString("N0")</td>
                     <td>@(c.DepositAmount?.ToString("N0") ?? "—")</td>
-                    <td>@(c.SignedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    <td>@(c.SignedAt is DateTime signed ? UiDisplay.Timestamp(signed) : "—")</td>
                 </tr>
             }
             </tbody>

@@ -53,6 +53,9 @@ public static class DemoRichSeeder
         db.EnsureSqliteBookingFinalAmountColumn();
         db.EnsureSqliteBookingFeesTable();
         db.EnsureSqliteUsersLockColumn();
+        db.EnsureSqliteUsersAccountStatusColumns();
+        db.EnsureSqliteUsersAuthColumns();
+        db.EnsureSqliteEmailOtpsTable();
         db.EnsureSqliteDriversActiveColumn();
         db.EnsureSqliteMaintenanceRecordsTable();
         db.EnsureSqliteBookingRecommendationColumn();

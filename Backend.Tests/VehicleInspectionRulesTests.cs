@@ -43,12 +43,14 @@ public class VehicleInspectionRulesTests
     }
 
     [Fact]
-    public void Null_odometer_and_fuel_are_allowed()
+    public void Null_odometer_and_fuel_are_rejected()
     {
-        var error = VehicleInspectionRules.Validate(
-            "Return", null, null, null, null, out var type);
-        Assert.Null(error);
-        Assert.Equal(Backend.Constants.VehicleInspectionTypes.Return, type);
+        Assert.Equal(
+            VehicleInspectionRules.OdometerRequired,
+            VehicleInspectionRules.Validate("Return", null, 50, null, null, out _));
+        Assert.Equal(
+            VehicleInspectionRules.FuelRequired,
+            VehicleInspectionRules.Validate("Handover", 1000, null, null, null, out _));
     }
 
     [Fact]
@@ -58,7 +60,9 @@ public class VehicleInspectionRulesTests
             VehicleInspectionRules.OdometerBelowCurrent,
             VehicleInspectionRules.ValidateReturnOdometer(90, 100));
         Assert.Null(VehicleInspectionRules.ValidateReturnOdometer(100, 100));
-        Assert.Null(VehicleInspectionRules.ValidateReturnOdometer(null, 100));
+        Assert.Equal(
+            VehicleInspectionRules.OdometerRequired,
+            VehicleInspectionRules.ValidateReturnOdometer(null, 100));
     }
 
     [Fact]

@@ -17,6 +17,8 @@ namespace Backend.Tests;
 public class IsolatedApiFactory : WebApplicationFactory<Program>
 {
     public string DbPath { get; } = Path.Combine(Path.GetTempPath(), $"crs-api-{Guid.NewGuid():N}.db");
+    public CapturingEmailSender Email { get; } = new();
+    public FakeGoogleIdTokenValidator Google { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -24,11 +26,19 @@ public class IsolatedApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:DefaultConnection", $"Data Source={DbPath}");
         builder.UseSetting("SeedDemoRich", "false");
         builder.UseSetting("Urls", "http://127.0.0.1:0");
+        builder.UseSetting("Email:Enabled", "false");
+        builder.UseSetting("Email:SmtpPassword", "");
+        builder.UseSetting("Email:ResendCooldownSeconds", "0");
+        builder.UseSetting("Google:ClientId", "test-google-client.apps.googleusercontent.com");
         builder.UseEnvironment("Development");
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IRecommenderClient>();
             services.AddSingleton<IRecommenderClient, TestSnapshotRecommenderClient>();
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Email);
+            services.RemoveAll<IGoogleIdTokenValidator>();
+            services.AddSingleton<IGoogleIdTokenValidator>(Google);
         });
     }
 

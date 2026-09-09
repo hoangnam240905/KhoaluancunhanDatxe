@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PortalWeb.Display;
 using PortalWeb.Models;
 using PortalWeb.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -14,32 +15,44 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     public List<VehicleTypeResponse> VehicleTypes { get; set; } = [];
     public List<VehicleResponse> Vehicles { get; set; } = [];
     public BookingQuoteResponse? Quote { get; set; }
+    public BookingResponse? CreatedBooking { get; set; }
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
 
     public class InputModel
     {
+        [Display(Name = "Loại xe")]
         [Required(ErrorMessage = "Vui lòng chọn loại xe.")]
         [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn loại xe.")]
         public int VehicleTypeId { get; set; }
 
+        [Display(Name = "Hình thức thuê")]
         [Required(ErrorMessage = "Vui lòng chọn hình thức thuê.")]
         public string RentalMode { get; set; } = "WithDriver";
 
+        [Display(Name = "Điểm đón")]
         [Required(ErrorMessage = "Vui lòng nhập điểm đón.")]
         public string PickupAddress { get; set; } = string.Empty;
 
+        [Display(Name = "Điểm trả")]
         [Required(ErrorMessage = "Vui lòng nhập điểm trả.")]
         public string DropoffAddress { get; set; } = string.Empty;
 
+        [Display(Name = "Ngày bắt đầu")]
         [Required(ErrorMessage = "Vui lòng chọn thời gian bắt đầu.")]
         public DateTime StartDate { get; set; } = DateTime.Now.AddDays(1);
 
+        [Display(Name = "Ngày kết thúc")]
         [Required(ErrorMessage = "Vui lòng chọn thời gian kết thúc.")]
         public DateTime EndDate { get; set; } = DateTime.Now.AddDays(1).AddHours(8);
 
+        [Display(Name = "Km ước tính")]
         public decimal? EstimatedDistance { get; set; }
+
+        [Display(Name = "Ghi chú")]
         public string? Notes { get; set; }
+
+        [Display(Name = "Xe")]
         public int? VehicleId { get; set; }
     }
 
@@ -47,6 +60,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         $"{Input.VehicleTypeId}|{Input.RentalMode}|{Input.VehicleId}|{Input.StartDate:yyyy-MM-ddTHH:mm}|{Input.EndDate:yyyy-MM-ddTHH:mm}|{Input.EstimatedDistance}";
 
     public static bool IsSelfDrive(string? mode) => mode == "SelfDrive";
+    public static string RentalModeLabel(string? mode) => mode == "SelfDrive" ? "Tự lái" : "Có tài xế";
 
     [BindProperty] public bool FromRecommendation { get; set; }
 
@@ -75,6 +89,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
+        ErrorMessage = null;
+        InfoMessage = null;
         await LoadLookupsAsync();
         NormalizeAndValidate();
         if (!ModelState.IsValid) return Page();
@@ -87,6 +103,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
+        ErrorMessage = null;
+        InfoMessage = null;
         await LoadLookupsAsync();
         NormalizeAndValidate();
         if (!ModelState.IsValid) return Page();
@@ -95,30 +113,41 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         {
             await LoadQuoteAsync();
             if (Quote is not null)
-                InfoMessage = "Đã lấy báo giá từ máy chủ. Kiểm tra rồi bấm đặt xe.";
+                InfoMessage = BookingSubmitUi.NeedQuoteReview;
             return Page();
         }
 
-        var (data, error) = await api.CreateBookingAsync(new CreateBookingRequest(
-            Input.VehicleTypeId,
-            Input.PickupAddress,
-            Input.DropoffAddress,
-            null, null, null, null,
-            Input.StartDate,
-            Input.EndDate,
-            Input.EstimatedDistance,
-            Input.Notes,
-            Input.RentalMode,
-            Input.VehicleId), FromRecommendation);
-
-        if (data is null)
+        BookingResponse? data = null;
+        string? error = null;
+        try
         {
-            ErrorMessage = error;
-            await LoadQuoteAsync();
+            (data, error) = await api.CreateBookingAsync(new CreateBookingRequest(
+                Input.VehicleTypeId,
+                Input.PickupAddress,
+                Input.DropoffAddress,
+                null, null, null, null,
+                Input.StartDate,
+                Input.EndDate,
+                Input.EstimatedDistance,
+                Input.Notes,
+                Input.RentalMode,
+                Input.VehicleId), FromRecommendation);
+        }
+        catch
+        {
+            data = null;
+            error = null;
+        }
+
+        if (data is null || data.BookingId <= 0)
+        {
+            ErrorMessage = BookingSubmitUi.FriendlyCreateFailure(error);
+            await LoadQuoteAsync(overwriteError: false);
             return Page();
         }
 
-        return RedirectToPage("Details", new { id = data.BookingId });
+        CreatedBooking = data;
+        return Page();
     }
 
     private void NormalizeAndValidate()
@@ -129,15 +158,21 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         if (Input.EndDate <= Input.StartDate)
             ModelState.AddModelError("Input.EndDate", "Thời gian kết thúc phải sau thời gian bắt đầu.");
 
+        if (Input.StartDate.Date < DateTime.Now.Date)
+            ModelState.AddModelError("Input.StartDate", "Ngày bắt đầu không được trong quá khứ.");
+
         if (Input.VehicleTypeId <= 0 || VehicleTypes.All(t => t.TypeId != Input.VehicleTypeId))
             ModelState.AddModelError("Input.VehicleTypeId", "Vui lòng chọn loại xe.");
 
         if (Input.VehicleId is int vehicleId and > 0
             && Vehicles.All(v => v.VehicleId != vehicleId || v.TypeId != Input.VehicleTypeId))
             ModelState.AddModelError("Input.VehicleId", "Xe không thuộc loại xe đã chọn hoặc không còn khả dụng.");
+
+        if (Input.EstimatedDistance is < 0)
+            ModelState.AddModelError("Input.EstimatedDistance", "Km ước tính không được âm.");
     }
 
-    private async Task LoadQuoteAsync()
+    private async Task LoadQuoteAsync(bool overwriteError = true)
     {
         var (quote, error) = await api.GetQuoteAsync(
             Input.VehicleTypeId,
@@ -148,16 +183,24 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         if (quote is null)
         {
             Quote = null;
-            QuoteConfirmed = false;
-            QuotedFingerprint = null;
-            ErrorMessage = error;
+            ApplyQuoteConfirmation(false, null);
+            if (overwriteError || string.IsNullOrEmpty(ErrorMessage))
+                ErrorMessage = error;
             return;
         }
 
         Quote = quote;
-        QuoteConfirmed = true;
-        QuotedFingerprint = CurrentFingerprint;
-        ErrorMessage = null;
+        ApplyQuoteConfirmation(true, CurrentFingerprint);
+        if (overwriteError)
+            ErrorMessage = null;
+    }
+
+    private void ApplyQuoteConfirmation(bool confirmed, string? fingerprint)
+    {
+        QuoteConfirmed = confirmed;
+        QuotedFingerprint = fingerprint;
+        ModelState.Remove(nameof(QuoteConfirmed));
+        ModelState.Remove(nameof(QuotedFingerprint));
     }
 
     private async Task LoadLookupsAsync()

@@ -8,12 +8,14 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
 {
     public List<VehicleResponse> Vehicles { get; set; } = [];
     public HashSet<int> AlertVehicleIds { get; set; } = [];
+    public string? SuccessMessage { get; set; }
     public string? Message { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
         var denied = RequireRole(auth, "Admin");
         if (denied is not null) return denied;
+        SuccessMessage = TempData["Message"] as string;
         Vehicles = await api.GetVehiclesAsync();
         AlertVehicleIds = (await api.GetMaintenanceAlertsAsync()).Select(a => a.VehicleId).ToHashSet();
         return Page();

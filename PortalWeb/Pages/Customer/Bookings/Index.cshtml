@@ -27,10 +27,10 @@ else
                             <div class="fw-bold fs-5">#@b.BookingId · @b.VehicleTypeName</div>
                             <div class="text-muted small">
                                 Hình thức: <strong>@IndexModel.RentalModeLabel(b.RentalMode)</strong>
-                                · Tạo lúc @b.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                · Tạo lúc @UiDisplay.Timestamp(b.CreatedAt)
                             </div>
                         </div>
-                        <span class="badge bg-secondary badge-status">@b.Status</span>
+                        <span class="badge bg-secondary badge-status">@UiDisplay.BookingStatus(b.Status)</span>
                     </div>
                     <div class="mb-3 d-flex flex-wrap gap-2">
                         <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
@@ -51,8 +51,12 @@ else
                         </div>
                         <div class="col-md-3">
                             <div class="detail-label">Thời gian</div>
-                            <div>@b.StartDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
-                            <div class="small text-muted">đến @b.EndDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                            <div>@UiDisplay.Rental(b.StartDate)</div>
+                            <div class="small text-muted">đến @UiDisplay.Rental(b.EndDate)</div>
+                            @if (b.QuotedDays is not null)
+                            {
+                                <div class="small text-muted">@b.QuotedDays ngày</div>
+                            }
                         </div>
                         <div class="col-md-3">
                             <div class="detail-label">Cước phí</div>
@@ -96,7 +100,7 @@ else
                                     </div>
                                     <div class="col-md-4">
                                         <div class="detail-label">Trạng thái xe</div>
-                                        <span class="badge bg-info text-dark">@b.AssignedVehicle.Status</span>
+                                        <span class="badge bg-info text-dark">@UiDisplay.VehicleStatus(b.AssignedVehicle.Status)</span>
                                     </div>
                                 </div>
                             }

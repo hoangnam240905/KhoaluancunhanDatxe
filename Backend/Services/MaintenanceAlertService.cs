@@ -67,13 +67,13 @@ public class MaintenanceAlertService(CarRentalDbContext db)
         Vehicle vehicle,
         MaintenanceRecord? lastCompleted,
         DateTime utcNow,
-        out int kmSince,
+        out int? kmSince,
         out int daysSince,
         out string reason)
     {
         kmSince = KmSince(vehicle.CurrentKm, lastCompleted);
         daysSince = DaysSince(lastCompleted, utcNow);
-        var kmAlert = kmSince >= MaintenanceAlertThresholds.KmThreshold;
+        var kmAlert = kmSince is int km && km >= MaintenanceAlertThresholds.KmThreshold;
         var dayAlert = daysSince >= MaintenanceAlertThresholds.DaysThreshold;
         if (!kmAlert && !dayAlert)
         {
@@ -85,8 +85,14 @@ public class MaintenanceAlertService(CarRentalDbContext db)
         return true;
     }
 
-    public static int KmSince(int currentKm, MaintenanceRecord? lastCompleted)
-        => currentKm - (lastCompleted?.OdometerAtMaintenance ?? 0);
+    public static int? KmSince(int currentKm, MaintenanceRecord? lastCompleted)
+    {
+        if (lastCompleted is null)
+            return null;
+        if (lastCompleted.OdometerAtMaintenance is not int odometer)
+            return null;
+        return currentKm - odometer;
+    }
 
     public static int DaysSince(MaintenanceRecord? lastCompleted, DateTime utcNow)
     {

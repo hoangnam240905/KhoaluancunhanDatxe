@@ -11,6 +11,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
     public List<BookingResponse> ConfirmedBookings { get; set; } = [];
     public List<BookingResponse> SelfDriveAssigned { get; set; } = [];
     public List<BookingResponse> SelfDriveInProgress { get; set; } = [];
+    public DispatchFleetStatusResponse Fleet { get; set; } = new([], []);
     public string? Message { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -29,6 +30,18 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
         return Page();
     }
 
+    public IActionResult OnGetHandover(int id)
+    {
+        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        return RedirectToPage("/Handover", new { id });
+    }
+
+    public IActionResult OnPostHandover(int id)
+    {
+        if (!auth.IsLoggedIn) return RedirectToPage("/Account/Login");
+        return RedirectToPage("/Handover", new { id });
+    }
+
     public static string RentalModeLabel(string? mode)
         => mode == "SelfDrive" ? "Tự lái" : "Có tài xế";
 
@@ -42,5 +55,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
         SelfDriveInProgress = (await api.GetBookingsAsync("InProgress"))
             .Where(b => b.RentalMode == "SelfDrive")
             .ToList();
+        var (fleet, _) = await api.GetFleetStatusAsync();
+        Fleet = new(fleet?.Vehicles ?? [], fleet?.Drivers ?? []);
     }
 }

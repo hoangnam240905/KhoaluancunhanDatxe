@@ -114,7 +114,8 @@ public class PhaseP0DriverStartTests
         Assert.False(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.InProgress, iso.Db.TripAssignments.Find(assignmentId)!.Status);
 
-        Assert.True((await drivers.CompleteTripAsync(6, assignmentId, null)).Ok);
+        Assert.True((await drivers.CompleteTripAsync(
+            6, assignmentId, TestDispatchReady.InspectionForVehicle(iso.Db, 2, extraKm: 20))).Ok);
         Assert.False(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.Completed, iso.Db.TripAssignments.Find(assignmentId)!.Status);
 
@@ -149,13 +150,15 @@ public class PhaseP0DriverStartTests
         var (drivers, dispatch, bookings) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
         Assert.Null(assigned.Error);
         Assert.False(iso.Db.TripAssignments.Any(t => t.BookingId == created.BookingId));
         Assert.False(await drivers.AcceptTripAsync(6, 0));
         Assert.False(await drivers.StartTripAsync(6, 0));
 
-        var handover = await dispatch.HandoverSelfDriveAsync(created.BookingId, 2, null);
+        var handover = await dispatch.HandoverSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId));
         Assert.Null(handover.Error);
         Assert.Equal(BookingStatuses.InProgress, handover.Booking!.Status);
         Assert.Equal(BookingStatuses.InProgress, iso.Db.Bookings.Find(created.BookingId)!.Status);
@@ -177,6 +180,7 @@ public class PhaseP0DriverStartTests
         var booking = await created.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
             Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking!.BookingId}/confirm", dispatcher))).StatusCode);
+        await TestDispatchReady.EnsureSignedAndPaidHttpAsync(client, customer, booking.BookingId);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
             Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking.BookingId}/assign", dispatcher,
                 JsonContent.Create(new AssignTripRequest(6, 2))))).StatusCode);
@@ -201,6 +205,7 @@ public class PhaseP0DriverStartTests
         var bookings = new BookingService(iso.Db, new PricingService());
         var created = await bookings.CreateBookingAsync(3, WithDriver());
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(6, 2), 2);
         Assert.Null(assigned.Error);
         return iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId).AssignmentId;

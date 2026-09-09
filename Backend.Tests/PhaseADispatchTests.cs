@@ -103,6 +103,7 @@ public class PhaseADispatchTests
         iso.Db.SaveChanges();
 
         var target = AddBooking(iso.Db, Start.AddHours(1), End.AddHours(1), BookingStatuses.Confirmed);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         var result = await Dispatch(iso.Db).AssignTripAsync(
             target.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
 
@@ -127,6 +128,7 @@ public class PhaseADispatchTests
         iso.Db.SaveChanges();
 
         var target = AddBooking(iso.Db, Start.AddHours(1), End.AddHours(1), BookingStatuses.Confirmed);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         var result = await Dispatch(iso.Db).AssignTripAsync(
             target.BookingId, new AssignTripRequest(null, 2), dispatcherId: 2);
 
@@ -149,6 +151,7 @@ public class PhaseADispatchTests
         var target = AddBooking(
             iso.Db, Start.AddHours(1), End.AddHours(1), BookingStatuses.Confirmed,
             rentalMode: RentalModes.WithDriver);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, target.BookingId);
         var result = await Dispatch(iso.Db).AssignTripAsync(
             target.BookingId, new AssignTripRequest(6, 2), dispatcherId: 2);
 
@@ -169,6 +172,8 @@ public class PhaseADispatchTests
         using var iso = new IsolatedCarRentalDb();
         var a = AddBooking(iso.Db, Start, End, BookingStatuses.Confirmed);
         var b = AddBooking(iso.Db, Start, End, BookingStatuses.Confirmed);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, a.BookingId);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, b.BookingId);
         iso.Db.ChangeTracker.Clear();
         var path = iso.Path;
         var idA = a.BookingId;

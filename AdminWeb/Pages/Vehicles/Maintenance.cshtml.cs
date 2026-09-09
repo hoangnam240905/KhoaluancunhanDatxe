@@ -10,6 +10,7 @@ public class MaintenanceModel(CarRentalApiClient api, AuthSession auth) : PageMo
 {
     public VehicleResponse? Vehicle { get; set; }
     public List<MaintenanceRecordResponse> History { get; set; } = [];
+
     public string? ErrorMessage { get; set; }
     public string? Message { get; set; }
 
@@ -19,8 +20,6 @@ public class MaintenanceModel(CarRentalApiClient api, AuthSession auth) : PageMo
     {
         [Required] public string MaintenanceType { get; set; } = "Scheduled";
         [Required] public DateTime ScheduledDate { get; set; } = DateTime.Now;
-        public DateTime? CompletedDate { get; set; }
-        public int? OdometerAtMaintenance { get; set; }
         public decimal? Cost { get; set; }
         [MaxLength(500)] public string? Notes { get; set; }
     }
@@ -28,6 +27,8 @@ public class MaintenanceModel(CarRentalApiClient api, AuthSession auth) : PageMo
     public async Task<IActionResult> OnGetAsync(int id)
     {
         if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+        Message = TempData["Message"] as string;
+        ErrorMessage = TempData["ErrorMessage"] as string;
         return await LoadAsync(id);
     }
 
@@ -43,17 +44,37 @@ public class MaintenanceModel(CarRentalApiClient api, AuthSession auth) : PageMo
         var (data, error) = await api.CreateMaintenanceAsync(id, new CreateMaintenanceRequest(
             Input.MaintenanceType,
             Input.ScheduledDate,
-            Input.CompletedDate,
-            Input.OdometerAtMaintenance,
+            null,
             Input.Cost,
             Input.Notes));
         if (data is null)
+        {
             ErrorMessage = error;
-        else
-            Message = "Da ghi nhan bao tri.";
+            await LoadAsync(id);
+            return Page();
+        }
 
-        await LoadAsync(id);
-        return Page();
+        Message = "Đã tạo lịch bảo trì.";
+        TempData["Message"] = Message;
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostCompleteAsync(int id, int maintenanceId, int? odometerKm)
+    {
+        if (!auth.IsLoggedIn) return Redirect("http://localhost:5180/Account/Login");
+
+        var (data, error) = await api.CompleteMaintenanceAsync(
+            id, maintenanceId, new CompleteMaintenanceRequest(odometerKm));
+        if (data is null)
+        {
+            TempData["ErrorMessage"] = string.IsNullOrWhiteSpace(error)
+                ? "⚠️ Không thể hoàn tất bảo trì."
+                : $"⚠️ Không thể hoàn tất bảo trì. {error}";
+            return RedirectToPage(new { id });
+        }
+
+        TempData["Message"] = "✅ Bảo trì đã hoàn tất.";
+        return RedirectToPage(new { id });
     }
 
     private async Task<IActionResult> LoadAsync(int id)
@@ -62,7 +83,7 @@ public class MaintenanceModel(CarRentalApiClient api, AuthSession auth) : PageMo
         if (Vehicle is null) return NotFound();
         var (history, error) = await api.GetMaintenanceHistoryAsync(id);
         History = history;
-        if (ErrorMessage is null) ErrorMessage = error;
+        if (string.IsNullOrEmpty(ErrorMessage)) ErrorMessage = error;
         return Page();
     }
 }

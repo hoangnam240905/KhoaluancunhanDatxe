@@ -32,6 +32,23 @@
             </div>
             <button type="submit" class="btn btn-primary w-100 mt-2">Đăng nhập</button>
         </form>
+        <p class="text-center mt-3 mb-0 small">
+            <a asp-page="/Account/ForgotPassword" class="fw-semibold">Quên mật khẩu?</a>
+        </p>
+        @if (Model.GoogleEnabled)
+        {
+            <div class="text-center my-3 text-muted small">hoặc</div>
+            <div class="d-flex justify-content-center">
+                <div id="g_id_onload"
+                     data-client_id="@Model.GoogleClientId"
+                     data-callback="handleGoogleCredential"
+                     data-auto_prompt="false"></div>
+                <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="continue_with"></div>
+            </div>
+            <form id="google-form" method="post" asp-page-handler="Google" class="d-none">
+                <input type="hidden" asp-for="GoogleIdToken" id="google-id-token" />
+            </form>
+        }
         <div class="demo-box mt-4">
             <strong>Demo:</strong><br />
             Admin: <code>admin@carrental.vn</code><br />
@@ -44,3 +61,17 @@
         </p>
     </div>
 </div>
+
+@section Scripts {
+    @if (Model.GoogleEnabled)
+    {
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script>
+            function handleGoogleCredential(response) {
+                if (!response || !response.credential) return;
+                document.getElementById('google-id-token').value = response.credential;
+                document.getElementById('google-form').submit();
+            }
+        </script>
+    }
+}

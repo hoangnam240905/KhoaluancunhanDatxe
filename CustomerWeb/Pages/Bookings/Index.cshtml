@@ -39,8 +39,12 @@ else
                         <td>@b.VehicleTypeName</td>
                         <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
                         <td>
-                            @b.StartDate.ToString("dd/MM/yyyy HH:mm")
-                            <div class="small text-muted">đến @b.EndDate.ToString("dd/MM HH:mm")</div>
+                            @UiDisplay.Rental(b.StartDate)
+                            <div class="small text-muted">đến @UiDisplay.Rental(b.EndDate)</div>
+                            @if (b.QuotedDays is not null)
+                            {
+                                <div class="small text-muted">@b.QuotedDays ngày</div>
+                            }
                         </td>
                         <td>@b.PickupAddress</td>
                         <td>@b.DropoffAddress</td>
@@ -50,7 +54,7 @@ else
                                 <div class="small text-muted">Chốt: @b.FinalAmount.Value.ToString("N0")</div>
                             }
                         </td>
-                        <td><span class="badge bg-secondary">@b.Status</span></td>
+                        <td><span class="badge bg-secondary">@UiDisplay.BookingStatus(b.Status)</span></td>
                         <td>
                             <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
                             @if (b.Status == "Completed" && !selfDrive)

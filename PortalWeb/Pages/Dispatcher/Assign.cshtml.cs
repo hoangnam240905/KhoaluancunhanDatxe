@@ -61,16 +61,23 @@ public class AssignModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         Booking = (await api.GetBookingsAsync("Confirmed")).FirstOrDefault(b => b.BookingId == id);
         if (Booking is null) return false;
 
+        var (assignable, assignableError) = await api.GetAssignableAsync(id);
+        if (assignable is null)
+        {
+            ErrorMessage ??= assignableError;
+            Drivers = [];
+            Vehicles = [];
+            return true;
+        }
+
         if (!IsSelfDrive)
         {
-            Drivers = await api.GetDriversAsync("Available");
+            Drivers = assignable.Drivers ?? [];
             if (Drivers.Count > 0 && Input.DriverId is null)
                 Input.DriverId = Drivers[0].DriverId;
         }
 
-        Vehicles = (await api.GetVehiclesAsync("Available"))
-            .Where(v => v.TypeId == Booking.VehicleTypeId)
-            .ToList();
+        Vehicles = assignable.Vehicles ?? [];
         if (Vehicles.Count > 0 && Input.VehicleId == 0)
         {
             var heldId = Booking.AssignedVehicle?.VehicleId;

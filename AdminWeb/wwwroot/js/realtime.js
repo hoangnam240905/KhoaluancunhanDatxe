@@ -1,4 +1,7 @@
 (function () {
+    // DEMO TEMP: SignalR client off. Next week: delete this return to restore.
+    return;
+
     var cfg = window.carRentalRealtime;
     if (!cfg || !cfg.hubUrl || !cfg.accessToken)
         return;

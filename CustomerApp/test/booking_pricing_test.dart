@@ -36,7 +36,10 @@ void main() {
       expect(Formatters.rentalModeLabel('WithDriver'), 'Có tài xế');
       expect(Formatters.rentalModeLabel('SelfDrive'), 'Tự lái');
       expect(Formatters.isSelfDrive('SelfDrive'), isTrue);
-      expect(Formatters.isSelfDrive('WithDriver'), isFalse);
+      expect(Formatters.vehicleStatusLabel('Maintenance'), 'Bảo trì');
+      expect(Formatters.vehicleStatusLabel('Available'), 'Sẵn sàng');
+      expect(Formatters.vehicleStatusLabel('Rented'), 'Đang cho thuê');
+      expect(Formatters.vehicleStatusLabel('Inactive'), 'Ngừng hoạt động');
     });
   });
 }

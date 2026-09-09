@@ -32,7 +32,8 @@ public class AdminCustomerService(CarRentalDbContext db)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
-        var items = rows.Select(Map).ToList();
+        var names = await ActorNamesAsync(rows);
+        var items = rows.Select(c => Map(c, names)).ToList();
 
         return new AdminCustomerListResponse(items, total, page, pageSize);
     }
@@ -41,7 +42,9 @@ public class AdminCustomerService(CarRentalDbContext db)
     {
         var customer = await db.Customers.Include(c => c.User)
             .FirstOrDefaultAsync(c => c.CustomerId == id);
-        return customer is null ? null : Map(customer);
+        if (customer is null) return null;
+        var names = await ActorNamesAsync([customer]);
+        return Map(customer, names);
     }
 
     public async Task<(AdminCustomerResponse? Data, string? Error, int StatusCode)> CreateAsync(
@@ -77,6 +80,8 @@ public class AdminCustomerService(CarRentalDbContext db)
             RoleId = customerRole.RoleId,
             IsActive = true,
             IsLocked = false,
+            IsEmailVerified = true,
+            EmailVerifiedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
         };
         db.Users.Add(user);
@@ -93,7 +98,7 @@ public class AdminCustomerService(CarRentalDbContext db)
         await db.SaveChangesAsync();
 
         var loaded = await db.Customers.Include(c => c.User).FirstAsync(c => c.CustomerId == customer.CustomerId);
-        return (Map(loaded), null, StatusCodes.Status201Created);
+        return (Map(loaded, new Dictionary<int, string>()), null, StatusCodes.Status201Created);
     }
 
     public async Task<(AdminCustomerResponse? Data, string? Error, int StatusCode)> UpdateAsync(
@@ -128,31 +133,59 @@ public class AdminCustomerService(CarRentalDbContext db)
         customer.IdNumber = TrimOrNull(request.IdNumber);
         customer.DateOfBirth = request.DateOfBirth;
         await db.SaveChangesAsync();
-        return (Map(customer), null, StatusCodes.Status200OK);
+        var names = await ActorNamesAsync([customer]);
+        return (Map(customer, names), null, StatusCodes.Status200OK);
     }
 
     public async Task<(AdminCustomerResponse? Data, string? Error, int StatusCode)> SetLockedAsync(
-        int id, bool isLocked)
+        int id, bool isLocked, string? reason = null, int? actorUserId = null)
     {
         var customer = await db.Customers.Include(c => c.User)
             .FirstOrDefaultAsync(c => c.CustomerId == id);
         if (customer is null)
             return Fail("Không tìm thấy khách hàng.", StatusCodes.Status404NotFound);
 
-        customer.User.IsLocked = isLocked;
+        if (isLocked)
+        {
+            var reasonError = CustomerAccountStatusRules.ValidateLockReason(reason, out var normalized);
+            if (reasonError is not null)
+                return Fail(reasonError, StatusCodes.Status400BadRequest);
+
+            customer.User.IsLocked = true;
+            customer.User.LockReason = normalized;
+            customer.User.LockedAt = DateTime.UtcNow;
+            customer.User.LockedByUserId = actorUserId;
+        }
+        else
+        {
+            customer.User.IsLocked = false;
+            customer.User.LockReason = null;
+            customer.User.LockedAt = null;
+            customer.User.LockedByUserId = null;
+        }
+
         customer.User.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        return (Map(customer), null, StatusCodes.Status200OK);
+        var names = await ActorNamesAsync([customer]);
+        return (Map(customer, names), null, StatusCodes.Status200OK);
     }
 
-    public async Task<(bool Ok, string? Error, int StatusCode)> DeactivateAsync(int id)
+    public async Task<(bool Ok, string? Error, int StatusCode)> DeactivateAsync(
+        int id, string? reason = null, int? actorUserId = null)
     {
+        var reasonError = CustomerAccountStatusRules.ValidateInactiveReason(reason, out var normalized);
+        if (reasonError is not null)
+            return (false, reasonError, StatusCodes.Status400BadRequest);
+
         var customer = await db.Customers.Include(c => c.User)
             .FirstOrDefaultAsync(c => c.CustomerId == id);
         if (customer is null)
             return (false, "Không tìm thấy khách hàng.", StatusCodes.Status404NotFound);
 
         customer.User.IsActive = false;
+        customer.User.InactiveReason = normalized;
+        customer.User.InactivatedAt = DateTime.UtcNow;
+        customer.User.InactivatedByUserId = actorUserId;
         customer.User.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return (true, null, StatusCodes.Status200OK);
@@ -167,15 +200,45 @@ public class AdminCustomerService(CarRentalDbContext db)
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
-    private static AdminCustomerResponse Map(Customer customer) => new(
-        customer.CustomerId,
-        customer.User.FullName,
-        customer.User.Email,
-        customer.User.Phone,
-        customer.User.IsLocked,
-        customer.User.CreatedAt,
-        customer.User.IsActive,
-        customer.Address,
-        customer.IdNumber,
-        customer.DateOfBirth);
+    private async Task<Dictionary<int, string>> ActorNamesAsync(IEnumerable<Customer> customers)
+    {
+        var ids = customers
+            .SelectMany(c => new int?[] { c.User.LockedByUserId, c.User.InactivatedByUserId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await db.Users.AsNoTracking()
+            .Where(u => ids.Contains(u.UserId))
+            .ToDictionaryAsync(u => u.UserId, u => u.FullName);
+    }
+
+    private static AdminCustomerResponse Map(Customer customer, IReadOnlyDictionary<int, string> names)
+    {
+        string? ActorName(int? id)
+            => id is int value && names.TryGetValue(value, out var name) ? name : null;
+
+        return new(
+            customer.CustomerId,
+            customer.User.FullName,
+            customer.User.Email,
+            customer.User.Phone,
+            customer.User.IsLocked,
+            customer.User.CreatedAt,
+            customer.User.IsActive,
+            customer.Address,
+            customer.IdNumber,
+            customer.DateOfBirth,
+            customer.User.LockReason,
+            customer.User.LockedAt,
+            customer.User.LockedByUserId,
+            ActorName(customer.User.LockedByUserId),
+            customer.User.InactiveReason,
+            customer.User.InactivatedAt,
+            customer.User.InactivatedByUserId,
+            ActorName(customer.User.InactivatedByUserId));
+    }
 }
