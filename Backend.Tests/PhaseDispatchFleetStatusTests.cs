@@ -110,6 +110,24 @@ public class PhaseDispatchFleetStatusTests
     }
 
     [Fact]
+    public async Task Assignable_preview_for_pending_is_read_only()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var (bookings, dispatch, _) = Services(iso);
+        var created = await bookings.CreateBookingAsync(3, new CreateBookingRequest(
+            1, "A", "B", null, null, null, null, Start, End, 20, null, RentalModes.SelfDrive, 2));
+        Assert.Equal(BookingStatuses.Pending, created!.Status);
+
+        var preview = await dispatch.GetAssignableAsync(created.BookingId);
+        Assert.Null(preview.Error);
+        Assert.Contains(preview.Data!.Vehicles, v => v.VehicleId == 2);
+        Assert.Equal(BookingStatuses.Pending, iso.Db.Bookings.Find(created.BookingId)!.Status);
+        Assert.Empty(iso.Db.TripAssignments.Where(t => t.BookingId == created.BookingId));
+        Assert.Empty(iso.Db.Payments.Where(p => p.BookingId == created.BookingId));
+        Assert.Equal(VehicleStatuses.Available, iso.Db.Vehicles.Find(2)!.Status);
+    }
+
+    [Fact]
     public async Task Dispatcher_fleet_status_api_requires_dispatcher_and_returns_rows()
     {
         using var factory = new IsolatedApiFactory();
@@ -149,7 +167,7 @@ public class PhaseDispatchFleetStatusTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         var dispatch = new DispatchService(iso.Db, bookings, drivers, inspections, fees, schedule);
         return (bookings, dispatch, schedule);
     }

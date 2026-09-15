@@ -2,6 +2,7 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Contracts;
 using Backend.Entities;
+using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
@@ -22,6 +23,12 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
             return Fail("Không có quyền tạo hợp đồng cho đơn này.", StatusCodes.Status403Forbidden);
         if (booking.Status == BookingStatuses.Cancelled)
             return Fail("Không thể tạo hợp đồng cho đơn đã hủy.", StatusCodes.Status400BadRequest);
+
+        if (BookingCustomerActionRules.IsAwaitingDispatcher(booking.Status))
+            return Fail(BookingCustomerActionRules.WaitingDispatcher, StatusCodes.Status400BadRequest);
+
+        if (!BookingCustomerActionRules.AllowsIssueOrSignContract(booking.Status))
+            return Fail(BookingCustomerActionRules.CannotIssueContract, StatusCodes.Status400BadRequest);
 
         if (booking.Contract is not null)
             return (Map(booking.Contract), false, null, StatusCodes.Status200OK);
@@ -68,6 +75,9 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
         if (role is not (RoleNames.Customer or RoleNames.Admin or RoleNames.Dispatcher))
             return (null, "Không có quyền xem hợp đồng.", StatusCodes.Status403Forbidden);
 
+        if (role == RoleNames.Customer && BookingCustomerActionRules.IsAwaitingDispatcher(booking.Status))
+            return (null, BookingCustomerActionRules.WaitingDispatcher, StatusCodes.Status400BadRequest);
+
         var contract = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.BookingId == bookingId);
         if (contract is null)
             return (null, "Chưa có hợp đồng.", StatusCodes.Status404NotFound);
@@ -84,12 +94,17 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
             return (null, "Không tìm thấy hợp đồng.", StatusCodes.Status404NotFound);
         if (contract.CustomerId != customerId)
             return (null, "Không có quyền ký hợp đồng này.", StatusCodes.Status403Forbidden);
+        if (BookingCustomerActionRules.IsAwaitingDispatcher(contract.Booking.Status))
+            return (null, BookingCustomerActionRules.WaitingDispatcher, StatusCodes.Status400BadRequest);
         if (contract.Booking.Status == BookingStatuses.Cancelled
             || contract.Status == ContractStatuses.Voided)
             return (null, "Không thể ký hợp đồng đã hủy.", StatusCodes.Status400BadRequest);
 
         if (contract.Status == ContractStatuses.Signed)
             return (Map(contract), null, StatusCodes.Status200OK);
+
+        if (!BookingCustomerActionRules.AllowsIssueOrSignContract(contract.Booking.Status))
+            return (null, BookingCustomerActionRules.CannotSignContract, StatusCodes.Status400BadRequest);
 
         contract.Status = ContractStatuses.Signed;
         contract.SignedAt = DateTime.UtcNow;

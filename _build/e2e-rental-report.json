@@ -1,0 +1,163 @@
+﻿[
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "1.Login",
+        "Result":  "PASS",
+        "Api":  "POST /api/auth/login",
+        "Detail":  "customer=3 dispatcher=2"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "2.ViewVehicleList",
+        "Result":  "PASS",
+        "Api":  "GET /api/vehicles",
+        "Detail":  "count=8 picked V2 51B-67890 km=22570"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "3-4.Select+Detail",
+        "Result":  "PASS",
+        "Api":  "GET /api/vehicles/2",
+        "Detail":  "status=Available Hyundai Accent"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "5.SelectRentalTime",
+        "Result":  "PASS",
+        "Api":  "(client)",
+        "Detail":  "start=2026-09-15T08:13:29.1815188Z end=2026-09-15T14:13:29.1888171Z"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "6.CheckAvailability",
+        "Result":  "PASS",
+        "Api":  "GET /api/vehicles/{id}/busy-periods",
+        "Detail":  "busyCount=0"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "7.GetQuote",
+        "Result":  "PASS",
+        "Api":  "GET /api/bookings/quote",
+        "Detail":  "total=800000.0 deposit=400000 days=1"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "8.CreateBooking",
+        "Result":  "PASS",
+        "Api":  "POST /api/bookings",
+        "Detail":  "bookingId=56 status=Pending"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "9a.ContractBeforeConfirm",
+        "Result":  "BLOCKED",
+        "Api":  "POST /api/bookings/56/contract",
+        "Detail":  "Current rule requires Confirm first: {\"message\":\"Đơn thuê đang chờ điều phối xác nhận. Bạn có thể xem hợp đồng và thanh toán tiền cọc sau khi đơn được xác nhận.\"}"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "13.Confirm",
+        "Result":  "PASS",
+        "Api":  "POST /api/dispatch/bookings/56/confirm",
+        "Detail":  "status=Confirmed"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "9.CreateContract(afterConfirm)",
+        "Result":  "PASS",
+        "Api":  "POST /api/bookings/56/contract",
+        "Detail":  "contractId=9 status=Issued"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "10.SignContract",
+        "Result":  "PASS",
+        "Api":  "POST /api/contracts/9/simulate-sign",
+        "Detail":  "status=Signed"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "11.CreateDeposit",
+        "Result":  "PASS",
+        "Api":  "POST /api/payments",
+        "Detail":  "paymentId=8952 status=Pending amount=400000.0"
+    },
+    {
+        "Mode":  "SelfDrive",
+        "Step":  "12.SimulatePayment",
+        "Result":  "FAIL",
+        "Api":  "POST /api/payments/8952/simulate-success",
+        "Detail":  "{\"message\":\"Không tìm thấy thanh toán.\"}"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "1.Login",
+        "Result":  "PASS",
+        "Api":  "POST /api/auth/login",
+        "Detail":  "ok"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "0.PrepDriverAvailable",
+        "Result":  "PASS",
+        "Api":  "complete open trips + PATCH Available",
+        "Detail":  "driver2@carrental.vn"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "2-4.Vehicle",
+        "Result":  "PASS",
+        "Api":  "GET /api/vehicles",
+        "Detail":  "V2 type=1 51B-67890"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "5-6.Time+Busy",
+        "Result":  "PASS",
+        "Api":  "busy-periods",
+        "Detail":  "busy=1"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "7.GetQuote",
+        "Result":  "PASS",
+        "Api":  "GET quote",
+        "Detail":  "total=1920000.0"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "8.CreateBooking",
+        "Result":  "PASS",
+        "Api":  "POST /api/bookings",
+        "Detail":  "bookingId=57 status=Pending"
+    },
+    {
+        "Mode":  "WithDriver",
+        "Step":  "13.Confirm",
+        "Result":  "FAIL",
+        "Api":  "POST /api/dispatch/bookings/57/confirm",
+        "Detail":  "{\"message\":\"Xe đã có lịch thuê khác trong khoảng thời gian này.\",\"conflictType\":\"Vehicle\",\"vehicleAlternatives\":[],\"driverAlternatives\":[{\"driverId\":6,\"fullName\":\"Vo Thi Lai\",\"phone\":\"0923000002\",\"status\":\"Available\"}]}"
+    },
+    {
+        "Mode":  "PortalWeb",
+        "Step":  "DispatcherHub",
+        "Result":  "PASS",
+        "Api":  "GET /Mockup/Hub",
+        "Detail":  "status=200"
+    },
+    {
+        "Mode":  "PortalWeb",
+        "Step":  "DispatcherTrips",
+        "Result":  "PASS",
+        "Api":  "GET /Mockup/Trips",
+        "Detail":  "status=200"
+    },
+    {
+        "Mode":  "PortalWeb",
+        "Step":  "CustomerCatalog",
+        "Result":  "PASS",
+        "Api":  "GET /Catalog",
+        "Detail":  "status=200"
+    }
+]

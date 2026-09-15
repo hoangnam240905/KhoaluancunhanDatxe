@@ -29,7 +29,7 @@ public class AdminPhase4Group1Tests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        return new DriverService(iso.Db, bookings, inspections, fees);
+        return new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
     }
 
     [Fact]

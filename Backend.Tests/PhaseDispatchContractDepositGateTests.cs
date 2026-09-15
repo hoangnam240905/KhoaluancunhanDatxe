@@ -45,9 +45,10 @@ public class PhaseDispatchContractDepositGateTests
         using var iso = new IsolatedCarRentalDb();
         var (bookings, dispatch, contracts, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive(null));
-        var issued = await contracts.CreateAsync(3, created!.BookingId);
-        Assert.Equal(ContractStatuses.Issued, issued.Contract!.Status);
-        await dispatch.ConfirmBookingAsync(created.BookingId, 2);
+        var confirmed = await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        Assert.Null(confirmed.Error);
+        var createdContract = await contracts.CreateAsync(3, created.BookingId);
+        Assert.Equal(ContractStatuses.Issued, createdContract.Contract!.Status);
 
         var result = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
         Assert.Null(result.Booking);
@@ -61,9 +62,9 @@ public class PhaseDispatchContractDepositGateTests
         using var iso = new IsolatedCarRentalDb();
         var (bookings, dispatch, contracts, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive(null));
-        var issued = await contracts.CreateAsync(3, created!.BookingId);
+        await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        var issued = await contracts.CreateAsync(3, created.BookingId);
         await contracts.SimulateSignAsync(3, issued.Contract!.ContractId);
-        await dispatch.ConfirmBookingAsync(created.BookingId, 2);
 
         var result = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), 2);
         Assert.Null(result.Booking);
@@ -184,6 +185,7 @@ public class PhaseDispatchContractDepositGateTests
         using var iso = new IsolatedCarRentalDb();
         var (bookings, _, _, payments) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
+        await iso.ConfirmBookingAsync(created!.BookingId);
         var (pending, error, status) = await payments.CreateAsync(
             3, new CreatePaymentRequest(created!.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
         Assert.Equal(201, status);
@@ -252,7 +254,7 @@ public class PhaseDispatchContractDepositGateTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         var schedule = new ScheduleConflictService(iso.Db);
         var dispatch = new DispatchService(iso.Db, bookings, drivers, inspections, fees, schedule);
         return (bookings, dispatch, new ContractService(iso.Db), new PaymentService(iso.Db, schedule));

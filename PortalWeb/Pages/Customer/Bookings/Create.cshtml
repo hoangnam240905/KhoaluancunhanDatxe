@@ -1,298 +1,281 @@
 @page "/Customer/Bookings/Create"
 @model PortalWeb.Pages.Customer.Bookings.CreateModel
-@{ ViewData["Title"] = "Đặt xe"; }
-
-<div class="page-header">
-    <h2>Đặt xe</h2>
-    <p>@(Model.CreatedBooking is null ? "Chọn hình thức thuê, loại xe và thông tin chuyến đi" : "Kết quả gửi yêu cầu đặt xe")</p>
-</div>
-
-<div id="booking-feedback">
-@if (Model.CreatedBooking is not null)
-{
-    var created = Model.CreatedBooking;
-    <div class="alert alert-success">
-        <div class="fw-bold fs-5 mb-2">🎉 Đặt xe thành công!</div>
-        <div class="row g-2">
-            <div class="col-md-4"><div class="detail-label">Mã đơn</div><div class="fw-semibold">#@created.BookingId</div></div>
-            <div class="col-md-4"><div class="detail-label">Trạng thái</div><div>@UiDisplay.BookingStatus(created.Status)</div></div>
-            <div class="col-md-4"><div class="detail-label">Loại xe</div><div>@created.VehicleTypeName</div></div>
-            <div class="col-md-4"><div class="detail-label">Hình thức</div><div>@CreateModel.RentalModeLabel(created.RentalMode)</div></div>
-            <div class="col-md-4"><div class="detail-label">Ngày bắt đầu</div><div>@UiDisplay.Rental(created.StartDate)</div></div>
-            <div class="col-md-4"><div class="detail-label">Ngày kết thúc</div><div>@UiDisplay.Rental(created.EndDate)</div></div>
-        </div>
-        <div class="mt-3 d-flex flex-wrap gap-2">
-            <a asp-page="Details" asp-route-id="@created.BookingId" class="btn btn-primary">Xem chi tiết đơn</a>
-            <a asp-page="Index" class="btn btn-outline-secondary">Danh sách đơn</a>
-            <a asp-page="Create" class="btn btn-outline-primary">Đặt xe khác</a>
-        </div>
-    </div>
+@{
+    ViewData["Title"] = "Đặt xe";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var v = Model.SelectedVehicle;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    var quote = Model.Quote;
+    var selfDrive = CreateModel.IsSelfDrive(Model.Input.RentalMode);
+    var samePlace = Model.SameReturnPlace;
+    var startError = ViewData.ModelState["Input.StartDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
+    var endError = ViewData.ModelState["Input.EndDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
 }
-else
-{
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger">
-            <div class="fw-semibold">⚠️ Đặt xe không thành công</div>
-            <div>@Model.ErrorMessage</div>
-        </div>
-    }
-    @if (!string.IsNullOrEmpty(Model.InfoMessage))
-    {
-        <div class="alert alert-info">@Model.InfoMessage</div>
-    }
-    @if (!ViewData.ModelState.IsValid)
-    {
-        <div class="alert alert-warning">
-            <div class="fw-semibold">Vui lòng kiểm tra lại thông tin đặt xe.</div>
-            <div asp-validation-summary="All" class="mb-0 mt-2"></div>
-        </div>
-    }
-    <div class="alert alert-warning d-none" id="client-validation-banner">Vui lòng kiểm tra lại thông tin.</div>
-}
-</div>
 
-@if (Model.CreatedBooking is null)
-{
-<div class="modern-card p-4 col-lg-9">
-    <form method="post" asp-page="/Customer/Bookings/Create" class="row g-4" id="booking-create-form">
-        <input type="hidden" asp-for="FromRecommendation" />
-        <div class="col-12">
-            <div class="fw-semibold mb-2">Hình thức thuê</div>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <input class="btn-check js-quote-input" type="radio" asp-for="Input.RentalMode" value="WithDriver" id="rentalWithDriver" />
-                    <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalWithDriver">
-                        <div class="fw-bold">Có tài xế</div>
-                        <div class="small fw-normal text-muted mt-1">Thuê xe kèm tài xế. Tài xế sẽ được hệ thống điều phối và phân công cho chuyến.</div>
-                    </label>
-                </div>
-                <div class="col-md-6">
-                    <input class="btn-check js-quote-input" type="radio" asp-for="Input.RentalMode" value="SelfDrive" id="rentalSelfDrive" />
-                    <label class="btn btn-outline-primary w-100 text-start p-3 h-100" for="rentalSelfDrive">
-                        <div class="fw-bold">Tự lái</div>
-                        <div class="small fw-normal text-muted mt-1">Tự lái xe. Khách nhận xe và tự sử dụng trong thời gian thuê.</div>
-                    </label>
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/booking-create.css" asp-append-version="true" />
+}
+
+<div class="ch-page" data-cb-page data-cb-quote-url="@Url.Page("Create", "QuoteJson")" data-cb-creating="@BookingSubmitUi.Creating" data-cb-quote-loading="@BookingSubmitUi.QuoteLoading" data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
                 </div>
             </div>
-            <span asp-validation-for="Input.RentalMode" class="text-danger"></span>
         </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
 
-        <div class="col-12">
-            <div class="fw-semibold mb-2">Loại xe</div>
-            @if (!Model.VehicleTypes.Any())
+    <section class="cb-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Đặt xe</div>
+            <h1>Đặt xe cho hành trình của bạn</h1>
+            <p>Chỉ vài bước để hoàn tất thông tin thuê xe.</p>
+            <div class="cb-steps" aria-label="Tiến trình đặt xe">
+                <div class="cb-step is-on"><span>1</span> Thông tin đặt xe</div>
+                <div class="cb-step"><span>2</span> Xác nhận</div>
+                <div class="cb-step"><span>3</span> Thanh toán</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cb-body">
+        <div class="ch-container">
+            @if (Model.CreatedBooking is not null)
             {
-                <p class="text-muted mb-0">Chưa có loại xe khả dụng.</p>
+                var created = Model.CreatedBooking;
+                <div class="cb-card cb-success">
+                    <h2>Yêu cầu đặt xe đã được ghi nhận</h2>
+                    <p>Hình thức @CreateModel.RentalModeLabel(created.RentalMode) · @created.VehicleTypeName</p>
+                    <p>@UiDisplay.Rental(created.StartDate) → @UiDisplay.Rental(created.EndDate)</p>
+                    <div class="cb-success-actions">
+                        <a asp-page="Details" asp-route-id="@created.BookingId" class="ch-search-btn">Xem chi tiết đơn</a>
+                        <a asp-page="Index" class="btn btn-outline-primary">Danh sách đơn</a>
+                    </div>
+                </div>
             }
             else
             {
-                <div class="row g-3">
-                    @foreach (var t in Model.VehicleTypes)
-                    {
-                        <div class="col-md-6">
-                            <input class="btn-check js-quote-input" type="radio" asp-for="Input.VehicleTypeId" value="@t.TypeId" id="vt-@t.TypeId" />
-                            <label class="btn btn-outline-secondary w-100 text-start p-3 h-100" for="vt-@t.TypeId">
-                                @if (!string.IsNullOrWhiteSpace(t.ImageUrl))
-                                {
-                                    <img src="@t.ImageUrl" alt="@t.TypeName" class="img-fluid rounded mb-2" style="max-height:120px;object-fit:cover;width:100%;" />
-                                }
-                                <div class="fw-bold">@t.TypeName</div>
-                                <div class="small text-muted">@t.SeatCapacity chỗ</div>
-                                <div class="small mt-1">Catalog: @t.PricePerDay.ToString("N0") VND/ngày · @t.PricePerKm.ToString("N0") VND/km</div>
-                                <div class="small text-muted">Giá đặt lấy từ báo giá máy chủ.</div>
-                            </label>
+                <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
+                <input type="hidden" asp-for="Input.VehicleTypeId" />
+                <input type="hidden" asp-for="Input.VehicleId" />
+                <input type="hidden" asp-for="Input.RentalMode" data-cb-rental-mode />
+                <input type="hidden" asp-for="Input.EstimatedDistance" data-cb-distance-input />
+                <input type="hidden" asp-for="QuoteConfirmed" data-cb-quote-confirmed />
+                <input type="hidden" asp-for="QuotedFingerprint" data-cb-quote-fingerprint />
+                <input type="hidden" asp-for="FromRecommendation" />
+                <div class="cb-layout">
+                    <div>
+                        <article class="cb-card cb-vehicle">
+                            <img src="@v.ImageUrl" alt="@v.Name" />
+                            <div>
+                                <h2>@v.Name</h2>
+                                <div class="ch-meta">
+                                    <span>@v.Category@(string.IsNullOrWhiteSpace(v.LicensePlate) ? "" : $" · {v.LicensePlate}") · @HomeUi.SeatLabel(v.Seats) · @v.Transmission · @v.Fuel</span>
+                                    <span class="ch-rating"><i class="bi bi-star-fill"></i> @v.Rating.ToString("0.0") (@v.ReviewCount đánh giá)</span>
+                                </div>
+                                <div class="ch-price"><strong>@HomeUi.PricePerDay(v.PricePerDay)</strong></div>
+                            </div>
+                        </article>
+
+                        <div class="cb-card cb-section">
+                            <h3>1. Chọn hình thức thuê</h3>
+                            <div class="cb-modes">
+                                <button type="button" class="cb-mode @(selfDrive ? "is-on" : null)" data-cb-mode="SelfDrive">
+                                    <strong>Tự lái</strong>
+                                    <em>Chủ động điều khiển hành trình của bạn.</em>
+                                </button>
+                                <button type="button" class="cb-mode @(selfDrive ? null : "is-on")" data-cb-mode="WithDriver">
+                                    <strong>Có tài xế</strong>
+                                    <em>Thoải mái tận hưởng chuyến đi cùng tài xế.</em>
+                                </button>
+                            </div>
+                            <div class="cb-driver-note @(selfDrive ? null : "is-on")" data-cb-driver-note>
+                                <i class="bi bi-person-badge"></i>
+                                <span>Tài xế sẽ được điều phối cho chuyến đi. Bạn không cần chọn tài xế cụ thể.</span>
+                            </div>
                         </div>
-                    }
-                </div>
-            }
-        <span asp-validation-for="Input.VehicleTypeId" class="text-danger"></span>
-        </div>
 
-        @{
-            var availableVehicles = Model.Vehicles.Where(v => v.TypeId == Model.Input.VehicleTypeId).ToList();
-        }
-        <div class="col-12">
-            <label asp-for="Input.VehicleId" class="form-label">Xe cụ thể (không bắt buộc)</label>
-            <select asp-for="Input.VehicleId" class="form-select js-quote-input">
-                <option value="">Để điều phối chọn sau</option>
-                @foreach (var vehicle in availableVehicles)
-                {
-                    <option value="@vehicle.VehicleId">@vehicle.LicensePlate · @vehicle.Brand @vehicle.Model</option>
-                }
-            </select>
-            <div class="form-text">Nếu chọn xe, hệ thống sẽ giữ xe này khi bạn thanh toán cọc.</div>
-            <span asp-validation-for="Input.VehicleId" class="text-danger"></span>
-        </div>
+                        <div class="cb-card cb-section">
+                            <h3>2. Chọn thời gian thuê</h3>
+                            <div class="cb-fields">
+                                <div class="cb-field @(string.IsNullOrEmpty(startError) ? null : "is-invalid")">
+                                    <label for="cbPickup">Ngày &amp; giờ nhận xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <input id="cbPickup" asp-for="Input.StartDate" type="datetime-local" data-cb-pickup value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                    </div>
+                                    <div class="cb-error">@(startError ?? "Vui lòng chọn ngày nhận xe.")</div>
+                                </div>
+                                <div class="cb-field @(string.IsNullOrEmpty(endError) ? null : "is-invalid")">
+                                    <label for="cbDropoff">Ngày &amp; giờ trả xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <input id="cbDropoff" asp-for="Input.EndDate" type="datetime-local" data-cb-dropoff value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                    </div>
+                                    <div class="cb-error" data-cb-end-error>@(endError ?? "Vui lòng chọn ngày trả xe.")</div>
+                                </div>
+                            </div>
+                        </div>
 
-        <div class="col-md-6">
-            <label asp-for="Input.StartDate" class="form-label">Ngày bắt đầu</label>
-            <input asp-for="Input.StartDate" class="form-control js-quote-input" type="datetime-local"
-                   min="@(DateTime.Now.Date.ToString("yyyy-MM-dd") + "T00:00")"
-                   value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
-            <span asp-validation-for="Input.StartDate" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="Input.EndDate" class="form-label">Ngày kết thúc</label>
-            <input asp-for="Input.EndDate" class="form-control js-quote-input" type="datetime-local"
-                   min="@(DateTime.Now.Date.ToString("yyyy-MM-dd") + "T00:00")"
-                   value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
-            <span asp-validation-for="Input.EndDate" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="Input.PickupAddress" class="form-label">Điểm đón</label>
-            <input asp-for="Input.PickupAddress" class="form-control" placeholder="TP.HCM" />
-            <span asp-validation-for="Input.PickupAddress" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="Input.DropoffAddress" class="form-label">Điểm trả</label>
-            <input asp-for="Input.DropoffAddress" class="form-control" placeholder="Vũng Tàu" />
-            <span asp-validation-for="Input.DropoffAddress" class="text-danger"></span>
-        </div>
-        <div class="col-md-6">
-            <label asp-for="Input.EstimatedDistance" class="form-label">Km ước tính (không bắt buộc)</label>
-            <input asp-for="Input.EstimatedDistance" class="form-control js-quote-input" type="number" step="0.1" min="0" />
-            <span asp-validation-for="Input.EstimatedDistance" class="text-danger"></span>
-        </div>
-        <div class="col-12">
-            <label asp-for="Input.Notes" class="form-label">Ghi chú</label>
-            <textarea asp-for="Input.Notes" class="form-control" rows="2" placeholder="Yêu cầu đặc biệt, hành lý, điểm đón..."></textarea>
-        </div>
-        <input type="hidden" asp-for="QuoteConfirmed" />
-        <input type="hidden" asp-for="QuotedFingerprint" />
+                        <div class="cb-card cb-section">
+                            <h3>3. Địa điểm nhận &amp; trả xe</h3>
+                            <div class="cb-loc">
+                                <div class="cb-field">
+                                    <label for="cbPickupPlace">Địa điểm nhận xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <input id="cbPickupPlace" asp-for="Input.PickupAddress" type="text" data-cb-pickup-place />
+                                    </div>
+                                </div>
+                                <button type="button" class="cb-swap" data-cb-swap title="Đổi địa điểm" aria-label="Đổi địa điểm"><i class="bi bi-arrow-left-right"></i></button>
+                                <div class="cb-field">
+                                    <label for="cbReturnPlace">Địa điểm trả xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-geo"></i>
+                                        <input id="cbReturnPlace" asp-for="Input.DropoffAddress" type="text" data-cb-return-place />
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="cb-same">
+                                <input type="checkbox" data-cb-same @(samePlace ? "checked" : null) />
+                                Giống địa điểm nhận xe
+                            </label>
+                            <p class="cb-note">Địa điểm nhận và trả xe được lưu cùng đơn thuê.</p>
+                        </div>
 
-        @if (Model.Quote is not null)
-        {
-            var q = Model.Quote;
-            var selfDrive = CreateModel.IsSelfDrive(q.RentalMode);
-            <div class="col-12" id="quote-result">
-                <div class="driver-box">
-                    <div class="fw-bold mb-2">Báo giá từ máy chủ</div>
-                    <div class="small text-muted mb-3">Giá lấy từ GET /api/bookings/quote. Trang không tự tính tổng.</div>
-                    <div class="row g-2">
-                        <div class="col-md-4"><div class="detail-label">Hình thức</div><div>@(selfDrive ? "Tự lái" : "Có tài xế")</div></div>
-                        <div class="col-md-4"><div class="detail-label">Giá thuê/ngày</div><div>@q.QuotedPricePerDay.ToString("N0") VND</div></div>
-                        <div class="col-md-4"><div class="detail-label">Số ngày</div><div>@q.QuotedDays</div></div>
-                        @if (selfDrive)
+                        <div class="cb-card cb-section">
+                            <h3>4. Dịch vụ bổ sung (Tùy chọn)</h3>
+                            <div class="cb-addons">
+                                @foreach (var a in CreateBookingUi.Addons)
+                                {
+                                    <label class="cb-addon">
+                                        <i class="bi @a.Icon"></i>
+                                        <span>
+                                            <strong>@a.Title</strong>
+                                            <span>@a.Description</span>
+                                        </span>
+                                        <em>@CreateBookingUi.Money(a.Price)</em>
+                                        <input type="checkbox" data-cb-addon data-cb-addon-price="@a.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                    </label>
+                                }
+                            </div>
+                            <p class="cb-note">Dịch vụ bổ sung là minh họa giao diện — chưa phải hạng mục thanh toán thật.</p>
+                        </div>
+                    </div>
+
+                    <aside class="cb-card cb-quote">
+                        <h2>Tóm tắt chi phí</h2>
+                        <div class="cb-line">
+                            <span>Giá thuê xe<small data-cb-days>@(quote is null ? "—" : $"{CreateBookingUi.Money(quote.QuotedPricePerDay)} × {quote.QuotedDays} ngày")</small></span>
+                            <span data-cb-rental>@(quote is null ? "—" : CreateBookingUi.Money(quote.RentalAmount))</span>
+                        </div>
+                        <div class="cb-line" data-cb-driver-row @(quote is null || quote.DriverAmount <= 0 ? "hidden" : null)>
+                            <span>Phí tài xế</span>
+                            <span data-cb-driver>@(quote is null ? "—" : CreateBookingUi.Money(quote.DriverAmount))</span>
+                        </div>
+                        <div class="cb-line" data-cb-distance-row @(quote is null || quote.DistanceAmount <= 0 ? "hidden" : null)>
+                            <span>Phụ phí km</span>
+                            <span data-cb-distance>@(quote is null ? "—" : CreateBookingUi.Money(quote.DistanceAmount))</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Dịch vụ bổ sung</span>
+                            <span data-cb-addons-total>0 VNĐ</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Phí dịch vụ</span>
+                            <span>0 VNĐ</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Tiền cọc</span>
+                            <span>50%</span>
+                        </div>
+                        <div class="cb-line cb-total">
+                            <span>Tổng tiền thuê</span>
+                            <strong data-cb-total>@(quote is null ? "—" : CreateBookingUi.Money(quote.TotalAmount))</strong>
+                        </div>
+                        <div class="cb-line">
+                            <span>Tiền cọc dự kiến</span>
+                            <strong data-cb-deposit-amount>@(quote is null ? "—" : CreateBookingUi.Money(quote.DepositAmount))</strong>
+                        </div>
+                        <div class="cb-line" data-cb-remain-row @(quote is null ? "hidden" : null)>
+                            <span>Còn lại</span>
+                            <span data-cb-remain>@(quote is null ? "—" : CreateBookingUi.Money(quote.TotalAmount - quote.DepositAmount))</span>
+                        </div>
+                        <div class="cb-deposit-box">
+                            <h3>Tiền cọc</h3>
+                            <p>Tiền cọc được thanh toán sau khi đơn thuê được tạo và xác nhận.</p>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
                         {
-                            <div class="col-md-4"><div class="detail-label">Km miễn phí</div><div>@q.IncludedKm.ToString("N0") km</div></div>
-                            <div class="col-md-4"><div class="detail-label">Km vượt ước tính</div><div>@q.ExtraKm.ToString("N0") km</div></div>
-                            <div class="col-md-4"><div class="detail-label">Phí km vượt</div><div>@q.ExtraKmPrice.ToString("N0") VND</div></div>
+                            <p class="cb-note" data-cb-status role="alert" style="color:#dc2626">@Model.ErrorMessage</p>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(Model.InfoMessage))
+                        {
+                            <p class="cb-note" data-cb-status>@Model.InfoMessage</p>
                         }
                         else
                         {
-                            <div class="col-md-4"><div class="detail-label">Phí tài xế</div><div>@q.DriverAmount.ToString("N0") VND</div></div>
-                            <div class="col-md-4"><div class="detail-label">Km dự kiến</div><div>@q.EstimatedDistance.ToString("N0") km</div></div>
-                            <div class="col-md-4"><div class="detail-label">Cước km</div><div>@q.DistanceAmount.ToString("N0") VND</div></div>
+                            <p class="cb-note" data-cb-status>@(quote is null ? BookingSubmitUi.QuoteLoading : null)</p>
                         }
-                        <div class="col-md-4"><div class="detail-label">Tạm tính</div><div class="fw-bold text-primary">@q.TotalAmount.ToString("N0") VND</div></div>
-                        <div class="col-md-4"><div class="detail-label">Cọc dự kiến</div><div>@q.DepositAmount.ToString("N0") VND</div></div>
-                    </div>
+                        <button type="submit" class="ch-search-btn cb-confirm" data-cb-confirm>Xác nhận đặt xe</button>
+                        <p class="cb-secure">Thông tin của bạn được bảo mật và an toàn.</p>
+                        @if (v.Slug != "selected")
+                        {
+                            <a class="cb-back" asp-page="/Catalog/Details" asp-route-slug="@v.Slug"><i class="bi bi-arrow-left"></i> Quay lại chi tiết xe</a>
+                        }
+                        else
+                        {
+                            <a class="cb-back" asp-page="/Catalog"><i class="bi bi-arrow-left"></i> Quay lại chi tiết xe</a>
+                        }
+                    </aside>
                 </div>
-            </div>
-        }
-        <div class="col-12 d-none" id="quote-stale">
-            <div class="alert alert-warning py-2 mb-0">Thông tin đã đổi. Bấm «Xem báo giá» để tính lại tạm tính và cọc.</div>
+                </form>
+            }
         </div>
-
-        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-        {
-            <div class="col-12">
-                <div class="alert alert-danger mb-0">
-                    <div class="fw-semibold">⚠️ Đặt xe không thành công</div>
-                    <div>@Model.ErrorMessage</div>
-                </div>
-            </div>
-        }
-        @if (!string.IsNullOrEmpty(Model.InfoMessage))
-        {
-            <div class="col-12">
-                <div class="alert alert-info mb-0">@Model.InfoMessage</div>
-            </div>
-        }
-
-        <div class="col-12">
-            <button type="submit" asp-page-handler="Quote" class="btn btn-outline-primary px-4" id="btn-quote">Xem báo giá</button>
-            <button type="submit" class="btn btn-primary px-4" id="btn-submit-booking">Gửi yêu cầu đặt xe</button>
-            <a asp-page="/Customer/Bookings/Index" class="btn btn-outline-secondary ms-2">Quay lại</a>
-        </div>
-    </form>
+    </section>
 </div>
-}
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script>
-        (function () {
-            var feedback = document.getElementById('booking-feedback');
-            if (feedback && feedback.querySelector('.alert:not(.d-none)')) {
-                feedback.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            var form = document.getElementById('booking-create-form');
-            if (!form) return;
-
-            var quoteBox = document.getElementById('quote-result');
-            var stale = document.getElementById('quote-stale');
-            var confirmed = document.querySelector('[name="QuoteConfirmed"]');
-            var fingerprint = document.querySelector('[name="QuotedFingerprint"]');
-            function invalidateQuote() {
-                if (quoteBox) quoteBox.classList.add('d-none');
-                if (stale) stale.classList.remove('d-none');
-                if (confirmed) confirmed.value = 'false';
-                if (fingerprint) fingerprint.value = '';
-            }
-            document.querySelectorAll('.js-quote-input').forEach(function (el) {
-                el.addEventListener('change', invalidateQuote);
-                el.addEventListener('input', invalidateQuote);
-            });
-
-            var submitBtn = document.getElementById('btn-submit-booking');
-            var quoteBtn = document.getElementById('btn-quote');
-            var clientBanner = document.getElementById('client-validation-banner');
-            var submitting = false;
-            var submitLabel = submitBtn ? submitBtn.textContent : 'Gửi yêu cầu đặt xe';
-
-            function restoreButtons() {
-                submitting = false;
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = submitLabel;
-                }
-                if (quoteBtn) quoteBtn.disabled = false;
-            }
-
-            function lockSubmit() {
-                submitting = true;
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Đang xử lý...';
-                }
-                if (quoteBtn) quoteBtn.disabled = true;
-            }
-
-            if (window.jQuery) {
-                jQuery(form).on('invalid-form.validate', function () {
-                    restoreButtons();
-                    if (clientBanner) {
-                        clientBanner.classList.remove('d-none');
-                        clientBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                });
-            }
-
-            form.addEventListener('submit', function (e) {
-                if (window.jQuery && jQuery(form).valid && !jQuery(form).valid()) {
-                    restoreButtons();
-                    return;
-                }
-                var submitter = e.submitter;
-                if (submitter && submitter.id === 'btn-quote') return;
-                if (submitting) {
-                    e.preventDefault();
-                    return;
-                }
-                lockSubmit();
-            });
-        })();
-    </script>
+    <script src="~/js/booking-create.js" asp-append-version="true"></script>
 }

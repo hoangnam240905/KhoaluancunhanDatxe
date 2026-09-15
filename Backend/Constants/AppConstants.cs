@@ -275,6 +275,17 @@ public static class ScheduleBuffers
     public static readonly TimeSpan Technical = TimeSpan.FromHours(TechnicalHours);
 }
 
+/// <summary>
+/// Messages when a late return would violate the existing 2-hour schedule buffer.
+/// </summary>
+public static class LateReturnSchedule
+{
+    public const string VehicleConflict =
+        "Trả xe muộn chồng lịch xe (kể cả đệm 2 giờ) với đơn đang chiếm lịch.";
+    public const string DriverConflict =
+        "Trả xe muộn chồng lịch tài xế (kể cả đệm 2 giờ) với đơn đang chiếm lịch.";
+}
+
 public static class ScheduleConflictTypes
 {
     public const string Vehicle = "Vehicle";

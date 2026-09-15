@@ -46,8 +46,20 @@ public class VehiclesController(VehicleService vehicleService, VehicleOperationa
 {
     [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<List<VehicleResponse>>> GetAll([FromQuery] string? status)
-        => Ok(await vehicleService.GetVehiclesAsync(status));
+    public async Task<ActionResult<List<VehicleResponse>>> GetAll(
+        [FromQuery] string? status,
+        [FromQuery] int[]? typeId,
+        [FromQuery] int[]? seats,
+        [FromQuery] decimal? priceMax,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate)
+    {
+        var (data, error, code) = await vehicleService.TryGetVehiclesAsync(
+            status, typeId, seats, priceMax, startDate, endDate);
+        return data is null
+            ? StatusCode(code, new { message = error })
+            : Ok(data);
+    }
 
     [AllowAnonymous]
     [HttpGet("{id:int}")]
@@ -55,6 +67,19 @@ public class VehiclesController(VehicleService vehicleService, VehicleOperationa
     {
         var vehicle = await vehicleService.GetVehicleByIdAsync(id);
         return vehicle is null ? NotFound() : Ok(vehicle);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/busy-periods")]
+    public async Task<ActionResult<IReadOnlyList<VehicleBusyPeriodResponse>>> GetBusyPeriods(
+        int id,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to)
+    {
+        var (data, error, code) = await vehicleService.TryGetBusyPeriodsAsync(id, from, to);
+        return data is null
+            ? StatusCode(code, new { message = error })
+            : Ok(data);
     }
 
     [Authorize(Roles = RoleNames.Admin)]

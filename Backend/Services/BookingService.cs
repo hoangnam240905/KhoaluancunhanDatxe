@@ -12,15 +12,23 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
     public async Task<BookingResponse?> CreateBookingAsync(
         int customerId, CreateBookingRequest request, bool fromRecommendation = false)
     {
-        if (BookingDateRules.ValidateNewRental(request.StartDate, request.EndDate) is not null)
-            return null;
+        var (booking, _) = await TryCreateBookingAsync(customerId, request, fromRecommendation);
+        return booking;
+    }
+
+    public async Task<(BookingResponse? Booking, string? Error)> TryCreateBookingAsync(
+        int customerId, CreateBookingRequest request, bool fromRecommendation = false)
+    {
+        if (BookingDateRules.ValidateNewRental(request.StartDate, request.EndDate) is string dateError)
+            return (null, dateError);
 
         if (!RentalModes.TryResolve(request.RentalMode, out var rentalMode))
-            return null;
+            return (null, "Hình thức thuê không hợp lệ.");
 
         var vehicleType = await db.VehicleTypes
             .FirstOrDefaultAsync(vt => vt.TypeId == request.VehicleTypeId && vt.IsActive);
-        if (vehicleType is null) return null;
+        if (vehicleType is null)
+            return (null, "Loại xe không hợp lệ.");
 
         var quote = pricing.CalculateQuote(
             vehicleType,
@@ -33,9 +41,12 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
         if (request.VehicleId is int vehicleId and > 0)
         {
             var vehicle = await db.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == vehicleId);
-            if (vehicle is null) return null;
-            if (vehicle.TypeId != request.VehicleTypeId) return null;
-            if (vehicle.Status == VehicleStatuses.Inactive) return null;
+            if (vehicle is null)
+                return (null, "Không tìm thấy xe.");
+            if (vehicle.TypeId != request.VehicleTypeId)
+                return (null, "Xe không thuộc loại xe được đặt.");
+            if (vehicle.Status == VehicleStatuses.Inactive)
+                return (null, "Xe không khả dụng.");
             intentVehicleId = vehicle.VehicleId;
         }
 
@@ -74,7 +85,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
         await AddStatusHistoryAsync(booking.BookingId, null, BookingStatuses.Pending, customerId, "Khach tao don dat xe");
         await RealtimeNotify.BookingStatusChanged(
             realtime, customerId, booking.BookingId, booking.Status, booking.AssignedVehicleId);
-        return await GetBookingByIdAsync(booking.BookingId);
+        return (await GetBookingByIdAsync(booking.BookingId), null);
     }
 
     public async Task<(BookingQuoteResponse? Quote, string? Error)> GetQuoteAsync(
@@ -123,6 +134,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
             .Include(b => b.Inspections)
+            .Include(b => b.Review)
+            .Include(b => b.Payments)
             .AsQueryable();
 
         if (customerId.HasValue)
@@ -145,6 +158,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
             .Include(b => b.Inspections)
+            .Include(b => b.Review)
+            .Include(b => b.Payments)
             .FirstOrDefaultAsync(b => b.BookingId == id);
 
         return booking is null ? null : MapToResponse(booking);
@@ -342,6 +357,14 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .OrderBy(i => i.InspectionId)
             .Select(VehicleInspectionService.ToResponse)
             .ToList();
+        var review = b.Review is null
+            ? null
+            : new ReviewResponse(
+                b.Review.ReviewId,
+                b.Review.BookingId,
+                b.Review.Rating,
+                b.Review.Comment,
+                b.Review.CreatedAt);
 
         return new BookingResponse(
             b.BookingId,
@@ -372,8 +395,15 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             fees,
             finalBaseAmount,
             totalFees,
-            inspections);
+            inspections,
+            review,
+            HasActiveDeposit(b));
     }
+
+    private static bool HasActiveDeposit(Booking b)
+        => (b.Payments ?? []).Any(p =>
+            p.PaymentType == PaymentTypes.Deposit
+            && (p.Status == PaymentStatuses.Pending || p.Status == PaymentStatuses.Paid));
 
     private static BookingQuoteResponse ToQuoteResponse(
         VehicleType vehicleType,

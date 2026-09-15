@@ -12,7 +12,9 @@ public class ForgotPasswordModel(CarRentalApiClient api, AuthSession auth) : Rol
 
     public class InputModel
     {
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Vui lòng nhập email.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+        public string Email { get; set; } = string.Empty;
     }
 
     public IActionResult OnGet()

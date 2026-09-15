@@ -1,3 +1,4 @@
+using DispatcherWeb;
 using DispatcherWeb.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
+app.UseMockupAuthGate();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 

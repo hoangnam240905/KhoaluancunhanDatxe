@@ -24,9 +24,13 @@ public class ScheduleConflictService(CarRentalDbContext db)
         => newStart < existingEnd + ScheduleBuffers.Technical
            && newEnd > existingStart - ScheduleBuffers.Technical;
 
+    /// <summary>
+    /// Statuses that occupy a vehicle by lifecycle, without a deposit hold.
+    /// Confirmed is dispatcher approval only and does not occupy.
+    /// Pending/Confirmed occupy only with an active deposit (see OccupyingBookings).
+    /// </summary>
     public static bool OccupiesSchedule(string? status)
-        => status is BookingStatuses.Confirmed
-            or BookingStatuses.Assigned
+        => status is BookingStatuses.Assigned
             or BookingStatuses.InProgress;
 
     public Task<bool> HasVehicleConflictAsync(
@@ -205,37 +209,85 @@ public class ScheduleConflictService(CarRentalDbContext db)
         return available;
     }
 
+    /// <summary>
+    /// When return is after planned EndDate, re-check vehicle/driver occupancy for
+    /// [StartDate, returnAt] with the existing T_buffer = 2h rule. On-time / early
+    /// returns are not re-checked (planned window was already validated at assign).
+    /// </summary>
+    public async Task<string?> GetLateReturnScheduleBlockAsync(
+        Booking booking,
+        DateTime returnAt,
+        int? vehicleId = null,
+        int? driverId = null)
+    {
+        if (returnAt <= booking.EndDate)
+            return null;
+
+        var resolvedVehicleId = vehicleId
+            ?? booking.AssignedVehicleId
+            ?? booking.TripAssignment?.VehicleId;
+        if (resolvedVehicleId is int vid and > 0
+            && await HasVehicleConflictAsync(vid, booking.StartDate, returnAt, booking.BookingId))
+        {
+            return LateReturnSchedule.VehicleConflict;
+        }
+
+        var resolvedDriverId = driverId ?? booking.TripAssignment?.DriverId;
+        if (resolvedDriverId is int did and > 0
+            && await HasDriverConflictAsync(did, booking.StartDate, returnAt, booking.BookingId))
+        {
+            return LateReturnSchedule.DriverConflict;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Actual occupying intervals for a vehicle. Does not expand the 2-hour buffer.
+    /// Reuses OccupyingBookings (deposit hold, Assigned, InProgress).
+    /// </summary>
+    public async Task<IReadOnlyList<(DateTime StartDate, DateTime EndDate)>> ListVehicleBusyIntervalsAsync(
+        int vehicleId, DateTime from, DateTime to)
+    {
+        var rows = await OccupyingQuery(null)
+            .Where(b =>
+                (b.AssignedVehicleId == vehicleId
+                    || (b.TripAssignment != null && b.TripAssignment.VehicleId == vehicleId))
+                && b.StartDate < to
+                && b.EndDate > from)
+            .OrderBy(b => b.StartDate)
+            .ThenBy(b => b.EndDate)
+            .Select(b => new { b.StartDate, b.EndDate })
+            .ToListAsync();
+        return rows.Select(r => (r.StartDate, r.EndDate)).ToList();
+    }
+
     public Task<List<Booking>> ListOccupyingBookingsAsync()
-        => db.Bookings.AsNoTracking()
+        => OccupyingBookings(null)
+            .AsNoTracking()
             .Include(b => b.TripAssignment)
                 .ThenInclude(t => t!.Driver)
                 .ThenInclude(d => d.User)
-            .Where(b =>
-                b.Status == BookingStatuses.Confirmed
-                || b.Status == BookingStatuses.Assigned
-                || b.Status == BookingStatuses.InProgress
-                || (b.Status == BookingStatuses.Pending
-                    && b.AssignedVehicleId != null
-                    && b.Payments.Any(p =>
-                        p.PaymentType == PaymentTypes.Deposit
-                        && (p.Status == PaymentStatuses.Pending
-                            || p.Status == PaymentStatuses.Paid))))
             .ToListAsync();
 
     private IQueryable<Booking> OccupyingQuery(int? excludeBookingId)
+        => OccupyingBookings(excludeBookingId).Include(b => b.TripAssignment);
+
+    /// <summary>
+    /// Held = Assigned/InProgress, or Pending/Confirmed with a selected vehicle and
+    /// an active deposit (Pending or Paid). Confirmed alone is not a hold.
+    /// </summary>
+    private IQueryable<Booking> OccupyingBookings(int? excludeBookingId)
     {
-        var query = db.Bookings
-            .Include(b => b.TripAssignment)
-            .Where(b =>
-                b.Status == BookingStatuses.Confirmed
-                || b.Status == BookingStatuses.Assigned
-                || b.Status == BookingStatuses.InProgress
-                || (b.Status == BookingStatuses.Pending
-                    && b.AssignedVehicleId != null
-                    && b.Payments.Any(p =>
-                        p.PaymentType == PaymentTypes.Deposit
-                        && (p.Status == PaymentStatuses.Pending
-                            || p.Status == PaymentStatuses.Paid))));
+        var query = db.Bookings.Where(b =>
+            b.Status == BookingStatuses.Assigned
+            || b.Status == BookingStatuses.InProgress
+            || ((b.Status == BookingStatuses.Pending || b.Status == BookingStatuses.Confirmed)
+                && b.AssignedVehicleId != null
+                && b.Payments.Any(p =>
+                    p.PaymentType == PaymentTypes.Deposit
+                    && (p.Status == PaymentStatuses.Pending
+                        || p.Status == PaymentStatuses.Paid))));
 
         if (excludeBookingId is int id)
             query = query.Where(b => b.BookingId != id);

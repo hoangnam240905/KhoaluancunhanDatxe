@@ -1,114 +1,316 @@
 @page
+@using CustomerWeb.Display
 @model CustomerWeb.Pages.IndexModel
 @{
-    ViewData["Title"] = "Cho thue xe du lich";
+    ViewData["Title"] = "Trang chủ";
+    ViewData["HomeShell"] = true;
+    var initials = string.IsNullOrWhiteSpace(Model.CustomerName)
+        ? "DX"
+        : string.Concat(Model.CustomerName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    string? TypeImage(int typeId) => Model.VehicleTypes.FirstOrDefault(t => t.TypeId == typeId)?.ImageUrl;
+    int? TypeSeats(int typeId) => Model.VehicleTypes.FirstOrDefault(t => t.TypeId == typeId)?.SeatCapacity;
+    var showRecs = Model.Recommendations.Any();
+    var recIndex = 0;
+    var typeIndex = 0;
 }
 
-<div class="hero mb-4 p-4 rounded text-white" style="background: linear-gradient(135deg, #0d6efd, #6610f2);">
-    <h1 class="display-6">He thong cho thue xe du lich</h1>
-    <p class="mb-0">Chon loai xe phu hop va dat chuyen di cua ban.</p>
-</div>
-
-@if (Model.IsLoggedIn)
-{
-    <div class="alert alert-success">Xin chao, <strong>@Model.CustomerName</strong>!</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
 }
 
-<h3 class="mt-4">Goi y cho ban</h3>
-<p class="text-muted small">Nhap thoi gian thue. Xep hang theo danh gia, lich su dat va xe con lich (rule-based).</p>
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-md-3">
-        <label class="form-label">Bat dau</label>
-        <input type="datetime-local" name="StartDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Ket thuc</label>
-        <input type="datetime-local" name="EndDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">So cho</label>
-        <input type="number" name="Seats" min="1" class="form-control" value="@Model.Seats" />
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Gia/ngay toi da</label>
-        <input type="number" name="PriceMax" min="0" class="form-control" value="@Model.PriceMax" />
-    </div>
-    <div class="col-md-2">
-        <button class="btn btn-primary w-100" type="submit">Goi y</button>
-    </div>
-</form>
-@if (!string.IsNullOrEmpty(Model.RecommendError))
-{
-    <div class="alert alert-danger">@Model.RecommendError</div>
-}
-else if (Model.HasRecommendQuery && !Model.Recommendations.Any())
-{
-    <div class="alert alert-warning">Khong co loai xe kha dung.</div>
-}
-else if (Model.Recommendations.Any())
-{
-    <div class="row g-4 mb-4">
-        @foreach (var t in Model.Recommendations)
-        {
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body">
-                        <h5>@t.TypeName</h5>
-                        <p class="small text-muted">Diem @t.Score.ToString("0.00") · Rating @t.AvgRating.ToString("0.00") · @t.AvailableCount xe</p>
-                        <p><strong>@t.PricePerDay.ToString("N0")</strong> VND/ngay</p>
+<div class="ch-page">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" asp-page="/Index">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a class="is-active" asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                @if (Model.IsLoggedIn)
+                {
+                    <a asp-page="/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a href="#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" href="#search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                @if (Model.IsLoggedIn)
+                {
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta ch-user-meta">
+                                <span class="dx-user-name">@Model.CustomerName</span>
+                                <span class="dx-user-role">Khách hàng</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
                     </div>
-                    <div class="card-footer bg-white border-0">
-                        @if (Model.IsLoggedIn)
-                        {
-                            <a asp-page="/Bookings/Create"
-                               asp-route-typeId="@t.VehicleTypeId"
-                               asp-route-start="@Model.StartDate?.ToString("yyyy-MM-ddTHH:mm")"
-                               asp-route-end="@Model.EndDate?.ToString("yyyy-MM-ddTHH:mm")"
-                               asp-route-fromRecommendation="true"
-                               class="btn btn-primary w-100">Chon va dat</a>
-                        }
-                        else
-                        {
-                            <a href="http://localhost:5180/Account/Login" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
-}
-
-<h3>Bang gia</h3>
-<div class="row g-4">
-    @foreach (var type in Model.VehicleTypes)
-    {
-        <div class="col-md-6 col-lg-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">@type.TypeName</h5>
-                    <p class="text-muted small mb-2">@type.SeatCapacity cho</p>
-                    <p class="card-text">@type.Description</p>
-                    <ul class="list-unstyled small">
-                        <li><strong>@type.PricePerDay.ToString("N0")</strong> VND/ngay</li>
-                        <li><strong>@type.PricePerKm.ToString("N0")</strong> VND/km</li>
-                    </ul>
-                </div>
-                <div class="card-footer bg-white border-0">
-                    @if (Model.IsLoggedIn)
-                    {
-                        <a asp-page="/Bookings/Create" asp-route-typeId="@type.TypeId" class="btn btn-primary w-100">Dat xe</a>
-                    }
-                    else
-                    {
-                        <a href="http://localhost:5180/Account/Login" class="btn btn-outline-primary w-100">Dang nhap de dat xe</a>
-                    }
-                </div>
+                }
+                else
+                {
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Register">Đăng ký</a>
+                }
             </div>
         </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                @if (Model.IsLoggedIn)
+                {
+                    <a asp-page="/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a href="#about">Về chúng tôi</a>
+                @if (!Model.IsLoggedIn)
+                {
+                    <a asp-page="/Account/Login">Đăng nhập</a>
+                    <a asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <section class="ch-hero">
+        <div class="ch-container ch-hero-grid">
+            <div class="ch-hero-copy">
+                <div class="ch-eyebrow">Cho thuê xe du lịch</div>
+                <h1>Tìm chiếc xe hoàn hảo cho hành trình của bạn</h1>
+                <p class="ch-hero-lead">Xe cao cấp, lịch thuê linh hoạt và những chuyến đi đáng nhớ cùng DriveX.</p>
+            </div>
+            <div class="ch-hero-visual">
+                <img src="~/images/home/hero.jpg" asp-append-version="true" alt="Xe du lịch DriveX" />
+            </div>
+        </div>
+    </section>
+
+    <div class="ch-search-wrap" id="search">
+        <div class="ch-container">
+            <form method="get" asp-page="/Search" class="ch-search">
+                <div class="ch-mode" aria-hidden="true">
+                    <span>Tự lái</span>
+                    <span class="is-on">Có tài xế</span>
+                </div>
+                <div class="ch-search-grid">
+                    <div class="ch-field">
+                        <label for="uiPickup">Địa điểm nhận xe</label>
+                        <input id="uiPickup" type="text" value="TP. Hồ Chí Minh" readonly />
+                    </div>
+                    <div class="ch-field">
+                        <label for="StartDate">Ngày nhận xe</label>
+                        <input id="StartDate" type="datetime-local" name="StartDate" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+                    </div>
+                    <div class="ch-field">
+                        <label for="EndDate">Ngày trả xe</label>
+                        <input id="EndDate" type="datetime-local" name="EndDate" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" required />
+                    </div>
+                    <div class="ch-field">
+                        <label for="Seats">Số chỗ</label>
+                        <input id="Seats" type="number" name="Seats" min="1" value="@Model.Seats" />
+                    </div>
+                    <div class="ch-field">
+                        <label for="PriceMax">Giá tối đa / ngày</label>
+                        <input id="PriceMax" type="number" name="PriceMax" min="0" value="@Model.PriceMax" />
+                    </div>
+                    <button type="submit" class="ch-search-btn">Tìm xe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <section class="ch-section" id="recommended">
+        <div class="ch-container">
+            <div class="ch-section-head">
+                <div>
+                    <div class="ch-kicker">Gợi ý</div>
+                    <h2>Gợi ý dành cho bạn</h2>
+                    <p>Những mẫu xe phù hợp cho hành trình sắp tới</p>
+                </div>
+                <a class="ch-link" asp-page="/Catalog">Xem tất cả xe</a>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.RecommendError))
+            {
+                <div class="alert alert-danger">@Model.RecommendError</div>
+            }
+            else if (Model.HasRecommendQuery && !showRecs)
+            {
+                <div class="alert alert-warning">Không có loại xe khả dụng trong khoảng thời gian này.</div>
+            }
+
+            @if (showRecs)
+            {
+                <div class="ch-grid">
+                    @foreach (var t in Model.Recommendations)
+                    {
+                        var seats = TypeSeats(t.VehicleTypeId);
+                        var img = HomeUi.VehicleImage(TypeImage(t.VehicleTypeId), t.TypeName, seats);
+                        var isTop = recIndex++ == 0;
+                        <article class="ch-card">
+                            <div class="ch-card-media">
+                                <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
+                                <span class="ch-badge @(isTop ? "" : "ch-badge-alt")">@(isTop ? "Đề xuất hàng đầu" : "Gợi ý")</span>
+                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            </div>
+                            <div class="ch-card-body">
+                                <h3>@t.TypeName</h3>
+                                <div class="ch-meta">
+                                    @if (seats is int)
+                                    {
+                                        <span><i class="bi bi-people"></i> @HomeUi.SeatLabel(seats)</span>
+                                    }
+                                    <span class="ch-rating"><i class="bi bi-star-fill"></i> @t.AvgRating.ToString("0.0")</span>
+                                    <span>@t.AvailableCount xe còn lịch</span>
+                                </div>
+                                <div class="ch-price">
+                                    <strong>@HomeUi.PricePerDay(t.PricePerDay)</strong>
+                                    <a asp-page="/Catalog" class="btn @(Model.IsLoggedIn ? "btn-primary" : "btn-outline-primary") btn-sm">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+            else if (Model.VehicleTypes.Any())
+            {
+                <div class="ch-grid">
+                    @foreach (var t in Model.VehicleTypes)
+                    {
+                        var img = HomeUi.VehicleImage(t.ImageUrl, t.TypeName, t.SeatCapacity);
+                        var isTop = typeIndex++ == 0;
+                        <article class="ch-card">
+                            <div class="ch-card-media">
+                                <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
+                                <span class="ch-badge @(isTop ? "" : "ch-badge-alt")">@(isTop ? "Đề xuất hàng đầu" : "Gợi ý")</span>
+                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            </div>
+                            <div class="ch-card-body">
+                                <h3>@t.TypeName</h3>
+                                <div class="ch-meta">
+                                    <span><i class="bi bi-people"></i> @HomeUi.SeatLabel(t.SeatCapacity)</span>
+                                </div>
+                                <div class="ch-price">
+                                    <strong>@HomeUi.PricePerDay(t.PricePerDay)</strong>
+                                    <a asp-page="/Catalog" class="btn @(Model.IsLoggedIn ? "btn-primary" : "btn-outline-primary") btn-sm">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+
+    @if (showRecs && Model.VehicleTypes.Any())
+    {
+        <section class="ch-section" id="cars" style="padding-top: 1rem;">
+            <div class="ch-container">
+                <div class="ch-section-head">
+                    <div>
+                        <div class="ch-kicker">Đội xe</div>
+                        <h2>Xe đang có</h2>
+                        <p>Các loại xe đang phục vụ trên DriveX</p>
+                    </div>
+                </div>
+                <div class="ch-grid">
+                    @foreach (var t in Model.VehicleTypes)
+                    {
+                        var img = HomeUi.VehicleImage(t.ImageUrl, t.TypeName, t.SeatCapacity);
+                        <article class="ch-card">
+                            <div class="ch-card-media">
+                                <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
+                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            </div>
+                            <div class="ch-card-body">
+                                <h3>@t.TypeName</h3>
+                                <div class="ch-meta">
+                                    <span><i class="bi bi-people"></i> @HomeUi.SeatLabel(t.SeatCapacity)</span>
+                                </div>
+                                <div class="ch-price">
+                                    <strong>@HomeUi.PricePerDay(t.PricePerDay)</strong>
+                                    <a asp-page="/Catalog" class="btn @(Model.IsLoggedIn ? "btn-primary" : "btn-outline-primary") btn-sm">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        </section>
     }
+    else if (!Model.VehicleTypes.Any() && !showRecs)
+    {
+        <section class="ch-section" id="cars">
+            <div class="ch-container">
+                <div class="alert alert-warning">Đang tải bảng giá... Hãy đảm bảo hệ thống đang chạy.</div>
+            </div>
+        </section>
+    }
+
+    <section class="ch-value" id="about">
+        <div class="ch-container">
+            <div class="ch-section-head">
+                <div>
+                    <div class="ch-kicker">Vì sao chọn DriveX</div>
+                    <h2>Tự tin trên mọi hành trình</h2>
+                </div>
+            </div>
+            <div class="ch-value-grid">
+                <article class="ch-value-item">
+                    <i class="bi bi-shield-check"></i>
+                    <h3>An toàn &amp; Tin cậy</h3>
+                    <p>Đội xe được bảo dưỡng định kỳ và quy trình đặt xe rõ ràng từ lúc yêu cầu đến khi hoàn thành chuyến đi.</p>
+                </article>
+                <article class="ch-value-item">
+                    <i class="bi bi-headset"></i>
+                    <h3>Hỗ trợ 24/7</h3>
+                    <p>Đặt xe trực tuyến bất cứ lúc nào — đội ngũ hỗ trợ luôn sẵn sàng đồng hành cùng bạn.</p>
+                </article>
+                <article class="ch-value-item">
+                    <i class="bi bi-grid-1x2"></i>
+                    <h3>Đa dạng lựa chọn</h3>
+                    <p>Sedan, SUV, MPV và xe cao cấp phù hợp cho công việc, gia đình hay những chuyến đi đặc biệt.</p>
+                </article>
+                <article class="ch-value-item">
+                    <i class="bi bi-tag"></i>
+                    <h3>Giá tốt nhất</h3>
+                    <p>Giá theo ngày minh bạch, hiển thị rõ trước khi bạn xác nhận đặt xe.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <footer class="ch-footer">
+        <div class="ch-container d-flex justify-content-between flex-wrap gap-2">
+            <span>DriveX · Cho thuê xe du lịch</span>
+            <span>&copy; 2026 DriveX</span>
+        </div>
+    </footer>
 </div>
 
-@if (!Model.VehicleTypes.Any())
-{
-    <div class="alert alert-warning mt-4">Khong co loai xe nao. Hay kiem tra Backend dang chay tai port 5199.</div>
+@section Scripts {
+    @if (Model.HasRecommendQuery)
+    {
+        <script>
+            document.getElementById('recommended')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        </script>
+    }
 }

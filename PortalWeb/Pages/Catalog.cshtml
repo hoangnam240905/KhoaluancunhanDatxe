@@ -1,0 +1,263 @@
+@page
+@model PortalWeb.Pages.CatalogModel
+@{
+    ViewData["Title"] = "Xe đang có sẵn";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
+}
+
+<div class="ch-page cc-page">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a class="is-active" asp-page="/Catalog">Xe</a>
+                @if (Model.IsCustomer)
+                {
+                    <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                @if (Model.IsLoggedIn)
+                {
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta ch-user-meta">
+                                <span class="dx-user-name">@Model.UserName</span>
+                                <span class="dx-user-role">@(Model.IsCustomer ? "Khách hàng" : "")</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Catalog">Xe</a>
+                @if (Model.IsCustomer)
+                {
+                    <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a href="/#about">Về chúng tôi</a>
+                @if (!Model.IsLoggedIn)
+                {
+                    <a asp-page="/Account/Login">Đăng nhập</a>
+                    <a asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <section class="cc-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Khám phá đội xe</div>
+            <h1>Xe đang có sẵn</h1>
+            <p>Lựa chọn chiếc xe phù hợp cho hành trình của bạn.</p>
+        </div>
+    </section>
+
+    <div class="ch-container" id="filters">
+        <form method="get" asp-page="/Catalog" class="ch-search cc-filter">
+            <div class="ch-mode" data-cc-mode aria-hidden="true">
+                <span>Tự lái</span>
+                <span class="is-on">Có tài xế</span>
+            </div>
+            <div class="cc-filter-grid">
+                <div class="ch-field">
+                    <label for="TypeId">Loại xe</label>
+                    <select id="TypeId" name="TypeId">
+                        <option value="">Tất cả loại xe</option>
+                        @foreach (var type in Model.VehicleTypes)
+                        {
+                            <option value="@type.TypeId" selected="@(Model.HeroTypeId == type.TypeId ? "selected" : null)">@type.TypeName</option>
+                        }
+                    </select>
+                </div>
+                <div class="ch-field">
+                    <label for="PriceMax">Khoảng giá / ngày</label>
+                    <select id="PriceMax" name="PriceMax">
+                        <option value="">Mọi mức giá</option>
+                        <option value="1000000" selected="@(Model.PriceMax == 1000000 ? "selected" : null)">Dưới 1.000.000</option>
+                        <option value="2000000" selected="@(Model.PriceMax == 2000000 ? "selected" : null)">Dưới 2.000.000</option>
+                        <option value="4000000" selected="@(Model.PriceMax == 4000000 ? "selected" : null)">Dưới 4.000.000</option>
+                    </select>
+                </div>
+                <div class="ch-field">
+                    <label for="Seats">Số chỗ</label>
+                    <select id="Seats" name="Seats">
+                        <option value="">Tất cả</option>
+                        <option value="4" selected="@(Model.HeroSeats == 4 ? "selected" : null)">Từ 4 chỗ</option>
+                        <option value="5" selected="@(Model.HeroSeats == 5 ? "selected" : null)">Từ 5 chỗ</option>
+                        <option value="7" selected="@(Model.HeroSeats == 7 ? "selected" : null)">Từ 7 chỗ</option>
+                        <option value="9" selected="@(Model.HeroSeats == 9 ? "selected" : null)">Từ 9 chỗ</option>
+                        <option value="16" selected="@(Model.HeroSeats == 16 ? "selected" : null)">Từ 16 chỗ</option>
+                    </select>
+                </div>
+                <div class="ch-field">
+                    <label for="StartDate">Ngày nhận xe</label>
+                    <input id="StartDate" type="datetime-local" name="StartDate" value="@(Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+                <div class="ch-field">
+                    <label for="EndDate">Ngày trả xe</label>
+                    <input id="EndDate" type="datetime-local" name="EndDate" value="@(Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+                <div class="ch-field">
+                    <label for="Transmission">Hộp số</label>
+                    <select id="Transmission" disabled title="Hệ thống chưa có dữ liệu hộp số">
+                        <option>Chưa có dữ liệu</option>
+                    </select>
+                </div>
+                <button type="button" class="cc-more" data-bs-toggle="offcanvas" data-bs-target="#ccFilters">
+                    <i class="bi bi-sliders"></i> Bộ lọc khác
+                </button>
+                <button type="submit" class="ch-search-btn">Tìm xe</button>
+            </div>
+        </form>
+    </div>
+
+    <section class="cc-body">
+        <div class="ch-container">
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <p class="bk-alert" role="alert">@Model.ErrorMessage</p>
+            }
+
+            <div class="cc-toolbar">
+                <h2>@Model.Results.Count xe được tìm thấy</h2>
+                <div class="cc-toolbar-actions">
+                    <button type="button" class="cc-more cc-more-mobile" data-bs-toggle="offcanvas" data-bs-target="#ccFilters">
+                        <i class="bi bi-sliders"></i> Bộ lọc
+                    </button>
+                    <label class="cc-sort">
+                        Sắp xếp
+                        <select>
+                            <option>Phổ biến</option>
+                            <option>Giá thấp đến cao</option>
+                            <option>Giá cao đến thấp</option>
+                            <option>Đánh giá cao</option>
+                        </select>
+                    </label>
+                    <div class="cc-view" role="group" aria-label="Kiểu hiển thị">
+                        <button type="button" class="is-on" data-cc-view="grid" title="Lưới" aria-label="Lưới"><i class="bi bi-grid"></i></button>
+                        <button type="button" data-cc-view="list" title="Danh sách" aria-label="Danh sách"><i class="bi bi-list-ul"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cc-grid" data-cc-grid>
+                @if (!Model.Results.Any() && string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="bk-empty">
+                        <h2>Không có xe phù hợp</h2>
+                        <p>Thử đổi loại xe, số chỗ, giá hoặc thời gian thuê.</p>
+                    </div>
+                }
+                @foreach (var t in Model.Results)
+                {
+                    <article class="ch-card">
+                        <div class="ch-card-media">
+                            <img src="@t.ImageUrl" alt="@t.Name" />
+                            <button type="button" class="ch-fav" data-cc-fav title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                        </div>
+                        <div class="ch-card-body">
+                            <h3>@t.Name</h3>
+                            <div class="ch-meta">
+                                <span>@t.Category@(string.IsNullOrWhiteSpace(t.LicensePlate) ? "" : $" · {t.LicensePlate}") · @HomeUi.SeatLabel(t.Seats)</span>
+                            </div>
+                            <div class="ch-price">
+                                <strong>@HomeUi.PricePerDay(t.PricePerDay)</strong>
+                                @if (t.VehicleId is int vehicleId and > 0)
+                                {
+                                    <a asp-page="/Catalog/Details"
+                                       asp-route-slug="@vehicleId"
+                                       asp-route-startDate="@Model.StartDate"
+                                       asp-route-endDate="@Model.EndDate"
+                                       class="btn btn-outline-primary btn-sm">Chi tiết</a>
+                                    <a asp-page="/Customer/Bookings/Create"
+                                       asp-route-vehicleId="@vehicleId"
+                                       asp-route-start="@Model.StartDate"
+                                       asp-route-end="@Model.EndDate"
+                                       class="btn btn-primary btn-sm">Đặt xe</a>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="ccFilters">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title fs-5 fw-bold">Bộ lọc khác</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="cc-extra" data-cc-filters>
+            <div class="cc-extra-group">
+                <h3>Hình thức thuê</h3>
+                <label class="cc-check"><input type="checkbox" /> Tự lái</label>
+                <label class="cc-check"><input type="checkbox" /> Có tài xế</label>
+            </div>
+            <div class="cc-extra-group">
+                <h3>Nhiên liệu</h3>
+                <label class="cc-check"><input type="checkbox" /> Xăng</label>
+                <label class="cc-check"><input type="checkbox" /> Dầu</label>
+                <label class="cc-check"><input type="checkbox" /> Hybrid</label>
+            </div>
+            <div class="cc-extra-group">
+                <h3>Thương hiệu</h3>
+                <label class="cc-check"><input type="checkbox" /> Mercedes-Benz</label>
+                <label class="cc-check"><input type="checkbox" /> Toyota</label>
+                <label class="cc-check"><input type="checkbox" /> Hyundai</label>
+                <label class="cc-check"><input type="checkbox" /> Kia</label>
+                <label class="cc-check"><input type="checkbox" /> Ford</label>
+            </div>
+            <p class="cc-ui-note">Bộ lọc đang ở giai đoạn giao diện — chưa áp dụng dữ liệu thật.</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/catalog.js" asp-append-version="true"></script>
+}

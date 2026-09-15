@@ -1,0 +1,24 @@
+﻿HUB_STATUS=200 LEN=237891
+YES Booking &amp; Approval Hub
+YES Tiếp nhận, kiểm tra và xác nhận yêu cầu thuê xe
+YES Chờ xác nhận
+YES Đã xác nhận
+YES Cần phân công
+YES Đang thực hiện
+YES Xem chi tiết
+YES Xác nhận đơn
+YES Không duyệt / Hủy đơn
+YES Tình trạng xe
+NO  Giao xe
+YES handler=Confirm
+YES handler=Reject
+NO  Kiểm tra khả năng phục vụ
+YES Tìm kiếm
+YES Đặt lại
+FILTER_Q53_STATUS=200 contains#53=True contains#52=False
+PENDING_PAGE=200 confirmBtn=True
+ASSIGN_QUEUE=200 note=True note2=False
+DETAIL53=200 customer=True timeline=False serve=True
+ASSIGN_PAGE_STATUS= LEN=0
+HANDOVER_PAGE= LEN=0
+COMPLETE_PAGE= LEN=0

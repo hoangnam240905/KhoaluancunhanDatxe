@@ -190,6 +190,14 @@ public class PricingService
         return Math.Max(0, (int)Math.Ceiling(duration.TotalDays - quotedDays.Value));
     }
 
+    /// <summary>
+    /// Excess time past planned Booking.EndDate. Zero when on time or early.
+    /// Used for schedule consistency; LateFee still requires an explicit lateFeePerDay
+    /// (no LateFee rate exists on VehicleType / Booking snapshot).
+    /// </summary>
+    public static TimeSpan ResolveLateExcessOverEnd(DateTime endAt, DateTime returnAt)
+        => returnAt <= endAt ? TimeSpan.Zero : returnAt - endAt;
+
     public static decimal? ResolveFuelDrop(decimal? handoverFuel, decimal? returnFuel)
     {
         if (handoverFuel is null || returnFuel is null)

@@ -123,7 +123,8 @@ internal static class TestDispatchReady
 
         var pay = await client.SendAsync(Authed(
             HttpMethod.Post, "/api/payments", customerToken,
-            JsonContent.Create(new CreatePaymentRequest(bookingId, PaymentTypes.Deposit, PaymentMethods.Cash))));
+            JsonContent.Create(new CreatePaymentRequest(
+                bookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2))));
         pay.EnsureSuccessStatusCode();
         var payment = await pay.Content.ReadFromJsonAsync<PaymentResponse>();
         var paid = await client.SendAsync(Authed(

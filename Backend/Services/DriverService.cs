@@ -13,6 +13,7 @@ public class DriverService(
     BookingService bookingService,
     VehicleInspectionService inspections,
     BookingFeeService fees,
+    ScheduleConflictService schedule,
     IRealtimePublisher? realtime = null)
 {
     public async Task<List<DriverResponse>> GetDriversAsync(string? status = null)
@@ -146,6 +147,12 @@ public class DriverService(
             return (false, BookingStateTransitionRules.InvalidTransition);
 
         var handover = await inspections.GetHandoverAsync(assignment.BookingId);
+        var returnAt = DateTime.UtcNow;
+        var scheduleBlock = await schedule.GetLateReturnScheduleBlockAsync(
+            assignment.Booking, returnAt, assignment.VehicleId, assignment.DriverId);
+        if (scheduleBlock is not null)
+            return (false, scheduleBlock);
+
         var (inspection, inspectError) = await inspections.AddAsync(
             assignment.BookingId,
             VehicleInspectionTypes.Return,

@@ -90,6 +90,60 @@ public static class UiDisplay
     public static string ApiFailure(string prefix, string? backendMessage)
         => string.IsNullOrWhiteSpace(backendMessage) ? prefix : $"{prefix} {backendMessage.Trim()}";
 
+    public static string PaymentStatus(string? status) => status switch
+    {
+        "Pending" => "Chờ thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Failed" => "Thất bại",
+        "Refunded" => "Đã hoàn",
+        _ => status ?? "—"
+    };
+
+    public static string BookingStatusClass(string? status) => status switch
+    {
+        "Pending" => "dx-badge-pending",
+        "Confirmed" => "dx-badge-confirmed",
+        "Assigned" => "dx-badge-assigned",
+        "InProgress" => "dx-badge-inprogress",
+        "Completed" => "dx-badge-completed",
+        "Cancelled" => "dx-badge-cancelled",
+        _ => "dx-badge-gray"
+    };
+
+    public static string VehicleStatusClass(string? status) => status switch
+    {
+        "Available" => "dx-badge-available",
+        "Rented" => "dx-badge-rented",
+        "Maintenance" => "dx-badge-maintenance",
+        "Inactive" => "dx-badge-inactive",
+        _ => "dx-badge-gray"
+    };
+
+    public static string DriverStatusClass(string? status) => status switch
+    {
+        "Available" => "dx-badge-available",
+        "Busy" => "dx-badge-busy",
+        "Offline" => "dx-badge-offline",
+        _ => "dx-badge-gray"
+    };
+
+    public static string PaymentStatusClass(string? status) => status switch
+    {
+        "Pending" => "dx-badge-pending",
+        "Paid" => "dx-badge-paid",
+        "Failed" => "dx-badge-failed",
+        "Refunded" => "dx-badge-refunded",
+        _ => "dx-badge-gray"
+    };
+
+    public static string ContractStatusClass(string? status) => status switch
+    {
+        "Issued" => "dx-badge-issued",
+        "Signed" => "dx-badge-signed",
+        "Voided" => "dx-badge-voided",
+        _ => "dx-badge-gray"
+    };
+
     public static DateTime ToVietnam(DateTime value)
     {
         var utc = value.Kind switch

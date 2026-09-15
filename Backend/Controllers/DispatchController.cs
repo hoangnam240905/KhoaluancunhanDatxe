@@ -33,8 +33,12 @@ public class DispatchController(
     public async Task<ActionResult<BookingResponse>> Confirm(int id)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var (booking, error) = await dispatchService.ConfirmBookingAsync(id, userId);
-        return booking is null ? BadRequest(new { message = error ?? "Không thể xác nhận đơn." }) : Ok(booking);
+        var result = await dispatchService.ConfirmBookingAsync(id, userId);
+        if (result.Booking is not null)
+            return Ok(result.Booking);
+        if (result.Conflict is not null)
+            return BadRequest(result.Conflict);
+        return BadRequest(new { message = result.Error ?? "Không thể xác nhận đơn." });
     }
 
     [HttpPost("bookings/{id:int}/assign")]

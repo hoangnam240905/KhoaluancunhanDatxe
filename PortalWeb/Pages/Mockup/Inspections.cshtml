@@ -1,0 +1,126 @@
+@page
+@model PortalWeb.Pages.Mockup.InspectionsModel
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Biên bản kiểm xe";
+    ViewData["Nav"] = "inspections";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/mockup-inspections.css" asp-append-version="true" />
+}
+
+@if (!string.IsNullOrEmpty(Model.LoadError))
+{
+    <div class="alert alert-warning">@Model.LoadError</div>
+}
+else
+{
+    <div class="mk-banner">Biên bản kiểm xe — dữ liệu từ Backend (dispatch inspections + bookings/vehicles). Tạo/sửa độc lập, ảnh, checklist chi tiết vẫn presentation-only (thiếu API).</div>
+}
+
+<section class="mk-hub-head">
+    <div>
+        <h1>Biên bản kiểm xe</h1>
+        <p>Quản lý kiểm tra tình trạng xe trước và sau mỗi chuyến thuê</p>
+    </div>
+    <button type="button" class="mk-btn mk-btn-primary" id="inspCreateBtn" title="Thiếu API tạo biên bản độc lập">+ Tạo biên bản</button>
+</section>
+
+<div class="insp-kpis" id="inspKpis" data-source="api"></div>
+
+<section class="mk-card mk-toolbar">
+    <h2>Tìm kiếm &amp; bộ lọc</h2>
+    <form id="inspFilter" class="insp-filter-grid" autocomplete="off">
+        <label class="mk-field insp-search">
+            <span>Tìm kiếm</span>
+            <input type="search" name="q" placeholder="Tìm theo mã đơn, biển số, tên xe, khách hàng..." />
+        </label>
+        <label class="mk-field">
+            <span>Khoảng thời gian</span>
+            <input type="date" name="from" />
+        </label>
+        <label class="mk-field">
+            <span>Đến ngày</span>
+            <input type="date" name="to" />
+        </label>
+        <label class="mk-field">
+            <span>Xe</span>
+            <select name="vehicle" id="inspVehicleFilter">
+                <option value="">Tất cả xe</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Tình trạng</span>
+            <select name="condition">
+                <option value="">Tất cả tình trạng</option>
+                <option value="good">Tốt</option>
+                <option value="minor">Vấn đề nhỏ</option>
+                <option value="inspect">Cần kiểm tra</option>
+                <option value="major">Vấn đề nghiêm trọng</option>
+            </select>
+        </label>
+        <div class="mk-toolbar-actions">
+            <button type="submit" class="mk-btn mk-btn-primary">Tìm kiếm</button>
+            <button type="reset" class="mk-btn mk-btn-ghost" id="inspReset">Đặt lại</button>
+        </div>
+    </form>
+    <div class="mk-pills" id="inspTypePills"></div>
+</section>
+
+<div class="mk-card insp-table-card">
+    <div class="insp-table-wrap">
+        <table class="mk-table insp-table">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Mã đơn</th>
+                    <th>Biển số</th>
+                    <th>Xe</th>
+                    <th>Loại kiểm tra</th>
+                    <th>Số km</th>
+                    <th>Nhiên liệu</th>
+                    <th>Tình trạng</th>
+                    <th>Ngày giờ</th>
+                    <th>Người kiểm tra</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="inspTableBody"></tbody>
+        </table>
+    </div>
+    <div class="insp-cards" id="inspCards"></div>
+    <div class="mk-empty" id="inspEmpty" hidden>Không có biên bản khớp bộ lọc.</div>
+    <div class="insp-pager-row">
+        <p class="mk-muted" id="inspMeta"></p>
+        <div class="op-pager" id="inspPager"></div>
+    </div>
+</div>
+
+<aside class="mk-drawer insp-drawer" id="inspDrawer" aria-hidden="true"></aside>
+<div class="mk-modal" id="inspModal" hidden>
+    <div class="mk-modal-dialog" id="inspModalBody"></div>
+</div>
+<div class="insp-lightbox" id="inspLightbox" hidden>
+    <button type="button" class="insp-lightbox-close" data-close-lightbox aria-label="Đóng">×</button>
+    <div class="insp-lightbox-card" id="inspLightboxBody"></div>
+</div>
+<div class="insp-print" id="inspPrint" hidden></div>
+<div class="mk-toast" id="inspToast"></div>
+
+@section Scripts {
+    <script>
+        window.__INSPECTIONS_BOOTSTRAP__ = @Html.Raw(Model.BootstrapJson);
+        window.__INSPECTIONS_READY__ = @(Model.HasBootstrap ? "true" : "false");
+        window.__INSPECTIONS_HANDLERS__ = {
+            reload: '@Url.Page("/Mockup/Inspections", "Reload")',
+            detail: '@Url.Page("/Mockup/Inspections", "Detail")'
+        };
+        window.__INSPECTIONS_SSR_METRICS__ = {
+            total: @Model.MetricTotal,
+            good: @Model.MetricGood,
+            minor: @Model.MetricMinor,
+            major: @Model.MetricMajor
+        };
+    </script>
+    <script src="~/js/mockup-inspections.js" asp-append-version="true"></script>
+}

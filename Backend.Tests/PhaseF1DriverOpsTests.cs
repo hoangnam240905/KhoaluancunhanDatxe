@@ -175,7 +175,7 @@ public class PhaseF1DriverOpsTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees, realtime);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db), realtime);
         var dispatch = new DispatchService(
             iso.Db, bookings, drivers, inspections, fees, new ScheduleConflictService(iso.Db), realtime);
         var incidents = new IncidentService(iso.Db, realtime);

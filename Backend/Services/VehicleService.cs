@@ -22,33 +22,131 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
 
     public async Task<List<VehicleResponse>> GetVehiclesAsync(string? status = null)
     {
+        var (data, _, _) = await TryGetVehiclesAsync(status);
+        return data ?? [];
+    }
+
+    public async Task<(List<VehicleResponse>? Data, string? Error, int StatusCode)> TryGetVehiclesAsync(
+        string? status = null,
+        int[]? typeId = null,
+        int[]? seats = null,
+        decimal? priceMax = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null)
+    {
+        var typeIds = (typeId ?? [])
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+        var seatValues = seats ?? [];
+        if (seatValues.Any(s => s < 1))
+            return (null, "Số chỗ không hợp lệ.", StatusCodes.Status400BadRequest);
+
+        int? seatMin = seatValues.Length == 0 ? null : seatValues.Min();
+        if (priceMax is < 0)
+            return (null, "Giá tối đa không hợp lệ.", StatusCodes.Status400BadRequest);
+
+        var hasStart = startDate is not null;
+        var hasEnd = endDate is not null;
+        if (hasStart != hasEnd)
+            return (null, "Thời gian thuê không hợp lệ.", StatusCodes.Status400BadRequest);
+        if (hasStart && hasEnd)
+        {
+            var dateError = BookingDateRules.ValidateNewRental(startDate!.Value, endDate!.Value);
+            if (dateError is not null)
+                return (null, dateError, StatusCodes.Status400BadRequest);
+        }
+
         var query = db.Vehicles.Include(v => v.VehicleType).AsQueryable();
+        var effectiveStatus = status;
+        if (hasStart && string.IsNullOrWhiteSpace(effectiveStatus))
+            effectiveStatus = VehicleStatuses.Available;
 
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(v => v.Status == status);
+        if (!string.IsNullOrWhiteSpace(effectiveStatus))
+            query = query.Where(v => v.Status == effectiveStatus);
+        if (typeIds.Length > 0)
+            query = query.Where(v => typeIds.Contains(v.TypeId));
+        if (seatMin is int minSeats)
+            query = query.Where(v => v.VehicleType.SeatCapacity >= minSeats);
+        if (priceMax is decimal max)
+            query = query.Where(v => v.VehicleType.PricePerDay <= max);
 
-        return await query
+        var list = await query
             .OrderBy(v => v.Brand)
-            .Select(v => new VehicleResponse(
-                v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
-                v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
-                v.RegistrationNumber, v.RegistrationExpiryDate,
-                v.InspectionExpiryDate, v.InsuranceExpiryDate))
+            .ThenBy(v => v.VehicleId)
             .ToListAsync();
+
+        if (hasStart)
+        {
+            var blocked = await schedule.GetMaintenanceBlockedVehicleIdsAsync();
+            var rentable = new List<Entities.Vehicle>(list.Count);
+            foreach (var vehicle in list)
+            {
+                if (blocked.Contains(vehicle.VehicleId))
+                    continue;
+                if (await schedule.HasVehicleConflictAsync(vehicle.VehicleId, startDate!.Value, endDate!.Value))
+                    continue;
+                rentable.Add(vehicle);
+            }
+
+            list = rentable;
+        }
+
+        return (list.Select(MapVehicle).ToList(), null, StatusCodes.Status200OK);
+    }
+
+    public async Task<(IReadOnlyList<VehicleBusyPeriodResponse>? Data, string? Error, int StatusCode)>
+        TryGetBusyPeriodsAsync(int vehicleId, DateTime? from = null, DateTime? to = null)
+    {
+        if (vehicleId < 1)
+            return (null, "Xe không hợp lệ.", StatusCodes.Status400BadRequest);
+
+        var exists = await db.Vehicles.AsNoTracking().AnyAsync(v => v.VehicleId == vehicleId);
+        if (!exists)
+            return (null, "Không tìm thấy xe.", StatusCodes.Status404NotFound);
+
+        var hasFrom = from is not null;
+        var hasTo = to is not null;
+        if (hasFrom != hasTo)
+            return (null, "Thời gian không hợp lệ.", StatusCodes.Status400BadRequest);
+
+        DateTime windowStart;
+        DateTime windowEnd;
+        if (hasFrom)
+        {
+            if (to!.Value <= from!.Value)
+                return (null, BookingDateRules.EndMustBeAfterStart, StatusCodes.Status400BadRequest);
+            windowStart = from.Value;
+            windowEnd = to.Value;
+        }
+        else
+        {
+            var today = VietnamTime.Today;
+            windowStart = new DateTime(today.Year, today.Month, 1);
+            windowEnd = windowStart.AddMonths(12);
+        }
+
+        var intervals = await schedule.ListVehicleBusyIntervalsAsync(vehicleId, windowStart, windowEnd);
+        var periods = intervals
+            .Select(i => new VehicleBusyPeriodResponse(i.StartDate, i.EndDate))
+            .ToList();
+        return (periods, null, StatusCodes.Status200OK);
     }
 
     public async Task<VehicleResponse?> GetVehicleByIdAsync(int id)
     {
-        return await db.Vehicles
+        var vehicle = await db.Vehicles
             .Include(v => v.VehicleType)
-            .Where(v => v.VehicleId == id)
-            .Select(v => new VehicleResponse(
-                v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
-                v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
-                v.RegistrationNumber, v.RegistrationExpiryDate,
-                v.InspectionExpiryDate, v.InsuranceExpiryDate))
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(v => v.VehicleId == id);
+        return vehicle is null ? null : MapVehicle(vehicle);
     }
+
+    private static VehicleResponse MapVehicle(Entities.Vehicle v) => new(
+        v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
+        v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
+        v.RegistrationNumber, v.RegistrationExpiryDate,
+        v.InspectionExpiryDate, v.InsuranceExpiryDate,
+        v.VehicleType.SeatCapacity, v.VehicleType.PricePerDay);
 
     public Task<(VehicleResponse? Data, string? Error, int StatusCode)> CreateVehicleAsync(
         CreateVehicleRequest request)

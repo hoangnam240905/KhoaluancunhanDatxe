@@ -15,8 +15,12 @@ public class LoginModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
 
     public class InputModel
     {
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
-        [Required] public string Password { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Vui lòng nhập email.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
+        public string Password { get; set; } = string.Empty;
     }
 
     public async Task<IActionResult> OnGetAsync()

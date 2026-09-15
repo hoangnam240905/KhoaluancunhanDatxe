@@ -14,7 +14,7 @@ class CarRentalApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Car Rental',
+      title: 'DriveX',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const SplashScreen(),

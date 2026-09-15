@@ -2,6 +2,7 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Payments;
 using Backend.Entities;
+using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
@@ -9,6 +10,8 @@ namespace Backend.Services;
 public class PaymentService(CarRentalDbContext db, ScheduleConflictService schedule, IRealtimePublisher? realtime = null)
 {
     public const string CancelledBookingDeposit = "Không thể tạo tiền cọc cho đơn đã hủy.";
+    public const string MissingConcreteVehicle =
+        "Đơn thuê chưa có xe cụ thể để giữ. Vui lòng chọn xe trước khi thanh toán tiền cọc.";
 
     public Task<(PaymentResponse? Payment, string? Error, int StatusCode)> CreateAsync(
         int customerId,
@@ -46,6 +49,12 @@ public class PaymentService(CarRentalDbContext db, ScheduleConflictService sched
 
         if (booking.Status == BookingStatuses.Cancelled)
             return Fail(CancelledBookingDeposit, StatusCodes.Status400BadRequest);
+
+        if (BookingCustomerActionRules.IsAwaitingDispatcher(booking.Status))
+            return Fail(BookingCustomerActionRules.WaitingDispatcher, StatusCodes.Status400BadRequest);
+
+        if (!BookingCustomerActionRules.AllowsDeposit(booking.Status))
+            return Fail(BookingCustomerActionRules.CannotDeposit, StatusCodes.Status400BadRequest);
 
         if (booking.QuotedDepositAmount is null)
             return Fail("Đơn hàng chưa có thông tin tiền cọc.", StatusCodes.Status400BadRequest);
@@ -178,7 +187,7 @@ public class PaymentService(CarRentalDbContext db, ScheduleConflictService sched
     {
         var vehicleId = requestedVehicleId ?? booking.AssignedVehicleId;
         if (vehicleId is null or <= 0)
-            return null;
+            return MissingConcreteVehicle;
 
         var vehicle = await db.Vehicles.FirstOrDefaultAsync(v => v.VehicleId == vehicleId.Value);
         if (vehicle is null)
@@ -211,7 +220,8 @@ public class PaymentService(CarRentalDbContext db, ScheduleConflictService sched
         if (stillActive)
             return;
 
-        booking.AssignedVehicleId = null;
+        // Occupancy is deposit Pending/Paid, not AssignedVehicleId alone.
+        // Keep the customer's selected vehicle so retry can hold the same unit.
     }
 
     internal static PaymentResponse Map(Payment p) => new(

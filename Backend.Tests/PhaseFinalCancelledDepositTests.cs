@@ -8,6 +8,7 @@ using Backend.DTOs.Auth;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Payments;
 using Backend.Services;
+using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -33,7 +34,7 @@ public class PhaseFinalCancelledDepositTests
     }
 
     [Fact]
-    public async Task Pending_and_confirmed_deposit_still_succeed()
+    public async Task Pending_deposit_is_blocked_and_confirmed_deposit_succeeds()
     {
         using var iso = new IsolatedCarRentalDb();
         var bookings = new BookingService(iso.Db, new PricingService());
@@ -41,19 +42,23 @@ public class PhaseFinalCancelledDepositTests
 
         var pending = await bookings.CreateBookingAsync(3, SelfDrive());
         var pendingPay = await payments.CreateAsync(3, Deposit(pending!.BookingId));
-        Assert.Equal(201, pendingPay.StatusCode);
-        Assert.Equal(PaymentStatuses.Pending, pendingPay.Payment!.Status);
-        Assert.Equal(2, iso.Db.Bookings.Find(pending.BookingId)!.AssignedVehicleId);
+        Assert.Equal(400, pendingPay.StatusCode);
+        Assert.Equal(BookingCustomerActionRules.WaitingDispatcher, pendingPay.Error);
+        Assert.Null(pendingPay.Payment);
+        Assert.Equal(0, iso.Db.Payments.Count(p => p.BookingId == pending.BookingId));
 
-        var toConfirm = await bookings.CreateBookingAsync(3, SelfDrive(null));
+        var later = new CreateBookingRequest(
+            1, "A", "B", null, null, null, null, Start.AddDays(3), End.AddDays(3), 20, null, RentalModes.SelfDrive, 2);
+        var toConfirm = await bookings.CreateBookingAsync(3, later);
         var confirmed = await bookings.ConfirmPendingAsync(toConfirm!.BookingId, 2, "xac nhan");
         Assert.Equal(200, confirmed.StatusCode);
         Assert.Equal(BookingStatuses.Confirmed, confirmed.Data!.Status);
+        Assert.Equal(2, confirmed.Data.AssignedVehicle?.VehicleId);
 
-        var confirmedPay = await payments.CreateAsync(3, Deposit(toConfirm.BookingId, vehicleId: null));
+        var confirmedPay = await payments.CreateAsync(3, Deposit(toConfirm.BookingId));
         Assert.Equal(201, confirmedPay.StatusCode);
         Assert.Equal(PaymentStatuses.Pending, confirmedPay.Payment!.Status);
-        Assert.Null(iso.Db.Bookings.Find(toConfirm.BookingId)!.AssignedVehicleId);
+        Assert.Equal(2, iso.Db.Bookings.Find(toConfirm.BookingId)!.AssignedVehicleId);
     }
 
     [Fact]

@@ -14,8 +14,11 @@ public class ResetPasswordModel(CarRentalApiClient api, AuthSession auth) : Role
 
     public class InputModel
     {
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
-        [Required, StringLength(6, MinimumLength = 6, ErrorMessage = "Mã OTP gồm 6 chữ số.")]
+        [Required(ErrorMessage = "Vui lòng nhập email.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Vui lòng nhập đủ 6 chữ số.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Mã OTP gồm 6 chữ số.")]
         public string Otp { get; set; } = string.Empty;
         [Required, StrongPassword, DataType(DataType.Password)]
         public string NewPassword { get; set; } = string.Empty;

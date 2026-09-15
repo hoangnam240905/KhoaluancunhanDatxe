@@ -40,6 +40,8 @@ public record UpdateVehicleTypePricingRequest(
     decimal? WithDriverDepositAmount,
     decimal? SelfDriveDepositAmount);
 
+public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
+
 public record VehicleResponse(
     int VehicleId,
     int TypeId,
@@ -54,7 +56,9 @@ public record VehicleResponse(
     string? RegistrationNumber = null,
     DateOnly? RegistrationExpiryDate = null,
     DateOnly? InspectionExpiryDate = null,
-    DateOnly? InsuranceExpiryDate = null);
+    DateOnly? InsuranceExpiryDate = null,
+    int SeatCapacity = 0,
+    decimal PricePerDay = 0);
 
 public record CreateVehicleRequest(
     int TypeId,

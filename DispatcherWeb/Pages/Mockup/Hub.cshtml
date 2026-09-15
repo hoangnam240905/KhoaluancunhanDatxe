@@ -1,0 +1,122 @@
+@page
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Đặt thuê & Xác nhận";
+    ViewData["Nav"] = "hub";
+}
+<div class="mk-banner">Giao diện mô phỏng — dữ liệu dưới đây là mẫu, không lấy từ hệ thống. Thao tác chỉ đổi trạng thái trên giao diện.</div>
+
+<section class="mk-hub-head">
+    <div>
+        <h1>Đặt thuê &amp; Xác nhận</h1>
+        <p>Tiếp nhận, kiểm tra và xác nhận yêu cầu thuê xe</p>
+    </div>
+</section>
+
+<div class="mk-metrics" id="mkMetrics">
+    <button type="button" class="mk-metric" data-filter-status="Pending">
+        <span>Chờ xác nhận</span>
+        <strong>30</strong>
+    </button>
+    <button type="button" class="mk-metric" data-filter-status="Confirmed">
+        <span>Đã xác nhận</span>
+        <strong>5</strong>
+    </button>
+    <button type="button" class="mk-metric" data-queue="assign">
+        <span>Cần phân công</span>
+        <strong>5</strong>
+    </button>
+    <button type="button" class="mk-metric" data-filter-status="InProgress">
+        <span>Đang thực hiện</span>
+        <strong>0</strong>
+    </button>
+</div>
+
+<section class="mk-card mk-toolbar">
+    <h2>Tìm kiếm &amp; bộ lọc</h2>
+    <form id="mkFilterForm" class="mk-toolbar-grid" autocomplete="off">
+        <label class="mk-field">
+            <span>Tìm kiếm</span>
+            <input type="search" name="q" placeholder="Tìm theo mã đơn, khách hàng..." />
+        </label>
+        <label class="mk-field">
+            <span>Trạng thái</span>
+            <select name="status">
+                <option value="">Tất cả</option>
+                <option value="Pending">Chờ xác nhận</option>
+                <option value="Confirmed">Đã xác nhận</option>
+                <option value="Assigned">Đã phân công</option>
+                <option value="InProgress">Đang thực hiện</option>
+                <option value="Completed">Hoàn thành</option>
+                <option value="Cancelled">Đã hủy</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Hình thức</span>
+            <select name="mode">
+                <option value="">Tất cả</option>
+                <option value="SelfDrive">Tự lái</option>
+                <option value="WithDriver">Có tài xế</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Loại xe</span>
+            <select name="type">
+                <option value="">Tất cả</option>
+                <option value="Sedan">Sedan</option>
+                <option value="SUV">SUV</option>
+                <option value="MPV">MPV</option>
+                <option value="Luxury">Cao cấp</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Từ ngày</span>
+            <input type="date" name="from" />
+        </label>
+        <label class="mk-field">
+            <span>Đến ngày</span>
+            <input type="date" name="to" />
+        </label>
+        <div class="mk-toolbar-actions">
+            <button type="submit" class="mk-btn mk-btn-primary">🔍 Tìm kiếm</button>
+            <button type="reset" class="mk-btn mk-btn-ghost" id="mkReset">↻ Đặt lại</button>
+        </div>
+    </form>
+</section>
+
+<div class="mk-pills" id="mkPills"></div>
+<div class="mk-card" id="mkAssignNote" hidden>
+    <p class="mk-note" style="padding:0.85rem 1rem;margin:0">
+        <strong>Cần phân công</strong> — hiển thị các đơn đã xác nhận. Nhãn giữ xe / tài xế chỉ để duyệt giao diện, chưa phản ánh hệ thống thật.
+    </p>
+</div>
+
+<div class="mk-card">
+    <div class="mk-table-wrap">
+        <table class="mk-table">
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Hình thức</th>
+                    <th>Xe yêu cầu</th>
+                    <th>Thời gian thuê</th>
+                    <th>Hợp đồng</th>
+                    <th>Tiền cọc</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="mkTableBody"></tbody>
+        </table>
+    </div>
+    <div class="mk-cards" id="mkCards"></div>
+    <div class="mk-empty" id="mkEmpty" hidden>Không có đơn khớp bộ lọc mock.</div>
+</div>
+
+<aside class="mk-drawer" id="mkDrawer" aria-hidden="true"></aside>
+<div class="mk-toast" id="mkToast"></div>
+
+@section Scripts {
+    <script src="~/js/mockup-hub.js" asp-append-version="true"></script>
+}

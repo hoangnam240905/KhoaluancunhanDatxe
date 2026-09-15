@@ -130,6 +130,14 @@ public class PhaseGap3PortalReviewTests
         Assert.False(doc.RootElement.TryGetProperty("customerId", out _));
         Assert.False(doc.RootElement.TryGetProperty("driverId", out _));
 
+        var loaded = await client.SendAsync(Authed(HttpMethod.Get, $"/api/bookings/{bookingId}", token));
+        Assert.Equal(HttpStatusCode.OK, loaded.StatusCode);
+        var loadedBooking = await loaded.Content.ReadFromJsonAsync<BookingResponse>(Json);
+        Assert.NotNull(loadedBooking?.Review);
+        Assert.Equal(bookingId, loadedBooking!.Review!.BookingId);
+        Assert.Equal(5, loadedBooking.Review.Rating);
+        Assert.Equal("Tài xế tốt", loadedBooking.Review.Comment);
+
         using var iso = new IsolatedCarRentalDb();
         var (booking, assignment) = SeedCompletedWithDriver(iso);
         var (stored, error) = await new BookingService(iso.Db, new PricingService()).CreateReviewAsync(

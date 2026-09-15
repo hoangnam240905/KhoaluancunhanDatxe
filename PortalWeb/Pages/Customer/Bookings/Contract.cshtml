@@ -1,0 +1,397 @@
+@page "/Customer/Bookings/Contract/{id:int}"
+@model PortalWeb.Pages.Customer.Bookings.ContractModel
+@{
+    ViewData["Title"] = "Hợp đồng thuê xe";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var p = Model.Presentation;
+    var modeLabel = p is null ? "" : (p.WithDriver ? "Có tài xế" : "Tự lái");
+    var statusLabel = ContractUi.StatusLabel(Model.ViewState);
+    var contractCode = p is null || string.IsNullOrWhiteSpace(p.ContractCode) ? "Chưa có" : p.ContractCode;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/contract.css" asp-append-version="true" />
+}
+
+<div class="ch-page" data-ct-page data-ct-view="@Model.ViewState">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="ct-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Hợp đồng điện tử</div>
+            <h1>Hợp đồng thuê xe</h1>
+            <p>Kiểm tra thông tin và điều khoản trước khi xác nhận hợp đồng.</p>
+        </div>
+    </section>
+
+    <section class="ct-body">
+        <div class="ch-container">
+            @if (p is null)
+            {
+                <div class="ct-card ct-empty">
+                    <h2>@(Model.AccessDenied ? "Không thể xem hợp đồng này" : "Không tìm thấy đơn thuê")</h2>
+                    <p>@(Model.ErrorMessage ?? ContractUi.NotFound)</p>
+                    <a class="ct-btn" asp-page="Index" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;max-width:280px">Quay lại danh sách đơn</a>
+                </div>
+            }
+            else if (Model.ViewState == "waiting")
+            {
+                <div class="ct-card ct-empty">
+                    <h2>@ContractUi.WaitingTitle</h2>
+                    <p>@ContractUi.WaitingBody</p>
+                    <a class="ct-btn" asp-page="Details" asp-route-id="@Model.BookingRouteId" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;max-width:280px">Quay lại chi tiết đơn</a>
+                </div>
+            }
+            else if (Model.ViewState == "missing")
+            {
+                <div class="ct-ref ct-card">
+                    <div>
+                        <small>Hợp đồng điện tử</small>
+                        <strong>Chưa có hợp đồng</strong>
+                        <div>Đơn thuê @p.BookingCode</div>
+                    </div>
+                    <a class="ct-back" asp-page="Details" asp-route-id="@Model.BookingRouteId"><i class="bi bi-arrow-left"></i> Quay lại chi tiết đơn</a>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="ct-card ct-alert">@Model.ErrorMessage</div>
+                }
+                <div class="ct-layout">
+                    <div>
+                        <article class="ct-card">
+                            <h2>Chưa có hợp đồng điện tử</h2>
+                            <p class="ct-note" style="margin-top:0">@ContractUi.MissingContract</p>
+                            <dl class="ct-rows">
+                                <div class="ct-row"><dt>Mã đơn</dt><dd>@p.BookingCode</dd></div>
+                                <div class="ct-row"><dt>Khách hàng</dt><dd>@p.CustomerName</dd></div>
+                                <div class="ct-row"><dt>Hình thức thuê</dt><dd>@modeLabel</dd></div>
+                                <div class="ct-row"><dt>Phương tiện</dt><dd>@p.VehicleTitle@(string.IsNullOrWhiteSpace(p.VehicleMeta) ? "" : " · " + p.VehicleMeta)</dd></div>
+                                <div class="ct-row"><dt>Ngày nhận</dt><dd>@ContractUi.When(p.PickupAt)</dd></div>
+                                <div class="ct-row"><dt>Ngày trả</dt><dd>@ContractUi.When(p.ReturnAt)</dd></div>
+                            </dl>
+                            @if (Model.CanIssue)
+                            {
+                                <form method="post" asp-page-handler="Issue" data-ct-issue-form>
+                                    <button type="submit" class="ct-btn" data-ct-issue>Lập hợp đồng điện tử</button>
+                                </form>
+                            }
+                        </article>
+                    </div>
+                    <aside class="ct-aside">
+                        <article class="ct-card ct-status">
+                            <span class="ct-badge ct-badge-wait">Chưa có hợp đồng</span>
+                            <div class="ct-ico ct-ico-wait"><i class="bi bi-file-earmark-text"></i></div>
+                            <h2>Đơn thuê chưa có hợp đồng</h2>
+                            <p>Lập hợp đồng điện tử từ đơn thuê này khi bạn sẵn sàng xác nhận.</p>
+                            <a class="ct-btn-ghost" asp-page="Details" asp-route-id="@Model.BookingRouteId">Quay lại đơn thuê</a>
+                            <a class="ct-btn-ghost" asp-page="Pay" asp-route-id="@Model.BookingRouteId">Thanh toán tiền cọc</a>
+                        </article>
+                    </aside>
+                </div>
+            }
+            else
+            {
+            <div class="ct-ref ct-card">
+                <div>
+                    <small>Mã hợp đồng</small>
+                    <strong>@contractCode</strong>
+                    <div>Đơn thuê @p.BookingCode</div>
+                </div>
+                <a class="ct-back" asp-page="Details" asp-route-id="@Model.BookingRouteId"><i class="bi bi-arrow-left"></i> Quay lại chi tiết đơn</a>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="ct-card ct-alert">@Model.ErrorMessage</div>
+            }
+
+            <div class="ct-layout">
+                <div>
+                    <article class="ct-paper" data-ct-paper>
+                        <div class="ct-paper-top">
+                            <div>
+                                <div class="ct-paper-kicker">Hợp đồng thuê xe</div>
+                                <h2>DriveX — Hợp đồng thuê xe du lịch</h2>
+                                <p class="ct-paper-sub">Bản xem trước giao diện — không phải tệp PDF hay chữ ký số.</p>
+                            </div>
+                            <div class="ct-meta">
+                                <div>Mã hợp đồng: <strong>@contractCode</strong></div>
+                                @if (p.IssuedAt is DateTime issuedAt)
+                                {
+                                    <div>Ngày lập: @ContractUi.Day(issuedAt)</div>
+                                }
+                                <div>Trạng thái: <strong data-ct-doc-status>@statusLabel</strong></div>
+                            </div>
+                        </div>
+
+                        <section class="ct-sec">
+                            <h3>1. Thông tin khách hàng</h3>
+                            <dl class="ct-rows">
+                                <div class="ct-row"><dt>Họ tên</dt><dd>@p.CustomerName</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>2. Thông tin thuê xe</h3>
+                            <dl class="ct-rows">
+                                <div class="ct-row"><dt>Mã đơn</dt><dd>@p.BookingCode</dd></div>
+                                <div class="ct-row"><dt>Hình thức thuê</dt><dd>@modeLabel</dd></div>
+                                <div class="ct-row"><dt>Thời lượng</dt><dd>@p.Days ngày</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>3. Thông tin phương tiện</h3>
+                            <div class="ct-vehicle ct-vehicle-text">
+                                <div>
+                                    <strong>@p.VehicleTitle</strong>
+                                    @if (!string.IsNullOrWhiteSpace(p.VehicleMeta))
+                                    {
+                                        <div>@p.VehicleMeta</div>
+                                    }
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>4. Thời gian và địa điểm</h3>
+                            <dl class="ct-rows">
+                                <div class="ct-row"><dt>Ngày nhận</dt><dd>@ContractUi.When(p.PickupAt)</dd></div>
+                                <div class="ct-row"><dt>Ngày trả</dt><dd>@ContractUi.When(p.ReturnAt)</dd></div>
+                                <div class="ct-row"><dt>Địa điểm nhận</dt><dd>@p.PickupPlace</dd></div>
+                                <div class="ct-row"><dt>Địa điểm trả</dt><dd>@p.ReturnPlace</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>5. Chi phí thuê</h3>
+                            <dl class="ct-rows">
+                                <div class="ct-row"><dt>Tổng tiền thuê</dt><dd>@ContractUi.Money(p.RentalTotal)</dd></div>
+                            </dl>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>6. Tiền cọc</h3>
+                            <dl class="ct-rows">
+                                @if (p.Deposit is decimal deposit)
+                                {
+                                    <div class="ct-row"><dt>Tiền cọc</dt><dd>@ContractUi.Money(deposit)</dd></div>
+                                }
+                            </dl>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>7. Quy định thuê xe</h3>
+                            <ul class="ct-terms">
+                                @foreach (var term in ContractUi.Terms)
+                                {
+                                    <li>@term</li>
+                                }
+                            </ul>
+                            <p class="ct-note">Các điều khoản trên là minh họa giao diện, chưa phải điều khoản pháp lý cuối cùng.</p>
+                        </section>
+
+                        <section class="ct-sec">
+                            <h3>8. Xác nhận hợp đồng</h3>
+                            <div class="ct-issued">Chưa ký — khách hàng cần xác nhận nội dung hợp đồng.</div>
+                            <div class="ct-signblock ct-signed-only">
+                                <small>Đã xác nhận điện tử</small>
+                                <div>Khách hàng</div>
+                                <strong>@p.CustomerName</strong>
+                                <div>Ngày ký: @ContractUi.When(p.SignedAt)</div>
+                                <p class="ct-note">Đây là chữ ký điện tử mô phỏng của hệ thống — chưa tạo chữ ký số.</p>
+                            </div>
+                            <div class="ct-voided-only">Hợp đồng đã hủy và không còn hiệu lực để xác nhận.</div>
+                        </section>
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Thông tin khách hàng</h2>
+                        <dl class="ct-rows">
+                            <div class="ct-row"><dt>Họ tên</dt><dd>@p.CustomerName</dd></div>
+                        </dl>
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Thông tin thuê xe</h2>
+                        <dl class="ct-rows">
+                            <div class="ct-row"><dt>Mã đơn</dt><dd>@p.BookingCode</dd></div>
+                            <div class="ct-row"><dt>Hình thức thuê</dt><dd>@modeLabel</dd></div>
+                            <div class="ct-row"><dt>Ngày nhận</dt><dd>@ContractUi.When(p.PickupAt)</dd></div>
+                            <div class="ct-row"><dt>Ngày trả</dt><dd>@ContractUi.When(p.ReturnAt)</dd></div>
+                            <div class="ct-row"><dt>Địa điểm nhận</dt><dd>@p.PickupPlace</dd></div>
+                            <div class="ct-row"><dt>Địa điểm trả</dt><dd>@p.ReturnPlace</dd></div>
+                            <div class="ct-row"><dt>Thời lượng</dt><dd>@p.Days ngày</dd></div>
+                        </dl>
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Thông tin phương tiện</h2>
+                        <div class="ct-vehicle ct-vehicle-text">
+                            <div>
+                                <h3 style="margin:0">@p.VehicleTitle</h3>
+                                @if (!string.IsNullOrWhiteSpace(p.VehicleMeta))
+                                {
+                                    <div>@p.VehicleMeta</div>
+                                }
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Chi phí thuê</h2>
+                        <div class="ct-line ct-total" style="margin-top:0;padding-top:0;border-top:0"><span>Tổng tiền thuê</span><strong>@ContractUi.Money(p.RentalTotal)</strong></div>
+                        @if (p.Deposit is decimal cardDeposit)
+                        {
+                            <div class="ct-line"><span>Tiền cọc</span><span>@ContractUi.Money(cardDeposit)</span></div>
+                        }
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Điều khoản thuê xe</h2>
+                        <ul class="ct-terms">
+                            @foreach (var term in ContractUi.Terms)
+                            {
+                                <li>@term</li>
+                            }
+                        </ul>
+                        <p class="ct-note">Nội dung điều khoản là minh họa giao diện.</p>
+                    </article>
+
+                    @if (Model.CanSign)
+                    {
+                    <article class="ct-card ct-issued">
+                        <h2>Xác nhận hợp đồng</h2>
+                        <form method="post" asp-page-handler="Sign" data-ct-sign-form id="ct-sign-form">
+                            <label class="ct-agree" data-ct-agree>
+                                <input type="checkbox" asp-for="Agreed" data-ct-check />
+                                <span>Tôi đã đọc và đồng ý với nội dung hợp đồng thuê xe.</span>
+                            </label>
+                            <button type="submit" class="ct-btn" data-ct-sign disabled>Ký hợp đồng</button>
+                        </form>
+                        <button type="button" class="ct-btn-ghost" data-ct-preview>Xem trước hợp đồng</button>
+                    </article>
+                    }
+                </div>
+
+                <aside class="ct-aside">
+                    <article class="ct-card ct-status ct-state" data-ct-state="issued">
+                        <span class="ct-badge ct-badge-wait">Chờ ký</span>
+                        <div class="ct-ico ct-ico-wait"><i class="bi bi-pen"></i></div>
+                        <h2>Hợp đồng đang chờ xác nhận</h2>
+                        <p>Vui lòng kiểm tra thông tin và ký hợp đồng để hoàn tất bước xác nhận.</p>
+                    </article>
+                    <article class="ct-card ct-status ct-state" data-ct-state="signed">
+                        <span class="ct-badge ct-badge-ok">Đã ký</span>
+                        <div class="ct-ico ct-ico-ok"><i class="bi bi-check-circle"></i></div>
+                        <h2>Hợp đồng đã được ký</h2>
+                        <p>Hợp đồng điện tử đã được xác nhận thành công.</p>
+                        <div class="ct-line"><span>Mã hợp đồng</span><strong>@contractCode</strong></div>
+                        <div class="ct-line"><span>Trạng thái</span><strong>Đã ký</strong></div>
+                        <div class="ct-line"><span>Ngày ký</span><strong>@ContractUi.When(p.SignedAt)</strong></div>
+                    </article>
+                    <article class="ct-card ct-status ct-state" data-ct-state="voided">
+                        <span class="ct-badge ct-badge-bad">Đã hủy</span>
+                        <div class="ct-ico ct-ico-bad"><i class="bi bi-slash-circle"></i></div>
+                        <h2>Hợp đồng không còn hiệu lực</h2>
+                        <p>Hợp đồng này đã được hủy và không còn hiệu lực.</p>
+                        <div class="ct-line"><span>Mã hợp đồng</span><strong>@contractCode</strong></div>
+                        <div class="ct-line"><span>Trạng thái</span><strong>Đã hủy</strong></div>
+                        <p>Hợp đồng này đã được hủy và không thể tiếp tục sử dụng.</p>
+                    </article>
+
+                    <article class="ct-card">
+                        <h2>Hợp đồng</h2>
+                        <div class="ct-line"><span>Trạng thái</span><strong data-ct-doc-status>@statusLabel</strong></div>
+                        <div class="ct-line"><span>Đơn thuê</span><strong>@p.BookingCode</strong></div>
+                        <div class="ct-line ct-total"><span>Giá trị hợp đồng</span><strong>@ContractUi.Money(p.RentalTotal)</strong></div>
+                        @if (p.Deposit is decimal asideDeposit)
+                        {
+                            <div class="ct-line"><span>Tiền cọc</span><span>@ContractUi.Money(asideDeposit)</span></div>
+                        }
+
+                        <div class="ct-issued">
+                            @if (Model.CanSign)
+                            {
+                                <button type="submit" class="ct-btn" form="ct-sign-form" data-ct-sign disabled>Ký hợp đồng</button>
+                            }
+                            <button type="button" class="ct-btn-ghost" data-ct-preview>Xem hợp đồng</button>
+                            <a class="ct-btn-ghost" asp-page="Details" asp-route-id="@Model.BookingRouteId">Quay lại đơn</a>
+                            <a class="ct-btn-ghost" asp-page="Pay" asp-route-id="@Model.BookingRouteId">Thanh toán tiền cọc</a>
+                        </div>
+                        <div class="ct-signed-only">
+                            <button type="button" class="ct-btn" data-ct-preview>Xem hợp đồng</button>
+                            <a class="ct-btn-ghost" asp-page="Details" asp-route-id="@Model.BookingRouteId">Quay lại đơn thuê</a>
+                            <a class="ct-btn-ghost" asp-page="Pay" asp-route-id="@Model.BookingRouteId">Thanh toán tiền cọc</a>
+                        </div>
+                        <div class="ct-voided-only">
+                            <a class="ct-btn" asp-page="Details" asp-route-id="@Model.BookingRouteId" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Quay lại đơn thuê</a>
+                        </div>
+                    </article>
+                </aside>
+            </div>
+            }
+        </div>
+    </section>
+
+    <div class="ct-full" data-ct-full>
+        <div class="ct-full-inner">
+            <div class="ct-full-bar">
+                <span>Xem toàn màn hình</span>
+                <button type="button" data-ct-full-close>Đóng</button>
+            </div>
+            <div class="ct-paper" data-ct-full-doc></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/contract.js" asp-append-version="true"></script>
+}

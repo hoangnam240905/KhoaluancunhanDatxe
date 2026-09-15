@@ -1,77 +1,175 @@
 @inject PortalWeb.Services.AuthSession Auth
 @inject IConfiguration Config
+@{
+    var path = Context.Request.Path.Value ?? "";
+    string Nav(string href, bool exact = false)
+    {
+        var on = exact
+            ? path.Equals(href, StringComparison.OrdinalIgnoreCase)
+            : path.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+        return on ? "dx-nav-link is-active" : "dx-nav-link";
+    }
+    var role = Auth.Role;
+    var isOps = role is "Admin" or "Dispatcher";
+    var theme = isOps ? "dark" : "light";
+    var fullBleed = ViewData["FullBleed"] as bool? == true;
+    var homeShell = ViewData["HomeShell"] as bool? == true;
+    var showSidebar = Auth.IsLoggedIn && isOps && !homeShell;
+    var initials = string.IsNullOrWhiteSpace(Auth.FullName)
+        ? "DX"
+        : string.Concat(Auth.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    var roleLabel = role switch
+    {
+        "Admin" => "Quản trị",
+        "Dispatcher" => "Điều phối",
+        "Customer" => "Khách hàng",
+        _ => "Khách"
+    };
+}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="@theme">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Car Rental</title>
+    <title>@(ViewData["Title"] ?? "DriveX") — DriveX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/drivex.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
-<nav class="navbar navbar-expand-sm navbar-dark app-navbar sticky-top mb-0">
-    <div class="container">
-        <a class="navbar-brand" href="/">🚗 Car Rental</a>
-        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNav">
-            <ul class="navbar-nav me-auto">
-                @if (Auth.Role == "Customer" || !Auth.IsLoggedIn)
-                {
-                    <li class="nav-item"><a class="nav-link" href="/#gioi-thieu">Giới thiệu</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#tuyen-di">Tuyến đi</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#bang-gia">Bảng giá</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/#goi-y">Gợi ý</a></li>
-                }
-                @if (Auth.IsLoggedIn && Auth.Role == "Customer")
-                {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Customer/Bookings/Index">Đơn của tôi</a></li>
-                }
-                @if (Auth.Role == "Admin")
-                {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Index">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Vehicles/Index">Xe</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Pricing/Index">Giá</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Drivers/Index">Tài xế</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Customers/Index">Khách</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Payments/Index">Thanh toán</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Contracts/Index">Hợp đồng</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Admin/Bookings/Index">Đơn đặt</a></li>
-                }
-                @if (Auth.Role == "Dispatcher")
-                {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Dispatcher/Index">Điều phối</a></li>
-                }
-            </ul>
-            <ul class="navbar-nav align-items-sm-center gap-sm-2">
+<body class="dx-body">
+<div class="dx-shell @(showSidebar ? "" : "dx-shell-top")">
+    @if (showSidebar)
+    {
+        <div class="dx-backdrop" data-dx-backdrop></div>
+        <aside class="dx-sidebar" id="dxSidebar">
+            <a class="dx-brand" asp-page="@(role == "Admin" ? "/Admin/Index" : "/Dispatcher/Index")">
+                <span class="dx-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                <span>DriveX<span class="dx-brand-sub">Car rental</span></span>
+            </a>
+            @if (role == "Admin")
+            {
+                <div class="dx-nav-label">Quản trị</div>
+                <nav class="dx-nav">
+                    <a class="@Nav("/Admin", true)" asp-page="/Admin/Index"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                    <a class="@Nav("/Admin/Vehicles")" asp-page="/Admin/Vehicles/Index"><i class="bi bi-truck-front"></i> Đội xe</a>
+                    <a class="@Nav("/Admin/Pricing")" asp-page="/Admin/Pricing/Index"><i class="bi bi-tag"></i> Giá &amp; loại xe</a>
+                    <a class="@Nav("/Admin/Drivers")" asp-page="/Admin/Drivers/Index"><i class="bi bi-person-badge"></i> Tài xế</a>
+                    <a class="@Nav("/Admin/Customers")" asp-page="/Admin/Customers/Index"><i class="bi bi-people"></i> Khách hàng</a>
+                    <a class="@Nav("/Admin/Bookings")" asp-page="/Admin/Bookings/Index"><i class="bi bi-journal-text"></i> Đơn đặt</a>
+                    <a class="@Nav("/Admin/Payments")" asp-page="/Admin/Payments/Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
+                    <a class="@Nav("/Admin/Contracts")" asp-page="/Admin/Contracts/Index"><i class="bi bi-file-earmark-text"></i> Hợp đồng</a>
+                </nav>
+            }
+            else if (role == "Dispatcher")
+            {
+                <div class="dx-nav-label">Điều phối</div>
+                <nav class="dx-nav">
+                    <a class="@Nav("/Dispatcher")" asp-page="/Dispatcher/Index"><i class="bi bi-sliders"></i> Bảng điều phối</a>
+                </nav>
+            }
+            <div class="dx-sidebar-footer">DriveX · chỉ hiển thị dữ liệu API hiện có</div>
+        </aside>
+    }
+    <div class="dx-main">
+        @if (!homeShell)
+        {
+        <header class="dx-topbar">
+            @if (showSidebar)
+            {
+                <button type="button" class="dx-sidebar-toggle" data-dx-toggle aria-label="Mở menu"><i class="bi bi-list"></i></button>
+            }
+            else
+            {
+                <a class="dx-brand py-0 px-0 me-2" href="/">
+                    <span class="dx-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                    <span>DriveX</span>
+                </a>
+                <nav class="d-none d-md-flex align-items-center gap-3">
+                    @if (role is "Customer" || !Auth.IsLoggedIn)
+                    {
+                        <a class="dx-nav-link py-1" href="/#gioi-thieu">Giới thiệu</a>
+                        <a class="dx-nav-link py-1" href="/#tuyen-di">Tuyến đi</a>
+                        <a class="dx-nav-link py-1" href="/#bang-gia">Bảng giá</a>
+                        <a class="dx-nav-link py-1" href="/#goi-y">Gợi ý</a>
+                    }
+                    @if (Auth.IsLoggedIn && role == "Customer")
+                    {
+                        <a class="@(path.StartsWith("/Customer/Bookings", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/Customer/Bookings/Create", StringComparison.OrdinalIgnoreCase) ? "dx-nav-link is-active" : "dx-nav-link") py-1" asp-page="/Customer/Bookings/Index">Đơn của tôi</a>
+                        <a class="@Nav("/Customer/Bookings/Create") py-1" asp-page="/Customer/Bookings/Create">Đặt xe</a>
+                    }
+                </nav>
+            }
+            <span class="dx-topbar-title d-none d-lg-inline">@ViewData["Title"]</span>
+            <div class="dx-topbar-search d-none d-xl-block" title="Ô tìm kiếm giao diện — chưa kết nối API tìm kiếm">
+                <i class="bi bi-search"></i>
+                <input type="search" readonly tabindex="-1" placeholder="Tìm kiếm (chưa kết nối API)" />
+            </div>
+            <div class="dx-topbar-actions">
                 @if (Auth.IsLoggedIn)
                 {
-                    <li class="nav-item"><span class="navbar-text text-white-50 small">@Auth.FullName</span></li>
-                    <li class="nav-item"><a class="nav-link" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
-                    <li class="nav-item"><a class="btn btn-sm btn-outline-light rounded-pill px-3" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta">
+                                <span class="dx-user-name">@Auth.FullName</span>
+                                <span class="dx-user-role">@roleLabel</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            @if (role == "Customer")
+                            {
+                                <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                            }
+                            <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
                 }
                 else
                 {
-                    <li class="nav-item"><a class="nav-link" asp-page="/Account/Login">Đăng nhập</a></li>
-                    <li class="nav-item"><a class="btn btn-sm btn-light rounded-pill px-3" asp-page="/Account/Register">Đăng ký</a></li>
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Register">Đăng ký</a>
                 }
-            </ul>
-        </div>
+            </div>
+        </header>
+        }
+        @if (fullBleed || homeShell)
+        {
+            @RenderBody()
+        }
+        else
+        {
+            <main class="dx-content @(showSidebar ? "dx-content-wide" : "")">
+                @if (!showSidebar)
+                {
+                    <nav class="d-md-none mb-3 d-flex flex-wrap gap-2">
+                        @if (role is "Customer" || !Auth.IsLoggedIn)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" href="/#gioi-thieu">Giới thiệu</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="/#goi-y">Gợi ý</a>
+                        }
+                        @if (Auth.IsLoggedIn && role == "Customer")
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Customer/Bookings/Index">Đơn của tôi</a>
+                            <a class="btn btn-sm btn-primary" asp-page="/Customer/Bookings/Create">Đặt xe</a>
+                        }
+                    </nav>
+                }
+                @RenderBody()
+            </main>
+        }
     </div>
-</nav>
-@if (ViewData["FullBleed"] as bool? == true)
-{
-    @RenderBody()
-}
-else
-{
-    <main class="container pb-5">@RenderBody()</main>
-}
+</div>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/drivex.js" asp-append-version="true"></script>
 @* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
 @if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
 {

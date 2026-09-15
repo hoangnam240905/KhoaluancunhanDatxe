@@ -31,7 +31,7 @@ public class PhaseMaintenanceCoreFlowTests
         var bookings = new BookingService(db, pricing);
         var inspections = new VehicleInspectionService(db);
         var fees = new BookingFeeService(db, pricing);
-        var drivers = new DriverService(db, bookings, inspections, fees);
+        var drivers = new DriverService(db, bookings, inspections, fees, new ScheduleConflictService(db));
         return new DispatchService(db, bookings, drivers, inspections, fees, Schedule(db));
     }
 
@@ -108,13 +108,14 @@ public class PhaseMaintenanceCoreFlowTests
         using var iso = new IsolatedCarRentalDb();
         await CreateOpenOnVehicle2Async(iso);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
-        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
 
         Assert.Equal(400, status);
         Assert.Equal(MaintenanceLock.BlockedBecauseOpen, error);
         Assert.Null(payment);
         Assert.Equal(0, iso.Db.Payments.Count(p => p.BookingId == created.BookingId));
-        Assert.Equal(BookingStatuses.Pending, iso.Db.Bookings.Find(created.BookingId)!.Status);
+        Assert.Equal(BookingStatuses.Confirmed, iso.Db.Bookings.Find(created.BookingId)!.Status);
     }
 
     [Fact]

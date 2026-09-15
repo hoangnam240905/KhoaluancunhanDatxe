@@ -19,17 +19,69 @@ public class DispatchService(
     ScheduleConflictService schedule,
     IRealtimePublisher? realtime = null)
 {
-    public async Task<(BookingResponse? Booking, string? Error)> ConfirmBookingAsync(int bookingId, int dispatcherId)
+    public async Task<AssignTripResult> ConfirmBookingAsync(int bookingId, int dispatcherId)
     {
         var booking = await db.Bookings.FindAsync(bookingId);
         if (booking is null)
-            return Fail("Không tìm thấy đơn.");
+            return AssignTripResult.Fail("Không tìm thấy đơn.");
         if (!BookingStateTransitionRules.CanConfirm(booking.Status))
-            return Fail("Chỉ xác nhận đơn đang chờ.");
+            return AssignTripResult.Fail("Chỉ xác nhận đơn đang chờ.");
+
+        var dateError = BookingDateRules.ValidateNewRental(booking.StartDate, booking.EndDate);
+        if (dateError is not null)
+            return AssignTripResult.Fail(dateError);
+
+        if (booking.AssignedVehicleId is int vehicleId and > 0)
+        {
+            var (vehicle, vehicleFail) = await LoadAssignableVehicleAsync(vehicleId, booking.VehicleTypeId);
+            if (vehicle is null)
+                return vehicleFail ?? AssignTripResult.Fail("Xe không khả dụng.");
+
+            if (await schedule.HasVehicleConflictAsync(
+                vehicleId, booking.StartDate, booking.EndDate, booking.BookingId))
+            {
+                return AssignTripResult.FromConflict(await BuildConflictAsync(
+                    booking,
+                    "Xe đã có lịch thuê khác trong khoảng thời gian này.",
+                    ScheduleConflictTypes.Vehicle,
+                    excludeVehicleId: vehicleId,
+                    excludeDriverId: null));
+            }
+        }
+
+        if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
+        {
+            var hasDriver = await HasConfirmableDriverAsync(booking);
+            if (!hasDriver)
+            {
+                return AssignTripResult.FromConflict(await BuildConflictAsync(
+                    booking,
+                    "Không có tài xế khả dụng trong khoảng thời gian này.",
+                    ScheduleConflictTypes.Driver,
+                    excludeVehicleId: null,
+                    excludeDriverId: null));
+            }
+        }
 
         var (result, error, _) = await bookingService.ConfirmPendingAsync(
             bookingId, dispatcherId, "Điều phối xác nhận đơn");
-        return result is null ? Fail(error ?? "Không thể xác nhận đơn.") : Ok(result);
+        return result is null
+            ? AssignTripResult.Fail(error ?? "Không thể xác nhận đơn.")
+            : AssignTripResult.Ok(result);
+    }
+
+    private async Task<bool> HasConfirmableDriverAsync(Booking booking)
+    {
+        var drivers = await schedule.FindAssignableDriversAsync(
+            booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+        foreach (var driver in drivers)
+        {
+            if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
+                continue;
+            return true;
+        }
+
+        return false;
     }
 
     public async Task<DispatchFleetStatusResponse> GetFleetStatusAsync()
@@ -107,8 +159,8 @@ public class DispatchService(
         var booking = await db.Bookings.AsNoTracking().FirstOrDefaultAsync(b => b.BookingId == bookingId);
         if (booking is null)
             return (null, "Không tìm thấy đơn.");
-        if (booking.Status != BookingStatuses.Confirmed)
-            return (null, "Chỉ lấy danh sách khả dụng cho đơn đã xác nhận.");
+        if (booking.Status is not (BookingStatuses.Pending or BookingStatuses.Confirmed))
+            return (null, "Chỉ xem khả năng đáp ứng cho đơn chờ xác nhận hoặc đã xác nhận.");
 
         var vehicles = await schedule.FindAssignableVehiclesAsync(
             booking.VehicleTypeId, booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
@@ -235,6 +287,11 @@ public class DispatchService(
         var handover = await inspections.GetHandoverAsync(bookingId);
         if (handover is null)
             return Fail(VehicleInspectionRules.HandoverRequired);
+
+        var returnAt = DateTime.UtcNow;
+        var scheduleBlock = await schedule.GetLateReturnScheduleBlockAsync(booking, returnAt);
+        if (scheduleBlock is not null)
+            return Fail(scheduleBlock);
 
         var (inspection, inspectError) = await inspections.AddAsync(
             bookingId,

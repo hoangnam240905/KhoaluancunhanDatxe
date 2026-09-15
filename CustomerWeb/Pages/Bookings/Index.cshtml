@@ -1,93 +1,243 @@
 @page
 @model CustomerWeb.Pages.Bookings.IndexModel
 @{
-    ViewData["Title"] = "Đơn đặt xe của tôi";
+    ViewData["Title"] = "Đơn thuê của tôi";
+    ViewData["HomeShell"] = true;
+    var now = DateTime.Now;
+    var items = Model.Bookings;
+    var upcoming = BookingCalendarUi.UpcomingOf(items, now);
+    var cal = BookingCalendarUi.CalendarMonth(items, now);
+    var months = BookingCalendarUi.MonthOptions(items);
+    var eventsJson = System.Text.Json.JsonSerializer.Serialize(items.Select(b => new
+    {
+        id = b.BookingId,
+        name = BookingCalendarUi.TitleOf(b),
+        status = b.Status,
+        statusLabel = BookingCalendarUi.StatusLabel(b.Status),
+        mode = BookingCalendarUi.RentalModeLabel(b.RentalMode),
+        start = b.StartDate.ToString("o"),
+        end = b.EndDate.ToString("o"),
+        pickup = BookingCalendarUi.When(b.StartDate),
+        returnAt = BookingCalendarUi.When(b.EndDate),
+        href = Url.Page("Details", new { id = b.BookingId })
+    }));
+    var initials = string.IsNullOrWhiteSpace(Model.CustomerName)
+        ? "DX"
+        : string.Concat(Model.CustomerName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Đơn đặt xe của tôi</h2>
-    <a asp-page="Create" class="btn btn-primary">Đặt xe mới</a>
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/bookings.css" asp-append-version="true" />
+}
+
+<div class="ch-page"
+     data-bk-page
+     data-bk-mode="@Model.ViewMode"
+     data-bk-year="@cal.Year"
+     data-bk-month="@cal.Month">
+    <script type="application/json" data-bk-events>@Html.Raw(eventsJson)</script>
+
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" asp-page="/Index">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.CustomerName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="bk-head">
+        <div class="ch-container">
+            <div class="bk-head-row">
+                <div>
+                    <div class="ch-eyebrow">Đơn đặt xe</div>
+                    <h1>Đơn thuê của tôi</h1>
+                    <p>Theo dõi các chuyến thuê xe và lịch trình của bạn.</p>
+                </div>
+                <a class="bk-btn" asp-page="/Search"><i class="bi bi-search me-2"></i>Tìm xe</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="bk-body">
+        <div class="ch-container">
+            <div class="bk-stats">
+                <article class="bk-stat"><small>Đang xử lý</small><strong>@BookingCalendarUi.CountByStatus(items, "Pending", "Confirmed")</strong></article>
+                <article class="bk-stat"><small>Sắp diễn ra</small><strong>@items.Count(b => BookingCalendarUi.IsUpcoming(b, now))</strong></article>
+                <article class="bk-stat"><small>Hoàn thành</small><strong>@BookingCalendarUi.CountByStatus(items, "Completed")</strong></article>
+                <article class="bk-stat"><small>Tổng đơn</small><strong>@items.Count</strong></article>
+            </div>
+
+            <div class="bk-toolbar">
+                <div class="bk-switch" role="tablist" aria-label="Chế độ xem">
+                    <button type="button" data-bk-mode-btn="list">Danh sách</button>
+                    <button type="button" data-bk-mode-btn="calendar">Lịch</button>
+                </div>
+                <div class="bk-tools">
+                    <input type="search" data-bk-search placeholder="Tìm mã đơn" aria-label="Tìm mã đơn" />
+                    <select data-bk-month aria-label="Chọn tháng">
+                        <option value="">Tất cả thời gian</option>
+                        @foreach (var month in months)
+                        {
+                            <option value="@month.Value">@month.Label</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="bk-filters" role="tablist" aria-label="Lọc trạng thái">
+                <button type="button" class="bk-chip is-on" data-bk-filter="all">Tất cả</button>
+                <button type="button" class="bk-chip" data-bk-filter="Pending">Chờ xác nhận</button>
+                <button type="button" class="bk-chip" data-bk-filter="Confirmed">Đã xác nhận</button>
+                <button type="button" class="bk-chip" data-bk-filter="Assigned">Đã phân công</button>
+                <button type="button" class="bk-chip" data-bk-filter="InProgress">Đang thực hiện</button>
+                <button type="button" class="bk-chip" data-bk-filter="Completed">Hoàn thành</button>
+                <button type="button" class="bk-chip" data-bk-filter="Cancelled">Đã hủy</button>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <p class="bk-alert" role="alert">@Model.ErrorMessage</p>
+            }
+
+            <div class="bk-list" data-bk-list>
+                @if (!items.Any() && string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                {
+                    <div class="bk-empty" data-bk-empty-none>
+                        <i class="bi bi-car-front"></i>
+                        <h2>Bạn chưa có đơn thuê nào</h2>
+                        <p>Khám phá các phương tiện phù hợp cho chuyến đi tiếp theo.</p>
+                        <a class="bk-btn" asp-page="/Search">Tìm xe</a>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in items)
+                    {
+                        var title = BookingCalendarUi.TitleOf(item);
+                        var meta = BookingCalendarUi.MetaOf(item);
+                        <article class="bk-card"
+                                 data-bk-card
+                                 data-bk-status="@item.Status"
+                                 data-bk-code="@BookingCalendarUi.SearchText(item)"
+                                 data-bk-month="@item.StartDate.ToString("yyyy-MM")">
+                            <img src="@BookingCalendarUi.ImageOf(item)" alt="@title" />
+                            <div>
+                                <h3>@title</h3>
+                                @if (!string.IsNullOrWhiteSpace(meta))
+                                {
+                                    <div class="bk-meta">@meta</div>
+                                }
+                                <div class="bk-code">Mã đơn @BookingCalendarUi.Code(item.BookingId)</div>
+                                <div class="bk-when">
+                                    <div><i class="bi bi-person-badge me-1"></i>@BookingCalendarUi.RentalModeLabel(item.RentalMode)</div>
+                                    <div><i class="bi bi-box-arrow-up me-1"></i>@BookingCalendarUi.When(item.StartDate)</div>
+                                    <div><i class="bi bi-box-arrow-in-down me-1"></i>@BookingCalendarUi.When(item.EndDate)</div>
+                                    <div><i class="bi bi-geo-alt me-1"></i>@item.PickupAddress</div>
+                                    <div><i class="bi bi-geo me-1"></i>@item.DropoffAddress</div>
+                                </div>
+                                <div class="bk-price">@BookingCalendarUi.Money(item.TotalAmount)</div>
+                            </div>
+                            <div class="bk-side">
+                                <span class="bk-badge bk-badge-@item.Status">@BookingCalendarUi.StatusLabel(item.Status)</span>
+                                <a class="bk-btn" asp-page="Details" asp-route-id="@item.BookingId">@BookingCalendarUi.ActionLabel</a>
+                                @if (item.Review is not null || ReviewUi.CanOfferReview(item))
+                                {
+                                    <a class="bk-btn-ghost" asp-page="Review" asp-route-id="@item.BookingId">@(item.Review is null ? "Đánh giá" : "Đã đánh giá")</a>
+                                }
+                            </div>
+                        </article>
+                    }
+                    <div class="bk-empty is-off" data-bk-empty-filter>
+                        <i class="bi bi-search"></i>
+                        <h2>Không tìm thấy đơn thuê</h2>
+                        <p>Thử đổi bộ lọc hoặc tìm theo mã đơn khác.</p>
+                        <a class="bk-btn" asp-page="/Search">Tìm xe</a>
+                    </div>
+                }
+            </div>
+
+            <div class="bk-calwrap" data-bk-cal>
+                <div class="bk-cal-layout">
+                    <div class="bk-cal">
+                        <div class="bk-cal-nav">
+                            <button type="button" data-bk-prev aria-label="Tháng trước">&lt;</button>
+                            <h2 data-bk-month-title>Tháng @cal.Month @cal.Year</h2>
+                            <button type="button" data-bk-next aria-label="Tháng sau">&gt;</button>
+                        </div>
+                        <div class="bk-week">
+                            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+                        </div>
+                        <div class="bk-grid" data-bk-grid></div>
+                    </div>
+                    @if (upcoming is not null)
+                    {
+                        var upTitle = BookingCalendarUi.TitleOf(upcoming);
+                        <aside class="bk-up">
+                            <small class="ch-eyebrow">Chuyến sắp tới</small>
+                            <img src="@BookingCalendarUi.ImageOf(upcoming)" alt="@upTitle" />
+                            <h3>@upTitle</h3>
+                            <p>@BookingCalendarUi.When(upcoming.StartDate)</p>
+                            <p>@upcoming.PickupAddress</p>
+                            <span class="bk-badge bk-badge-@upcoming.Status">@BookingCalendarUi.StatusLabel(upcoming.Status)</span>
+                            <a class="bk-btn" asp-page="Details" asp-route-id="@upcoming.BookingId" style="width:100%;margin-top:0.75rem">Xem chi tiết</a>
+                        </aside>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="bk-pop" data-bk-pop>
+        <div class="bk-pop-card">
+            <small class="ch-eyebrow">Đơn thuê</small>
+            <h3 data-bk-pop-name></h3>
+            <p data-bk-pop-pickup></p>
+            <p data-bk-pop-return></p>
+            <p data-bk-pop-mode></p>
+            <span class="bk-badge" data-bk-pop-status></span>
+            <a class="bk-btn" data-bk-pop-link href="#">Xem chi tiết đơn</a>
+            <button type="button" class="bk-btn-ghost" data-bk-pop-close style="width:100%;margin-top:0.55rem">Đóng</button>
+        </div>
+    </div>
 </div>
 
-@if (!Model.Bookings.Any())
-{
-    <div class="alert alert-info">Bạn chưa có đơn đặt xe nào.</div>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Mã</th>
-                    <th>Loại xe</th>
-                    <th>Hình thức</th>
-                    <th>Thời gian</th>
-                    <th>Điểm đón</th>
-                    <th>Điểm trả</th>
-                    <th>Tổng tiền</th>
-                    <th>Trạng thái</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var b in Model.Bookings)
-                {
-                    var selfDrive = IndexModel.IsSelfDrive(b.RentalMode);
-                    <tr>
-                        <td>#@b.BookingId</td>
-                        <td>@b.VehicleTypeName</td>
-                        <td>@IndexModel.RentalModeLabel(b.RentalMode)</td>
-                        <td>
-                            @UiDisplay.Rental(b.StartDate)
-                            <div class="small text-muted">đến @UiDisplay.Rental(b.EndDate)</div>
-                            @if (b.QuotedDays is not null)
-                            {
-                                <div class="small text-muted">@b.QuotedDays ngày</div>
-                            }
-                        </td>
-                        <td>@b.PickupAddress</td>
-                        <td>@b.DropoffAddress</td>
-                        <td>@b.TotalAmount.ToString("N0") VND
-                            @if (b.FinalAmount is not null)
-                            {
-                                <div class="small text-muted">Chốt: @b.FinalAmount.Value.ToString("N0")</div>
-                            }
-                        </td>
-                        <td><span class="badge bg-secondary">@UiDisplay.BookingStatus(b.Status)</span></td>
-                        <td>
-                            <a asp-page="Details" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                            @if (b.Status == "Completed" && !selfDrive)
-                            {
-                                <a asp-page="Review" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-warning">Đánh giá</a>
-                            }
-                        </td>
-                    </tr>
-                    <tr class="table-light">
-                        <td colspan="9" class="small">
-                            @if (selfDrive)
-                            {
-                                @if (b.AssignedVehicle is null)
-                                {
-                                    <span class="text-muted">Xe: chờ điều phối gán xe.</span>
-                                }
-                                else
-                                {
-                                    <span><strong>Xe:</strong> @b.AssignedVehicle.LicensePlate · @b.AssignedVehicle.Brand @b.AssignedVehicle.Model</span>
-                                }
-                            }
-                            else if (b.Assignment is null)
-                            {
-                                <span class="text-muted">Tài xế: chưa phân công — đợi điều phối xác nhận.</span>
-                            }
-                            else
-                            {
-                                <span><strong>Tài xế:</strong> @b.Assignment.DriverName · <strong>Xe:</strong> @b.Assignment.LicensePlate</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+@section Scripts {
+    <script src="~/js/bookings.js" asp-append-version="true"></script>
 }

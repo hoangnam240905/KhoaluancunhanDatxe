@@ -1,0 +1,280 @@
+@page "{id:int}"
+@model CustomerWeb.Pages.Bookings.PayModel
+@{
+    ViewData["Title"] = "Thanh toán tiền cọc";
+    ViewData["HomeShell"] = true;
+    var p = Model.Presentation;
+    var modeLabel = p is null ? "" : (p.WithDriver ? "Có tài xế" : "Tự lái");
+    var initials = string.IsNullOrWhiteSpace(Model.CustomerName)
+        ? "DX"
+        : string.Concat(Model.CustomerName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/payment.css" asp-append-version="true" />
+}
+
+<div class="ch-page" data-pay-page data-pay-view="@Model.ViewState">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" asp-page="/Index">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.CustomerName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="pay-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Thanh toán</div>
+            <h1>Thanh toán tiền cọc</h1>
+            <p>Hoàn tất thanh toán tiền cọc để xác nhận đơn thuê của bạn.</p>
+            <div class="pay-steps" aria-label="Tiến trình thanh toán">
+                <div class="pay-step is-done"><span>1</span> Thông tin đơn</div>
+                <div class="pay-step @(Model.ViewState == "success" ? "is-done" : "is-on")"><span>2</span> Tiền cọc</div>
+                <div class="pay-step @(Model.ViewState == "success" ? "is-on" : "")"><span>3</span> Hoàn tất</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pay-body">
+        <div class="ch-container">
+            @if (p is null)
+            {
+                <div class="pay-card pay-empty">
+                    <h2>@(Model.AccessDenied ? "Không thể thanh toán đơn này" : "Không tìm thấy đơn thuê")</h2>
+                    <p>@(Model.ErrorMessage ?? PaymentUi.NotFound)</p>
+                    <a class="pay-btn" asp-page="Index" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;max-width:280px">Quay lại danh sách đơn</a>
+                </div>
+            }
+            else if (Model.ViewState == "waiting")
+            {
+                <div class="pay-card pay-empty">
+                    <h2>@BookingDetailUi.WaitingTitle</h2>
+                    <p>@BookingDetailUi.WaitingBody</p>
+                    <a class="pay-btn" asp-page="Details" asp-route-id="@p.BookingId" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;max-width:280px">Quay lại chi tiết đơn</a>
+                </div>
+            }
+            else
+            {
+            <form method="post" data-pay-real-form>
+                <input type="hidden" asp-for="Method" data-pay-method-input />
+                <div class="pay-ref pay-card">
+                    <div>
+                        <small>Mã đơn thuê</small>
+                        <strong>@p.Code</strong>
+                        <div>@p.VehicleTitle · @PaymentUi.When(p.PickupAt) → @PaymentUi.When(p.ReturnAt)</div>
+                        <div>Hình thức thuê: @modeLabel</div>
+                        <div>@p.PickupPlace → @p.ReturnPlace</div>
+                    </div>
+                    <a class="pay-back" asp-page="Details" asp-route-id="@p.BookingId"><i class="bi bi-arrow-left"></i> Quay lại chi tiết đơn</a>
+                </div>
+
+                <div class="pay-layout">
+                    <div>
+                        <article class="pay-card pay-vehicle">
+                            <img src="@p.VehicleImage" alt="@p.VehicleTitle" />
+                            <div>
+                                <h3>@p.VehicleTitle</h3>
+                                <div class="ch-meta">
+                                    @if (!string.IsNullOrWhiteSpace(p.VehicleMeta))
+                                    {
+                                        <span>@p.VehicleMeta</span>
+                                    }
+                                    <span>@p.Days ngày</span>
+                                </div>
+                            </div>
+                        </article>
+
+                        <div class="pay-form-block" data-pay-form>
+                            <article class="pay-card">
+                                <h2>Thanh toán tiền cọc</h2>
+                                <div class="pay-info">
+                                    <strong>Bạn cần thanh toán tiền cọc theo số tiền backend đã ghi nhận để hoàn tất bước xác nhận đặt xe.</strong>
+                                    <p>Tiền cọc cần thanh toán</p>
+                                    <div class="pay-amount">@PaymentUi.Money(p.Deposit)</div>
+                                    <div class="pay-secure"><i class="bi bi-shield-lock"></i> Thông tin thanh toán được bảo vệ trong quá trình xử lý.</div>
+                                </div>
+                            </article>
+
+                            <article class="pay-card">
+                                <h2>Chọn phương thức thanh toán</h2>
+                                <div class="pay-methods">
+                                    <button type="button" class="pay-method is-on" data-pay-method="card"><i class="bi bi-credit-card"></i><strong>Thẻ ngân hàng</strong></button>
+                                    <button type="button" class="pay-method" data-pay-method="wallet"><i class="bi bi-wallet2"></i><strong>Ví điện tử</strong></button>
+                                    <button type="button" class="pay-method" data-pay-method="transfer"><i class="bi bi-bank"></i><strong>Chuyển khoản</strong></button>
+                                </div>
+
+                                <div class="pay-pane is-on" data-pay-pane="card" style="margin-top:1rem">
+                                    <div class="pay-fields">
+                                        <div class="pay-field">
+                                            <label for="payCard">Số thẻ</label>
+                                            <input id="payCard" type="text" inputmode="numeric" autocomplete="off" placeholder="0000 0000 0000 0000" maxlength="19" />
+                                        </div>
+                                        <div class="pay-field">
+                                            <label for="payName">Tên chủ thẻ</label>
+                                            <input id="payName" type="text" autocomplete="off" placeholder="NGUYEN VAN A" />
+                                        </div>
+                                        <div class="pay-fields pay-fields-2">
+                                            <div class="pay-field">
+                                                <label for="payExp">Ngày hết hạn</label>
+                                                <input id="payExp" type="text" autocomplete="off" placeholder="MM/YY" maxlength="5" />
+                                            </div>
+                                            <div class="pay-field">
+                                                <label for="payCvv">CVV</label>
+                                                <input id="payCvv" type="password" autocomplete="off" placeholder="•••" maxlength="4" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pay-pane" data-pay-pane="wallet" style="margin-top:1rem">
+                                    <div class="pay-wallet">
+                                        <button type="button" class="is-on" data-pay-wallet="MoMo"><i class="bi bi-phone"></i> MoMo</button>
+                                        <button type="button" data-pay-wallet="VNPay"><i class="bi bi-qr-code"></i> VNPay</button>
+                                    </div>
+                                    <p class="pay-note">Phương thức được gửi tới API mô phỏng hiện có — chưa kết nối cổng thanh toán thật.</p>
+                                </div>
+
+                                <div class="pay-pane" data-pay-pane="transfer" style="margin-top:1rem">
+                                    <div class="pay-transfer">
+                                        <div>Ngân hàng: <code>ACB</code></div>
+                                        <div>Số tài khoản: <code>0000 0000 0000</code></div>
+                                        <div>Nội dung: <code>COC @p.Code</code></div>
+                                    </div>
+                                    <p class="pay-note">Thông tin chuyển khoản là minh họa giao diện. Giao dịch thật được mô phỏng bởi backend.</p>
+                                </div>
+                            </article>
+
+                            <div class="pay-sim">
+                                <strong>Thanh toán mô phỏng</strong>
+                                Nút xác nhận gọi API thanh toán cọc hiện có. Xe chỉ được giữ khi backend xác nhận hold.
+                            </div>
+                        </div>
+
+                        <article class="pay-card pay-state" data-pay-state="processing">
+                            <div class="pay-spin" aria-hidden="true"></div>
+                            <h2>Đang xử lý thanh toán...</h2>
+                            <p>@PaymentUi.Money(p.Deposit)</p>
+                            <p>Vui lòng không đóng trang trong quá trình xử lý.</p>
+                        </article>
+
+                        <article class="pay-card pay-state" data-pay-state="success">
+                            <div class="pay-ico pay-ico-ok"><i class="bi bi-check-lg"></i></div>
+                            <h2>Thanh toán tiền cọc thành công</h2>
+                            <p>Bạn đã hoàn tất thanh toán tiền cọc cho đơn thuê.</p>
+                            <div class="pay-line"><span>Mã đơn</span><strong>@p.Code</strong></div>
+                            <div class="pay-line"><span>Số tiền đã thanh toán</span><strong>@PaymentUi.Money(p.Deposit)</strong></div>
+                            @if (p.PaidAt is DateTime paidAt)
+                            {
+                                <div class="pay-line"><span>Thời gian thanh toán</span><strong>@PaymentUi.When(paidAt)</strong></div>
+                            }
+                            <div class="pay-line"><span>Trạng thái</span><span class="pay-badge pay-badge-ok">@PaymentUi.StatusLabel(p.PaymentStatus ?? "Paid")</span></div>
+                            <div class="pay-actions">
+                                <a class="pay-btn" asp-page="Details" asp-route-id="@p.BookingId" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Xem chi tiết đơn</a>
+                                <a class="pay-btn-ghost" asp-page="Index" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Về danh sách đơn</a>
+                            </div>
+                        </article>
+
+                        <article class="pay-card pay-state" data-pay-state="failed">
+                            <div class="pay-ico pay-ico-bad"><i class="bi bi-x-lg"></i></div>
+                            <h2>Thanh toán chưa thành công</h2>
+                            <p>@(string.IsNullOrWhiteSpace(Model.ErrorMessage) ? "Không thể hoàn tất thanh toán. Vui lòng thử lại." : Model.ErrorMessage)</p>
+                            <div>Trạng thái: <span class="pay-badge pay-badge-bad">Thất bại</span></div>
+                            <div class="pay-actions">
+                                <button type="button" class="pay-btn" data-pay-retry>Thử lại</button>
+                                <a class="pay-btn-ghost" asp-page="Details" asp-route-id="@p.BookingId" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Quay lại đơn thuê</a>
+                            </div>
+                        </article>
+
+                        <article class="pay-card pay-state" data-pay-state="pending">
+                            <div class="pay-ico pay-ico-wait"><i class="bi bi-hourglass-split"></i></div>
+                            <h2>Thanh toán đang chờ xử lý</h2>
+                            <p>Khoản tiền cọc chưa được xác nhận.</p>
+                            <span class="pay-badge pay-badge-wait">@PaymentUi.StatusLabel("Pending")</span>
+                            <div class="pay-actions">
+                                @if (Model.CanSubmit)
+                                {
+                                    <button type="submit" class="pay-btn" data-pay-submit data-pay-idle-label="Tiếp tục thanh toán">Tiếp tục thanh toán</button>
+                                }
+                                <a class="pay-btn-ghost" asp-page="Details" asp-route-id="@p.BookingId" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Quay lại đơn thuê</a>
+                            </div>
+                        </article>
+                    </div>
+
+                    <aside class="pay-card pay-quote">
+                        <h2>Tóm tắt thanh toán</h2>
+                        @if (p.RentalLine is decimal rental)
+                        {
+                            <div class="pay-line"><span>Giá thuê xe</span><span>@PaymentUi.Money(rental)</span></div>
+                        }
+                        @if (p.DriverFee is decimal driverFee)
+                        {
+                            <div class="pay-line"><span>Phí tài xế</span><span>@PaymentUi.Money(driverFee)</span></div>
+                        }
+                        <div class="pay-line pay-total"><span>Tổng tiền thuê</span><strong>@PaymentUi.Money(p.TotalAmount)</strong></div>
+                        <div class="pay-deposit-hl">
+                            <small>Tiền cọc</small>
+                            <strong>@PaymentUi.Money(p.Deposit)</strong>
+                        </div>
+                        <div class="pay-line"><span>Còn lại</span><span>@PaymentUi.Money(p.Remaining)</span></div>
+                        @if (Model.CanSubmit)
+                        {
+                            <div class="pay-quote-cta @(Model.ViewState == "form" ? "" : "is-off")" data-pay-quote-cta>
+                                <button type="submit" class="pay-btn" data-pay-submit data-pay-idle-label="Thanh toán @PaymentUi.Money(p.Deposit)">Thanh toán @PaymentUi.Money(p.Deposit)</button>
+                            </div>
+                        }
+                        <h3 style="margin-top:1.1rem;font-size:0.95rem">Thanh toán an toàn</h3>
+                        <ul class="pay-trust">
+                            <li><i class="bi bi-shield-check"></i> Bảo mật thông tin thanh toán</li>
+                            <li><i class="bi bi-credit-card"></i> Không lưu thông tin thẻ</li>
+                            <li><i class="bi bi-eye"></i> Quy trình thanh toán minh bạch</li>
+                        </ul>
+                        <p class="pay-note">Thanh toán mô phỏng qua API hiện có. Mở trang này không giữ xe.</p>
+                    </aside>
+                </div>
+            </form>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/payment.js" asp-append-version="true"></script>
+}

@@ -15,8 +15,12 @@ public class ResetPasswordModel(CarRentalApiClient api, AuthSession auth) : Page
 
     public class InputModel
     {
-        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
-        [Required, StringLength(6, MinimumLength = 6)] public string Otp { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Vui lòng nhập email.")]
+        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
+        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Vui lòng nhập đủ 6 chữ số.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Mã OTP gồm 6 chữ số.")]
+        public string Otp { get; set; } = string.Empty;
         [Required, StrongPassword, DataType(DataType.Password)] public string NewPassword { get; set; } = string.Empty;
         [Required, Compare(nameof(NewPassword), ErrorMessage = "Xác nhận mật khẩu không khớp.")]
         [DataType(DataType.Password)]
@@ -27,7 +31,7 @@ public class ResetPasswordModel(CarRentalApiClient api, AuthSession auth) : Page
     {
         if (auth.IsLoggedIn) return RedirectToPage("/Index");
         Input.Email = email ?? string.Empty;
-        InfoMessage = "Neu email ton tai, ma OTP da duoc gui.";
+        InfoMessage = "Nếu email tồn tại, mã OTP đã được gửi. Nhập mã và mật khẩu mới.";
         return Page();
     }
 
@@ -42,6 +46,6 @@ public class ResetPasswordModel(CarRentalApiClient api, AuthSession auth) : Page
             return Page();
         }
 
-        return Redirect("http://localhost:5180/Account/Login");
+        return RedirectToPage("/Account/Login");
     }
 }

@@ -78,7 +78,7 @@ public class RecommendationServiceTests
                 StartDate = Start,
                 EndDate = End,
                 TotalAmount = 1,
-                Status = BookingStatuses.Confirmed,
+                Status = BookingStatuses.Assigned,
                 RentalMode = RentalModes.SelfDrive,
                 AssignedVehicleId = vehicle.VehicleId,
                 CreatedAt = DateTime.UtcNow

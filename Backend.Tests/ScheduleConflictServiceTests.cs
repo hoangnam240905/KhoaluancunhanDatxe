@@ -23,7 +23,7 @@ public class ScheduleConflictServiceTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         return new DispatchService(iso.Db, bookings, drivers, inspections, fees, Svc(iso));
     }
 
@@ -180,12 +180,57 @@ public class ScheduleConflictServiceTests
     }
 
     [Fact]
-    public async Task Confirmed_with_vehicle_occupies()
+    public async Task Confirmed_without_deposit_does_not_occupy()
     {
         using var iso = new IsolatedCarRentalDb();
         AddBooking(
             iso, new DateTime(2026, 11, 1, 8, 0, 0), new DateTime(2026, 11, 2, 8, 0, 0),
             BookingStatuses.Confirmed, assignedVehicleId: 2);
+        Assert.False(await Svc(iso).HasVehicleConflictAsync(
+            2, new DateTime(2026, 11, 1, 10, 0, 0), new DateTime(2026, 11, 1, 12, 0, 0)));
+    }
+
+    [Fact]
+    public async Task Confirmed_with_deposit_pending_occupies()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var occupying = AddBooking(
+            iso, new DateTime(2026, 11, 1, 8, 0, 0), new DateTime(2026, 11, 2, 8, 0, 0),
+            BookingStatuses.Confirmed, assignedVehicleId: 2);
+        occupying.QuotedDepositAmount = 800_000m;
+        iso.Db.Payments.Add(new Payment
+        {
+            BookingId = occupying.BookingId,
+            PaymentType = PaymentTypes.Deposit,
+            Amount = 800_000m,
+            Method = PaymentMethods.Cash,
+            Status = PaymentStatuses.Pending,
+            CreatedAt = DateTime.UtcNow
+        });
+        await iso.Db.SaveChangesAsync();
+        Assert.True(await Svc(iso).HasVehicleConflictAsync(
+            2, new DateTime(2026, 11, 1, 10, 0, 0), new DateTime(2026, 11, 1, 12, 0, 0)));
+    }
+
+    [Fact]
+    public async Task Confirmed_with_deposit_paid_occupies()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var occupying = AddBooking(
+            iso, new DateTime(2026, 11, 1, 8, 0, 0), new DateTime(2026, 11, 2, 8, 0, 0),
+            BookingStatuses.Confirmed, assignedVehicleId: 2);
+        occupying.QuotedDepositAmount = 800_000m;
+        iso.Db.Payments.Add(new Payment
+        {
+            BookingId = occupying.BookingId,
+            PaymentType = PaymentTypes.Deposit,
+            Amount = 800_000m,
+            Method = PaymentMethods.Cash,
+            Status = PaymentStatuses.Paid,
+            PaidAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        });
+        await iso.Db.SaveChangesAsync();
         Assert.True(await Svc(iso).HasVehicleConflictAsync(
             2, new DateTime(2026, 11, 1, 10, 0, 0), new DateTime(2026, 11, 1, 12, 0, 0)));
     }
@@ -317,7 +362,7 @@ public class ScheduleConflictServiceTests
         AddBooking(
             iso,
             new DateTime(2026, 11, 1, 8, 0, 0), new DateTime(2026, 11, 2, 8, 0, 0),
-            BookingStatuses.Confirmed, vehicleTypeId: 3,
+            BookingStatuses.Assigned, vehicleTypeId: 3,
             tripVehicleId: 5, tripDriverId: 6,
             assignmentStatus: TripAssignmentStatuses.Completed);
 
@@ -356,7 +401,7 @@ public class ScheduleConflictServiceTests
     public async Task OccupiesSchedule_matches_locked_statuses()
     {
         Assert.False(ScheduleConflictService.OccupiesSchedule(BookingStatuses.Pending));
-        Assert.True(ScheduleConflictService.OccupiesSchedule(BookingStatuses.Confirmed));
+        Assert.False(ScheduleConflictService.OccupiesSchedule(BookingStatuses.Confirmed));
         Assert.True(ScheduleConflictService.OccupiesSchedule(BookingStatuses.Assigned));
         Assert.True(ScheduleConflictService.OccupiesSchedule(BookingStatuses.InProgress));
         Assert.False(ScheduleConflictService.OccupiesSchedule(BookingStatuses.Completed));

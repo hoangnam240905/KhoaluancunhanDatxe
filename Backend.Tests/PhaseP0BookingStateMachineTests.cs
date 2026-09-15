@@ -284,7 +284,7 @@ public class PhaseP0BookingStateMachineTests
         iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
-        await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        await iso.ConfirmBookingAsync(created!.BookingId);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var (data, error, status) = await bookings.UpdateStatusAsync(
@@ -323,7 +323,7 @@ public class PhaseP0BookingStateMachineTests
 
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
-        await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
+        await iso.ConfirmBookingAsync(created!.BookingId);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var (data, _, status) = await bookings.UpdateStatusAsync(
@@ -391,7 +391,7 @@ public class PhaseP0BookingStateMachineTests
         var bookings = new BookingService(iso.Db, pricing, realtime);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees, realtime);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db), realtime);
         var dispatch = new DispatchService(
             iso.Db, bookings, drivers, inspections, fees, new ScheduleConflictService(iso.Db), realtime);
         return (bookings, dispatch, drivers, new IncidentService(iso.Db, realtime));

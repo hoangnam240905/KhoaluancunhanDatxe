@@ -115,6 +115,18 @@ public class PricingFeeBreakdownTests
     }
 
     [Fact]
+    public void Excess_over_end_is_independent_of_quoted_late_days()
+    {
+        var end = new DateTime(2026, 9, 2, 8, 0, 0, DateTimeKind.Utc);
+        var returnAt = end.AddHours(2);
+        Assert.Equal(TimeSpan.FromHours(2), PricingService.ResolveLateExcessOverEnd(end, returnAt));
+        Assert.Equal(0, PricingService.ResolveLateDays(
+            quotedDays: 1,
+            handoverAt: end.AddDays(-1).AddHours(2),
+            returnAt: returnAt));
+    }
+
+    [Fact]
     public void Missing_handover_cannot_compute_late_days()
     {
         var booking = Snapshot("WithDriver", 800_000, 8_000, 1, 200_000, 10, 1_080_000);

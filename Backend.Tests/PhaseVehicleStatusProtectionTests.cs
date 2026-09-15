@@ -137,7 +137,7 @@ public class PhaseVehicleStatusProtectionTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         var dispatch = new DispatchService(
             iso.Db, bookings, drivers, inspections, fees, new ScheduleConflictService(iso.Db));
         return (bookings, dispatch);

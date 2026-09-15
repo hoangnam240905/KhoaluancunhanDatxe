@@ -1,0 +1,227 @@
+@page
+@model CustomerWeb.Pages.ProfileModel
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân";
+    ViewData["HomeShell"] = true;
+    var p = Model.Presentation;
+    var tab = !string.IsNullOrEmpty(Model.PasswordError) || !string.IsNullOrEmpty(Model.PasswordSuccess) || Model.ShowPasswordPanel
+        ? "security"
+        : "info";
+    var initials = string.IsNullOrWhiteSpace(Model.DisplayName)
+        ? "DX"
+        : string.Concat(Model.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => x[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/profile.css" asp-append-version="true" />
+}
+
+<div class="ch-page" data-pf-page data-pf-tab="@tab">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" asp-page="/Index">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user is-current" asp-page="/Profile" data-bs-toggle="dropdown" aria-expanded="false" aria-current="page">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.DisplayName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Bookings/Index">Đơn đặt</a>
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="pf-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Tài khoản</div>
+            <h1>Hồ sơ cá nhân</h1>
+            <p>Quản lý thông tin tài khoản và tùy chọn của bạn.</p>
+        </div>
+    </section>
+
+    <section class="pf-body">
+        <div class="ch-container">
+            @if (!string.IsNullOrEmpty(Model.LoadError))
+            {
+                <p class="pf-error is-on">@Model.LoadError</p>
+            }
+
+            <article class="pf-hero">
+                <span class="pf-hero-avatar">@ProfileUi.HeroInitial(p.FullName)</span>
+                <div>
+                    <div class="pf-hero-kicker">Khách hàng</div>
+                    <h2>@(string.IsNullOrWhiteSpace(p.FullName) ? "—" : p.FullName)</h2>
+                    <div class="pf-hero-meta">
+                        @if (!string.IsNullOrWhiteSpace(p.Email))
+                        {
+                            <span><i class="bi bi-envelope"></i> @p.Email</span>
+                        }
+                        @if (p.HasPhone)
+                        {
+                            <span><i class="bi bi-telephone"></i> @p.Phone</span>
+                        }
+                    </div>
+                </div>
+            </article>
+
+            <div class="pf-nav" role="tablist" aria-label="Hồ sơ">
+                <button type="button" class="is-on" data-pf-tab-btn="info">Thông tin cá nhân</button>
+                <button type="button" data-pf-tab-btn="security">Bảo mật</button>
+                <button type="button" data-pf-tab-btn="notice">Thông báo</button>
+                <button type="button" data-pf-tab-btn="activity">Hoạt động tài khoản</button>
+            </div>
+
+            <div class="pf-layout">
+                <div>
+                    <article class="pf-card pf-panel is-on" data-pf-panel="info" data-pf-info>
+                        <div class="pf-card-head">
+                            <h2>Thông tin cá nhân</h2>
+                            <button type="button" class="pf-btn-ghost pf-edit-show" data-pf-edit>Chỉnh sửa thông tin</button>
+                        </div>
+                        <p class="pf-error" data-pf-profile-error data-pf-unsupported="@ProfileUi.UpdateUnsupported"></p>
+                        <div class="pf-fields">
+                            <label class="pf-field">
+                                <span>Họ và tên</span>
+                                <input type="text" value="@p.FullName" readonly autocomplete="name" />
+                            </label>
+                            <label class="pf-field">
+                                <span>Số điện thoại</span>
+                                <input type="tel" value="@ProfileUi.DisplayPhone(p.Phone)" readonly autocomplete="tel" />
+                            </label>
+                            <label class="pf-field">
+                                <span>Email</span>
+                                <input type="email" value="@p.Email" readonly autocomplete="email" />
+                            </label>
+                        </div>
+                    </article>
+
+                    <article class="pf-card pf-panel" data-pf-panel="activity">
+                        <h2>Hoạt động gần đây</h2>
+                        <p class="pf-help">@ProfileUi.ActivityUnavailable</p>
+                    </article>
+                </div>
+
+                <aside class="pf-side">
+                    <article class="pf-card">
+                        <h2>Trạng thái tài khoản</h2>
+                        <div class="pf-status-row"><span>Loại tài khoản</span><strong>@p.RoleLabel</strong></div>
+                    </article>
+
+                    <article class="pf-card pf-panel is-on" data-pf-panel="security">
+                        <h2>Bảo mật tài khoản</h2>
+                        @if (!string.IsNullOrEmpty(Model.PasswordSuccess))
+                        {
+                            <p class="pf-ok is-on">@Model.PasswordSuccess</p>
+                        }
+                        <div class="pf-secure-row">
+                            <div>
+                                <span class="pf-label">Mật khẩu</span>
+                                <strong class="pf-dots">••••••••••••</strong>
+                            </div>
+                            <button type="button" class="pf-btn-ghost" data-pf-password>Đổi mật khẩu</button>
+                        </div>
+                        <div class="pf-google">
+                            <span class="pf-google-ico"><i class="bi bi-google"></i></span>
+                            <div>
+                                <strong>Đăng nhập bằng Google</strong>
+                                <p>DriveX đã hỗ trợ đăng nhập Google cho khách hàng.</p>
+                            </div>
+                        </div>
+                        <form method="post" asp-page-handler="ChangePassword" data-pf-pass-form>
+                            <div class="pf-pass @(Model.ShowPasswordPanel ? "is-on" : "")" data-pf-pass-panel>
+                                <label class="pf-field">
+                                    <span>Mật khẩu hiện tại</span>
+                                    <div class="pf-wrap">
+                                        <input asp-for="PasswordInput.OldPassword" data-pf-old type="password" autocomplete="current-password" />
+                                        <button type="button" class="pf-eye" aria-label="Hiện mật khẩu"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                </label>
+                                <label class="pf-field">
+                                    <span>Mật khẩu mới</span>
+                                    <div class="pf-wrap">
+                                        <input asp-for="PasswordInput.NewPassword" data-pf-new type="password" autocomplete="new-password" />
+                                        <button type="button" class="pf-eye" aria-label="Hiện mật khẩu"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                    <div class="pf-strength" data-pf-strength><span></span></div>
+                                    <div class="pf-strength-meta" data-pf-strength-label></div>
+                                    <ul class="pf-rules">
+                                        <li data-pf-rule="length">Ít nhất 8 ký tự</li>
+                                        <li data-pf-rule="upper">Ít nhất 1 chữ hoa (A-Z)</li>
+                                        <li data-pf-rule="special">Ít nhất 1 ký tự đặc biệt</li>
+                                    </ul>
+                                </label>
+                                <label class="pf-field">
+                                    <span>Xác nhận mật khẩu mới</span>
+                                    <div class="pf-wrap">
+                                        <input asp-for="PasswordInput.ConfirmPassword" data-pf-confirm type="password" autocomplete="new-password" />
+                                        <button type="button" class="pf-eye" aria-label="Hiện mật khẩu"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                </label>
+                                <p class="pf-error @(string.IsNullOrEmpty(Model.PasswordError) ? "" : "is-on")" data-pf-pass-error>@Model.PasswordError</p>
+                                <div class="pf-edit-actions is-on">
+                                    <button type="submit" class="pf-btn" data-pf-pass-save data-pf-busy-label="@ProfileUi.PasswordBusy">Cập nhật mật khẩu</button>
+                                    <button type="button" class="pf-btn-ghost" data-pf-pass-cancel>Hủy</button>
+                                </div>
+                            </div>
+                        </form>
+                    </article>
+
+                    <article class="pf-card pf-panel is-on" data-pf-panel="notice">
+                        <h2>Cài đặt thông báo</h2>
+                        <p class="pf-help">Cài đặt này sẽ được kết nối trong giai đoạn tích hợp.</p>
+                        @foreach (var n in ProfileUi.NoticeChrome)
+                        {
+                            <div class="pf-toggle-row">
+                                <div>
+                                    <strong>@n.Title</strong>
+                                    <p>@n.Hint</p>
+                                </div>
+                                <button type="button" class="pf-switch" data-pf-switch role="switch" aria-checked="false" aria-label="@n.Title"></button>
+                            </div>
+                        }
+                    </article>
+
+                    <article class="pf-card">
+                        <h2>Quản lý tài khoản</h2>
+                        <a class="pf-btn-ghost" asp-page="/Account/Logout">Đăng xuất</a>
+                    </article>
+                </aside>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/profile.js" asp-append-version="true"></script>
+}

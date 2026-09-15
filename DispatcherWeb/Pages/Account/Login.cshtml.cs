@@ -9,6 +9,7 @@ namespace DispatcherWeb.Pages.Account;
 public class LoginModel(CarRentalApiClient api, AuthSession auth) : PageModel
 {
     [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
     public string? ErrorMessage { get; set; }
 
     public class InputModel
@@ -19,7 +20,8 @@ public class LoginModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public IActionResult OnGet()
     {
-        if (auth.IsLoggedIn) return RedirectToPage("/Index");
+        if (auth.IsLoggedIn)
+            return RedirectAfterLogin();
         return Page();
     }
 
@@ -40,6 +42,13 @@ public class LoginModel(CarRentalApiClient api, AuthSession auth) : PageModel
         }
 
         auth.SetAuth(data);
+        return RedirectAfterLogin();
+    }
+
+    private IActionResult RedirectAfterLogin()
+    {
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            return LocalRedirect(ReturnUrl);
         return RedirectToPage("/Index");
     }
 }

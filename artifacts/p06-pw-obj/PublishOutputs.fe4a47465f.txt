@@ -1,0 +1,7 @@
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\PortalWeb.exe
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\appsettings.Development.json
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\appsettings.json
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\PortalWeb.dll
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\PortalWeb.deps.json
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\PortalWeb.runtimeconfig.json
+D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-portalweb\PortalWeb.pdb

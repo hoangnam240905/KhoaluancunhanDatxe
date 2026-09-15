@@ -1,6 +1,8 @@
 using Backend.Constants;
 using Backend.Data;
+using Backend.DTOs.Bookings;
 using Backend.Entities;
+using Backend.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Tests;
@@ -92,7 +94,7 @@ internal sealed class IsolatedCarRentalDb : IDisposable
         Db.SaveChanges();
     }
 
-    public Booking AddDepositBooking(decimal deposit)
+    public Booking AddDepositBooking(decimal deposit, string status = BookingStatuses.Pending)
     {
         var booking = new Booking
         {
@@ -105,7 +107,7 @@ internal sealed class IsolatedCarRentalDb : IDisposable
             EstimatedDistance = 50,
             TotalAmount = 1_000_000,
             QuotedDepositAmount = deposit,
-            Status = BookingStatuses.Pending,
+            Status = status,
             RentalMode = RentalModes.WithDriver,
             CreatedAt = DateTime.UtcNow
         };
@@ -113,6 +115,9 @@ internal sealed class IsolatedCarRentalDb : IDisposable
         Db.SaveChanges();
         return booking;
     }
+
+    public Task<(BookingResponse? Data, string? Error, int StatusCode)> ConfirmBookingAsync(int bookingId)
+        => new BookingService(Db, new PricingService()).ConfirmPendingAsync(bookingId, 2, "test confirm");
 
     public void Dispose()
     {

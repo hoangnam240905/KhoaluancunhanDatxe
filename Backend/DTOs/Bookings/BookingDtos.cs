@@ -70,7 +70,9 @@ public record BookingResponse(
     IReadOnlyList<BookingFeeResponse> Fees,
     decimal? FinalBaseAmount,
     decimal? TotalFees,
-    IReadOnlyList<VehicleInspectionResponse> Inspections);
+    IReadOnlyList<VehicleInspectionResponse> Inspections,
+    ReviewResponse? Review = null,
+    bool HasActiveDeposit = false);
 
 public record VehicleInspectionResponse(
     int InspectionId,

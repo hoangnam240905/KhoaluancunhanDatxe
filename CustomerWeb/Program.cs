@@ -22,6 +22,17 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
 app.MapStaticAssets();
+app.MapGet("/catalog/busy-periods/{vehicleId:int}", async (
+    int vehicleId,
+    DateTime? from,
+    DateTime? to,
+    CarRentalApiClient api) =>
+{
+    var (data, status, error) = await api.GetVehicleBusyPeriodsAsync(vehicleId, from, to);
+    return data is null
+        ? Results.Json(new { message = error }, statusCode: status)
+        : Results.Json(data);
+});
 app.MapRazorPages().WithStaticAssets();
 
 app.Run();

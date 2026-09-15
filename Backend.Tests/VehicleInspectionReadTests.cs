@@ -123,15 +123,16 @@ public class VehicleInspectionReadTests
     }
 
     [Fact]
-    public void Booking_response_inspections_is_last_constructor_parameter()
+    public void Booking_response_review_is_last_constructor_parameter()
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        Assert.Equal("Inspections", names[^1]);
-        Assert.Equal("TotalFees", names[^2]);
-        Assert.Equal("FinalBaseAmount", names[^3]);
-        Assert.Equal("Fees", names[^4]);
-        Assert.Equal("FinalAmount", names[^5]);
+        Assert.Equal("Review", names[^1]);
+        Assert.Equal("Inspections", names[^2]);
+        Assert.Equal("TotalFees", names[^3]);
+        Assert.Equal("FinalBaseAmount", names[^4]);
+        Assert.Equal("Fees", names[^5]);
+        Assert.Equal("FinalAmount", names[^6]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

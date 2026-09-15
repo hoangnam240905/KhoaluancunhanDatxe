@@ -1,0 +1,42 @@
+using CustomerWeb.Display;
+using CustomerWeb.Models;
+using CustomerWeb.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace CustomerWeb.Pages;
+
+public class SearchModel(CarRentalApiClient api, AuthSession auth) : PageModel
+{
+    public bool IsLoggedIn => auth.IsLoggedIn;
+    public string? CustomerName => auth.FullName;
+
+    [BindProperty(SupportsGet = true)] public DateTime? StartDate { get; set; }
+    [BindProperty(SupportsGet = true)] public DateTime? EndDate { get; set; }
+    [BindProperty(SupportsGet = true)] public List<int> TypeId { get; set; } = [];
+    [BindProperty(SupportsGet = true)] public List<int> Seats { get; set; } = [];
+    [BindProperty(SupportsGet = true)] public decimal? PriceMax { get; set; }
+
+    public IReadOnlyList<VehicleTypeResponse> VehicleTypes { get; private set; } = [];
+    public IReadOnlyList<SearchVehicleCard> Results { get; private set; } = [];
+    public IReadOnlyList<CustomerNotice> Notices { get; private set; } = [];
+    public string? ErrorMessage { get; private set; }
+
+    public int? HeroTypeId => TypeId.Count == 1 ? TypeId[0] : null;
+    public int? HeroSeats => VehicleSearchSupport.SeatMin(Seats);
+
+    public async Task OnGetAsync()
+    {
+        if (StartDate is null)
+            StartDate = VehicleSearchSupport.DefaultStart();
+        if (EndDate is null)
+            EndDate = VehicleSearchSupport.DefaultEnd(StartDate.Value);
+
+        VehicleTypes = await api.GetVehicleTypesAsync();
+        var (results, error) = await VehicleSearchSupport.LoadSearchAsync(
+            api, VehicleTypes, TypeId, Seats, PriceMax, StartDate, EndDate);
+        ErrorMessage = error;
+        Results = results;
+        Notices = SearchUi.Notices;
+    }
+}

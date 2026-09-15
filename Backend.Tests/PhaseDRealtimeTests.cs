@@ -125,7 +125,7 @@ public class PhaseDRealtimeTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         var schedule = new ScheduleConflictService(iso.Db);
         var dispatch = new DispatchService(iso.Db, bookings, drivers, inspections, fees, schedule, capture);
 
@@ -175,8 +175,9 @@ public class PhaseDRealtimeTests
         var payments = new PaymentService(iso.Db, new ScheduleConflictService(iso.Db), capture);
 
         var okBooking = await bookings.CreateBookingAsync(3, SelfDrive());
+        await iso.ConfirmBookingAsync(okBooking!.BookingId);
         var (payment, error, status) = await payments.CreateAsync(
-            3, new CreatePaymentRequest(okBooking!.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
+            3, new CreatePaymentRequest(okBooking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
         Assert.Equal(201, status);
         Assert.Null(error);
         Assert.NotNull(payment);
@@ -188,8 +189,9 @@ public class PhaseDRealtimeTests
         var due = await bookings.CreateBookingAsync(3, new CreateBookingRequest(
             1, "A", "B", null, null, null, null, Start.AddDays(3), End.AddDays(3), 20, null,
             RentalModes.SelfDrive, 2));
+        await iso.ConfirmBookingAsync(due!.BookingId);
         var failed = await payments.CreateAsync(
-            3, new CreatePaymentRequest(due!.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
+            3, new CreatePaymentRequest(due.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
         Assert.Equal(400, failed.StatusCode);
         Assert.Empty(capture.Events);
     }
@@ -203,7 +205,7 @@ public class PhaseDRealtimeTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees, capture);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db), capture);
         var dispatch = new DispatchService(
             iso.Db, bookings, drivers, inspections, fees, new ScheduleConflictService(iso.Db));
 

@@ -7,7 +7,11 @@ public static class BookingSubmitUi
     public const string GenericFailure = "Không thể tạo đơn thuê. Vui lòng thử lại.";
     public const string FailureTitle = "Đặt xe không thành công.";
     public const string NeedQuoteReview =
-        "Vui lòng kiểm tra báo giá bên dưới, rồi bấm «Gửi yêu cầu đặt xe» để gửi đơn.";
+        "Vui lòng kiểm tra báo giá bên dưới, rồi bấm «Xác nhận đặt xe» để gửi đơn.";
+    public const string QuoteUnavailable = "Không thể tính báo giá. Vui lòng kiểm tra lại thông tin.";
+    public const string VehicleUnavailable = "Xe không còn khả dụng trong khoảng thời gian này.";
+    public const string QuoteLoading = "Đang tính giá...";
+    public const string Creating = "Đang tạo đơn...";
 
     public static string FriendlyCreateFailure(string? apiMessage)
     {
@@ -15,6 +19,8 @@ public static class BookingSubmitUi
             return GenericFailure;
 
         var msg = apiMessage.Trim();
+        if (LooksUnavailable(msg))
+            return VehicleUnavailable;
         if (LooksTechnical(msg))
             return GenericFailure;
 
@@ -24,6 +30,30 @@ public static class BookingSubmitUi
             return GenericFailure;
 
         return msg;
+    }
+
+    public static string FriendlyQuoteFailure(string? apiMessage)
+    {
+        if (string.IsNullOrWhiteSpace(apiMessage))
+            return QuoteUnavailable;
+
+        var msg = apiMessage.Trim();
+        if (LooksUnavailable(msg))
+            return VehicleUnavailable;
+        if (LooksTechnical(msg))
+            return QuoteUnavailable;
+
+        return msg;
+    }
+
+    private static bool LooksUnavailable(string msg)
+    {
+        return msg.Contains("không còn khả dụng", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("khong con kha dung", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("xung đột", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("xung dot", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("conflict", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("buffer", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool LooksTechnical(string msg)

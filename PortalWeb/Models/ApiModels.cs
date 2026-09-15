@@ -12,6 +12,7 @@ public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Email, string Otp, string NewPassword, string? ConfirmPassword);
 public record GoogleLoginRequest(string IdToken);
 public record LoginOptionsResponse(bool GoogleEnabled, string? GoogleClientId);
+public record UserProfileResponse(int UserId, string Email, string FullName, string? Phone, string Role);
 public record MessageResponse(string Message);
 public record ApiError(string Message);
 
@@ -32,7 +33,9 @@ public record VehicleResponse(
     int VehicleId, int TypeId, string TypeName, string LicensePlate, string Brand, string Model, int Year,
     string? Color, string Status, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
-    DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null);
+    DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null,
+    int SeatCapacity = 0, decimal PricePerDay = 0);
+public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 public record MaintenanceRecordResponse(
     int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
     int? OdometerAtMaintenance, decimal? Cost, string? Notes, DateTime CreatedAt);
@@ -156,7 +159,9 @@ public record BookingResponse(
     IReadOnlyList<BookingFeeResponse>? Fees = null,
     decimal? FinalBaseAmount = null,
     decimal? TotalFees = null,
-    IReadOnlyList<VehicleInspectionResponse>? Inspections = null);
+    IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
+    ReviewResponse? Review = null,
+    bool HasActiveDeposit = false);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record AssignTripRequest(int? DriverId, int VehicleId);
@@ -197,6 +202,12 @@ public record AssignConflictResponse(
     IReadOnlyList<VehicleAlternativeResponse> VehicleAlternatives,
     IReadOnlyList<DriverAlternativeResponse> DriverAlternatives);
 public record CreateReviewRequest(byte Rating, string? Comment);
+public record ReviewResponse(
+    int ReviewId,
+    int BookingId,
+    byte Rating,
+    string? Comment,
+    DateTime CreatedAt);
 public record DriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips);
 public record DispatchVehicleStatusResponse(
     int VehicleId, string LicensePlate, string TypeName, string VehicleStatus,
@@ -208,6 +219,17 @@ public record DispatchDriverStatusResponse(
 public record DispatchFleetStatusResponse(
     List<DispatchVehicleStatusResponse> Vehicles, List<DispatchDriverStatusResponse> Drivers);
 public record DispatchAssignableResponse(List<VehicleResponse> Vehicles, List<DriverResponse> Drivers);
+public record IncidentResponse(
+    int IncidentId,
+    int BookingId,
+    int AssignmentId,
+    int DriverId,
+    string DriverName,
+    string IncidentType,
+    string Description,
+    DateTime OccurredAt,
+    string Status,
+    DateTime CreatedAt);
 public record ChangePasswordRequest(string OldPassword, string NewPassword);
 public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, decimal PricePerKm);
 public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive);

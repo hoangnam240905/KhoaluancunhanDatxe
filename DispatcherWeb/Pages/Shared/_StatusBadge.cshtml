@@ -1,0 +1,24 @@
+@model (string Kind, string? Value)
+@{
+    var kind = Model.Kind ?? "";
+    var value = Model.Value ?? "";
+    var css = kind.ToLowerInvariant() switch
+    {
+        "booking" => UiDisplay.BookingStatusClass(value),
+        "vehicle" => UiDisplay.VehicleStatusClass(value),
+        "driver" => UiDisplay.DriverStatusClass(value),
+        "payment" => UiDisplay.PaymentStatusClass(value),
+        "contract" => UiDisplay.ContractStatusClass(value),
+        _ => "dx-badge-gray"
+    };
+    var label = kind.ToLowerInvariant() switch
+    {
+        "booking" => UiDisplay.BookingStatus(value),
+        "vehicle" => UiDisplay.VehicleStatus(value),
+        "driver" => UiDisplay.DriverStatus(value),
+        "payment" => UiDisplay.PaymentStatus(value),
+        "contract" => UiDisplay.ContractStatus(value),
+        _ => string.IsNullOrWhiteSpace(value) ? "—" : value
+    };
+}
+<span class="dx-badge @css">@label</span>

@@ -13,10 +13,26 @@ public record BookingResponse(
     int BookingId, int CustomerId, string CustomerName, int VehicleTypeId, string VehicleTypeName,
     string PickupAddress, string DropoffAddress, DateTime StartDate, DateTime EndDate,
     decimal? EstimatedDistance, decimal TotalAmount, string Status, string? Notes, DateTime CreatedAt,
-    TripAssignmentResponse? Assignment, string RentalMode = "WithDriver", AssignedVehicleResponse? AssignedVehicle = null);
+    TripAssignmentResponse? Assignment, string RentalMode = "WithDriver", AssignedVehicleResponse? AssignedVehicle = null,
+    bool HasActiveDeposit = false,
+    IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
+    decimal? QuotedPricePerDay = null,
+    decimal? QuotedPricePerKm = null,
+    int? QuotedDays = null,
+    decimal? QuotedDepositAmount = null,
+    decimal? FinalAmount = null);
 
-public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
+public record TripAssignmentResponse(
+    int AssignmentId, int DriverId, string DriverName, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt,
+    string? DriverPhone = null);
+
+public record ContractResponse(
+    int ContractId, int BookingId, string ContractNumber, string Status, int CustomerId, string CustomerName,
+    string VehicleTypeName, string RentalMode, string PickupAddress, string DropoffAddress,
+    DateTime StartDate, DateTime EndDate, decimal TotalAmount, decimal? DepositAmount,
+    DateTime CreatedAt, DateTime? SignedAt);
 public record AssignTripRequest(int? DriverId, int VehicleId);
+public record UpdateBookingStatusRequest(string Status, string? Note);
 public record VehicleAlternativeResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
 public record DriverAlternativeResponse(int DriverId, string FullName, string? Phone, string Status);
 public record AssignConflictResponse(

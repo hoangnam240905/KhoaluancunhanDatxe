@@ -14,7 +14,11 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
         try
         {
             var auth = JsonSerializer.Deserialize<AuthResponse>(json);
-            return auth?.ExpiresAt > DateTime.UtcNow ? auth : null;
+            if (auth is null) return null;
+            if (auth.ExpiresAt > DateTime.UtcNow) return auth;
+            // Expired JWT cookie — treat as logged out (session expiration).
+            context.Response.Cookies.Delete(CookieName);
+            return null;
         }
         catch { return null; }
     }
@@ -34,4 +38,5 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
     public bool IsLoggedIn => GetAuth() is not null;
     public string? Role => GetAuth()?.Role;
     public string? FullName => GetAuth()?.FullName;
+    public string? Email => GetAuth()?.Email;
 }

@@ -28,7 +28,7 @@ public class PhaseAVehicleHoldTests
         var bookings = new BookingService(db, pricing);
         var inspections = new VehicleInspectionService(db);
         var fees = new BookingFeeService(db, pricing);
-        var drivers = new DriverService(db, bookings, inspections, fees);
+        var drivers = new DriverService(db, bookings, inspections, fees, new ScheduleConflictService(db));
         return new DispatchService(db, bookings, drivers, inspections, fees, Schedule(db));
     }
 
@@ -63,7 +63,8 @@ public class PhaseAVehicleHoldTests
     {
         using var iso = new IsolatedCarRentalDb();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
-        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
 
         Assert.Null(error);
         Assert.Equal(201, status);
@@ -80,17 +81,20 @@ public class PhaseAVehicleHoldTests
     {
         using var iso = new IsolatedCarRentalDb();
         var occupying = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
-        var held = await Payments(iso.Db).CreateAsync(3, DepositRequest(occupying!.BookingId));
+        await iso.ConfirmBookingAsync(occupying!.BookingId);
+        var held = await Payments(iso.Db).CreateAsync(3, DepositRequest(occupying.BookingId));
         Assert.Equal(201, held.StatusCode);
 
         var other = await Bookings(iso.Db).CreateBookingAsync(
-            3, new(1, "A", "B", null, null, null, null, Start.AddHours(1), End.AddHours(1), 20, null, RentalModes.SelfDrive, 2));
-        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(other!.BookingId));
+            3, new(1, "A", "B", null, null, null, null, Start.AddHours(1), End.AddHours(1), 20, null, RentalModes.SelfDrive, null));
+        await iso.ConfirmBookingAsync(other!.BookingId);
+        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(other.BookingId, 2));
 
         Assert.Null(payment);
         Assert.Equal(400, status);
         Assert.Equal("Xe đã có lịch thuê khác trong khoảng thời gian này.", error);
         Assert.Equal(0, iso.Db.Payments.Count(p => p.BookingId == other.BookingId));
+        Assert.Null(iso.Db.Bookings.Find(other.BookingId)!.AssignedVehicleId);
         Assert.False(await Schedule(iso.Db).HasVehicleConflictAsync(2, Start, End, occupying.BookingId));
     }
 
@@ -100,7 +104,9 @@ public class PhaseAVehicleHoldTests
         using var iso = new IsolatedCarRentalDb();
         var first = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         var second = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
-        var held = await Payments(iso.Db).CreateAsync(3, DepositRequest(first!.BookingId, 2));
+        await iso.ConfirmBookingAsync(first!.BookingId);
+        await iso.ConfirmBookingAsync(second!.BookingId);
+        var held = await Payments(iso.Db).CreateAsync(3, DepositRequest(first.BookingId, 2));
         Assert.Equal(201, held.StatusCode);
 
         var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(second!.BookingId, 2));
@@ -119,6 +125,8 @@ public class PhaseAVehicleHoldTests
         using var iso = new IsolatedCarRentalDb();
         var a = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         var b = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
+        await iso.ConfirmBookingAsync(a!.BookingId);
+        await iso.ConfirmBookingAsync(b!.BookingId);
         iso.Db.ChangeTracker.Clear();
         var path = iso.Path;
         var idA = a!.BookingId;
@@ -149,7 +157,8 @@ public class PhaseAVehicleHoldTests
     {
         using var iso = new IsolatedCarRentalDb();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
-        await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
         Assert.True(await Schedule(iso.Db).HasVehicleConflictAsync(2, Start, End));
 
         var (cancelled, error, status) = await Bookings(iso.Db).UpdateStatusAsync(
@@ -168,8 +177,9 @@ public class PhaseAVehicleHoldTests
     {
         using var iso = new IsolatedCarRentalDb();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
+        await iso.ConfirmBookingAsync(created!.BookingId);
         var (payment, error, status) = await Payments(iso.Db).CreateAsync(
-            3, DepositRequest(created!.BookingId, 4));
+            3, DepositRequest(created.BookingId, 4));
 
         Assert.Null(payment);
         Assert.Equal(400, status);
@@ -184,9 +194,9 @@ public class PhaseAVehicleHoldTests
     {
         using var iso = new IsolatedCarRentalDb();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
-        await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
-        var confirmed = await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
-        Assert.Null(confirmed.Error);
+        var confirmed = await iso.ConfirmBookingAsync(created!.BookingId);
+        Assert.Equal(200, confirmed.StatusCode);
+        await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var assigned = await Dispatch(iso.Db).AssignTripAsync(
@@ -217,8 +227,8 @@ public class PhaseAVehicleHoldTests
         iso.SetLastCompletedMaintenance(spareId, DateTime.UtcNow.AddDays(-10), 1000);
 
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest(vehicleId: 2));
-        await Payments(iso.Db).CreateAsync(3, DepositRequest(created!.BookingId));
-        await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 
         var assigned = await Dispatch(iso.Db).AssignTripAsync(

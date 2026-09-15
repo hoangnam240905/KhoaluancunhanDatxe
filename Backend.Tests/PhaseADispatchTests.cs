@@ -22,7 +22,7 @@ public class PhaseADispatchTests
         var bookings = new BookingService(db, pricing);
         var inspections = new VehicleInspectionService(db);
         var fees = new BookingFeeService(db, pricing);
-        var drivers = new DriverService(db, bookings, inspections, fees);
+        var drivers = new DriverService(db, bookings, inspections, fees, new ScheduleConflictService(db));
         return new DispatchService(db, bookings, drivers, inspections, fees, Schedule(db));
     }
 
@@ -141,7 +141,7 @@ public class PhaseADispatchTests
     {
         using var iso = new IsolatedCarRentalDb();
         var occupy = AddBooking(
-            iso.Db, Start, End, BookingStatuses.Confirmed, vehicleTypeId: 1,
+            iso.Db, Start, End, BookingStatuses.Assigned, vehicleTypeId: 1,
             tripVehicleId: 1, tripDriverId: 6, rentalMode: RentalModes.WithDriver);
         iso.Db.TripAssignments.Single(t => t.BookingId == occupy.BookingId).Status =
             TripAssignmentStatuses.Completed;
@@ -211,7 +211,7 @@ public class PhaseADispatchTests
     public async Task Concurrent_deposit_only_one_succeeds()
     {
         using var iso = new IsolatedCarRentalDb();
-        var booking = iso.AddDepositBooking(800_000m);
+        var booking = iso.AddDepositBooking(800_000m, BookingStatuses.Confirmed);
         var path = iso.Path;
         var bookingId = booking.BookingId;
         iso.Db.ChangeTracker.Clear();
@@ -220,7 +220,7 @@ public class PhaseADispatchTests
         {
             await using var db = Open(path);
             var (payment, error, status) = await new PaymentService(db, new ScheduleConflictService(db)).CreateAsync(
-                3, new CreatePaymentRequest(bookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
+                3, new CreatePaymentRequest(bookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
             return (status, payment is null ? error : null);
         }
 

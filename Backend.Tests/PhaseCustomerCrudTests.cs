@@ -171,8 +171,9 @@ public class PhaseCustomerCrudTests
         var created = await bookings.CreateBookingAsync(3, new CreateBookingRequest(
             1, "A", "B", null, null, null, null, Start, End, 20, null, RentalModes.SelfDrive, 2));
         Assert.NotNull(created);
+        await iso.ConfirmBookingAsync(created!.BookingId);
 
-        var contract = await new ContractService(iso.Db).CreateAsync(3, created!.BookingId);
+        var contract = await new ContractService(iso.Db).CreateAsync(3, created.BookingId);
         Assert.Equal(201, contract.StatusCode);
 
         iso.Db.Reviews.Add(new Review

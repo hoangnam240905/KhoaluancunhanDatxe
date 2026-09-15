@@ -1,0 +1,20 @@
+<div class="dropdown">
+    <button type="button" class="ch-icon-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Thông báo" aria-label="Thông báo">
+        <i class="bi bi-bell"></i>
+        <span class="ch-notify-dot" aria-hidden="true"></span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end ch-notify-menu">
+        <div class="ch-notify-head">Thông báo</div>
+        @foreach (var n in SearchUi.Notices)
+        {
+            <div class="ch-notify-item @(n.Unread ? "is-unread" : "")">
+                <span class="ch-notify-ico"><i class="bi @n.Icon"></i></span>
+                <span>
+                    <strong>@n.Title</strong>
+                    <span class="ch-notify-desc">@n.Description</span>
+                    <time>@n.Time</time>
+                </span>
+            </div>
+        }
+    </div>
+</div>

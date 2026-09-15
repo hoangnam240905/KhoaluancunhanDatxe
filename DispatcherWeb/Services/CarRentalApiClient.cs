@@ -59,9 +59,37 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             : [];
     }
 
-    public async Task<(BookingResponse? Data, string? Error)> ConfirmBookingAsync(int id)
+    public async Task<(BookingResponse? Data, string? Error, AssignConflictResponse? Conflict)> ConfirmBookingAsync(int id)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{id}/confirm");
+        var response = await http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null, null);
+
+        var json = await response.Content.ReadAsStringAsync();
+        try
+        {
+            var conflict = JsonSerializer.Deserialize<AssignConflictResponse>(json, JsonOptions);
+            if (conflict is not null && !string.IsNullOrEmpty(conflict.ConflictType))
+                return (null, conflict.Message, conflict);
+        }
+        catch { /* not a conflict payload */ }
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<ApiError>(json, JsonOptions);
+            if (!string.IsNullOrEmpty(error?.Message))
+                return (null, error.Message, null);
+        }
+        catch { }
+
+        return (null, $"Loi API ({(int)response.StatusCode})", null);
+    }
+
+    public async Task<(BookingResponse? Data, string? Error)> CancelBookingAsync(int id, string? note = null)
+    {
+        using var request = CreateRequest(HttpMethod.Patch, $"/api/bookings/{id}/status");
+        request.Content = JsonContent.Create(new UpdateBookingStatusRequest("Cancelled", note));
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
@@ -118,6 +146,17 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return response.IsSuccessStatusCode
             ? await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions)
             : null;
+    }
+
+    public async Task<(ContractResponse? Data, bool NotCreated, string? Error)> GetContractAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/contract");
+        var response = await http.SendAsync(request);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return (null, true, null);
+        if (!response.IsSuccessStatusCode)
+            return (null, false, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<ContractResponse>(JsonOptions), false, null);
     }
 
     public async Task<(BookingResponse? Data, string? Error)> HandoverBookingAsync(int id, VehicleConditionRequest? condition = null)

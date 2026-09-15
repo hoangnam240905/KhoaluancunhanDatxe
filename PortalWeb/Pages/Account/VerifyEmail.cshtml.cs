@@ -19,7 +19,7 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : RolePa
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vui lòng nhập mã OTP.")]
-        [RegularExpression(@"^\d{6}$", ErrorMessage = "Mã OTP gồm 6 chữ số.")]
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "Vui lòng nhập đủ 6 chữ số.")]
         [Display(Name = "Mã OTP")]
         public string Otp { get; set; } = string.Empty;
     }

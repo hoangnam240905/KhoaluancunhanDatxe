@@ -1,49 +1,101 @@
 @inject AdminWeb.Services.AuthSession Auth
 @inject IConfiguration Config
+@{
+    var path = Context.Request.Path.Value ?? "";
+    string Nav(string href, bool exact = false)
+    {
+        var on = exact
+            ? path.Equals(href, StringComparison.OrdinalIgnoreCase)
+            : path.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+        return on ? "dx-nav-link is-active" : "dx-nav-link";
+    }
+    var initials = string.IsNullOrWhiteSpace(Auth.FullName)
+        ? "AD"
+        : string.Concat(Auth.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+}
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="@(Auth.IsLoggedIn ? "dark" : "light")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Admin</title>
+    <title>@(ViewData["Title"] ?? "Admin") — DriveX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/drivex.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-    @if (Auth.IsLoggedIn)
-    {
-        <nav class="navbar navbar-dark bg-dark mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-page="/Index">Admin Panel</a>
-                <div>
-                    <a class="nav-link d-inline text-white" asp-page="/Vehicles/Index">Xe</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Pricing/Index">Gia</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Drivers/Index">Tai xe</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Customers/Index">Khach</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Payments/Index">Thanh toan</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Contracts/Index">Hop dong</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Inspections/Index">Kiem xe</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Incidents/Index">Su co</a>
-                    <a class="nav-link d-inline text-white" asp-page="/Bookings/Index">Don dat</a>
-                    <span class="text-white-50 ms-2">@Auth.FullName</span>
-                    <a class="btn btn-sm btn-outline-light ms-2" asp-page="/Account/Logout">Dang xuat</a>
+<body class="dx-body">
+@if (Auth.IsLoggedIn)
+{
+    <div class="dx-shell">
+        <div class="dx-backdrop" data-dx-backdrop></div>
+        <aside class="dx-sidebar">
+            <a class="dx-brand" asp-page="/Index">
+                <span class="dx-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                <span>DriveX<span class="dx-brand-sub">Quản trị</span></span>
+            </a>
+            <div class="dx-nav-label">Quản trị</div>
+            <nav class="dx-nav">
+                <a class="@Nav("/", true)" asp-page="/Index"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a class="@Nav("/Vehicles")" asp-page="/Vehicles/Index"><i class="bi bi-truck-front"></i> Đội xe</a>
+                <a class="@Nav("/Pricing")" asp-page="/Pricing/Index"><i class="bi bi-tag"></i> Giá &amp; loại xe</a>
+                <a class="@Nav("/Drivers")" asp-page="/Drivers/Index"><i class="bi bi-person-badge"></i> Tài xế</a>
+                <a class="@Nav("/Customers")" asp-page="/Customers/Index"><i class="bi bi-people"></i> Khách hàng</a>
+                <a class="@Nav("/Bookings")" asp-page="/Bookings/Index"><i class="bi bi-journal-text"></i> Đơn đặt</a>
+                <a class="@Nav("/Payments")" asp-page="/Payments/Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
+                <a class="@Nav("/Contracts")" asp-page="/Contracts/Index"><i class="bi bi-file-earmark-text"></i> Hợp đồng</a>
+                <a class="@Nav("/Inspections")" asp-page="/Inspections/Index"><i class="bi bi-clipboard-check"></i> Kiểm xe</a>
+                <a class="@Nav("/Incidents")" asp-page="/Incidents/Index"><i class="bi bi-exclamation-triangle"></i> Sự cố</a>
+            </nav>
+        </aside>
+        <div class="dx-main">
+            <header class="dx-topbar">
+                <button type="button" class="dx-sidebar-toggle" data-dx-toggle aria-label="Mở menu"><i class="bi bi-list"></i></button>
+                <h1 class="dx-topbar-title">@ViewData["Title"]</h1>
+                <div class="dx-topbar-search" title="Ô tìm kiếm giao diện — chưa kết nối API tìm kiếm">
+                    <i class="bi bi-search"></i>
+                    <input type="search" readonly tabindex="-1" placeholder="Tìm kiếm (chưa kết nối API)" />
                 </div>
-            </div>
-        </nav>
-    }
-    <div class="container pb-4">@RenderBody()</div>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    @* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
-    @if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
-    {
-        <script>
-            window.carRentalRealtime = {
-                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
-                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
-            };
-        </script>
-        <script src="~/js/realtime.js" asp-append-version="true"></script>
-    }
-    @await RenderSectionAsync("Scripts", required: false)
+                <div class="dx-topbar-actions">
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta">
+                                <span class="dx-user-name">@Auth.FullName</span>
+                                <span class="dx-user-role">Quản trị</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+            <main class="dx-content dx-content-wide">@RenderBody()</main>
+        </div>
+    </div>
+}
+else
+{
+    <main class="dx-content mx-auto">@RenderBody()</main>
+}
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/drivex.js" asp-append-version="true"></script>
+@* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
+@if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+{
+    <script>
+        window.carRentalRealtime = {
+            hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+            accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+        };
+    </script>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
+}
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

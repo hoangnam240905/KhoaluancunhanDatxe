@@ -20,7 +20,7 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : PageMo
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vui lòng nhập mã OTP.")]
-        [RegularExpression(@"^\d{6}$", ErrorMessage = "Mã OTP gồm 6 chữ số.")]
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "Vui lòng nhập đủ 6 chữ số.")]
         [Display(Name = "Mã OTP")]
         public string Otp { get; set; } = string.Empty;
     }
@@ -29,7 +29,7 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : PageMo
     {
         if (auth.IsLoggedIn) return RedirectToPage("/Index");
         Input.Email = email ?? string.Empty;
-        InfoMessage = "Da gui ma OTP den email. Ma het han sau 5 phut.";
+        InfoMessage = "Đã gửi mã OTP đến email. Mã hết hạn sau 5 phút.";
         return Page();
     }
 
@@ -52,7 +52,7 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : PageMo
         ModelState.Remove("Input.Otp");
         if (string.IsNullOrWhiteSpace(Input.Email))
         {
-            ErrorMessage = "Vui long nhap email.";
+            ErrorMessage = "Vui lòng nhập email.";
             return Page();
         }
 

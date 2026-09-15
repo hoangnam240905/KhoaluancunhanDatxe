@@ -28,6 +28,8 @@ public record ResetPasswordRequest(string Email, string Otp, string NewPassword,
 public record MessageResponse(string Message);
 public record GoogleLoginRequest(string IdToken);
 public record LoginOptionsResponse(bool GoogleEnabled, string? GoogleClientId);
+public record UserProfileResponse(int UserId, string Email, string FullName, string? Phone, string Role);
+public record ChangePasswordRequest(string OldPassword, string NewPassword);
 
 public record VehicleTypeResponse(
     int TypeId,
@@ -60,7 +62,11 @@ public record VehicleResponse(
     string? RegistrationNumber = null,
     DateOnly? RegistrationExpiryDate = null,
     DateOnly? InspectionExpiryDate = null,
-    DateOnly? InsuranceExpiryDate = null);
+    DateOnly? InsuranceExpiryDate = null,
+    int SeatCapacity = 0,
+    decimal PricePerDay = 0);
+
+public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 
 public record CreateBookingRequest(
     int VehicleTypeId,
@@ -179,7 +185,8 @@ public record BookingResponse(
     IReadOnlyList<BookingFeeResponse>? Fees = null,
     decimal? FinalBaseAmount = null,
     decimal? TotalFees = null,
-    IReadOnlyList<VehicleInspectionResponse>? Inspections = null);
+    IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
+    ReviewResponse? Review = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,
@@ -192,5 +199,12 @@ public record TripAssignmentResponse(
     string? DriverPhone = null);
 
 public record CreateReviewRequest(byte Rating, string? Comment);
+
+public record ReviewResponse(
+    int ReviewId,
+    int BookingId,
+    byte Rating,
+    string? Comment,
+    DateTime CreatedAt);
 
 public record ApiError(string Message);

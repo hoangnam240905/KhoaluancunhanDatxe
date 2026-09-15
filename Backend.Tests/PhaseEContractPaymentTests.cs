@@ -38,8 +38,9 @@ public class PhaseEContractPaymentTests
         var contracts = new ContractService(iso.Db, capture);
         var booking = await bookings.CreateBookingAsync(3, SelfDrive(null));
         Assert.NotNull(booking);
+        await iso.ConfirmBookingAsync(booking!.BookingId);
 
-        var first = await contracts.CreateAsync(3, booking!.BookingId);
+        var first = await contracts.CreateAsync(3, booking.BookingId);
         Assert.Equal(201, first.StatusCode);
         Assert.True(first.Created);
         Assert.Equal(booking.BookingId, first.Contract!.BookingId);
@@ -64,12 +65,15 @@ public class PhaseEContractPaymentTests
         var token1 = await LoginAsync(client, "customer1@gmail.com");
         var token2 = await LoginAsync(client, "customer2@gmail.com");
 
-        var created = await PostBookingAsync(client, token1, SelfDrive(null));
+        var created = await PostBookingAsync(client, token1, SelfDrive());
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var booking = await created.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.NotNull(booking);
+        var dispatcher = await LoginAsync(client, "dispatcher@carrental.vn");
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
+            Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking!.BookingId}/confirm", dispatcher))).StatusCode);
 
-        var issue = Authed(HttpMethod.Post, $"/api/bookings/{booking!.BookingId}/contract", token1);
+        var issue = Authed(HttpMethod.Post, $"/api/bookings/{booking.BookingId}/contract", token1);
         Assert.Equal(HttpStatusCode.Created, (await client.SendAsync(issue)).StatusCode);
 
         var otherContract = Authed(HttpMethod.Get, $"/api/bookings/{booking.BookingId}/contract", token2);
@@ -92,6 +96,7 @@ public class PhaseEContractPaymentTests
         var payments = new PaymentService(iso.Db, new ScheduleConflictService(iso.Db), capture);
         var booking = await bookings.CreateBookingAsync(3, SelfDrive());
         Assert.Equal(2, booking!.AssignedVehicle?.VehicleId);
+        await iso.ConfirmBookingAsync(booking.BookingId);
 
         var (created, error, status) = await payments.CreateAsync(
             3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
@@ -125,6 +130,7 @@ public class PhaseEContractPaymentTests
         var schedule = new ScheduleConflictService(iso.Db);
         var payments = new PaymentService(iso.Db, schedule, capture);
         var booking = await bookings.CreateBookingAsync(3, SelfDrive());
+        await iso.ConfirmBookingAsync(booking!.BookingId);
 
         var (created, _, status) = await payments.CreateAsync(
             3, new CreatePaymentRequest(booking!.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
@@ -137,7 +143,7 @@ public class PhaseEContractPaymentTests
         Assert.Null(error);
         Assert.Equal(PaymentStatuses.Failed, failed!.Status);
         Assert.Null(failed.PaidAt);
-        Assert.Null(iso.Db.Bookings.Find(booking.BookingId)!.AssignedVehicleId);
+        Assert.Equal(2, iso.Db.Bookings.Find(booking.BookingId)!.AssignedVehicleId);
         Assert.False(await schedule.HasVehicleConflictAsync(2, Start, End, excludeBookingId: 999));
         Assert.DoesNotContain(capture.Events, e =>
             e.EventType == RealtimeEventTypes.PaymentStatusChanged
@@ -152,10 +158,10 @@ public class PhaseEContractPaymentTests
     {
         using var iso = new IsolatedCarRentalDb();
         var payments = new PaymentService(iso.Db, new ScheduleConflictService(iso.Db));
-        var booking = iso.AddDepositBooking(800_000);
+        var booking = iso.AddDepositBooking(800_000, BookingStatuses.Confirmed);
 
         var first = await payments.CreateAsync(
-            3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
+            3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
         Assert.Equal(201, first.StatusCode);
 
         var dup = await payments.CreateAsync(
@@ -177,8 +183,9 @@ public class PhaseEContractPaymentTests
         var bookings = new BookingService(iso.Db, new PricingService());
         var contracts = new ContractService(iso.Db);
         var payments = new PaymentService(iso.Db, new ScheduleConflictService(iso.Db));
-        var booking = await bookings.CreateBookingAsync(3, SelfDrive(null));
-        var contract = await contracts.CreateAsync(3, booking!.BookingId);
+        var booking = await bookings.CreateBookingAsync(3, SelfDrive());
+        await iso.ConfirmBookingAsync(booking!.BookingId);
+        var contract = await contracts.CreateAsync(3, booking.BookingId);
         var payment = await payments.CreateAsync(
             3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
         Assert.Equal(201, contract.StatusCode);
@@ -203,9 +210,9 @@ public class PhaseEContractPaymentTests
         using var iso = new IsolatedCarRentalDb();
         var capture = new CapturingRealtimePublisher();
         var payments = new PaymentService(iso.Db, new ScheduleConflictService(iso.Db), capture);
-        var booking = iso.AddDepositBooking(800_000);
+        var booking = iso.AddDepositBooking(800_000, BookingStatuses.Confirmed);
         var created = await payments.CreateAsync(
-            3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
+            3, new CreatePaymentRequest(booking.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash, VehicleId: 2));
         await payments.SimulateSuccessAsync(3, created.Payment!.PaymentId);
         capture.Clear();
 
@@ -225,8 +232,11 @@ public class PhaseEContractPaymentTests
         var driver = await LoginAsync(client, "driver1@carrental.vn");
         var created = await PostBookingAsync(client, customer, SelfDrive(null));
         var booking = await created.Content.ReadFromJsonAsync<BookingResponse>();
+        var dispatcher = await LoginAsync(client, "dispatcher@carrental.vn");
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
+            Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking!.BookingId}/confirm", dispatcher))).StatusCode);
         Assert.Equal(HttpStatusCode.Created,
-            (await client.SendAsync(Authed(HttpMethod.Post, $"/api/bookings/{booking!.BookingId}/contract", customer))).StatusCode);
+            (await client.SendAsync(Authed(HttpMethod.Post, $"/api/bookings/{booking.BookingId}/contract", customer))).StatusCode);
 
         var asDriver = Authed(HttpMethod.Get, $"/api/bookings/{booking.BookingId}/contract", driver);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(asDriver)).StatusCode);

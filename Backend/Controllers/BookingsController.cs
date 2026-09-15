@@ -117,9 +117,9 @@ public class BookingsController(
             return BadRequest(new { message = dateError });
 
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var booking = await bookingService.CreateBookingAsync(userId, request, fromRecommendation);
+        var (booking, error) = await bookingService.TryCreateBookingAsync(userId, request, fromRecommendation);
         return booking is null
-            ? BadRequest(new { message = "Dữ liệu đặt xe không hợp lệ." })
+            ? BadRequest(new { message = error ?? "Dữ liệu đặt xe không hợp lệ." })
             : CreatedAtAction(nameof(GetById), new { id = booking.BookingId }, booking);
     }
 

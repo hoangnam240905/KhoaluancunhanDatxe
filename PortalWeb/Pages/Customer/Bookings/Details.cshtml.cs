@@ -1,3 +1,4 @@
+using PortalWeb.Display;
 using PortalWeb.Models;
 using PortalWeb.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,12 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public IReadOnlyList<VehicleInspectionResponse> Inspections { get; set; } = [];
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
+    public bool IsLoggedIn => auth.IsLoggedIn;
+    public string? UserName => auth.FullName;
+    public BookingDetailView? Presentation { get; private set; }
+    public bool AccessDenied { get; private set; }
+    public bool NotFoundBooking { get; private set; }
+    public bool NeedsLogin { get; private set; }
 
     [BindProperty] public string Method { get; set; } = "BankTransfer";
     [BindProperty] public string? TransactionRef { get; set; }
@@ -83,21 +90,25 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public bool HasBlockingDeposit =>
         Payments.Any(p => p.PaymentType == "Deposit" && (p.Status is "Pending" or "Paid"));
 
+    public bool IsAwaitingDispatcher => BookingDetailUi.IsAwaitingDispatcher(Booking?.Status);
+
+    public bool CanViewContract =>
+        Booking is not null &&
+        BookingDetailUi.AllowsContract(Booking.Status) &&
+        Booking.Status != "Cancelled";
+
     public bool CanPayDeposit =>
         Booking is not null &&
         Booking.QuotedDepositAmount is not null &&
-        Booking.Status != "Cancelled" &&
+        BookingDetailUi.AllowsDeposit(Booking.Status) &&
         !HasBlockingDeposit;
 
     public bool CanIssueContract =>
         Booking is not null &&
         Contract is null &&
-        Booking.Status != "Cancelled";
+        BookingDetailUi.AllowsDeposit(Booking.Status);
 
-    public bool CanSignContract =>
-        Contract is not null &&
-        Contract.Status == "Issued" &&
-        Booking?.Status != "Cancelled";
+    public bool CanSignContract => false;
 
     public bool CanSimulate(PaymentResponse p) =>
         p.Status == "Pending" && Booking?.Status != "Cancelled";
@@ -116,7 +127,8 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        if (!await LoadAsync(id)) return RedirectToPage("Index");
+        await LoadDetailAsync(id);
+        if (NeedsLogin) return RedirectToPage("/Account/Login");
         return Page();
     }
 
@@ -128,7 +140,9 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
 
         if (!CanPayDeposit)
         {
-            ErrorMessage = "Không thể tạo khoản cọc cho đơn này.";
+            ErrorMessage = IsAwaitingDispatcher
+                ? BookingDetailUi.WaitingBody
+                : "Không thể tạo khoản cọc cho đơn này.";
             return Page();
         }
 
@@ -150,43 +164,18 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         return Page();
     }
 
-    public async Task<IActionResult> OnPostIssueContractAsync(int id)
+    public IActionResult OnPostIssueContract(int id)
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        if (!await LoadAsync(id)) return RedirectToPage("Index");
-        var (contract, error) = await api.CreateContractAsync(id);
-        if (contract is null)
-        {
-            ErrorMessage = error;
-            await LoadAsync(id);
-            return Page();
-        }
-        InfoMessage = "Đã lập hợp đồng điện tử.";
-        await LoadAsync(id);
-        return Page();
+        return RedirectToPage("Contract", new { id });
     }
 
-    public async Task<IActionResult> OnPostSignContractAsync(int id)
+    public IActionResult OnPostSignContract(int id)
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        if (!await LoadAsync(id)) return RedirectToPage("Index");
-        if (Contract is null)
-        {
-            ErrorMessage = "Chưa có hợp đồng.";
-            return Page();
-        }
-        var (signed, error) = await api.SimulateSignContractAsync(Contract.ContractId);
-        if (signed is null)
-        {
-            ErrorMessage = error;
-            await LoadAsync(id);
-            return Page();
-        }
-        InfoMessage = "Đã mô phỏng ký hợp đồng.";
-        await LoadAsync(id);
-        return Page();
+        return RedirectToPage("Contract", new { id });
     }
 
     public async Task<IActionResult> OnPostSimulateSuccessAsync(int id, int paymentId)
@@ -223,6 +212,42 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         return Page();
     }
 
+    private async Task LoadDetailAsync(int id)
+    {
+        try
+        {
+            var (data, status) = await api.GetBookingWithStatusAsync(id);
+            if (status is 401)
+            {
+                NeedsLogin = true;
+                return;
+            }
+
+            if (status is 403)
+            {
+                AccessDenied = true;
+                ErrorMessage = BookingDetailUi.AccessDenied;
+                return;
+            }
+
+            if (data is null)
+            {
+                NotFoundBooking = true;
+                ErrorMessage = status >= 500 ? BookingDetailUi.LoadFailure : BookingDetailUi.NotFound;
+                return;
+            }
+
+            Booking = data;
+            Presentation = BookingDetailUi.FromBooking(data);
+            Payments = await api.GetBookingPaymentsAsync(id);
+            Contract = await api.GetContractAsync(id);
+        }
+        catch
+        {
+            ErrorMessage = BookingDetailUi.LoadFailure;
+        }
+    }
+
     private async Task<bool> LoadAsync(int id)
     {
         Booking = await api.GetBookingAsync(id);
@@ -232,6 +257,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         Inspections = Booking.Inspections is { Count: > 0 }
             ? Booking.Inspections
             : await api.GetBookingInspectionsAsync(id);
+        Presentation = BookingDetailUi.FromBooking(Booking);
         return true;
     }
 }

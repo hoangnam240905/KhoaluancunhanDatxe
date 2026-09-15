@@ -77,7 +77,7 @@ public class RegisterModel(CarRentalApiClient api, AuthSession auth) : PageModel
         await LoadGoogleAsync();
         if (string.IsNullOrWhiteSpace(GoogleIdToken))
         {
-            ErrorMessage = "Dang nhap Google da bi huy hoac that bai.";
+            ErrorMessage = "Đăng nhập Google đã bị hủy hoặc thất bại.";
             return Page();
         }
 

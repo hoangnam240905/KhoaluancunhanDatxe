@@ -34,6 +34,7 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
     public bool IsLoggedIn => GetAuth() is not null;
     public string? Role => GetAuth()?.Role;
     public string? FullName => GetAuth()?.FullName;
+    public string? Email => GetAuth()?.Email;
 }
 
 public static class RoleRoutes
@@ -41,7 +42,7 @@ public static class RoleRoutes
     public static string HomeFor(string role) => role switch
     {
         "Admin" => "/Admin",
-        "Dispatcher" => "/Dispatcher",
+        "Dispatcher" => "/Mockup",
         "Customer" => "/",
         _ => "/Account/Login"
     };

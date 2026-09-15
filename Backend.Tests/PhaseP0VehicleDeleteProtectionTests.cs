@@ -79,7 +79,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var pendingId = AddSpare(iso, "51Z-HPEND1");
         iso.SetLastCompletedMaintenance(pendingId, DateTime.UtcNow.AddDays(-10), 1000);
         var pendingHold = await bookings.CreateBookingAsync(3, SelfDrive(pendingId));
-        var createdPay = await payments.CreateAsync(3, Deposit(pendingHold!.BookingId));
+        await iso.ConfirmBookingAsync(pendingHold!.BookingId);
+        var createdPay = await payments.CreateAsync(3, Deposit(pendingHold.BookingId));
         Assert.Equal(201, createdPay.StatusCode);
         Assert.Equal(PaymentStatuses.Pending, createdPay.Payment!.Status);
         Assert.True(await schedule.IsVehicleOccupiedAsync(pendingId));
@@ -90,7 +91,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var paidId = AddSpare(iso, "51Z-HPAID1");
         iso.SetLastCompletedMaintenance(paidId, DateTime.UtcNow.AddDays(-10), 1000);
         var paidHold = await bookings.CreateBookingAsync(3, SelfDrive(paidId));
-        var paid = await payments.CreateAsync(3, Deposit(paidHold!.BookingId));
+        await iso.ConfirmBookingAsync(paidHold!.BookingId);
+        var paid = await payments.CreateAsync(3, Deposit(paidHold.BookingId));
         await payments.SimulateSuccessAsync(3, paid.Payment!.PaymentId);
         Assert.Equal(PaymentStatuses.Paid, iso.Db.Payments.Find(paid.Payment.PaymentId)!.Status);
         Assert.True(await schedule.IsVehicleOccupiedAsync(paidId));
@@ -108,8 +110,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var vehicleId = AddSpare(iso);
         iso.SetLastCompletedMaintenance(vehicleId, DateTime.UtcNow.AddDays(-10), 1000);
         var created = await bookings.CreateBookingAsync(3, SelfDrive(vehicleId));
-        await payments.CreateAsync(3, Deposit(created!.BookingId));
-        await dispatch.ConfirmBookingAsync(created.BookingId, 2);
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        await payments.CreateAsync(3, Deposit(created.BookingId));
         Assert.Equal(BookingStatuses.Confirmed, iso.Db.Bookings.Find(created.BookingId)!.Status);
         Assert.True(await schedule.IsVehicleOccupiedAsync(vehicleId));
         var blockedConfirmed = await vehicles.DeleteVehicleAsync(vehicleId);
@@ -134,8 +136,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var completedId = AddSpare(iso, "51Z-COMP01");
         iso.SetLastCompletedMaintenance(completedId, DateTime.UtcNow.AddDays(-10), 1000);
         var completedBooking = await bookings.CreateBookingAsync(3, SelfDrive(completedId));
-        await payments.CreateAsync(3, Deposit(completedBooking!.BookingId));
-        await dispatch.ConfirmBookingAsync(completedBooking.BookingId, 2);
+        await iso.ConfirmBookingAsync(completedBooking!.BookingId);
+        await payments.CreateAsync(3, Deposit(completedBooking.BookingId));
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, completedBooking.BookingId);
         await dispatch.AssignTripAsync(completedBooking.BookingId, new AssignTripRequest(null, completedId), 2);
         await dispatch.HandoverSelfDriveAsync(
@@ -148,7 +150,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var cancelledId = AddSpare(iso, "51Z-CANC01");
         iso.SetLastCompletedMaintenance(cancelledId, DateTime.UtcNow.AddDays(-10), 1000);
         var cancelledBooking = await bookings.CreateBookingAsync(3, SelfDrive(cancelledId));
-        await payments.CreateAsync(3, Deposit(cancelledBooking!.BookingId));
+        await iso.ConfirmBookingAsync(cancelledBooking!.BookingId);
+        await payments.CreateAsync(3, Deposit(cancelledBooking.BookingId));
         await bookings.UpdateStatusAsync(cancelledBooking.BookingId, BookingStatuses.Cancelled, 2, "huy");
         Assert.Equal(BookingStatuses.Cancelled, iso.Db.Bookings.Find(cancelledBooking.BookingId)!.Status);
         Assert.Null(iso.Db.Bookings.Find(cancelledBooking.BookingId)!.AssignedVehicleId);
@@ -163,7 +166,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var holdId = AddSpare(iso, "51Z-HOLD01");
         iso.SetLastCompletedMaintenance(holdId, DateTime.UtcNow.AddDays(-10), 1000);
         var held = await bookings.CreateBookingAsync(3, SelfDrive(holdId));
-        await payments.CreateAsync(3, Deposit(held!.BookingId));
+        await iso.ConfirmBookingAsync(held!.BookingId);
+        await payments.CreateAsync(3, Deposit(held.BookingId));
         var holdInactive = await SetInactiveAsync(iso, vehicles, holdId);
         Assert.Equal(400, holdInactive.StatusCode);
         Assert.Equal(VehicleOccupancyRules.CannotDeactivate, holdInactive.Error);
@@ -195,7 +199,8 @@ public class PhaseP0VehicleDeleteProtectionTests
         var vehicleId = AddSpare(iso);
         iso.SetLastCompletedMaintenance(vehicleId, DateTime.UtcNow.AddDays(-10), 1000);
         var created = await bookings.CreateBookingAsync(3, SelfDrive(vehicleId));
-        await payments.CreateAsync(3, Deposit(created!.BookingId));
+        await iso.ConfirmBookingAsync(created!.BookingId);
+        await payments.CreateAsync(3, Deposit(created.BookingId));
         var contracts = new ContractService(iso.Db);
         await contracts.CreateAsync(3, created.BookingId);
         var bookingsBefore = iso.Db.Bookings.Count();
@@ -330,7 +335,7 @@ public class PhaseP0VehicleDeleteProtectionTests
         var bookings = new BookingService(iso.Db, pricing);
         var inspections = new VehicleInspectionService(iso.Db);
         var fees = new BookingFeeService(iso.Db, pricing);
-        var drivers = new DriverService(iso.Db, bookings, inspections, fees);
+        var drivers = new DriverService(iso.Db, bookings, inspections, fees, new ScheduleConflictService(iso.Db));
         var dispatch = new DispatchService(iso.Db, bookings, drivers, inspections, fees, schedule);
         return (bookings, new PaymentService(iso.Db, schedule), dispatch, drivers, new VehicleService(iso.Db), schedule);
     }

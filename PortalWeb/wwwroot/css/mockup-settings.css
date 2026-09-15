@@ -1,0 +1,266 @@
+/* Mockup 7 — Cài đặt tài khoản (UI only) */
+
+.st-crumb {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--mk-muted);
+}
+
+.st-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.st-nav {
+    padding: 0.75rem;
+    position: sticky;
+    top: 80px;
+}
+
+.st-nav-select-wrap { display: none; margin-bottom: 0.5rem; }
+.st-nav-select {
+    width: 100%;
+    border: 1px solid var(--mk-border);
+    border-radius: 10px;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+    font-weight: 600;
+    color: var(--mk-text);
+}
+
+.st-nav-list { display: grid; gap: 0.25rem; }
+.st-nav-btn {
+    text-align: left;
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--mk-text);
+    cursor: pointer;
+}
+.st-nav-btn:hover { background: #f1f5f9; }
+.st-nav-btn.is-on {
+    background: var(--mk-primary-soft);
+    color: var(--mk-primary);
+}
+
+.st-panels { min-width: 0; }
+.st-panel[hidden] { display: none !important; }
+.st-panel.is-on { display: block; }
+
+.st-card {
+    padding: 1.15rem 1.25rem 1.35rem;
+    margin-bottom: 0.85rem;
+}
+.st-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-bottom: 1.1rem;
+}
+.st-card-head h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.05rem;
+}
+.st-card-head .mk-muted { margin: 0; }
+
+.st-profile-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid var(--mk-border);
+    border-radius: 12px;
+}
+.st-avatar-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    background: var(--mk-primary-soft);
+    color: var(--mk-primary);
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+.st-profile-top strong {
+    display: block;
+    font-size: 1.05rem;
+    margin-bottom: 0.35rem;
+}
+.st-profile-top .mk-badge { margin-bottom: 0.35rem; }
+
+.st-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 1rem;
+}
+.st-form-grid-1 { grid-template-columns: 1fr; max-width: 420px; }
+.st-span-2 { grid-column: 1 / -1; }
+.st-form .mk-field input[readonly] {
+    background: #f8fafc;
+    color: var(--mk-muted);
+    cursor: default;
+}
+
+.st-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+}
+.st-error {
+    margin: 0.75rem 0 0;
+    color: var(--mk-danger);
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.st-toggle-list { display: grid; gap: 0.55rem; }
+.st-toggle-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--mk-border);
+    border-radius: 12px;
+    background: #fff;
+}
+.st-toggle-row strong {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+.st-toggle-row p {
+    margin: 0;
+    color: var(--mk-muted);
+    font-size: 0.8rem;
+}
+.st-switch {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+}
+.st-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+.st-switch span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.15s ease;
+}
+.st-switch span::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: var(--mk-shadow-sm);
+    transition: transform 0.15s ease;
+}
+.st-switch input:checked + span { background: var(--mk-primary); }
+.st-switch input:checked + span::after { transform: translateX(18px); }
+
+.st-divider {
+    height: 1px;
+    background: var(--mk-border);
+    margin: 1rem 0;
+}
+
+.st-option-group { margin-bottom: 1.25rem; }
+.st-option-group h3,
+.st-sub {
+    margin: 0 0 0.65rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+.st-radios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1.25rem;
+}
+.st-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.st-lang { max-width: 280px; }
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.35rem !important; }
+
+.st-twofa {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+.st-twofa-status { margin: 0.55rem 0 0; font-size: 0.88rem; }
+.st-twofa-status strong.is-on { color: var(--mk-success); }
+.st-twofa-status strong.is-off { color: var(--mk-muted); }
+
+.st-session-list { display: grid; gap: 0.65rem; }
+.st-session {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid var(--mk-border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+.st-session.is-current {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+.st-session strong { display: block; font-size: 0.92rem; margin-bottom: 0.2rem; }
+.st-session .mk-muted { margin: 0.1rem 0; }
+.st-session-meta { min-width: 0; }
+
+.st-modal-dialog { width: min(440px, 100%); }
+
+@media (max-width: 991px) {
+    .st-layout { grid-template-columns: 1fr; }
+    .st-nav {
+        position: static;
+        top: auto;
+    }
+    .st-nav-list { display: none; }
+    .st-nav-select-wrap { display: block; }
+    .st-form-grid { grid-template-columns: 1fr; }
+    .st-span-2 { grid-column: auto; }
+    .st-card-head { flex-direction: column; }
+    .st-twofa { flex-direction: column; align-items: flex-start; }
+    .st-session { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 575px) {
+    .st-profile-top { flex-direction: column; align-items: flex-start; }
+    .st-radios { flex-direction: column; }
+}
