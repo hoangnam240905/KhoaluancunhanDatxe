@@ -12,7 +12,8 @@ public static class TripsUi
         BookingResponse b,
         IReadOnlyList<VehicleInspectionResponse> inspections,
         IncidentResponse? openIncident,
-        DispatchDriverStatusResponse? fleetDriver)
+        DispatchDriverStatusResponse? fleetDriver,
+        decimal? lastKnownFuel = null)
     {
         var mode = string.IsNullOrWhiteSpace(b.RentalMode) ? "WithDriver" : b.RentalMode;
         var isSelf = string.Equals(mode, "SelfDrive", StringComparison.OrdinalIgnoreCase);
@@ -67,6 +68,9 @@ public static class TripsUi
             canCompleteApi = isSelf && string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase),
             // Dispatcher complete/return for WithDriver is not exposed by Backend.
             canCompleteMockOnly = !isSelf && status is "inProgress" or "accepted" or "returning",
+            vehicleId = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId,
+            // Latest fuel across vehicle inspections (already loaded with Trips bootstrap).
+            lastFuel = lastKnownFuel,
             apiSource = true
         };
     }

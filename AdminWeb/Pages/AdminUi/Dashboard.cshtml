@@ -1,0 +1,218 @@
+@page "/dashboard"
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Tổng quan";
+    ViewData["Nav"] = "dashboard";
+    ViewData["SearchPlaceholder"] = "Tìm đơn thuê, xe, khách hàng...";
+}
+<div id="auiDashboard">
+    <div class="aui-page-head">
+        <div>
+            <h1>Chào mừng trở lại, Đạt!</h1>
+            <p>Đây là tình hình hoạt động kinh doanh cho thuê xe của bạn hôm nay.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-ghost" data-aui-toast="Khoảng thời gian chỉ là giao diện.">
+                <i class="bi bi-calendar3"></i> 14/09/2026 - 14/10/2026
+            </button>
+        </div>
+    </div>
+
+    <div class="aui-kpi-grid">
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="aui-kpi-label">Tổng doanh thu</div>
+                <div class="aui-kpi-value">$48,320</div>
+                <div class="aui-kpi-change up">+12.5% <span>so với tháng trước</span></div>
+            </div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-calendar2-check"></i></div>
+            <div>
+                <div class="aui-kpi-label">Tổng đơn thuê</div>
+                <div class="aui-kpi-value">1,842</div>
+                <div class="aui-kpi-change up">+8.3% <span>so với tháng trước</span></div>
+            </div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon purple"><i class="bi bi-truck-front"></i></div>
+            <div>
+                <div class="aui-kpi-label">Đội xe đang hoạt động</div>
+                <div class="aui-kpi-value">120</div>
+                <div class="aui-kpi-change up">+4.3% <span>so với tháng trước</span></div>
+            </div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="aui-kpi-label">Tổng khách hàng</div>
+                <div class="aui-kpi-value">892</div>
+                <div class="aui-kpi-change up">+15.7% <span>so với tháng trước</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="aui-grid-2">
+        <div class="aui-card aui-card-pad">
+            <div class="aui-card-head">
+                <div>
+                    <h3 class="aui-card-title">Tổng quan doanh thu</h3>
+                    <p class="aui-card-sub">Doanh thu theo tháng trong 12 tháng gần nhất</p>
+                </div>
+            </div>
+            <div class="aui-chart-box"><canvas id="chartRevenue"></canvas></div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <div class="aui-card-head">
+                <div>
+                    <h3 class="aui-card-title">Xe được thuê nhiều nhất</h3>
+                    <p class="aui-card-sub">Các mẫu xe được đặt nhiều nhất trong kỳ</p>
+                </div>
+            </div>
+            <div id="topVehicles"></div>
+        </div>
+    </div>
+
+    <div class="aui-grid-2 equal">
+        <div class="aui-card aui-card-pad">
+            <div class="aui-card-head">
+                <div>
+                    <h3 class="aui-card-title">Trạng thái đơn thuê</h3>
+                    <p class="aui-card-sub">Phân bổ theo pipeline đang hoạt động</p>
+                </div>
+            </div>
+            <div class="aui-donut-wrap">
+                <canvas id="chartBookingStatus"></canvas>
+                <div class="aui-donut-center" id="donutCenter"></div>
+            </div>
+            <div class="aui-legend">
+                <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#16A34A"></span>Đã xác nhận</span>
+                <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#D97706"></span>Chờ xác nhận</span>
+                <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#2563EB"></span>Đang thực hiện</span>
+                <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#DC2626"></span>Đã hủy</span>
+            </div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <div class="aui-card-head">
+                <div>
+                    <h3 class="aui-card-title">Lịch nhận xe sắp tới</h3>
+                    <p class="aui-card-sub">Các lịch bàn giao sắp diễn ra</p>
+                </div>
+            </div>
+            <div class="aui-table-wrap">
+                <table class="aui-table" style="min-width:520px">
+                    <thead>
+                        <tr>
+                            <th>Khách hàng</th>
+                            <th>Xe</th>
+                            <th>Ngày &amp; giờ</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Nguyễn Văn An</td>
+                            <td>Toyota Vios</td>
+                            <td>14/09, 09:00</td>
+                            <td><span class="aui-badge amber">Chờ xác nhận</span></td>
+                            <td><button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-aui-toast="Xem lịch nhận xe (mô phỏng).">Xem</button></td>
+                        </tr>
+                        <tr>
+                            <td>Trần Thị Mai</td>
+                            <td>Honda City</td>
+                            <td>14/09, 10:30</td>
+                            <td><span class="aui-badge green">Đã xác nhận</span></td>
+                            <td><button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-aui-toast="Xem lịch nhận xe (mô phỏng).">Xem</button></td>
+                        </tr>
+                        <tr>
+                            <td>Đỗ Bảo Ngọc</td>
+                            <td>Hyundai Accent</td>
+                            <td>14/09, 13:00</td>
+                            <td><span class="aui-badge green">Đã xác nhận</span></td>
+                            <td><button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-aui-toast="Xem lịch nhận xe (mô phỏng).">Xem</button></td>
+                        </tr>
+                        <tr>
+                            <td>Vũ Đức Anh</td>
+                            <td>VinFast VF 8</td>
+                            <td>15/09, 08:00</td>
+                            <td><span class="aui-badge amber">Chờ xác nhận</span></td>
+                            <td><button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-aui-toast="Xem lịch nhận xe (mô phỏng).">Xem</button></td>
+                        </tr>
+                        <tr>
+                            <td>Bùi Thanh Trúc</td>
+                            <td>Ford Everest</td>
+                            <td>15/09, 11:00</td>
+                            <td><span class="aui-badge green">Đã xác nhận</span></td>
+                            <td><button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-aui-toast="Xem lịch nhận xe (mô phỏng).">Xem</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="aui-card">
+        <div class="aui-card-pad" style="padding-bottom:.35rem">
+            <h3 class="aui-card-title">Đơn thuê gần đây</h3>
+            <p class="aui-card-sub">Hoạt động mới nhất trên hệ thống</p>
+        </div>
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Khách hàng</th>
+                        <th>Xe</th>
+                        <th>Ngày nhận xe</th>
+                        <th>Trạng thái</th>
+                        <th>Số tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>BK-20260914-001</strong></td>
+                        <td>Nguyễn Văn An</td>
+                        <td>Toyota Vios</td>
+                        <td>14/09/2026</td>
+                        <td><span class="aui-badge amber">Chờ xác nhận</span></td>
+                        <td>$120.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BK-20260914-002</strong></td>
+                        <td>Trần Thị Mai</td>
+                        <td>Honda City</td>
+                        <td>14/09/2026</td>
+                        <td><span class="aui-badge green">Đã xác nhận</span></td>
+                        <td>$180.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BK-20260913-015</strong></td>
+                        <td>Lê Quang Huy</td>
+                        <td>Toyota Fortuner</td>
+                        <td>13/09/2026</td>
+                        <td><span class="aui-badge blue">Đang thực hiện</span></td>
+                        <td>$320.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BK-20260912-044</strong></td>
+                        <td>Phạm Thu Hà</td>
+                        <td>Mazda CX-5</td>
+                        <td>12/09/2026</td>
+                        <td><span class="aui-badge green">Hoàn thành</span></td>
+                        <td>$240.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BK-20260911-028</strong></td>
+                        <td>Hoàng Minh Tuấn</td>
+                        <td>Kia Carnival</td>
+                        <td>11/09/2026</td>
+                        <td><span class="aui-badge red">Đã hủy</span></td>
+                        <td>$410.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

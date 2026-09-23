@@ -70,16 +70,62 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         });
     }
 
+    public async Task<IActionResult> OnGetHandoverInfoAsync(int id)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+
+        var booking = await api.GetBookingAsync(id);
+        if (booking is null)
+            return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
+
+        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
+            return new JsonResult(new { ok = false, error = "Chỉ đơn tự lái mới dùng giao xe tại điều phối." });
+
+        if (!string.Equals(booking.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
+            return new JsonResult(new { ok = false, error = "Chỉ giao xe khi đơn đã được gán xe." });
+
+        var snap = await HandoverVehicleState.ResolveAsync(api, booking);
+        if (snap is null)
+            return new JsonResult(new { ok = false, error = "Không lấy được thông tin xe." }) { StatusCode = 404 };
+
+        var kmOk = snap.BlockReason is null && snap.CurrentKm is not null;
+        return new JsonResult(new
+        {
+            ok = true,
+            bookingId = booking.BookingId,
+            vehicleId = snap.VehicleId,
+            vehicle = snap.VehicleName,
+            plate = snap.LicensePlate,
+            currentKm = snap.CurrentKm,
+            fuelLevel = snap.FuelLevel,
+            requiresFuelInput = snap.RequiresFuelInput,
+            canConfirm = kmOk && !snap.RequiresFuelInput,
+            blockReason = snap.BlockReason
+        });
+    }
+
     public async Task<IActionResult> OnPostHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel,
         string? exteriorCondition, string? technicalCondition, string? notes)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
 
+        var booking = await api.GetBookingAsync(id);
+        if (booking is null) return ActionFail("Không tìm thấy đơn.");
+
+        var snap = await HandoverVehicleState.ResolveAsync(api, booking);
+        if (snap is null)
+            return ActionFail("Không lấy được thông tin xe.");
+
+        var (odo, fuel, err) = HandoverVehicleState.ResolveHandoverCondition(snap, fuelLevel);
+        if (err is not null)
+            return ActionFail(err);
+
         var condition = new VehicleConditionRequest
         {
-            OdometerKm = odometerKm,
-            FuelLevel = fuelLevel,
+            OdometerKm = odo,
+            FuelLevel = fuel,
             ExteriorCondition = exteriorCondition,
             TechnicalCondition = technicalCondition,
             Notes = notes
@@ -88,6 +134,30 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var (data, error) = await api.HandoverBookingAsync(id, condition);
         if (data is null) return ActionFail(error ?? "Giao xe thất bại (SelfDrive).");
         return await ActionOkTripAsync(data);
+    }
+
+    public async Task<IActionResult> OnGetReturnInfoAsync(int id)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+
+        var booking = await api.GetBookingAsync(id);
+        if (booking is null)
+            return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
+
+        var (info, error) = await ReturnVehicleContext.LoadAsync(api, booking);
+        if (info is null)
+            return new JsonResult(new { ok = false, error = error ?? "Không thể tải dữ liệu trả xe." });
+
+        return new JsonResult(new
+        {
+            ok = true,
+            bookingId = booking.BookingId,
+            vehicleId = info.VehicleId,
+            vehicle = info.VehicleName,
+            plate = info.LicensePlate,
+            handoverOdometerKm = info.HandoverOdometerKm
+        });
     }
 
     public async Task<IActionResult> OnPostCompleteAsync(int id, decimal? odometerKm, decimal? fuelLevel,
@@ -101,10 +171,14 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
             return ActionFail("API điều phối chỉ hoàn thành đơn SelfDrive. WithDriver hoàn thành qua tài xế — chưa có API dispatcher.");
 
+        var (odo, fuel, err) = ReturnVehicleContext.ValidateInput(odometerKm, fuelLevel);
+        if (err is not null)
+            return ActionFail(err);
+
         var condition = new VehicleConditionRequest
         {
-            OdometerKm = odometerKm,
-            FuelLevel = fuelLevel,
+            OdometerKm = odo,
+            FuelLevel = fuel,
             ExteriorCondition = exteriorCondition,
             TechnicalCondition = technicalCondition,
             Notes = notes
@@ -145,6 +219,13 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             var fleetDrivers = (fleet?.Drivers ?? [])
                 .ToDictionary(d => d.DriverId, d => d);
 
+            var fuelByVehicle = inspections
+                .Where(i => i.FuelLevel is >= 0 and <= 100)
+                .GroupBy(i => i.VehicleId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => HandoverVehicleState.FindLatestFuel(g.ToList(), g.Key));
+
             var trips = bookings
                 .Where(TripsUi.IsOperational)
                 .OrderByDescending(b => b.StartDate)
@@ -155,7 +236,11 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                     DispatchDriverStatusResponse? fd = null;
                     if (b.Assignment is not null)
                         fleetDrivers.TryGetValue(b.Assignment.DriverId, out fd);
-                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd);
+                    var vid = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId;
+                    decimal? lastFuel = null;
+                    if (vid is int vehicleId)
+                        fuelByVehicle.TryGetValue(vehicleId, out lastFuel);
+                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd, lastFuel);
                 })
                 .Cast<object>()
                 .ToList();

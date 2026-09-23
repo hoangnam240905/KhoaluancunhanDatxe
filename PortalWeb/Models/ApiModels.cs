@@ -65,7 +65,9 @@ public record VehicleOperationalProfileResponse(
     string? MaintenanceAlertReason,
     IReadOnlyList<VehicleInspectionResponse>? RecentInspections);
 public record DashboardRange(DateTime From, DateTime To, bool DefaultRangeApplied, string TimeRangeNote, string SnapshotNote);
-public record DashboardSummary(int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel);
+public record DashboardSummary(
+    int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel,
+    decimal? DepositPaidChangePercent = null, decimal? BookingsChangePercent = null);
 public record DashboardDriverTrips(int Assigned, int Accepted, int InProgress, int Completed, int Cancelled);
 public record DashboardBookings(int Total, int Pending, int Confirmed, int Assigned, int InProgress, int Completed, int Cancelled, DashboardDriverTrips DriverTrips);
 public record DashboardPayments(int PaidDepositCount, int PendingDepositCount, int FailedDepositCount, decimal DepositPaidAmount, string AmountLabel, string MetricNote);
@@ -75,10 +77,18 @@ public record DashboardDrivers(int Total, int Available, int Busy, int Offline, 
 public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount);
 public record DashboardMaintenance(int AlertCount, IReadOnlyList<MaintenanceAlertResponse> Alerts);
 public record DashboardRecommendation(int TotalBookings, int RecommendedBookings, decimal? AttributionShare, int RecommendedCompletedBookings, decimal? AverageRatingRecommendedReviewed, string MetricNote);
+public record DashboardRevenuePoint(string Label, int Year, int Month, decimal Amount);
+public record DashboardRecentBooking(int BookingId, string CustomerName, string VehicleLabel, DateTime StartDate, string Status, decimal TotalAmount);
+public record DashboardUpcomingPickup(int BookingId, string CustomerName, string VehicleLabel, DateTime StartDate, string Status);
 public record DashboardResponse(
     DashboardRange Range, DashboardSummary Summary, DashboardBookings Bookings, DashboardPayments Payments,
     DashboardVehicles Vehicles, DashboardDrivers Drivers, IReadOnlyList<DashboardTopVehicle> TopVehicles,
-    DashboardMaintenance Maintenance, DashboardRecommendation Recommendation);
+    DashboardMaintenance Maintenance, DashboardRecommendation Recommendation,
+    int TotalCustomers = 0,
+    int ActiveFleet = 0,
+    IReadOnlyList<DashboardRevenuePoint>? RevenueOverview = null,
+    IReadOnlyList<DashboardRecentBooking>? RecentBookings = null,
+    IReadOnlyList<DashboardUpcomingPickup>? UpcomingPickups = null);
 public record CreateVehicleRequest(
     int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
@@ -161,9 +171,11 @@ public record BookingResponse(
     decimal? TotalFees = null,
     IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
     ReviewResponse? Review = null,
-    bool HasActiveDeposit = false);
+    bool HasActiveDeposit = false,
+    string? CancellationReason = null);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
+public record CancelBookingRequest(string? CancellationReason);
 public record AssignTripRequest(int? DriverId, int VehicleId);
 
 public class VehicleConditionRequest

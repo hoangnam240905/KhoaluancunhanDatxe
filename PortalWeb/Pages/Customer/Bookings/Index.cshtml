@@ -179,6 +179,14 @@
                             <div class="bk-side">
                                 <span class="bk-badge bk-badge-@item.Status">@BookingCalendarUi.StatusLabel(item.Status)</span>
                                 <a class="bk-btn" asp-page="Details" asp-route-id="@item.BookingId">@BookingCalendarUi.ActionLabel</a>
+                                @if (BookingCalendarUi.RebookVehicleId(item) is int rebookVehicleId)
+                                {
+                                    <a class="bk-btn-ghost"
+                                       asp-page="Create"
+                                       asp-route-vehicleId="@rebookVehicleId"
+                                       asp-route-typeId="@item.VehicleTypeId"
+                                       asp-route-rentalMode="@item.RentalMode">@BookingCalendarUi.RebookLabel</a>
+                                }
                                 @if (item.Review is not null || ReviewUi.CanOfferReview(item))
                                 {
                                     <a class="bk-btn-ghost" asp-page="Review" asp-route-id="@item.BookingId">@(item.Review is null ? "Đánh giá" : "Đã đánh giá")</a>

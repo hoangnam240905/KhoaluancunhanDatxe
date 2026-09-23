@@ -2,21 +2,19 @@
 @model PortalWeb.Pages.Dispatcher.HandoverModel
 @{ ViewData["Title"] = "Bàn giao xe"; }
 
-<h2 class="mb-3">Bàn giao xe — đơn #@Model.Booking?.BookingId</h2>
+<h2 class="mb-3">Xác nhận giao xe — đơn #@Model.Booking?.BookingId</h2>
 
 @if (Model.Booking is not null)
 {
     <p class="mb-2">
         <strong>Khách:</strong> @Model.Booking.CustomerName
-        | <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
-        | <strong>Xe:</strong> @(Model.Booking.AssignedVehicle?.LicensePlate ?? "—")
         | <strong>Hình thức:</strong> Tự lái
     </p>
 }
 
 <div class="alert alert-info">
-    <div class="fw-bold">Biên bản kiểm xe lúc giao</div>
-    <div class="small mb-0">Nhập số km và nhiên liệu bắt buộc. Ngoại thất, kỹ thuật và ghi chú được lưu cùng biên bản.</div>
+    <div class="fw-bold">Xác nhận giao xe</div>
+    <div class="small mb-0">Số km lấy từ hồ sơ xe — không nhập thủ công. Nhiên liệu lấy từ hệ thống nếu đã có; nếu chưa có thì nhập mức thực tế.</div>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
@@ -25,30 +23,62 @@
 }
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-<form method="post" asp-page="/Dispatcher/Handover" asp-route-id="@Model.Booking?.BookingId" class="col-lg-6">
-    <div class="mb-3">
-        <label class="form-label" asp-for="Input.OdometerKm">Số km lúc giao</label>
-        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" required />
-        <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % lúc giao</label>
-        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" required />
-        <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label class="form-label" asp-for="Input.ExteriorCondition">Ngoại thất lúc giao</label>
-        <input asp-for="Input.ExteriorCondition" class="form-control" maxlength="100" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label" asp-for="Input.TechnicalCondition">Kỹ thuật lúc giao</label>
-        <input asp-for="Input.TechnicalCondition" class="form-control" maxlength="100" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label" asp-for="Input.Notes">Ghi chú</label>
-        <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
-        <span asp-validation-for="Input.Notes" class="text-danger"></span>
-    </div>
-    <button type="submit" class="btn btn-info">Bàn giao xe</button>
+@if (Model.CanShowForm)
+{
+    <form method="post" asp-page="/Dispatcher/Handover" asp-route-id="@Model.Booking?.BookingId" class="col-lg-6" id="handoverForm">
+        <input type="hidden" asp-for="Input.OdometerKm" />
+        @if (!Model.RequiresFuelInput)
+        {
+            <input type="hidden" asp-for="Input.FuelLevel" />
+        }
+        <dl class="row mb-3">
+            <dt class="col-sm-4">Xe</dt>
+            <dd class="col-sm-8">@Model.VehicleName</dd>
+            <dt class="col-sm-4">Biển số</dt>
+            <dd class="col-sm-8">@Model.LicensePlate</dd>
+            <dt class="col-sm-4">KM hiện tại</dt>
+            <dd class="col-sm-8"><strong>@(Model.CurrentKm is int km ? $"{km:N0} km" : "—")</strong></dd>
+            <dt class="col-sm-4">@(Model.RequiresFuelInput ? "Mức nhiên liệu khi giao xe (%)" : "Mức nhiên liệu")</dt>
+            <dd class="col-sm-8">
+                @if (Model.RequiresFuelInput)
+                {
+                    <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100"
+                           placeholder="Nhập %" inputmode="numeric" id="fuelInput" />
+                    <div class="form-text">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</div>
+                }
+                else
+                {
+                    <strong>@(Model.KnownFuelLevel is decimal f ? $"{f:N0}% 🔒" : "—")</strong>
+                }
+            </dd>
+        </dl>
+        <button type="submit" class="btn btn-info" id="handoverSubmit"
+                @(Model.RequiresFuelInput ? "disabled" : null)>Xác nhận giao xe</button>
+        <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Hủy</a>
+    </form>
+    @if (Model.RequiresFuelInput)
+    {
+        <script>
+            (function () {
+                var input = document.getElementById("fuelInput");
+                var btn = document.getElementById("handoverSubmit");
+                if (!input || !btn) return;
+                function sync() {
+                    var v = input.value.trim();
+                    if (v === "") { btn.disabled = true; return; }
+                    var n = Number(v);
+                    // 0 and 100 are valid; only empty/NaN/out-of-range disable.
+                    btn.disabled = !(Number.isFinite(n) && n >= 0 && n <= 100);
+                }
+                input.addEventListener("input", sync);
+                input.addEventListener("change", sync);
+                sync();
+            })();
+        </script>
+    }
+}
+else
+{
+    <div class="alert alert-warning">@Model.LoadBlockReason</div>
     <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lại</a>
-</form>
+}

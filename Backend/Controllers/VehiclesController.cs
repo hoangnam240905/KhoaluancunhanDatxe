@@ -82,7 +82,7 @@ public class VehiclesController(VehicleService vehicleService, VehicleOperationa
             : Ok(data);
     }
 
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
     [HttpGet("{id:int}/operational-profile")]
     public async Task<ActionResult<VehicleOperationalProfileResponse>> GetOperationalProfile(int id)
     {

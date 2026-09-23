@@ -289,6 +289,16 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), code);
     }
 
+    public async Task<(BookingResponse? Data, string? Error)> CancelBookingAsync(int id, string cancellationReason)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/bookings/{id}/cancel");
+        request.Content = JsonContent.Create(new CancelBookingRequest(cancellationReason));
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể hủy đơn thuê.");
+        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
     public async Task<(BookingQuoteResponse? Data, string? Error)> GetQuoteAsync(
         int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
     {
@@ -501,6 +511,29 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
     }
 
+    public async Task<(List<MaintenanceAlertResponse>? Data, string? Error)> GetMaintenanceAlertsWithStatusAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/vehicles/maintenance-alerts");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể tải cảnh báo bảo dưỡng.");
+        return (await response.Content.ReadFromJsonAsync<List<MaintenanceAlertResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<(List<IncidentResponse>? Data, string? Error)> GetAdminIncidentsAsync(
+        int? bookingId = null, string? status = null)
+    {
+        var parts = new List<string>();
+        if (bookingId is int bid) parts.Add($"bookingId={bid}");
+        if (!string.IsNullOrWhiteSpace(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+        var url = parts.Count == 0 ? "/api/admin/incidents" : "/api/admin/incidents?" + string.Join("&", parts);
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể tải dữ liệu sự cố.");
+        return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
+    }
+
     public async Task<(List<VehicleInspectionResponse> Data, string? Error)> GetDispatchInspectionsAsync(int? bookingId = null)
     {
         var url = bookingId is int bid
@@ -633,11 +666,18 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
 
     public async Task<List<AdminDriverResponse>> GetAdminDriversAsync()
     {
+        var (data, _) = await GetAdminDriversWithStatusAsync();
+        return data ?? [];
+    }
+
+    public async Task<(List<AdminDriverResponse>? Data, string? Error)> GetAdminDriversWithStatusAsync()
+    {
         using var request = CreateRequest(HttpMethod.Get, "/api/admin/drivers");
         var response = await http.SendAsync(request);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<List<AdminDriverResponse>>(JsonOptions) ?? []
-            : [];
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể tải dữ liệu tài xế.");
+        var data = await response.Content.ReadFromJsonAsync<List<AdminDriverResponse>>(JsonOptions) ?? [];
+        return (data, null);
     }
 
     public async Task<AdminDriverResponse?> GetAdminDriverAsync(int id)
@@ -674,17 +714,45 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return response.IsSuccessStatusCode ? (true, null) : (false, await GetErrorAsync(response));
     }
 
-    public async Task<AdminCustomerListResponse> GetAdminCustomersAsync(string? keyword = null, int page = 1)
+    public async Task<AdminCustomerListResponse> GetAdminCustomersAsync(
+        string? keyword = null, int page = 1, int pageSize = 20)
     {
-        var url = $"/api/admin/customers?page={page}";
+        var (data, _) = await GetAdminCustomersWithStatusAsync(keyword, page, pageSize);
+        return data ?? new AdminCustomerListResponse([], 0, page, pageSize);
+    }
+
+    public async Task<(AdminCustomerListResponse? Data, string? Error)> GetAdminCustomersWithStatusAsync(
+        string? keyword = null, int page = 1, int pageSize = 20)
+    {
+        var url = $"/api/admin/customers?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(keyword))
             url += $"&keyword={Uri.EscapeDataString(keyword)}";
         using var request = CreateRequest(HttpMethod.Get, url);
         var response = await http.SendAsync(request);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<AdminCustomerListResponse>(JsonOptions)
-              ?? new AdminCustomerListResponse([], 0, page, 20)
-            : new AdminCustomerListResponse([], 0, page, 20);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể tải dữ liệu khách hàng.");
+        var data = await response.Content.ReadFromJsonAsync<AdminCustomerListResponse>(JsonOptions)
+                   ?? new AdminCustomerListResponse([], 0, page, pageSize);
+        return (data, null);
+    }
+
+    public async Task<(List<AdminCustomerResponse>? Items, string? Error)> GetAllAdminCustomersAsync(
+        string? keyword = null)
+    {
+        var all = new List<AdminCustomerResponse>();
+        var page = 1;
+        const int pageSize = 100;
+        while (true)
+        {
+            var (data, error) = await GetAdminCustomersWithStatusAsync(keyword, page, pageSize);
+            if (error is not null) return (null, error);
+            if (data is null) return (null, "Không thể tải dữ liệu khách hàng.");
+            all.AddRange(data.Items);
+            if (all.Count >= data.Total || data.Items.Count == 0) break;
+            page++;
+            if (page > 500) break;
+        }
+        return (all, null);
     }
 
     public async Task<AdminCustomerResponse?> GetAdminCustomerAsync(int id)

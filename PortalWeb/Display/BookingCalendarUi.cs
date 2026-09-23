@@ -8,9 +8,27 @@ public static class BookingCalendarUi
 {
     public const string LoadFailure = "Không thể tải danh sách đơn thuê. Vui lòng thử lại.";
     public const string ActionLabel = "Xem chi tiết";
+    public const string RebookLabel = "Thuê lại";
 
     public static string NormalizeView(string? view) =>
         string.Equals(view, "calendar", StringComparison.OrdinalIgnoreCase) ? "calendar" : "list";
+
+    /// <summary>
+    /// Completed bookings that still know which concrete vehicle was used can rebook that vehicle.
+    /// </summary>
+    public static bool CanRebook(BookingResponse booking) => RebookVehicleId(booking) is > 0;
+
+    public static int? RebookVehicleId(BookingResponse booking)
+    {
+        if (!string.Equals(booking.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (booking.AssignedVehicle?.VehicleId is int assigned and > 0)
+            return assigned;
+        if (booking.Assignment?.VehicleId is int tripVehicle and > 0)
+            return tripVehicle;
+        return null;
+    }
 
     public static string StatusLabel(string? status) => status switch
     {

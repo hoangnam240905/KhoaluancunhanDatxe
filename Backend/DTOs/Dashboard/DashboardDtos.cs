@@ -11,7 +11,12 @@ public record DashboardResponse(
     DashboardDrivers Drivers,
     IReadOnlyList<DashboardTopVehicle> TopVehicles,
     DashboardMaintenance Maintenance,
-    DashboardRecommendation Recommendation);
+    DashboardRecommendation Recommendation,
+    int TotalCustomers,
+    int ActiveFleet,
+    IReadOnlyList<DashboardRevenuePoint> RevenueOverview,
+    IReadOnlyList<DashboardRecentBooking> RecentBookings,
+    IReadOnlyList<DashboardUpcomingPickup> UpcomingPickups);
 
 public record DashboardRange(
     DateTime From,
@@ -25,7 +30,9 @@ public record DashboardSummary(
     int CompletedBookings,
     int CancelledBookings,
     decimal DepositPaidAmount,
-    string DepositPaidLabel);
+    string DepositPaidLabel,
+    decimal? DepositPaidChangePercent,
+    decimal? BookingsChangePercent);
 
 public record DashboardBookings(
     int Total,
@@ -95,3 +102,24 @@ public record DashboardRecommendation(
     int RecommendedCompletedBookings,
     decimal? AverageRatingRecommendedReviewed,
     string MetricNote);
+
+public record DashboardRevenuePoint(
+    string Label,
+    int Year,
+    int Month,
+    decimal Amount);
+
+public record DashboardRecentBooking(
+    int BookingId,
+    string CustomerName,
+    string VehicleLabel,
+    DateTime StartDate,
+    string Status,
+    decimal TotalAmount);
+
+public record DashboardUpcomingPickup(
+    int BookingId,
+    string CustomerName,
+    string VehicleLabel,
+    DateTime StartDate,
+    string Status);

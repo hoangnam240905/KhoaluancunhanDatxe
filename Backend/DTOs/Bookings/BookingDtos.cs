@@ -72,7 +72,10 @@ public record BookingResponse(
     decimal? TotalFees,
     IReadOnlyList<VehicleInspectionResponse> Inspections,
     ReviewResponse? Review = null,
-    bool HasActiveDeposit = false);
+    bool HasActiveDeposit = false,
+    string? CancellationReason = null);
+
+public record CancelBookingRequest(string? CancellationReason);
 
 public record VehicleInspectionResponse(
     int InspectionId,

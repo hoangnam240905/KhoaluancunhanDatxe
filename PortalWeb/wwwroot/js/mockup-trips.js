@@ -368,65 +368,192 @@
         els.modalBody.innerHTML = html;
     }
 
-    function handoverForm(t) {
-        const h = t.handover || { odo: 0, fuel: 80, exterior: "Tốt", tech: "Tốt", note: "" };
-        openModal(`
-            <h2>Biên bản giao xe</h2>
-            <p class="mk-note">Đơn #${t.id} · ${t.customer}<br>Xe ${t.vehicle} ${t.plate}<br>Gọi API: POST /api/dispatch/bookings/{id}/handover (SelfDrive)</p>
-            <form id="opHandoverForm" data-id="${t.id}" class="op-form-grid">
-                <label class="mk-field"><span>Số km hiện tại</span><input name="odo" type="number" value="${h.odo || 0}" required /></label>
-                <label class="mk-field"><span>Nhiên liệu (%)</span><input name="fuel" type="number" min="0" max="100" value="${h.fuel || 80}" required /></label>
-                <label class="mk-field"><span>Ngoại thất</span>
-                    <select name="exterior"><option>Tốt</option><option>Cần kiểm tra</option></select>
-                </label>
-                <label class="mk-field"><span>Tình trạng kỹ thuật</span>
-                    <select name="tech"><option>Tốt</option><option>Cần kiểm tra</option></select>
-                </label>
-                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span><input name="note" value="${h.note || "Không có"}" /></label>
-            </form>
-            <div class="op-check">
-                <label><input type="checkbox" checked /> Giấy tờ xe</label>
-                <label><input type="checkbox" checked /> Chìa khóa</label>
-                <label><input type="checkbox" checked /> Ngoại thất</label>
-                <label><input type="checkbox" checked /> Lốp xe</label>
-                <label><input type="checkbox" checked /> Nội thất</label>
-                <label><input type="checkbox" checked /> Thiết bị an toàn</label>
-            </div>
-            <div class="mk-actions">
-                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
-                <button type="submit" form="opHandoverForm" class="mk-btn mk-btn-success">✓ Xác nhận giao xe</button>
-            </div>`);
-        state.modal = "handover";
+    /** Present numeric check — treats 0 as valid (do NOT use !value). */
+    function isPresentNumber(v) {
+        return v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
+    }
+    function isValidKm(v) {
+        return isPresentNumber(v) && Number(v) >= 0;
+    }
+    function isValidFuelPercent(v) {
+        return isPresentNumber(v) && Number(v) >= 0 && Number(v) <= 100;
     }
 
-    function returnForm(t) {
-        const r = t.ret || { odo: (t.handover && t.handover.odo ? t.handover.odo + 50 : 10000), fuel: 65, exterior: "Tốt", tech: "Tốt", note: "" };
-        const self = t.mode === "SelfDrive";
-        const apiNote = self
-            ? "Gọi API: POST /api/dispatch/bookings/{id}/complete (SelfDrive)."
-            : "WithDriver: không có API dispatcher complete — form chỉ presentation (không ghi Backend).";
-        const km = self && t.handover ? r.odo - t.handover.odo : null;
+    function parseHandoverFuel(raw) {
+        if (raw === null || raw === undefined) return null;
+        const v = String(raw).trim();
+        if (v === "") return null;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+        return n; // 0 is valid
+    }
+
+    function syncTripsHandoverConfirm() {
+        const btn = document.querySelector("[data-handover-submit]");
+        if (!btn || !state.handoverPayload) return;
+        if (!state.handoverPayload.requiresFuelInput) {
+            btn.disabled = !(isValidKm(state.handoverPayload.odometerKm) && isValidFuelPercent(state.handoverPayload.fuelLevel));
+            return;
+        }
+        const input = document.querySelector("[data-handover-fuel-input]");
+        const fuel = parseHandoverFuel(input?.value);
+        state.handoverPayload.fuelLevel = fuel;
+        btn.disabled = fuel === null || !isValidKm(state.handoverPayload.odometerKm);
+    }
+
+    async function handoverForm(t) {
+        if (!t.canHandoverApi && t.mode !== "SelfDrive") {
+            toast("Chỉ SelfDrive dùng API handover dispatcher.");
+            return;
+        }
         openModal(`
-            <h2>Tiếp nhận trả xe</h2>
-            <p class="mk-note">Đơn #${t.id} · ${t.customer}<br>${t.vehicle} ${t.plate}<br>${apiNote}</p>
-            ${self && t.handover ? `<p class="mk-note">Km giao: ${Number(t.handover.odo).toLocaleString("vi-VN")} km</p>` : ""}
-            <form id="opReturnForm" data-id="${t.id}" class="op-form-grid">
-                <label class="mk-field"><span>Số km trả xe</span><input name="odo" type="number" value="${r.odo}" required /></label>
-                <label class="mk-field"><span>Nhiên liệu (%)</span><input name="fuel" type="number" min="0" max="100" value="${r.fuel}" required /></label>
-                <label class="mk-field"><span>Ngoại thất</span>
-                    <select name="exterior"><option${r.exterior === "Tốt" ? " selected" : ""}>Tốt</option><option${r.exterior === "Cần kiểm tra" ? " selected" : ""}>Cần kiểm tra</option></select>
-                </label>
-                <label class="mk-field"><span>Tình trạng kỹ thuật</span>
-                    <select name="tech"><option${r.tech === "Tốt" ? " selected" : ""}>Tốt</option><option${r.tech === "Cần kiểm tra" ? " selected" : ""}>Cần kiểm tra</option></select>
-                </label>
-                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span><input name="note" value="${r.note || ""}" /></label>
-            </form>
-            <p class="mk-note" id="opKmOut">${self && km != null ? `Km thực tế: <strong>${km.toLocaleString("vi-VN")} km</strong>.` : apiNote}</p>
+            <h2>Xác nhận giao xe</h2>
+            <p class="mk-note">Đang tải dữ liệu xe...</p>
             <div class="mk-actions">
                 <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
-                <button type="submit" form="opReturnForm" class="mk-btn mk-btn-success">✓ Xác nhận trả xe</button>
+                <button type="button" class="mk-btn mk-btn-success" data-handover-submit disabled>Xác nhận giao xe</button>
+            </div>`);
+        state.modal = "handover";
+        state.handoverPayload = null;
+
+        try {
+            const url = new URL(handlers.handoverInfo, location.origin);
+            url.searchParams.set("id", String(t.id));
+            const res = await fetch(url.toString(), { headers: { Accept: "application/json" }, credentials: "same-origin" });
+            const data = await res.json().catch(() => ({ ok: false, error: "Phản hồi không hợp lệ." }));
+            if (!data.ok) {
+                openModal(`
+                    <h2>Xác nhận giao xe</h2>
+                    <p class="mk-note" style="color:#b91c1c">${data.error || "Không thể tải dữ liệu giao xe."}</p>
+                    <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
+                return;
+            }
+            const kmOk = isValidKm(data.currentKm) && !data.blockReason;
+            const requiresFuelInput = !!data.requiresFuelInput;
+            const knownFuelOk = !requiresFuelInput && isValidFuelPercent(data.fuelLevel);
+
+            state.handoverPayload = kmOk
+                ? {
+                    id: t.id,
+                    odometerKm: Number(data.currentKm),
+                    fuelLevel: knownFuelOk ? Number(data.fuelLevel) : null,
+                    requiresFuelInput
+                }
+                : null;
+
+            const kmText = kmOk ? `${Number(data.currentKm).toLocaleString("vi-VN")} km` : "—";
+            let fuelBlock;
+            if (!kmOk) {
+                fuelBlock = `<div><dt>Mức nhiên liệu</dt><dd>—</dd></div>`;
+            } else if (requiresFuelInput) {
+                fuelBlock = `<div><dt>Mức nhiên liệu khi giao xe (%)</dt><dd>
+                    <input type="number" min="0" max="100" step="1" placeholder="Nhập %"
+                           inputmode="numeric" data-handover-fuel-input class="mk-input" style="max-width:8rem" />
+                </dd></div>`;
+            } else {
+                fuelBlock = `<div><dt>Mức nhiên liệu</dt><dd><strong>${Number(data.fuelLevel).toLocaleString("vi-VN")}% 🔒</strong></dd></div>`;
+            }
+
+            const canConfirmNow = kmOk && knownFuelOk;
+            openModal(`
+                <h2>Xác nhận giao xe</h2>
+                <dl class="mk-dl">
+                    <div><dt>Xe</dt><dd>${data.vehicle || t.vehicle || "—"}</dd></div>
+                    <div><dt>Biển số</dt><dd>${data.plate || t.plate || "—"}</dd></div>
+                    <div><dt>KM hiện tại</dt><dd><strong>${kmText}</strong></dd></div>
+                    ${fuelBlock}
+                </dl>
+                ${!kmOk ? `<p class="mk-note" style="color:#b91c1c">${data.blockReason || "Xe chưa có số KM hiện tại trong hệ thống."}</p>` : ""}
+                ${kmOk && requiresFuelInput ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
+                ${kmOk && !requiresFuelInput ? `<p class="mk-note">KM và mức nhiên liệu lấy từ hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+                ${kmOk && requiresFuelInput ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+                <div class="mk-actions">
+                    <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
+                    <button type="button" class="mk-btn mk-btn-success" data-handover-submit ${canConfirmNow ? "" : "disabled"}>Xác nhận giao xe</button>
+                </div>`);
+            state.modal = "handover";
+            if (kmOk && requiresFuelInput) {
+                const input = document.querySelector("[data-handover-fuel-input]");
+                input?.addEventListener("input", syncTripsHandoverConfirm);
+                input?.addEventListener("change", syncTripsHandoverConfirm);
+            }
+        } catch (_) {
+            openModal(`
+                <h2>Xác nhận giao xe</h2>
+                <p class="mk-note" style="color:#b91c1c">Lỗi mạng khi tải dữ liệu xe.</p>
+                <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
+        }
+    }
+
+    async function returnForm(t) {
+        if (t.mode !== "SelfDrive") {
+            toast("WithDriver complete: thiếu API dispatcher — không ghi Backend. (Mock UI only.)");
+            return;
+        }
+        openModal(`
+            <h2>Xác nhận tiếp nhận trả xe</h2>
+            <p class="mk-note">Đang tải dữ liệu xe...</p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
+                <button type="button" class="mk-btn mk-btn-success" data-return-submit disabled>Xác nhận trả xe</button>
             </div>`);
         state.modal = "return";
+        state.returnPayload = null;
+        try {
+            const url = new URL(handlers.returnInfo, location.origin);
+            url.searchParams.set("id", String(t.id));
+            const res = await fetch(url.toString(), { headers: { Accept: "application/json" }, credentials: "same-origin" });
+            const data = await res.json().catch(() => ({ ok: false, error: "Phản hồi không hợp lệ." }));
+            if (!data.ok) {
+                openModal(`
+                    <h2>Xác nhận tiếp nhận trả xe</h2>
+                    <p class="mk-note" style="color:#b91c1c">${data.error || "Không thể tải dữ liệu trả xe."}</p>
+                    <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
+                return;
+            }
+            const handoverNote = data.handoverOdometerKm != null
+                ? `<p class="mk-note">KM lúc giao: <strong>${Number(data.handoverOdometerKm).toLocaleString("vi-VN")} km</strong>. Số KM khi trả phải không nhỏ hơn mức này.</p>`
+                : "";
+            openModal(`
+                <h2>Xác nhận tiếp nhận trả xe</h2>
+                <dl class="mk-dl">
+                    <div><dt>Xe</dt><dd>${data.vehicle || t.vehicle || "—"}</dd></div>
+                    <div><dt>Biển số</dt><dd>${data.plate || t.plate || "—"}</dd></div>
+                </dl>
+                ${handoverNote}
+                <form id="opReturnForm" data-id="${t.id}" class="op-form-grid">
+                    <label class="mk-field"><span>Số KM khi trả xe *</span>
+                        <input name="odo" type="text" inputmode="decimal" placeholder="Nhập số km" autocomplete="off" />
+                    </label>
+                    <label class="mk-field"><span>Mức nhiên liệu khi trả xe (%)</span>
+                        <input name="fuel" type="text" inputmode="decimal" placeholder="Nhập %" autocomplete="off" />
+                    </label>
+                    <label class="mk-field"><span>Ngoại thất</span>
+                        <select name="exterior"><option value="">—</option><option>Tốt</option><option>Cần kiểm tra</option></select>
+                    </label>
+                    <label class="mk-field"><span>Tình trạng kỹ thuật</span>
+                        <select name="tech"><option value="">—</option><option>Tốt</option><option>Cần kiểm tra</option></select>
+                    </label>
+                    <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span><input name="note" value="" /></label>
+                </form>
+                <p class="mk-note" id="opReturnError" style="color:#b91c1c"></p>
+                <div class="mk-actions">
+                    <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
+                    <button type="submit" form="opReturnForm" class="mk-btn mk-btn-success" data-return-submit>Xác nhận trả xe</button>
+                </div>`);
+            state.modal = "return";
+            state.returnPayload = { id: t.id };
+            const form = document.getElementById("opReturnForm");
+            form?.addEventListener("input", () => {
+                const box = document.getElementById("opReturnError");
+                if (box) box.textContent = "";
+            });
+        } catch (_) {
+            openModal(`
+                <h2>Xác nhận tiếp nhận trả xe</h2>
+                <p class="mk-note" style="color:#b91c1c">Lỗi mạng khi tải dữ liệu xe.</p>
+                <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
+        }
     }
 
     function incidentForm(t) {
@@ -567,6 +694,35 @@
         }
         const ho = e.target.closest("[data-handover]");
         if (ho) { handoverForm(trip(ho.dataset.handover)); return; }
+        const handoverSubmit = e.target.closest("[data-handover-submit]");
+        if (handoverSubmit) {
+            if (handoverSubmit.disabled || !state.handoverPayload) return;
+            syncTripsHandoverConfirm();
+            const payload = state.handoverPayload;
+            if (payload.fuelLevel === null || payload.fuelLevel === undefined) {
+                toast("Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
+                return;
+            }
+            const url = handlers.handover + (handlers.handover.includes("?") ? "&" : "?") + "id=" + payload.id;
+            handoverSubmit.disabled = true;
+            const { ok, data: res } = await postForm(url, {
+                odometerKm: payload.odometerKm,
+                fuelLevel: payload.fuelLevel
+            });
+            if (!ok) {
+                toast((res && res.error) || "Giao xe thất bại.");
+                handoverSubmit.disabled = false;
+                return;
+            }
+            if (res.trip) upsertTrip(res.trip);
+            closeModal();
+            toast("Đã giao xe.");
+            await reloadFromServer();
+            render();
+            const updated = trip(payload.id);
+            if (updated) renderDrawer(updated);
+            return;
+        }
         const rt = e.target.closest("[data-return]");
         if (rt) { returnForm(trip(rt.dataset.return)); return; }
         const inc = e.target.closest("[data-incident]");
@@ -590,30 +746,6 @@
     document.body.addEventListener("submit", async (e) => {
         if (e.target.id === "opHandoverForm") {
             e.preventDefault();
-            const t = trip(e.target.dataset.id);
-            if (!t) return;
-            const data = new FormData(e.target);
-            if (!t.canHandoverApi && t.mode !== "SelfDrive") {
-                toast("Chỉ SelfDrive dùng API handover dispatcher.");
-                return;
-            }
-            const url = handlers.handover + (handlers.handover.includes("?") ? "&" : "?") + "id=" + t.id;
-            const { ok, data: res } = await postForm(url, {
-                odometerKm: data.get("odo"),
-                fuelLevel: data.get("fuel"),
-                exteriorCondition: data.get("exterior"),
-                technicalCondition: data.get("tech"),
-                notes: data.get("note")
-            });
-            if (!ok) {
-                toast((res && res.error) || "Giao xe thất bại.");
-                return;
-            }
-            if (res.trip) upsertTrip(res.trip);
-            toast("Đã giao xe qua API.");
-            closeModal();
-            await reloadFromServer();
-            render();
             return;
         }
         if (e.target.id === "opReturnForm") {
@@ -621,6 +753,29 @@
             const t = trip(e.target.dataset.id);
             if (!t) return;
             const data = new FormData(e.target);
+            const odoRaw = String(data.get("odo") || "").trim();
+            const fuelRaw = String(data.get("fuel") || "").trim();
+            const box = document.getElementById("opReturnError");
+            if (odoRaw === "") {
+                if (box) box.textContent = "Vui lòng nhập số km khi trả xe.";
+                return;
+            }
+            if (!Number.isFinite(Number(odoRaw))) {
+                if (box) box.textContent = "Số km khi trả xe không hợp lệ.";
+                return;
+            }
+            if (Number(odoRaw) < 0) {
+                if (box) box.textContent = "Số km khi trả xe không được âm.";
+                return;
+            }
+            if (fuelRaw === "") {
+                if (box) box.textContent = "Vui lòng nhập mức nhiên liệu khi trả xe từ 0 đến 100.";
+                return;
+            }
+            if (!Number.isFinite(Number(fuelRaw)) || Number(fuelRaw) < 0 || Number(fuelRaw) > 100) {
+                if (box) box.textContent = "Mức nhiên liệu phải từ 0 đến 100.";
+                return;
+            }
             if (t.mode !== "SelfDrive") {
                 toast("WithDriver complete: thiếu API dispatcher — không ghi Backend. (Mock UI only.)");
                 closeModal();
@@ -635,7 +790,9 @@
                 notes: data.get("note")
             });
             if (!ok) {
-                toast((res && res.error) || "Trả xe / hoàn thành thất bại.");
+                const box = document.getElementById("opReturnError");
+                if (box) box.textContent = (res && res.error) || "Trả xe / hoàn thành thất bại.";
+                else toast((res && res.error) || "Trả xe / hoàn thành thất bại.");
                 return;
             }
             if (res.trip) upsertTrip(res.trip);

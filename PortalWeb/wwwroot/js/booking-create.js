@@ -5,14 +5,19 @@
     if (!root || !form) return;
 
     const quoteUrl = root.getAttribute("data-cb-quote-url") || "";
+    const availabilityUrl = root.getAttribute("data-cb-availability-url") || "";
     const creatingText = root.getAttribute("data-cb-creating") || "Đang tạo đơn...";
     const loadingText = root.getAttribute("data-cb-quote-loading") || "Đang tính giá...";
+    const availabilityLoadingText = root.getAttribute("data-cb-availability-loading") || "Đang kiểm tra tình trạng xe...";
     const unavailableText = root.getAttribute("data-cb-quote-unavailable") || "Không thể tính báo giá. Vui lòng kiểm tra lại thông tin.";
+    const vehicleUnavailableText = root.getAttribute("data-cb-vehicle-unavailable")
+        || "Xe này hiện không khả dụng trong khoảng thời gian bạn đã chọn.";
     const pickup = document.querySelector("[data-cb-pickup]");
     const dropoff = document.querySelector("[data-cb-dropoff]");
     const same = document.querySelector("[data-cb-same]");
     const modeInput = document.querySelector("[data-cb-rental-mode]");
     const typeInput = form.querySelector("[name='Input.VehicleTypeId']");
+    const vehicleInput = form.querySelector("[name='Input.VehicleId']");
     const confirmedInput = document.querySelector("[data-cb-quote-confirmed]");
     const fingerprintInput = document.querySelector("[data-cb-quote-fingerprint]");
     const confirmBtn = document.querySelector("[data-cb-confirm]");
@@ -30,12 +35,18 @@
     let quoteTimer = 0;
     let quoteSeq = 0;
     let quoteBusy = false;
+    let availabilityOk = true;
     let submitLock = false;
 
     const currentMode = () => modeInput?.value || "WithDriver";
+    const selectedVehicleId = () => {
+        const raw = vehicleInput?.value || "";
+        const id = Number(raw);
+        return Number.isFinite(id) && id > 0 ? id : null;
+    };
     const fingerprint = () => {
         const typeId = typeInput?.value || "0";
-        const vehicleId = form.querySelector("[name='Input.VehicleId']")?.value || "";
+        const vehicleId = vehicleInput?.value || "";
         const distance = form.querySelector("[data-cb-distance-input]")?.value || "";
         return `${typeId}|${currentMode()}|${vehicleId}|${pickup?.value || ""}|${dropoff?.value || ""}|${distance}`;
     };
@@ -44,6 +55,11 @@
         if (!statusEl) return;
         statusEl.textContent = text || "";
         statusEl.style.color = isError ? "#dc2626" : "";
+    };
+
+    const setConfirmEnabled = (enabled) => {
+        if (!confirmBtn || submitLock) return;
+        confirmBtn.disabled = !enabled;
     };
 
     const field = (q, camel, pascal) => q[camel] ?? q[pascal];
@@ -69,11 +85,18 @@
         if (confirmedInput) confirmedInput.value = "true";
         if (fingerprintInput) fingerprintInput.value = fingerprint();
         setStatus("", false);
+        setConfirmEnabled(availabilityOk);
     };
 
     const clearQuote = () => {
         if (confirmedInput) confirmedInput.value = "false";
         if (fingerprintInput) fingerprintInput.value = "";
+        if (daysEl) daysEl.textContent = "—";
+        if (rentalEl) rentalEl.textContent = "—";
+        if (totalEl) totalEl.textContent = "—";
+        if (depositEl) depositEl.textContent = "—";
+        if (remainRow) remainRow.hidden = true;
+        setConfirmEnabled(false);
     };
 
     const datesValid = () => {
@@ -97,6 +120,41 @@
         if (same?.checked && a && b) b.value = a.value;
     };
 
+    const checkAvailability = async () => {
+        const vehicleId = selectedVehicleId();
+        if (!availabilityUrl || !vehicleId || !datesValid()) {
+            availabilityOk = true;
+            return true;
+        }
+
+        setStatus(availabilityLoadingText, false);
+        setConfirmEnabled(false);
+        const url = new URL(availabilityUrl, window.location.origin);
+        url.searchParams.set("vehicleId", String(vehicleId));
+        url.searchParams.set("startDate", pickup.value);
+        url.searchParams.set("endDate", dropoff.value);
+        try {
+            const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+            let body = null;
+            try { body = await res.json(); } catch { /* ignore */ }
+            if (!res.ok) {
+                availabilityOk = false;
+                setStatus((body && body.message) || vehicleUnavailableText, true);
+                return false;
+            }
+            availabilityOk = body?.available === true;
+            if (!availabilityOk) {
+                setStatus((body && body.message) || vehicleUnavailableText, true);
+                return false;
+            }
+            return true;
+        } catch {
+            availabilityOk = false;
+            setStatus(vehicleUnavailableText, true);
+            return false;
+        }
+    };
+
     const fetchQuote = async () => {
         if (!quoteUrl || !datesValid()) {
             clearQuote();
@@ -104,6 +162,16 @@
         }
         const seq = ++quoteSeq;
         quoteBusy = true;
+        setConfirmEnabled(false);
+
+        const available = await checkAvailability();
+        if (seq !== quoteSeq) return false;
+        if (!available) {
+            clearQuote();
+            quoteBusy = false;
+            return false;
+        }
+
         setStatus(loadingText, false);
         const url = new URL(quoteUrl, window.location.origin);
         url.searchParams.set("vehicleTypeId", typeInput?.value || "0");
@@ -140,6 +208,7 @@
 
     const scheduleQuote = () => {
         clearQuote();
+        availabilityOk = true;
         window.clearTimeout(quoteTimer);
         quoteTimer = window.setTimeout(() => { fetchQuote(); }, 400);
     };
@@ -206,6 +275,11 @@
             setStatus(loadingText, false);
             return;
         }
+        if (!availabilityOk) {
+            e.preventDefault();
+            setStatus(vehicleUnavailableText, true);
+            return;
+        }
         syncDropoff();
         submitLock = true;
         if (confirmBtn) {
@@ -216,5 +290,10 @@
 
     if (!confirmedInput?.value || confirmedInput.value.toLowerCase() !== "true") {
         fetchQuote();
+    } else if (selectedVehicleId()) {
+        checkAvailability().then((ok) => {
+            if (!ok) clearQuote();
+            else setConfirmEnabled(true);
+        });
     }
 })();

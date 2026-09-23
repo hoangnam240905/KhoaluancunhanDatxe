@@ -124,6 +124,22 @@ public class BookingsController(
     }
 
     [Authorize(Roles = RoleNames.Customer)]
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<BookingResponse>> Cancel(int id, CancelBookingRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (booking, error, status) = await bookingService.CancelByCustomerAsync(
+            id, userId, request.CancellationReason);
+        return status switch
+        {
+            StatusCodes.Status200OK when booking is not null => Ok(booking),
+            StatusCodes.Status404NotFound => NotFound(new { message = error }),
+            StatusCodes.Status403Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = error }),
+            _ => BadRequest(new { message = error ?? BookingStateTransitionRules.InvalidTransition })
+        };
+    }
+
+    [Authorize(Roles = RoleNames.Customer)]
     [HttpPost("{id:int}/reviews")]
     public async Task<ActionResult<ReviewResponse>> CreateReview(int id, CreateReviewRequest request)
     {

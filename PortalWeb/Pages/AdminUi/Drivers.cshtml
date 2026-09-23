@@ -1,0 +1,97 @@
+@page "/Admin/Drivers"
+@model PortalWeb.Pages.AdminUi.DriversModel
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Quản lý tài xế";
+    ViewData["Nav"] = "drivers";
+    ViewData["SearchPlaceholder"] = "Tìm kiếm tài xế";
+}
+<div id="auiDrivers" data-aui-drivers="1">
+    <form id="auiDriversAntiForgery" style="display:none" method="post">@Html.AntiForgeryToken()</form>
+    <script type="application/json" id="auiDriversPayload">@Html.Raw(Model.DriversJson)</script>
+
+    <div class="aui-page-head">
+        <div>
+            <h1>Quản lý tài xế</h1>
+            <p>Quản lý tài xế, theo dõi hiệu suất và đảm bảo hoạt động vận hành thuận lợi.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-primary" data-add-driver><i class="bi bi-plus-lg"></i> Thêm tài xế</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="aui-empty" role="alert" data-drivers-error>
+            <i class="bi bi-exclamation-triangle"></i>
+            <p>@Model.ErrorMessage</p>
+        </div>
+    }
+
+    <div class="aui-kpi-grid" data-drivers-kpis @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-person-badge"></i></div>
+            <div><div class="aui-kpi-label">Tổng tài xế</div><div class="aui-kpi-value" data-kpi="total">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-check-circle"></i></div>
+            <div><div class="aui-kpi-label">Có sẵn</div><div class="aui-kpi-value" data-kpi="available">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-lightning-charge"></i></div>
+            <div><div class="aui-kpi-label">Đang bận</div><div class="aui-kpi-value" data-kpi="busy">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon slate"><i class="bi bi-moon"></i></div>
+            <div><div class="aui-kpi-label">Ngoại tuyến</div><div class="aui-kpi-value" data-kpi="offline">—</div></div>
+        </div>
+    </div>
+
+    <div class="aui-filters" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-field grow">
+            <label>Tìm kiếm</label>
+            <input class="aui-input" placeholder="Tìm kiếm tài xế" data-filter-q />
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái</label>
+            <select class="aui-select" data-filter-status>
+                <option value="">Tất cả trạng thái</option>
+                <option value="Available">Có sẵn</option>
+                <option value="Busy">Đang bận</option>
+                <option value="Offline">Ngoại tuyến</option>
+            </select>
+        </div>
+        <div class="aui-field" hidden data-city-unsupported title="Backend chưa hỗ trợ khu vực tài xế">
+            <label>Khu vực</label>
+            <select class="aui-select" data-filter-city disabled>
+                <option value="">Tất cả khu vực</option>
+            </select>
+        </div>
+        <div class="aui-field" style="align-self:end">
+            <button type="button" class="aui-btn aui-btn-ghost" data-export><i class="bi bi-download"></i> Xuất dữ liệu</button>
+        </div>
+    </div>
+
+    <div class="aui-card" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" data-select-all /></th>
+                        <th>#</th>
+                        <th>Tài xế</th>
+                        <th>Số điện thoại</th>
+                        <th>Trạng thái</th>
+                        <th>Đánh giá trung bình</th>
+                        <th>Tổng chuyến</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody data-table-body>
+                    <tr><td colspan="8"><div class="aui-empty"><i class="bi bi-hourglass-split"></i>Đang tải dữ liệu tài xế...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="aui-pager" data-pager></div>
+    </div>
+</div>

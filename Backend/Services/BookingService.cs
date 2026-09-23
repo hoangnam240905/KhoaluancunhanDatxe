@@ -165,6 +165,36 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
         return booking is null ? null : MapToResponse(booking);
     }
 
+    public const int CancellationReasonMaxLength = 500;
+    public const string CancellationReasonRequired = "Vui lòng nhập lý do hủy đơn.";
+    public const string CancellationReasonTooLong = "Lý do hủy đơn quá dài.";
+    public const string NotOwner = "Bạn không có quyền hủy đơn thuê này.";
+
+    public Task<(BookingResponse? Data, string? Error, int StatusCode)> CancelByCustomerAsync(
+        int bookingId, int customerId, string? reason)
+        => SqliteWriteLock.ExecuteAsync(db, () => CancelByCustomerCoreAsync(bookingId, customerId, reason));
+
+    private async Task<(BookingResponse? Data, string? Error, int StatusCode)> CancelByCustomerCoreAsync(
+        int bookingId, int customerId, string? reason)
+    {
+        var trimmed = reason?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return (null, CancellationReasonRequired, StatusCodes.Status400BadRequest);
+        if (trimmed.Length > CancellationReasonMaxLength)
+            return (null, CancellationReasonTooLong, StatusCodes.Status400BadRequest);
+
+        var booking = await db.Bookings.FindAsync(bookingId);
+        if (booking is null)
+            return (null, "Không tìm thấy đơn.", StatusCodes.Status404NotFound);
+        if (booking.CustomerId != customerId)
+            return (null, NotOwner, StatusCodes.Status403Forbidden);
+        if (!BookingStateTransitionRules.CanPatch(booking.Status, BookingStatuses.Cancelled))
+            return (null, BookingStateTransitionRules.InvalidTransition, StatusCodes.Status400BadRequest);
+
+        booking.CancellationReason = trimmed;
+        return await ChangeStatusAsync(bookingId, BookingStatuses.Cancelled, customerId, trimmed, patch: true);
+    }
+
     public Task<(BookingResponse? Data, string? Error, int StatusCode)> UpdateStatusAsync(
         int bookingId, string newStatus, int changedBy, string? note)
         => SqliteWriteLock.ExecuteAsync(db, () =>
@@ -397,7 +427,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             totalFees,
             inspections,
             review,
-            HasActiveDeposit(b));
+            HasActiveDeposit(b),
+            b.CancellationReason);
     }
 
     private static bool HasActiveDeposit(Booking b)

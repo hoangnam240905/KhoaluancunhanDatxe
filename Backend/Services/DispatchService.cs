@@ -242,11 +242,17 @@ public class DispatchService(
         if (readiness is not null)
             return Fail(readiness);
 
+        // SelfDrive dispatcher handover: prefer request fuel; else reuse last known level from vehicle inspections.
+        // Do not invent 0 — if neither source has a valid level, inspection rules reject as before.
+        var fuelLevel = request?.FuelLevel;
+        if (fuelLevel is null && booking.AssignedVehicleId is int vid)
+            fuelLevel = await inspections.GetLatestFuelLevelAsync(vid);
+
         var (inspection, inspectError) = await inspections.AddAsync(
             bookingId,
             VehicleInspectionTypes.Handover,
             request?.OdometerKm,
-            request?.FuelLevel,
+            fuelLevel,
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,

@@ -1,7 +1,0 @@
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\CustomerWeb.exe
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\appsettings.Development.json
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\appsettings.json
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\CustomerWeb.dll
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\CustomerWeb.deps.json
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\CustomerWeb.runtimeconfig.json
-D:\DoAnCuNhan\CarRentalSystem\artifacts\p06-customerweb\CustomerWeb.pdb

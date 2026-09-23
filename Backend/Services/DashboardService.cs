@@ -71,11 +71,30 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
         var performance = await GetDriverPerformanceAsync(fromUtc, toUtc);
         var recommendation = await GetRecommendationAsync(fromUtc, toUtc);
         var alertList = await alerts.GetAlertsAsync();
+        var revenueOverview = await GetRevenueOverviewAsync(toUtc);
+        var recentBookings = await GetRecentBookingsAsync();
+        var upcomingPickups = await GetUpcomingPickupsAsync();
+        var totalCustomers = await db.Customers.AsNoTracking().CountAsync();
 
         var totalBookings = bookingCounts.Values.Sum();
         var completedBookings = GetCount(bookingCounts, BookingStatuses.Completed);
         var cancelledBookings = GetCount(bookingCounts, BookingStatuses.Cancelled);
         var depositPaidAmount = paidRows.Sum();
+
+        var span = toUtc - fromUtc;
+        var prevTo = fromUtc.AddTicks(-1);
+        var prevFrom = prevTo - span;
+        var prevBookings = await db.Bookings.AsNoTracking()
+            .CountAsync(b => b.CreatedAt >= prevFrom && b.CreatedAt <= prevTo);
+        var prevDepositPaid = await depositQuery
+            .Where(p => p.Status == PaymentStatuses.Paid
+                && p.PaidAt != null
+                && p.PaidAt >= prevFrom && p.PaidAt <= prevTo)
+            .SumAsync(p => p.Amount);
+
+        var available = GetCount(vehicleCounts, VehicleStatuses.Available);
+        var rented = GetCount(vehicleCounts, VehicleStatuses.Rented);
+        var activeFleet = available + rented;
 
         var bookings = new DashboardBookings(
             totalBookings,
@@ -102,8 +121,8 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
 
         var vehicles = new DashboardVehicles(
             vehicleCounts.Values.Sum(),
-            GetCount(vehicleCounts, VehicleStatuses.Available),
-            GetCount(vehicleCounts, VehicleStatuses.Rented),
+            available,
+            rented,
             GetCount(vehicleCounts, VehicleStatuses.Maintenance),
             GetCount(vehicleCounts, VehicleStatuses.Inactive),
             SnapshotNote);
@@ -123,15 +142,127 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
                 completedBookings,
                 cancelledBookings,
                 depositPaidAmount,
-                DepositPaidLabel),
+                DepositPaidLabel,
+                PercentChange(depositPaidAmount, prevDepositPaid),
+                PercentChange(totalBookings, prevBookings)),
             bookings,
             payments,
             vehicles,
             drivers,
             topVehicles,
             new DashboardMaintenance(alertList.Count, alertList),
-            recommendation), null);
+            recommendation,
+            totalCustomers,
+            activeFleet,
+            revenueOverview,
+            recentBookings,
+            upcomingPickups), null);
     }
+
+    private async Task<IReadOnlyList<DashboardRevenuePoint>> GetRevenueOverviewAsync(DateTime toUtc)
+    {
+        var endMonth = new DateTime(toUtc.Year, toUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var startMonth = endMonth.AddMonths(-11);
+        var endExclusive = endMonth.AddMonths(1);
+
+        var rows = await db.Payments.AsNoTracking()
+            .Where(p => (p.PaymentType == null || p.PaymentType == PaymentTypes.Deposit)
+                && p.Status == PaymentStatuses.Paid
+                && p.PaidAt != null
+                && p.PaidAt >= startMonth
+                && p.PaidAt < endExclusive)
+            .Select(p => new { PaidAt = p.PaidAt!.Value, p.Amount })
+            .ToListAsync();
+
+        var byMonth = rows
+            .GroupBy(r => new { r.PaidAt.Year, r.PaidAt.Month })
+            .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Sum(x => x.Amount));
+
+        var points = new List<DashboardRevenuePoint>(12);
+        for (var i = 0; i < 12; i++)
+        {
+            var month = startMonth.AddMonths(i);
+            byMonth.TryGetValue((month.Year, month.Month), out var amount);
+            points.Add(new DashboardRevenuePoint(
+                $"T{month.Month}",
+                month.Year,
+                month.Month,
+                amount));
+        }
+
+        return points;
+    }
+
+    private async Task<IReadOnlyList<DashboardRecentBooking>> GetRecentBookingsAsync()
+    {
+        var rows = await db.Bookings.AsNoTracking()
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(5)
+            .Select(b => new
+            {
+                b.BookingId,
+                CustomerName = b.Customer.User.FullName,
+                VehicleLabel = b.AssignedVehicle != null
+                    ? b.AssignedVehicle.Brand + " " + b.AssignedVehicle.Model
+                    : b.VehicleType.TypeName,
+                b.StartDate,
+                b.Status,
+                b.TotalAmount
+            })
+            .ToListAsync();
+
+        return rows.Select(b => new DashboardRecentBooking(
+            b.BookingId,
+            b.CustomerName,
+            string.IsNullOrWhiteSpace(b.VehicleLabel) ? "—" : b.VehicleLabel.Trim(),
+            b.StartDate,
+            b.Status,
+            b.TotalAmount)).ToList();
+    }
+
+    private async Task<IReadOnlyList<DashboardUpcomingPickup>> GetUpcomingPickupsAsync()
+    {
+        var now = DateTime.UtcNow;
+        var openStatuses = new[]
+        {
+            BookingStatuses.Pending,
+            BookingStatuses.Confirmed,
+            BookingStatuses.Assigned
+        };
+
+        var rows = await db.Bookings.AsNoTracking()
+            .Where(b => b.StartDate >= now && openStatuses.Contains(b.Status))
+            .OrderBy(b => b.StartDate)
+            .Take(5)
+            .Select(b => new
+            {
+                b.BookingId,
+                CustomerName = b.Customer.User.FullName,
+                VehicleLabel = b.AssignedVehicle != null
+                    ? b.AssignedVehicle.Brand + " " + b.AssignedVehicle.Model
+                    : b.VehicleType.TypeName,
+                b.StartDate,
+                b.Status
+            })
+            .ToListAsync();
+
+        return rows.Select(b => new DashboardUpcomingPickup(
+            b.BookingId,
+            b.CustomerName,
+            string.IsNullOrWhiteSpace(b.VehicleLabel) ? "—" : b.VehicleLabel.Trim(),
+            b.StartDate,
+            b.Status)).ToList();
+    }
+
+    private static decimal? PercentChange(decimal current, decimal previous)
+    {
+        if (previous == 0)
+            return current == 0 ? null : 100m;
+        return Math.Round((current - previous) / previous * 100m, 1);
+    }
+
+    private static decimal? PercentChange(int current, int previous)
+        => PercentChange((decimal)current, previous);
 
     private async Task<IReadOnlyList<DashboardTopVehicle>> GetTopVehiclesAsync(DateTime fromUtc, DateTime toUtc)
     {

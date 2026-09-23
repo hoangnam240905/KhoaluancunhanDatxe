@@ -53,16 +53,17 @@
             </a>
             @if (role == "Admin")
             {
-                <div class="dx-nav-label">Quản trị</div>
+                <div class="dx-nav-label">Quản trị (cũ)</div>
                 <nav class="dx-nav">
-                    <a class="@Nav("/Admin", true)" asp-page="/Admin/Index"><i class="bi bi-grid-1x2"></i> Dashboard</a>
-                    <a class="@Nav("/Admin/Vehicles")" asp-page="/Admin/Vehicles/Index"><i class="bi bi-truck-front"></i> Đội xe</a>
-                    <a class="@Nav("/Admin/Pricing")" asp-page="/Admin/Pricing/Index"><i class="bi bi-tag"></i> Giá &amp; loại xe</a>
-                    <a class="@Nav("/Admin/Drivers")" asp-page="/Admin/Drivers/Index"><i class="bi bi-person-badge"></i> Tài xế</a>
-                    <a class="@Nav("/Admin/Customers")" asp-page="/Admin/Customers/Index"><i class="bi bi-people"></i> Khách hàng</a>
-                    <a class="@Nav("/Admin/Bookings")" asp-page="/Admin/Bookings/Index"><i class="bi bi-journal-text"></i> Đơn đặt</a>
-                    <a class="@Nav("/Admin/Payments")" asp-page="/Admin/Payments/Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
-                    <a class="@Nav("/Admin/Contracts")" asp-page="/Admin/Contracts/Index"><i class="bi bi-file-earmark-text"></i> Hợp đồng</a>
+                    <a class="@Nav("/Admin/Legacy", true)" asp-page="/Admin/Index"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                    <a class="@Nav("/Admin/Legacy/Vehicles")" asp-page="/Admin/Vehicles/Index"><i class="bi bi-truck-front"></i> Đội xe</a>
+                    <a class="@Nav("/Admin/Legacy/Pricing")" asp-page="/Admin/Pricing/Index"><i class="bi bi-tag"></i> Giá &amp; loại xe</a>
+                    <a class="@Nav("/Admin/Legacy/Drivers")" asp-page="/Admin/Drivers/Index"><i class="bi bi-person-badge"></i> Tài xế</a>
+                    <a class="@Nav("/Admin/Legacy/Customers")" asp-page="/Admin/Customers/Index"><i class="bi bi-people"></i> Khách hàng</a>
+                    <a class="@Nav("/Admin/Legacy/Bookings")" asp-page="/Admin/Bookings/Index"><i class="bi bi-journal-text"></i> Đơn đặt</a>
+                    <a class="@Nav("/Admin/Legacy/Payments")" asp-page="/Admin/Payments/Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
+                    <a class="@Nav("/Admin/Legacy/Contracts")" asp-page="/Admin/Contracts/Index"><i class="bi bi-file-earmark-text"></i> Hợp đồng</a>
+                    <a class="dx-nav-link" href="/Admin"><i class="bi bi-arrow-left-circle"></i> Admin UI mới</a>
                 </nav>
             }
             else if (role == "Dispatcher")

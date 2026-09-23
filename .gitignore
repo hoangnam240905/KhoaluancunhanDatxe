@@ -38,3 +38,10 @@ Thumbs.db
 **/*.db-wal
 **/__pycache__/
 *.pyc
+# Build / test artifacts
+artifacts/
+_build/
+
+# Archives
+*.rar
+*.zip

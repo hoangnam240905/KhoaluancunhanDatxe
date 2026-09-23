@@ -1,0 +1,152 @@
+@page "/Admin/Payments"
+@model PortalWeb.Pages.AdminUi.PaymentsModel
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Thanh toán & Hợp đồng";
+    ViewData["Nav"] = "payments";
+    ViewData["SearchPlaceholder"] = "Tìm theo mã giao dịch, tên khách hàng...";
+}
+<div id="auiPayments" data-aui-payments="1">
+    <form id="auiPaymentsAntiForgery" style="display:none" method="post">@Html.AntiForgeryToken()</form>
+    <script type="application/json" id="auiPaymentsPayload">@Html.Raw(Model.PaymentsJson)</script>
+    <script type="application/json" id="auiContractsPayload">@Html.Raw(Model.ContractsJson)</script>
+    <script type="application/json" id="auiBookingsPayload">@Html.Raw(Model.BookingsJson)</script>
+    <script type="application/json" id="auiRevenueOverviewPayload">@Html.Raw(Model.RevenueOverviewJson)</script>
+
+    <div class="aui-page-head">
+        <div>
+            <h1>Thanh toán &amp; Hợp đồng</h1>
+            <p>Theo dõi giao dịch, quản lý tiền cọc và tình trạng hợp đồng điện tử.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-primary" data-export><i class="bi bi-download"></i> Xuất báo cáo</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="aui-empty" role="alert" data-payments-error>
+            <i class="bi bi-exclamation-triangle"></i>
+            <p>@Model.ErrorMessage</p>
+        </div>
+    }
+
+    <div class="aui-kpi-grid" data-payments-kpis @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="aui-kpi-label">Tổng doanh thu</div>
+                <div class="aui-kpi-value" data-kpi="revenue">—</div>
+                <small class="aui-muted" style="display:block;margin-top:.2rem">Cọc đã Paid (theo backend)</small>
+            </div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-receipt"></i></div>
+            <div><div class="aui-kpi-label">Tổng giao dịch</div><div class="aui-kpi-value" data-kpi="transactions">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon purple"><i class="bi bi-file-earmark-text"></i></div>
+            <div><div class="aui-kpi-label">Hợp đồng đã phát hành</div><div class="aui-kpi-value" data-kpi="issued">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-pen"></i></div>
+            <div><div class="aui-kpi-label">Hợp đồng đã ký</div><div class="aui-kpi-value" data-kpi="signed">—</div></div>
+        </div>
+    </div>
+
+    <div class="aui-filters" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-field grow">
+            <label>Tìm kiếm</label>
+            <input class="aui-input" placeholder="Tìm theo mã giao dịch, tên khách hàng..." data-filter-q />
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái thanh toán</label>
+            <select class="aui-select" data-filter-pay>
+                <option value="">Tất cả</option>
+                <option value="Paid">Đã thanh toán</option>
+                <option value="Pending">Chờ thanh toán</option>
+                <option value="Failed">Thất bại</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái hợp đồng</label>
+            <select class="aui-select" data-filter-contract>
+                <option value="">Tất cả trạng thái</option>
+                <option value="Signed">Đã ký</option>
+                <option value="Issued">Đã phát hành</option>
+                <option value="Voided">Đã vô hiệu</option>
+                <option value="__none">Chưa có hợp đồng</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Khoảng thời gian</label>
+            <div class="aui-daterange" data-daterange data-daterange-mode="filter">
+                <button type="button" class="aui-btn aui-btn-ghost aui-daterange-trigger" data-daterange-toggle aria-haspopup="dialog">
+                    <i class="bi bi-calendar3"></i>
+                    <span data-daterange-label>Tất cả thời gian</span>
+                </button>
+                <div class="aui-daterange-panel" data-daterange-panel hidden>
+                    <div class="aui-field">
+                        <label>Từ ngày</label>
+                        <input class="aui-input" type="date" data-daterange-from data-filter-from />
+                    </div>
+                    <div class="aui-field">
+                        <label>Đến ngày</label>
+                        <input class="aui-input" type="date" data-daterange-to data-filter-to />
+                    </div>
+                    <div class="aui-daterange-actions">
+                        <button type="button" class="aui-btn aui-btn-ghost" data-daterange-cancel>Hủy</button>
+                        <button type="button" class="aui-btn aui-btn-primary" data-daterange-apply>Áp dụng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="aui-card" style="margin-bottom:1rem" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" data-select-all /></th>
+                        <th>#</th>
+                        <th>Mã giao dịch</th>
+                        <th>Khách hàng</th>
+                        <th>Mã đơn</th>
+                        <th>Tiền cọc</th>
+                        <th>Phương thức thanh toán</th>
+                        <th>Trạng thái thanh toán</th>
+                        <th>Trạng thái hợp đồng</th>
+                        <th>Ngày &amp; giờ</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody data-table-body>
+                    <tr><td colspan="11"><div class="aui-empty"><i class="bi bi-hourglass-split"></i>Đang tải dữ liệu thanh toán...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="aui-pager" data-pager></div>
+    </div>
+
+    <div class="aui-grid-3" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Phân bổ phương thức thanh toán</h3>
+            <p class="aui-card-sub">Tỷ trọng khối lượng giao dịch</p>
+            <div class="aui-chart-box sm"><canvas id="chartPayMethods"></canvas></div>
+            <div class="aui-empty" hidden data-methods-empty><i class="bi bi-pie-chart"></i>Chưa có dữ liệu phương thức thanh toán.</div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Xu hướng doanh thu</h3>
+            <p class="aui-card-sub">Cọc đã Paid · 12 tháng gần nhất</p>
+            <div class="aui-chart-box sm"><canvas id="chartPayTrend"></canvas></div>
+            <div class="aui-empty" hidden data-trend-empty><i class="bi bi-graph-up"></i>Chưa có dữ liệu.</div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Hoạt động hợp đồng gần đây</h3>
+            <p class="aui-card-sub">Sự kiện hợp đồng mới nhất</p>
+            <ul class="aui-list-activity" id="contractActivities"></ul>
+            <div class="aui-empty" hidden data-activities-empty><i class="bi bi-file-earmark"></i>Chưa có hoạt động hợp đồng.</div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,115 @@
+@inject PortalWeb.Services.AuthSession Auth
+@{
+    var nav = ViewData["Nav"] as string ?? "";
+    string NavClass(string key) => nav == key ? "aui-nav is-on" : "aui-nav";
+    var searchPh = ViewData["SearchPlaceholder"] as string ?? "Tìm kiếm...";
+    var displayName = string.IsNullOrWhiteSpace(Auth.FullName) ? "Quản trị viên" : Auth.FullName!;
+    var initials = string.IsNullOrWhiteSpace(Auth.FullName)
+        ? "QT"
+        : string.Concat(Auth.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).TakeLast(2).Select(p => char.ToUpperInvariant(p[0])));
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "Quản trị") — DriveRent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin-ui.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="aui-body">
+<div class="aui-shell">
+    <aside class="aui-sidebar" id="auiSidebar">
+        <a class="aui-brand" asp-page="/AdminUi/Dashboard">
+            <span class="aui-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+            <span>
+                <strong>DriveRent</strong>
+                <small>Thuê xe thông minh. Đi xa hơn.</small>
+            </span>
+        </a>
+
+        <nav class="aui-navlist" aria-label="Quản trị">
+            <a class="@NavClass("dashboard")" asp-page="/AdminUi/Dashboard"><i class="bi bi-grid-1x2"></i> Tổng quan</a>
+            <a class="@NavClass("bookings")" asp-page="/AdminUi/Bookings"><i class="bi bi-calendar2-check"></i> Đơn thuê</a>
+            <a class="@NavClass("vehicles")" asp-page="/AdminUi/Vehicles"><i class="bi bi-truck-front"></i> Quản lý xe</a>
+            <a class="@NavClass("customers")" asp-page="/AdminUi/Customers"><i class="bi bi-people"></i> Khách hàng</a>
+            <a class="@NavClass("drivers")" asp-page="/AdminUi/Drivers"><i class="bi bi-person-badge"></i> Tài xế</a>
+            <a class="@NavClass("payments")" asp-page="/AdminUi/Payments"><i class="bi bi-credit-card"></i> Thanh toán &amp; Hợp đồng</a>
+            <a class="@NavClass("maintenance")" asp-page="/AdminUi/Maintenance"><i class="bi bi-tools"></i> Bảo trì &amp; Sự cố</a>
+        </nav>
+
+        <a class="aui-logout" asp-page="/Account/Logout"><i class="bi bi-box-arrow-left"></i> Đăng xuất</a>
+        <a class="aui-old-link" asp-page="/Admin/Index">← Quay lại Admin cũ</a>
+    </aside>
+
+    <div class="aui-main">
+        <header class="aui-topbar">
+            <button type="button" class="aui-icon-btn aui-menu" data-aui-toggle aria-label="Menu"><i class="bi bi-list"></i></button>
+            <label class="aui-search">
+                <i class="bi bi-search"></i>
+                <input type="search" placeholder="@searchPh" data-aui-global-search />
+            </label>
+            <div class="aui-top-actions">
+                <div class="dropdown">
+                    <a class="aui-user" href="#" data-bs-toggle="dropdown" title="@Auth.Email">
+                        <span class="aui-avatar">@initials</span>
+                        <span class="aui-user-meta">
+                            <strong>@displayName</strong>
+                            <small>Quản trị viên</small>
+                        </span>
+                        <i class="bi bi-chevron-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        <main class="aui-content">@RenderBody()</main>
+    </div>
+</div>
+
+<div class="aui-backdrop" data-aui-backdrop></div>
+<div class="aui-drawer-backdrop" data-aui-drawer-backdrop></div>
+<aside class="aui-drawer" id="auiDrawer" aria-hidden="true">
+    <div class="aui-drawer-head">
+        <div>
+            <h2 id="auiDrawerTitle">Chi tiết</h2>
+            <p id="auiDrawerSub" class="aui-muted"></p>
+        </div>
+        <button type="button" class="aui-icon-btn" data-aui-drawer-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="aui-drawer-tabs" id="auiDrawerTabs" hidden></div>
+    <div class="aui-drawer-body" id="auiDrawerBody"></div>
+    <div class="aui-drawer-foot" id="auiDrawerFoot"></div>
+</aside>
+
+<div class="aui-modal" id="auiModal" hidden>
+    <div class="aui-modal-card">
+        <div class="aui-modal-head">
+            <h3 id="auiModalTitle">Thao tác</h3>
+            <button type="button" class="aui-icon-btn" data-aui-modal-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="aui-modal-body" id="auiModalBody"></div>
+        <div class="aui-modal-foot">
+            <button type="button" class="aui-btn aui-btn-ghost" data-aui-modal-close>Hủy</button>
+            <button type="button" class="aui-btn aui-btn-primary" id="auiModalOk">Xác nhận</button>
+        </div>
+    </div>
+</div>
+<div class="aui-toast" id="auiToast" hidden></div>
+
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="~/js/admin-ui-data.js" asp-append-version="true"></script>
+<script src="~/js/admin-ui.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

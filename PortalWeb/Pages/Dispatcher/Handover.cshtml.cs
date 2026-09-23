@@ -1,5 +1,6 @@
 using PortalWeb.Models;
 using PortalWeb.Services;
+using PortalWeb.Display;
 using Microsoft.AspNetCore.Mvc;
 
 namespace PortalWeb.Pages.Dispatcher;
@@ -8,6 +9,13 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : RolePageM
 {
     public BookingResponse? Booking { get; set; }
     public string? ErrorMessage { get; set; }
+    public string VehicleName { get; set; } = "—";
+    public string LicensePlate { get; set; } = "—";
+    public int? CurrentKm { get; set; }
+    public decimal? KnownFuelLevel { get; set; }
+    public bool RequiresFuelInput { get; set; }
+    public bool CanShowForm { get; set; }
+    public string? LoadBlockReason { get; set; }
 
     [BindProperty]
     public VehicleConditionRequest Input { get; set; } = new();
@@ -25,7 +33,30 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         if (denied is not null) return denied;
         var blocked = await LoadAsync(id);
         if (blocked is not null) return blocked;
-        if (!ValidateInput()) return Page();
+        if (!CanShowForm)
+        {
+            ErrorMessage = LoadBlockReason ?? "Không thể xác nhận giao xe.";
+            return Page();
+        }
+
+        var snap = await HandoverVehicleState.ResolveAsync(api, Booking!);
+        if (snap is null)
+        {
+            ErrorMessage = "Không lấy được thông tin xe.";
+            return Page();
+        }
+
+        // Only accept client fuel when backend has none for THIS vehicle.
+        var clientFuel = snap.RequiresFuelInput ? Input.FuelLevel : null;
+        var (odo, fuel, err) = HandoverVehicleState.ResolveHandoverCondition(snap, clientFuel);
+        if (err is not null)
+        {
+            ErrorMessage = err;
+            return Page();
+        }
+
+        Input.OdometerKm = odo;
+        Input.FuelLevel = fuel;
 
         var (_, error) = await api.HandoverBookingAsync(id, Input);
         if (error is not null)
@@ -37,29 +68,39 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         return RedirectToPage("/Dispatcher/Index");
     }
 
-    private bool ValidateInput()
-    {
-        if (Input.OdometerKm is null)
-            ModelState.AddModelError("Input.OdometerKm", "Vui lòng nhập số km hợp lệ.");
-        else if (Input.OdometerKm < 0)
-            ModelState.AddModelError("Input.OdometerKm", "Số km không được âm.");
-        if (Input.FuelLevel is null)
-            ModelState.AddModelError("Input.FuelLevel", "Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
-        else if (Input.FuelLevel is < 0 or > 100)
-            ModelState.AddModelError("Input.FuelLevel", "Mức nhiên liệu phải từ 0 đến 100.");
-        if (Input.ExteriorCondition is { Length: > 100 } || Input.TechnicalCondition is { Length: > 100 })
-            ModelState.AddModelError("Input.ExteriorCondition", "Tình trạng xe tối đa 100 ký tự.");
-        if (Input.Notes is { Length: > 500 })
-            ModelState.AddModelError("Input.Notes", "Ghi chú tối đa 500 ký tự.");
-        return ModelState.IsValid;
-    }
-
     private async Task<IActionResult?> LoadAsync(int id)
     {
         Booking = await api.GetBookingAsync(id);
         if (Booking is null) return NotFound();
         if (Booking.RentalMode != "SelfDrive" || Booking.Status != "Assigned")
             return RedirectToPage("/Dispatcher/Index");
+
+        var snap = await HandoverVehicleState.ResolveAsync(api, Booking);
+        if (snap is null)
+        {
+            CanShowForm = false;
+            LoadBlockReason = "Không lấy được thông tin xe.";
+            return null;
+        }
+
+        VehicleName = snap.VehicleName;
+        LicensePlate = snap.LicensePlate;
+        CurrentKm = snap.CurrentKm;
+        KnownFuelLevel = snap.FuelLevel;
+        RequiresFuelInput = snap.RequiresFuelInput;
+        if (snap.CurrentKm is int km)
+            Input.OdometerKm = km;
+        if (!RequiresFuelInput)
+            Input.FuelLevel = snap.FuelLevel;
+
+        if (snap.BlockReason is not null || snap.CurrentKm is null)
+        {
+            CanShowForm = false;
+            LoadBlockReason = snap.BlockReason ?? HandoverVehicleState.KmMissingMessage;
+            return null;
+        }
+
+        CanShowForm = true;
         return null;
     }
 }

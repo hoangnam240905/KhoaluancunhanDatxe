@@ -1,0 +1,89 @@
+@page "/admin-ui/vehicles"
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Quản lý xe";
+    ViewData["Nav"] = "vehicles";
+    ViewData["SearchPlaceholder"] = "Tìm biển số, mẫu xe hoặc số VIN";
+}
+<div id="auiVehicles">
+    <div class="aui-page-head">
+        <div>
+            <h1>Quản lý xe</h1>
+            <p>Quản lý đội xe, theo dõi trạng thái và đảm bảo xe luôn sẵn sàng hoạt động.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-primary" data-add-vehicle><i class="bi bi-plus-lg"></i> Thêm xe mới</button>
+        </div>
+    </div>
+
+    <div class="aui-kpi-grid cols-5">
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon slate"><i class="bi bi-truck-front"></i></div>
+            <div><div class="aui-kpi-label">Tất cả xe</div><div class="aui-kpi-value">120</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-check-circle"></i></div>
+            <div><div class="aui-kpi-label">Có sẵn</div><div class="aui-kpi-value">68</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-signpost-2"></i></div>
+            <div><div class="aui-kpi-label">Đang sử dụng</div><div class="aui-kpi-value">32</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-tools"></i></div>
+            <div><div class="aui-kpi-label">Đang bảo trì</div><div class="aui-kpi-value">12</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon red"><i class="bi bi-slash-circle"></i></div>
+            <div><div class="aui-kpi-label">Ngừng hoạt động</div><div class="aui-kpi-value">8</div></div>
+        </div>
+    </div>
+
+    <div class="aui-filters">
+        <div class="aui-field grow">
+            <label>Tìm kiếm</label>
+            <input class="aui-input" placeholder="Tìm biển số, mẫu xe hoặc số VIN" data-filter-q />
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái</label>
+            <select class="aui-select" data-filter-status>
+                <option value="">Tất cả trạng thái</option>
+                <option value="Available">Có sẵn</option>
+                <option value="In Use">Đang sử dụng</option>
+                <option value="Maintenance">Đang bảo trì</option>
+                <option value="Out of Service">Ngừng hoạt động</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Loại xe</label>
+            <select class="aui-select" data-filter-type>
+                <option value="">Tất cả loại</option>
+                <option value="Sedan">Sedan</option>
+                <option value="SUV">SUV</option>
+                <option value="MPV">MPV</option>
+                <option value="EV SUV">EV SUV</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="aui-card">
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" data-select-all /></th>
+                        <th>#</th>
+                        <th>Biển số xe</th>
+                        <th>Mẫu xe</th>
+                        <th>Loại</th>
+                        <th>Trạng thái</th>
+                        <th>Hết hạn đăng ký</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody data-table-body></tbody>
+            </table>
+        </div>
+        <div class="aui-pager" data-pager></div>
+    </div>
+</div>

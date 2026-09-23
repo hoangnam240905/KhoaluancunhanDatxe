@@ -1,0 +1,192 @@
+@page "/admin-ui/maintenance"
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Quản lý bảo trì & sự cố";
+    ViewData["Nav"] = "maintenance";
+    ViewData["SearchPlaceholder"] = "Tìm theo biển số hoặc mẫu xe";
+}
+<div id="auiMaintenance">
+    <div class="aui-page-head">
+        <div>
+            <h1>Quản lý bảo trì &amp; sự cố</h1>
+            <p>Đảm bảo đội xe luôn trong tình trạng tốt và xử lý sự cố hiệu quả.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-ghost" data-aui-toast="Bộ chọn ngày chỉ là giao diện.">
+                <i class="bi bi-calendar3"></i> 14/09/2026
+            </button>
+            <div class="aui-seg" data-main-seg>
+                <button type="button" class="is-on" data-tab="maintenance">Bảo trì</button>
+                <button type="button" data-tab="incidents">Sự cố</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="aui-kpi-grid">
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon slate"><i class="bi bi-truck-front"></i></div>
+            <div><div class="aui-kpi-label">Xe</div><div class="aui-kpi-value">120</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-wrench-adjustable"></i></div>
+            <div><div class="aui-kpi-label">Đến hạn bảo dưỡng</div><div class="aui-kpi-value">18</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+            <div><div class="aui-kpi-label">Sự cố đang xử lý</div><div class="aui-kpi-value">7</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-check2-all"></i></div>
+            <div><div class="aui-kpi-label">Đã xử lý trong tháng</div><div class="aui-kpi-value">24</div></div>
+        </div>
+    </div>
+
+    <div data-panel-maintenance>
+        <div class="aui-page-head" style="margin-bottom:.85rem">
+            <div class="aui-seg" data-sub-seg>
+                <button type="button" class="is-on">Bảo trì</button>
+                <button type="button">Lịch bảo dưỡng</button>
+                <button type="button">Lịch sử bảo dưỡng</button>
+            </div>
+            <div class="aui-head-actions">
+                <button type="button" class="aui-btn aui-btn-primary" data-create-service><i class="bi bi-plus-lg"></i> Tạo phiếu bảo dưỡng</button>
+            </div>
+        </div>
+
+        <div class="aui-filters">
+            <div class="aui-field grow">
+                <label>Tìm kiếm</label>
+                <input class="aui-input" placeholder="Tìm theo biển số/mẫu xe" data-maint-q />
+            </div>
+            <div class="aui-field">
+                <label>Trạng thái</label>
+                <select class="aui-select" data-maint-status>
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Healthy">Tốt</option>
+                    <option value="Due Soon">Sắp đến hạn</option>
+                    <option value="Overdue">Quá hạn</option>
+                    <option value="In Service">Đang bảo dưỡng</option>
+                </select>
+            </div>
+            <div class="aui-field">
+                <label>Loại xe</label>
+                <select class="aui-select" data-maint-type>
+                    <option value="">Tất cả loại xe</option>
+                    <option value="Sedan">Sedan</option>
+                    <option value="SUV">SUV</option>
+                    <option value="MPV">MPV</option>
+                    <option value="EV SUV">EV SUV</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="aui-card" style="margin-bottom:1rem">
+            <div class="aui-table-wrap">
+                <table class="aui-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" data-select-all /></th>
+                            <th>#</th>
+                            <th>Biển số xe</th>
+                            <th>Mẫu xe</th>
+                            <th>Số KM hiện tại</th>
+                            <th>Lần bảo dưỡng gần nhất</th>
+                            <th>Lần bảo dưỡng tiếp theo</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody data-maint-body></tbody>
+                </table>
+            </div>
+            <div class="aui-pager" data-maint-pager></div>
+        </div>
+
+        <div class="aui-grid-2 equal">
+            <div class="aui-card aui-card-pad">
+                <h3 class="aui-card-title">Tổng quan trạng thái bảo trì</h3>
+                <p class="aui-card-sub">Phân bổ sức khỏe đội xe</p>
+                <div class="aui-chart-box sm"><canvas id="chartMaintStatus"></canvas></div>
+                <div class="aui-legend">
+                    <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#16A34A"></span>Tốt</span>
+                    <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#D97706"></span>Sắp đến hạn</span>
+                    <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#DC2626"></span>Quá hạn</span>
+                    <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#2563EB"></span>Đang bảo dưỡng</span>
+                </div>
+            </div>
+            <div class="aui-card aui-card-pad">
+                <h3 class="aui-card-title">Lịch bảo dưỡng sắp tới (30 ngày)</h3>
+                <p class="aui-card-sub">Các lịch bảo dưỡng đã lên kế hoạch</p>
+                <div id="upcomingServices"></div>
+            </div>
+        </div>
+    </div>
+
+    <div data-panel-incidents hidden>
+        <div class="aui-page-head" style="margin-bottom:.85rem">
+            <div></div>
+            <div class="aui-head-actions">
+                <button type="button" class="aui-btn aui-btn-primary" data-report-incident><i class="bi bi-plus-lg"></i> Báo cáo sự cố</button>
+            </div>
+        </div>
+
+        <div class="aui-filters">
+            <div class="aui-field grow">
+                <label>Tìm kiếm</label>
+                <input class="aui-input" placeholder="Tìm kiếm sự cố" data-inc-q />
+            </div>
+            <div class="aui-field">
+                <label>Mức độ</label>
+                <select class="aui-select" data-inc-sev>
+                    <option value="">Tất cả mức độ</option>
+                    <option value="Critical">Nghiêm trọng</option>
+                    <option value="High">Cao</option>
+                    <option value="Medium">Trung bình</option>
+                    <option value="Low">Thấp</option>
+                </select>
+            </div>
+            <div class="aui-field">
+                <label>Trạng thái</label>
+                <select class="aui-select" data-inc-status>
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Investigating">Đang điều tra</option>
+                    <option value="In Progress">Đang thực hiện</option>
+                    <option value="Resolved">Đã xử lý</option>
+                    <option value="Closed">Đã đóng</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="aui-card" style="margin-bottom:1rem">
+            <div class="aui-table-wrap">
+                <table class="aui-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" data-select-all /></th>
+                            <th>#</th>
+                            <th>Ngày &amp; giờ</th>
+                            <th>Xe</th>
+                            <th>Loại</th>
+                            <th>Mức độ</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody data-inc-body></tbody>
+                </table>
+            </div>
+            <div class="aui-pager" data-inc-pager></div>
+        </div>
+
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Thống kê sự cố</h3>
+            <p class="aui-card-sub">Tóm tắt phản ứng vận hành</p>
+            <div class="aui-stat-row" style="margin-top:1rem;margin-bottom:0">
+                <div class="aui-stat-mini"><span>Sự cố đang xử lý</span><strong>7</strong></div>
+                <div class="aui-stat-mini"><span>Đã xử lý trong tháng</span><strong>24</strong></div>
+                <div class="aui-stat-mini"><span>Thời gian xử lý trung bình</span><strong>1,8 ngày</strong></div>
+                <div class="aui-stat-mini"><span>So với tháng trước</span><strong style="color:#16A34A">-12%</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
