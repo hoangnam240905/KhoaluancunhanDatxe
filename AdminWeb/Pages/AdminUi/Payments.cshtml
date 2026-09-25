@@ -1,0 +1,108 @@
+@page "/admin-ui/payments"
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Thanh toán & Hợp đồng";
+    ViewData["Nav"] = "payments";
+    ViewData["SearchPlaceholder"] = "Tìm theo mã giao dịch, tên khách hàng...";
+}
+<div id="auiPayments">
+    <div class="aui-page-head">
+        <div>
+            <h1>Thanh toán &amp; Hợp đồng</h1>
+            <p>Theo dõi giao dịch, quản lý tiền cọc và tình trạng hợp đồng điện tử.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-primary" data-export><i class="bi bi-download"></i> Xuất báo cáo</button>
+        </div>
+    </div>
+
+    <div class="aui-kpi-grid">
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-cash-stack"></i></div>
+            <div><div class="aui-kpi-label">Tổng doanh thu</div><div class="aui-kpi-value">$48,320</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-receipt"></i></div>
+            <div><div class="aui-kpi-label">Tổng giao dịch</div><div class="aui-kpi-value">1,842</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon purple"><i class="bi bi-file-earmark-text"></i></div>
+            <div><div class="aui-kpi-label">Hợp đồng đã phát hành</div><div class="aui-kpi-value">1,576</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-pen"></i></div>
+            <div><div class="aui-kpi-label">Hợp đồng đã ký</div><div class="aui-kpi-value">1,428</div></div>
+        </div>
+    </div>
+
+    <div class="aui-filters">
+        <div class="aui-field grow">
+            <label>Tìm kiếm</label>
+            <input class="aui-input" placeholder="Tìm theo mã giao dịch, tên khách hàng..." data-filter-q />
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái thanh toán</label>
+            <select class="aui-select" data-filter-pay>
+                <option value="">Tất cả</option>
+                <option value="Paid">Đã thanh toán</option>
+                <option value="Pending">Chờ xác nhận</option>
+                <option value="Failed">Thất bại</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái hợp đồng</label>
+            <select class="aui-select" data-filter-contract>
+                <option value="">Tất cả trạng thái</option>
+                <option value="Signed">Đã ký</option>
+                <option value="Issued">Đã phát hành</option>
+                <option value="Voided">Đã vô hiệu</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Khoảng thời gian</label>
+            <input class="aui-input" value="14/09 – 14/10/2026" readonly data-aui-toast="Khoảng thời gian chỉ là giao diện." />
+        </div>
+    </div>
+
+    <div class="aui-card" style="margin-bottom:1rem">
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" data-select-all /></th>
+                        <th>#</th>
+                        <th>Mã giao dịch</th>
+                        <th>Khách hàng</th>
+                        <th>Mã đơn</th>
+                        <th>Tiền cọc</th>
+                        <th>Phương thức thanh toán</th>
+                        <th>Trạng thái thanh toán</th>
+                        <th>Trạng thái hợp đồng</th>
+                        <th>Ngày &amp; giờ</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody data-table-body></tbody>
+            </table>
+        </div>
+        <div class="aui-pager" data-pager></div>
+    </div>
+
+    <div class="aui-grid-3">
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Phân bổ phương thức thanh toán</h3>
+            <p class="aui-card-sub">Tỷ trọng khối lượng giao dịch</p>
+            <div class="aui-chart-box sm"><canvas id="chartPayMethods"></canvas></div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Xu hướng doanh thu</h3>
+            <p class="aui-card-sub">12 tháng gần nhất</p>
+            <div class="aui-chart-box sm"><canvas id="chartPayTrend"></canvas></div>
+        </div>
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Hoạt động hợp đồng gần đây</h3>
+            <p class="aui-card-sub">Sự kiện hợp đồng mới nhất</p>
+            <ul class="aui-list-activity" id="contractActivities"></ul>
+        </div>
+    </div>
+</div>

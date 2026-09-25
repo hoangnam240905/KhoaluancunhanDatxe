@@ -1,0 +1,86 @@
+@page "/admin-ui/customers"
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Khách hàng";
+    ViewData["Nav"] = "customers";
+    ViewData["SearchPlaceholder"] = "Tìm theo tên, email hoặc số điện thoại";
+}
+<div id="auiCustomers">
+    <div class="aui-page-head">
+        <div>
+            <h1>Khách hàng</h1>
+            <p>Quản lý khách hàng, theo dõi hoạt động và kiểm soát quyền truy cập tài khoản.</p>
+        </div>
+        <div class="aui-head-actions">
+            <button type="button" class="aui-btn aui-btn-primary" data-add-customer><i class="bi bi-plus-lg"></i> Thêm khách hàng</button>
+        </div>
+    </div>
+
+    <div class="aui-kpi-grid">
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon blue"><i class="bi bi-people"></i></div>
+            <div><div class="aui-kpi-label">Tổng khách hàng</div><div class="aui-kpi-value">892</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-person-check"></i></div>
+            <div><div class="aui-kpi-label">Khách hàng đang hoạt động</div><div class="aui-kpi-value">760</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon red"><i class="bi bi-lock"></i></div>
+            <div><div class="aui-kpi-label">Tài khoản bị khóa</div><div class="aui-kpi-value">28</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon purple"><i class="bi bi-person-plus"></i></div>
+            <div><div class="aui-kpi-label">Khách hàng mới trong tháng</div><div class="aui-kpi-value">64</div></div>
+        </div>
+    </div>
+
+    <div class="aui-filters">
+        <div class="aui-field grow">
+            <label>Tìm kiếm</label>
+            <input class="aui-input" placeholder="Tìm theo tên, email hoặc số điện thoại" data-filter-q />
+        </div>
+        <div class="aui-field">
+            <label>Trạng thái</label>
+            <select class="aui-select" data-filter-status>
+                <option value="">Tất cả trạng thái</option>
+                <option value="Active">Đang hoạt động</option>
+                <option value="Locked">Đã khóa</option>
+            </select>
+        </div>
+        <div class="aui-field">
+            <label>Hạng thành viên</label>
+            <select class="aui-select" data-filter-membership>
+                <option value="">Tất cả hạng</option>
+                <option value="Premium">Cao cấp</option>
+                <option value="Standard">Tiêu chuẩn</option>
+                <option value="Basic">Cơ bản</option>
+            </select>
+        </div>
+        <div class="aui-field" style="align-self:end">
+            <button type="button" class="aui-btn aui-btn-ghost" data-export><i class="bi bi-download"></i> Xuất dữ liệu</button>
+        </div>
+    </div>
+
+    <div class="aui-card">
+        <div class="aui-table-wrap">
+            <table class="aui-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" data-select-all /></th>
+                        <th>#</th>
+                        <th>Khách hàng</th>
+                        <th>Email</th>
+                        <th>Số điện thoại</th>
+                        <th>Hạng thành viên</th>
+                        <th>Ngày tham gia</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody data-table-body></tbody>
+            </table>
+        </div>
+        <div class="aui-pager" data-pager></div>
+    </div>
+</div>

@@ -1,0 +1,243 @@
+@page "/Admin/Maintenance"
+@model PortalWeb.Pages.AdminUi.MaintenanceModel
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Quản lý bảo trì & sự cố";
+    ViewData["Nav"] = "maintenance";
+    ViewData["SearchPlaceholder"] = "Tìm theo biển số hoặc mẫu xe";
+}
+<div id="auiMaintenance" data-aui-maintenance="1">
+    <form id="auiMaintenanceAntiForgery" style="display:none" method="post">@Html.AntiForgeryToken()</form>
+    <script type="application/json" id="auiMaintVehiclesPayload">@Html.Raw(Model.VehiclesJson)</script>
+    <script type="application/json" id="auiMaintProfilesPayload">@Html.Raw(Model.ProfilesJson)</script>
+    <script type="application/json" id="auiMaintAlertsPayload">@Html.Raw(Model.AlertsJson)</script>
+    <script type="application/json" id="auiMaintHistoriesPayload">@Html.Raw(Model.HistoriesJson)</script>
+    <script type="application/json" id="auiMaintIncidentsPayload">@Html.Raw(Model.IncidentsJson)</script>
+    <script type="application/json" id="auiMaintBookingsPayload">@Html.Raw(Model.BookingsJson)</script>
+
+    <div class="aui-page-head">
+        <div>
+            <h1>Quản lý bảo trì &amp; sự cố</h1>
+            <p>Đảm bảo đội xe luôn trong tình trạng tốt và xử lý sự cố hiệu quả.</p>
+        </div>
+        <div class="aui-head-actions">
+            <div class="aui-seg" data-main-seg>
+                <button type="button" class="is-on" data-tab="maintenance">Bảo trì</button>
+                <button type="button" data-tab="incidents">Sự cố</button>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="aui-empty" role="alert" data-maint-error>
+            <i class="bi bi-exclamation-triangle"></i>
+            <p>@Model.ErrorMessage</p>
+        </div>
+    }
+
+    <div class="aui-kpi-grid" data-maint-kpis @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon slate"><i class="bi bi-truck-front"></i></div>
+            <div><div class="aui-kpi-label">Xe</div><div class="aui-kpi-value" data-kpi="vehicles">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon amber"><i class="bi bi-wrench-adjustable"></i></div>
+            <div><div class="aui-kpi-label">Đến hạn bảo dưỡng</div><div class="aui-kpi-value" data-kpi="due">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+            <div><div class="aui-kpi-label">Sự cố đang xử lý</div><div class="aui-kpi-value" data-kpi="activeIncidents">—</div></div>
+        </div>
+        <div class="aui-card aui-kpi">
+            <div class="aui-kpi-icon green"><i class="bi bi-check2-all"></i></div>
+            <div>
+                <div class="aui-kpi-label">Đã xử lý trong tháng</div>
+                <div class="aui-kpi-value" data-kpi="resolvedMonth">—</div>
+                <small class="aui-muted" style="display:block;margin-top:.2rem">Backend chưa hỗ trợ trạng thái đã giải quyết</small>
+            </div>
+        </div>
+    </div>
+
+    <div data-panel-maintenance @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
+        <div class="aui-page-head" style="margin-bottom:.85rem">
+            <div class="aui-seg" data-sub-seg>
+                <button type="button" class="is-on" data-sub="fleet">Bảo trì</button>
+                <button type="button" data-sub="schedule">Lịch bảo dưỡng</button>
+                <button type="button" data-sub="history">Lịch sử bảo dưỡng</button>
+            </div>
+            <div class="aui-head-actions">
+                <button type="button" class="aui-btn aui-btn-primary" data-create-service><i class="bi bi-plus-lg"></i> Tạo phiếu bảo dưỡng</button>
+            </div>
+        </div>
+
+        <div data-sub-panel="fleet">
+            <div class="aui-filters">
+                <div class="aui-field grow">
+                    <label>Tìm kiếm</label>
+                    <input class="aui-input" placeholder="Tìm theo biển số/mẫu xe" data-maint-q />
+                </div>
+                <div class="aui-field">
+                    <label>Trạng thái</label>
+                    <select class="aui-select" data-maint-status>
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="SanSang">Sẵn sàng</option>
+                        <option value="CanBaoTri">Cần bảo trì</option>
+                        <option value="DangBaoTri">Đang bảo trì</option>
+                        <option value="NgungHoatDong">Ngừng hoạt động</option>
+                    </select>
+                </div>
+                <div class="aui-field">
+                    <label>Loại xe</label>
+                    <select class="aui-select" data-maint-type>
+                        <option value="">Tất cả loại xe</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="aui-card" style="margin-bottom:1rem">
+                <div class="aui-table-wrap">
+                    <table class="aui-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" data-select-all /></th>
+                                <th>#</th>
+                                <th>Biển số xe</th>
+                                <th>Mẫu xe</th>
+                                <th>Số KM hiện tại</th>
+                                <th>Lần bảo dưỡng gần nhất</th>
+                                <th>Lần bảo dưỡng tiếp theo</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody data-maint-body></tbody>
+                    </table>
+                </div>
+                <div class="aui-pager" data-maint-pager></div>
+            </div>
+
+            <div class="aui-grid-2 equal">
+                <div class="aui-card aui-card-pad">
+                    <h3 class="aui-card-title">Tổng quan trạng thái bảo trì</h3>
+                    <p class="aui-card-sub">Phân bổ sức khỏe đội xe</p>
+                    <div class="aui-chart-box sm"><canvas id="chartMaintStatus"></canvas></div>
+                    <div class="aui-legend" data-maint-legend>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#16A34A"></span>Sẵn sàng</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#D97706"></span>Cần bảo trì</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#2563EB"></span>Đang bảo trì</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#64748B"></span>Ngừng hoạt động</span>
+                    </div>
+                </div>
+                <div class="aui-card aui-card-pad">
+                    <h3 class="aui-card-title">Lịch bảo dưỡng sắp tới</h3>
+                    <p class="aui-card-sub">Các phiếu bảo dưỡng đang mở</p>
+                    <div id="upcomingServices"></div>
+                </div>
+            </div>
+        </div>
+
+        <div data-sub-panel="schedule" hidden>
+            <div class="aui-card" style="margin-bottom:1rem">
+                <div class="aui-table-wrap">
+                    <table class="aui-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Biển số xe</th>
+                                <th>Loại bảo dưỡng</th>
+                                <th>Ngày dự kiến</th>
+                                <th>Chi phí</th>
+                                <th>Ghi chú</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody data-schedule-body></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div data-sub-panel="history" hidden>
+            <div class="aui-card" style="margin-bottom:1rem">
+                <div class="aui-table-wrap">
+                    <table class="aui-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Biển số xe</th>
+                                <th>Loại bảo dưỡng</th>
+                                <th>Ngày dự kiến</th>
+                                <th>Ngày hoàn thành</th>
+                                <th>Chi phí</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody data-history-body></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div data-panel-incidents hidden>
+        <div class="aui-page-head" style="margin-bottom:.85rem">
+            <div></div>
+            <div class="aui-head-actions">
+                <button type="button" class="aui-btn aui-btn-primary" data-report-incident><i class="bi bi-plus-lg"></i> Báo cáo sự cố</button>
+            </div>
+        </div>
+
+        <div class="aui-filters">
+            <div class="aui-field grow">
+                <label>Tìm kiếm</label>
+                <input class="aui-input" placeholder="Tìm kiếm sự cố" data-inc-q />
+            </div>
+            <div class="aui-field">
+                <label>Mức độ</label>
+                <select class="aui-select" data-inc-sev disabled title="Backend chưa hỗ trợ mức độ">
+                    <option value="">Không hỗ trợ</option>
+                </select>
+            </div>
+            <div class="aui-field">
+                <label>Trạng thái</label>
+                <select class="aui-select" data-inc-status>
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Open">Đang mở</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="aui-card" style="margin-bottom:1rem">
+            <div class="aui-table-wrap">
+                <table class="aui-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" data-select-all /></th>
+                            <th>#</th>
+                            <th>Ngày &amp; giờ</th>
+                            <th>Xe</th>
+                            <th>Loại</th>
+                            <th>Mức độ</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody data-inc-body></tbody>
+                </table>
+            </div>
+            <div class="aui-pager" data-inc-pager></div>
+        </div>
+
+        <div class="aui-card aui-card-pad">
+            <h3 class="aui-card-title">Thống kê sự cố</h3>
+            <p class="aui-card-sub">Tóm tắt phản ứng vận hành</p>
+            <div class="aui-stat-row" style="margin-top:1rem;margin-bottom:0">
+                <div class="aui-stat-mini"><span>Sự cố đang xử lý</span><strong data-inc-stat="active">—</strong></div>
+                <div class="aui-stat-mini"><span>Đã xử lý trong tháng</span><strong data-inc-stat="resolved">—</strong></div>
+                <div class="aui-stat-mini"><span>Thời gian xử lý trung bình</span><strong data-inc-stat="avg">—</strong></div>
+                <div class="aui-stat-mini"><span>So với tháng trước</span><strong data-inc-stat="delta">—</strong></div>
+            </div>
+        </div>
+    </div>
+</div>

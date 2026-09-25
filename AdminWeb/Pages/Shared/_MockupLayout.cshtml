@@ -1,0 +1,118 @@
+@inject AdminWeb.Services.AuthSession Auth
+@{
+    var nav = ViewData["Nav"] as string ?? "";
+    string NavClass(string key) => nav == key ? "am-nav-link is-on" : "am-nav-link";
+    var displayName = string.IsNullOrWhiteSpace(Auth.FullName) ? "Quản trị viên" : Auth.FullName!;
+    var roleLabel = "Quản trị";
+    var initials = string.IsNullOrWhiteSpace(Auth.FullName)
+        ? "AD"
+        : string.Concat(Auth.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])));
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "Admin") — DriveX Mockup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin-mockup.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="am-body">
+    <div class="am-shell">
+        <aside class="am-sidebar" id="amSidebar">
+            <a class="am-brand" asp-page="/Mockup/Index">
+                <span class="am-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                <span>
+                    DriveX
+                    <small>Quản trị hệ thống</small>
+                </span>
+            </a>
+            <nav class="am-nav" aria-label="Menu quản trị">
+                <a class="@NavClass("dashboard")" asp-page="/Mockup/Index"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a class="@NavClass("bookings")" asp-page="/Mockup/Bookings"><i class="bi bi-journal-text"></i> Đơn thuê</a>
+                <a class="@NavClass("vehicles")" asp-page="/Mockup/Vehicles"><i class="bi bi-truck-front"></i> Quản lý xe</a>
+                <a class="@NavClass("customers")" asp-page="/Mockup/Customers"><i class="bi bi-people"></i> Quản lý khách hàng</a>
+                <a class="@NavClass("drivers")" asp-page="/Mockup/Drivers"><i class="bi bi-person-badge"></i> Quản lý tài xế</a>
+                <a class="@NavClass("payments")" asp-page="/Mockup/Payments"><i class="bi bi-credit-card"></i> Thanh toán &amp; hợp đồng</a>
+                <a class="@NavClass("maintenance")" asp-page="/Mockup/Maintenance"><i class="bi bi-tools"></i> Bảo trì &amp; sự cố</a>
+                <a class="@NavClass("settings")" asp-page="/Mockup/Settings"><i class="bi bi-gear"></i> Cài đặt</a>
+            </nav>
+            <p class="am-sidebar-note">Giao diện mô phỏng — chưa kết nối hệ thống</p>
+            <a class="am-sidebar-old" asp-page="/Index"><i class="bi bi-arrow-left"></i> Về Admin cũ</a>
+        </aside>
+
+        <div class="am-main">
+            <header class="am-topbar">
+                <button type="button" class="am-icon-btn am-menu-btn" data-am-toggle aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="am-search">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Tìm kiếm nhanh..." aria-label="Tìm kiếm" data-am-global-search />
+                </div>
+                <div class="am-topbar-actions">
+                    <button type="button" class="am-icon-btn" title="Thông báo" data-am-toast="Không có thông báo mới (mô phỏng).">
+                        <i class="bi bi-bell"></i>
+                        <span class="am-dot">3</span>
+                    </button>
+                    <div class="dropdown">
+                        <a class="am-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="am-avatar">@initials</span>
+                            <span class="am-user-meta">
+                                <strong>@displayName</strong>
+                                <small>@roleLabel</small>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Mockup/Settings">Cài đặt tài khoản</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+            <main class="am-content">@RenderBody()</main>
+        </div>
+    </div>
+
+    <div class="am-backdrop" data-am-backdrop></div>
+    <div class="am-drawer-backdrop" data-am-drawer-backdrop></div>
+    <aside class="am-drawer" id="amDrawer" aria-hidden="true">
+        <div class="am-drawer-head">
+            <div>
+                <h2 id="amDrawerTitle">Chi tiết</h2>
+                <p id="amDrawerSub" class="am-muted"></p>
+            </div>
+            <button type="button" class="am-icon-btn" data-am-drawer-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="am-drawer-body" id="amDrawerBody"></div>
+        <div class="am-drawer-foot" id="amDrawerFoot"></div>
+    </aside>
+
+    <div class="am-modal" id="amModal" hidden>
+        <div class="am-modal-card">
+            <div class="am-modal-head">
+                <h3 id="amModalTitle">Thao tác</h3>
+                <button type="button" class="am-icon-btn" data-am-modal-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="am-modal-body" id="amModalBody"></div>
+            <div class="am-modal-foot">
+                <button type="button" class="am-btn am-btn-ghost" data-am-modal-close>Hủy</button>
+                <button type="button" class="am-btn am-btn-primary" id="amModalConfirm">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="am-toast" id="amToast" hidden></div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/admin-mockup-data.js" asp-append-version="true"></script>
+    <script src="~/js/admin-mockup.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
