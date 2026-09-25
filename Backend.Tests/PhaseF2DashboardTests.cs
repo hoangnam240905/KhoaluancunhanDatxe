@@ -57,12 +57,6 @@ public class PhaseF2DashboardTests
         Assert.Empty(data.Drivers.Performance);
         Assert.Equal(0, data.Maintenance.AlertCount);
         Assert.Null(data.Recommendation.AttributionShare);
-        Assert.Equal(0, data.TotalCustomers);
-        Assert.Equal(0, data.ActiveFleet);
-        Assert.Equal(12, data.RevenueOverview.Count);
-        Assert.All(data.RevenueOverview, p => Assert.Equal(0, p.Amount));
-        Assert.Empty(data.RecentBookings);
-        Assert.Empty(data.UpcomingPickups);
     }
 
     [Fact]

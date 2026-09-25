@@ -126,7 +126,6 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.Status).HasMaxLength(30);
             e.Property(x => x.RentalMode).HasMaxLength(20);
             e.Property(x => x.Notes).HasMaxLength(500);
-            e.Property(x => x.CancellationReason).HasMaxLength(500);
             e.HasOne(x => x.Customer).WithMany(x => x.Bookings).HasForeignKey(x => x.CustomerId);
             e.HasOne(x => x.VehicleType).WithMany(x => x.Bookings).HasForeignKey(x => x.VehicleTypeId);
             e.HasOne(x => x.AssignedVehicle)
@@ -714,29 +713,6 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
 
         if (!columns.Contains("SourceRecommended"))
             Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN SourceRecommended INTEGER NOT NULL DEFAULT 0");
-    }
-
-    /// <summary>
-    /// Adds CancellationReason to an existing SQLite Bookings table. Existing rows stay NULL.
-    /// </summary>
-    public void EnsureSqliteBookingCancellationReasonColumn()
-    {
-        if (Database.ProviderName is null ||
-            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
-            return;
-
-        Database.OpenConnection();
-        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        using (var cmd = Database.GetDbConnection().CreateCommand())
-        {
-            cmd.CommandText = "PRAGMA table_info('Bookings')";
-            using var reader = cmd.ExecuteReader();
-            while (reader.Read())
-                columns.Add(reader.GetString(1));
-        }
-
-        if (!columns.Contains("CancellationReason"))
-            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN CancellationReason TEXT NULL");
     }
 
     /// <summary>

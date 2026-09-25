@@ -165,79 +165,179 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final b = _booking;
+    final depositPayment = _payments.where((p) => p.status == 'Paid').firstOrNull;
+    final depositStatus = depositPayment != null ? 'Paid' : (_payments.any((p) => p.status == 'Pending') ? 'Pending' : null);
+    final remainingAmount = b.finalAmount != null
+        ? (b.finalAmount! - (depositPayment?.amount ?? 0))
+        : ((b.quotedDepositAmount != null) ? (b.totalAmount - b.quotedDepositAmount!) : null);
+
     return Scaffold(
-      appBar: AppBar(title: Text('Đơn #${b.bookingId}')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        b.vehicleTypeName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    StatusChip(status: b.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  Formatters.rentalModeLabel(b.rentalMode),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+      appBar: AppBar(
+        title: Text('Chi tiết đơn #${b.bookingId}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadPayments,
+            tooltip: 'Làm mới',
           ),
-          const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              children: [
-                _row('Điểm đón', b.pickupAddress),
-                _row('Điểm trả', b.dropoffAddress),
-                _row('Nhận xe', Formatters.rentalDt(b.startDate)),
-                _row('Trả xe', Formatters.rentalDt(b.endDate)),
-                if (b.estimatedDistance != null)
-                  _row(
-                    'Km dự kiến',
-                    '${b.estimatedDistance!.toStringAsFixed(0)} km',
-                  ),
-                _row('Giá lúc đặt', Formatters.vnd(b.totalAmount)),
-                if (b.finalAmount != null)
-                  _row('Giá chốt', Formatters.vnd(b.finalAmount!)),
-                if (b.notes != null && b.notes!.isNotEmpty)
-                  _row('Ghi chú', b.notes!),
-              ],
-            ),
-          ),
-          if (b.hasPriceSnapshot) ...[
-            const SizedBox(height: 12),
-            AppCard(child: _snapshotSection(b)),
-          ],
-          const SizedBox(height: 12),
-          AppCard(child: _assignmentSection(b)),
-          const SizedBox(height: 12),
-          AppCard(child: _feesSection(b)),
-          const SizedBox(height: 12),
-          AppCard(child: _inspectionsSection(b)),
-          const SizedBox(height: 12),
-          _contractSection(),
-          const SizedBox(height: 12),
-          _paymentSection(),
-          const SizedBox(height: 12),
-          _reviewSection(),
         ],
       ),
+      body: RefreshIndicator(
+        onRefresh: _loadPayments,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Timeline tiến trình trực quan
+            BookingTimelineWidget(status: b.status, isCancelled: b.status == 'Cancelled'),
+            const SizedBox(height: 16),
+
+            // Financial Summary
+            FinancialSummaryBox(
+              totalAmount: b.finalAmount ?? b.totalAmount,
+              depositAmount: b.quotedDepositAmount,
+              remainingAmount: remainingAmount,
+              depositStatus: depositStatus,
+            ),
+            const SizedBox(height: 16),
+
+            // Thông tin hành trình
+            _journeyCard(b),
+            const SizedBox(height: 16),
+
+            // Thông tin xe & tài xế
+            _assignmentSection(b),
+            const SizedBox(height: 16),
+
+            // Hợp đồng điện tử
+            _contractSection(),
+            const SizedBox(height: 16),
+
+            // Thanh toán
+            _paymentSection(),
+
+            // Phụ phí phát sinh (nếu có)
+            if (b.fees.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              AppCard(child: _feesSection(b)),
+            ],
+
+            // Biên bản bàn giao / trả xe (nếu có)
+            if (b.inspections.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              AppCard(child: _inspectionsSection(b)),
+            ],
+
+            // Đơn giá lúc đặt (Snapshot)
+            if (b.hasPriceSnapshot) ...[
+              const SizedBox(height: 16),
+              AppCard(child: _snapshotSection(b)),
+            ],
+
+            // Đánh giá khi chuyến đi hoàn thành
+            if (b.status == 'Completed') ...[
+              const SizedBox(height: 16),
+              _reviewSection(),
+            ],
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _journeyCard(Booking b) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.route_outlined, color: AppColors.primary, size: 20),
+                  SizedBox(width: 8),
+                  Text('Lộ trình di chuyển', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ],
+              ),
+              StatusChip(status: b.status),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _timelinePoint(Icons.trip_origin, AppColors.primary, 'Điểm đón', b.pickupAddress, Formatters.rentalDt(b.startDate)),
+          Container(
+            margin: const EdgeInsets.only(left: 10),
+            height: 24,
+            width: 2,
+            color: const Color(0xFFCBD5E1),
+          ),
+          _timelinePoint(Icons.location_on, AppColors.danger, 'Điểm trả', b.dropoffAddress, Formatters.rentalDt(b.endDate)),
+          const Divider(height: 24, color: AppColors.border),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _infoTile('Hình thức', Formatters.rentalModeLabel(b.rentalMode)),
+              if (b.estimatedDistance != null)
+                _infoTile('Quãng đường', '${b.estimatedDistance!.toStringAsFixed(0)} km'),
+              _infoTile('Xe yêu cầu', b.vehicleTypeName),
+            ],
+          ),
+          if (b.notes != null && b.notes!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Ghi chú: ${b.notes!}',
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _timelinePoint(IconData icon, Color iconColor, String title, String address, String time) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: iconColor),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(address, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 2),
+              Text(time, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _infoTile(String label, String val) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+        const SizedBox(height: 2),
+        Text(val, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+      ],
     );
   }
 
@@ -426,66 +526,240 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (b.isSelfDrive) {
       final v = b.assignedVehicle;
       if (v == null) {
-        return const Text(
-          'Đang chờ điều phối gán xe',
-          style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Đang điều phối xe', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.warning)),
+                    SizedBox(height: 2),
+                    Text('Bộ phận điều hành đang chuẩn bị xe tự lái tốt nhất cho bạn.', style: TextStyle(fontSize: 12, color: AppColors.text)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Xe đã gán',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          _row('Biển số', v.licensePlate),
-          _row('Xe', '${v.brand} ${v.model}'),
-          _row('Trạng thái xe', Formatters.vehicleStatusLabel(v.status)),
-        ],
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              icon: Icons.directions_car_filled,
+              title: 'Xe bàn giao',
+              subtitle: 'Thông tin phương tiện được phân công cho bạn',
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                  ),
+                  child: Text(
+                    v.licensePlate,
+                    style: TextStyle(fontWeight: FontWeight.w900, color: Colors.amber.shade900, fontSize: 14, letterSpacing: 1),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${v.brand} ${v.model}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                      Text('Mã định danh xe: #${v.vehicleId}', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    Formatters.vehicleStatusLabel(v.status),
+                    style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w700, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       );
     }
 
     final a = b.assignment;
     if (a == null) {
-      return const Text(
-        'Tài xế chưa phân công',
-        style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.person_search_rounded, color: AppColors.warning, size: 24),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Đang điều phối tài xế', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.warning)),
+                  SizedBox(height: 2),
+                  Text('Điều phối viên đang phân công tài xế và phương tiện cho chuyến đi.', style: TextStyle(fontSize: 12, color: AppColors.text)),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Tài xế & xe',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        _row('Tài xế', a.driverName),
-        _row(
-          'Điện thoại',
-          (a.driverPhone == null || a.driverPhone!.isEmpty)
-              ? '—'
-              : a.driverPhone!,
-        ),
-        _row('Biển số', a.licensePlate),
-        _row('Trạng thái chuyến', Formatters.statusLabel(a.status)),
-      ],
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+            icon: Icons.person_pin_circle_rounded,
+            title: 'Tài xế & Phương tiện',
+            subtitle: 'Thông tin tài xế đón bạn trong chuyến đi',
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                child: Text(
+                  a.driverName.isNotEmpty ? a.driverName[0].toUpperCase() : 'T',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 18),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(a.driverName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    const SizedBox(height: 2),
+                    Text(
+                      a.driverPhone != null && a.driverPhone!.isNotEmpty ? a.driverPhone! : 'Chưa có SĐT',
+                      style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                ),
+                child: Text(
+                  a.licensePlate,
+                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.amber.shade900, fontSize: 13, letterSpacing: 1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Trạng thái chuyến:', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(
+                  Formatters.statusLabel(a.status),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _paymentSection() {
-    return AppCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Thanh toán',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          SectionHeader(
+            icon: Icons.payments_outlined,
+            title: 'Thanh toán cọc',
+            subtitle: 'Giao dịch đặt cọc bảo đảm của đơn thuê',
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _paymentSummaryLabel,
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 11),
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           if (_booking.quotedDepositAmount != null)
-            _row('Tiền cọc', Formatters.vnd(_booking.quotedDepositAmount!))
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Tiền cọc yêu cầu:', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                  Text(
+                    Formatters.vnd(_booking.quotedDepositAmount!),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            )
           else
             const Padding(
               padding: EdgeInsets.only(bottom: 10),
@@ -494,7 +768,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 style: TextStyle(color: AppColors.muted),
               ),
             ),
-          _row('Trạng thái thanh toán', _paymentSummaryLabel),
+          const SizedBox(height: 12),
           if (_paymentsLoading)
             const AppLoading(message: 'Đang tải thanh toán...')
           else if (_paymentsError != null)
@@ -503,17 +777,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
-                'Chưa có khoản thanh toán.',
-                style: TextStyle(color: AppColors.muted),
+                'Chưa có khoản thanh toán nào được tạo.',
+                style: TextStyle(color: AppColors.muted, fontSize: 13),
               ),
             )
           else
             ..._payments.map(_paymentTile),
           if (_canPayDeposit) ...[
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: _creatingPayment ? null : _openDepositDialog,
-              child: const Text('Thanh toán cọc'),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _creatingPayment ? null : _openDepositDialog,
+                icon: const Icon(Icons.payment, size: 18),
+                label: const Text('Thanh toán tiền cọc ngay'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
             ),
           ],
         ],
@@ -522,45 +804,91 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Widget _paymentTile(Payment p) {
+    final isPaid = p.status == 'Paid';
+    final isFailed = p.status == 'Failed';
+    final statusColor = isPaid ? AppColors.success : (isFailed ? AppColors.danger : AppColors.warning);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.bg,
+          color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
-            _row('Loại', Formatters.paymentTypeLabel(p.paymentType)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      p.method == 'MoMo' || p.method == 'VNPay' ? Icons.account_balance_wallet : Icons.account_balance,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      Formatters.paymentMethodLabel(p.method),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    Formatters.paymentStatusLabel(p.status),
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 16, color: AppColors.border),
+            _row('Mã thanh toán', '#${p.paymentId}'),
             _row('Số tiền', Formatters.vnd(p.amount)),
-            _row('Phương thức', Formatters.paymentMethodLabel(p.method)),
-            _row('Trạng thái', Formatters.paymentStatusLabel(p.status)),
             if (p.transactionRef != null && p.transactionRef!.isNotEmpty)
               _row('Mã giao dịch', p.transactionRef!),
             if (p.paidAt != null)
-              _row('Thanh toán lúc', Formatters.dt(p.paidAt!)),
-            _row('Tạo lúc', Formatters.dt(p.createdAt)),
+              _row('Thời gian', Formatters.dt(p.paidAt!)),
             if (p.status == 'Pending' && _booking.status != 'Cancelled')
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
                   children: [
-                    FilledButton(
-                      onPressed: _contractBusy
-                          ? null
-                          : () => _simulatePayment(p.paymentId, success: true),
-                      child: const Text('Mô phỏng thành công'),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _contractBusy
+                            ? null
+                            : () => _simulatePayment(p.paymentId, success: true),
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text('Mô phỏng Đã cọc'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
                     ),
-                    OutlinedButton(
-                      onPressed: _contractBusy
-                          ? null
-                          : () => _simulatePayment(p.paymentId, success: false),
-                      child: const Text('Mô phỏng thất bại'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _contractBusy
+                            ? null
+                            : () => _simulatePayment(p.paymentId, success: false),
+                        icon: const Icon(Icons.highlight_off, size: 16),
+                        label: const Text('Mô phỏng Thất bại'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          side: const BorderSide(color: AppColors.danger),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -659,44 +987,112 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   Widget _contractSection() {
     final c = _contract;
-    return AppCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Hợp đồng điện tử',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          SectionHeader(
+            icon: Icons.description_outlined,
+            title: 'Hợp đồng điện tử',
+            subtitle: 'Cam kết thỏa thuận thuê xe trực tuyến',
+            trailing: c != null
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (c.status == 'Signed' ? AppColors.success : AppColors.primary).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      Formatters.contractStatusLabel(c.status),
+                      style: TextStyle(
+                        color: c.status == 'Signed' ? AppColors.success : AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  )
+                : null,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           if (_paymentsLoading)
             const AppLoading(message: 'Đang tải hợp đồng...')
           else if (c == null) ...[
-            const Text(
-              'Chưa có hợp đồng cho đơn này.',
-              style: TextStyle(color: AppColors.muted),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.muted, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Đơn chưa có hợp đồng. Bạn có thể tạo hợp đồng ngay để bảo đảm quyền lợi.',
+                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
             ),
             if (_canIssueContract) ...[
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: _issueContract,
-                child: const Text('Lập hợp đồng'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _issueContract,
+                  icon: const Icon(Icons.note_add_outlined, size: 18),
+                  label: const Text('Lập hợp đồng thuê xe'),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ),
             ],
           ] else ...[
-            _row('Số HĐ', c.contractNumber),
-            _row('Trạng thái', Formatters.contractStatusLabel(c.status)),
-            _row('Khách', c.customerName),
-            _row('Loại xe', c.vehicleTypeName),
-            _row('Hình thức', Formatters.rentalModeLabel(c.rentalMode)),
-            _row('Giá', Formatters.vnd(c.totalAmount)),
-            if (c.depositAmount != null)
-              _row('Cọc', Formatters.vnd(c.depositAmount!)),
-            if (c.signedAt != null) _row('Ký lúc', Formatters.dt(c.signedAt!)),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+                  _row('Số hợp đồng', c.contractNumber),
+                  _row('Bên thuê', c.customerName),
+                  _row('Loại xe thuê', c.vehicleTypeName),
+                  _row('Hình thức', Formatters.rentalModeLabel(c.rentalMode)),
+                  _row('Giá trị hợp đồng', Formatters.vnd(c.totalAmount)),
+                  if (c.depositAmount != null)
+                    _row('Tiền cọc cam kết', Formatters.vnd(c.depositAmount!)),
+                  if (c.signedAt != null)
+                    _row('Thời điểm ký', Formatters.dt(c.signedAt!)),
+                ],
+              ),
+            ),
             if (_canSignContract) ...[
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: _signContract,
-                child: const Text('Mô phỏng ký hợp đồng'),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _signContract,
+                  icon: const Icon(Icons.draw_outlined, size: 18),
+                  label: const Text('Ký hợp đồng điện tử'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ),
             ],
           ],

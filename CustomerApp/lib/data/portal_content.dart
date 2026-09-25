@@ -10,6 +10,8 @@ class PopularRoute {
   final String description;
   final String icon;
 
+  final String? image;
+
   const PopularRoute({
     required this.title,
     required this.from,
@@ -21,6 +23,7 @@ class PopularRoute {
     required this.estimatedPrice,
     required this.description,
     required this.icon,
+    this.image,
   });
 }
 
@@ -61,6 +64,7 @@ class PortalContent {
       estimatedPrice: 1200000,
       description: 'Đi biển cuối tuần, phù hợp gia đình và nhóm bạn.',
       icon: '🏖️',
+      image: 'assets/images/route-vungtau.jpg',
     ),
     PopularRoute(
       title: 'Đà Lạt thông gió',
@@ -73,6 +77,7 @@ class PortalContent {
       estimatedPrice: 3500000,
       description: 'Khám phá thác Datanla, làng hoa, thời tiết mát mẻ.',
       icon: '🌲',
+      image: 'assets/images/route-dalat.jpg',
     ),
     PopularRoute(
       title: 'Nha Trang nắng vàng',
@@ -85,6 +90,7 @@ class PortalContent {
       estimatedPrice: 5000000,
       description: 'Tắm biển, VinWonders, ẩm thực biển đảo.',
       icon: '🌊',
+      image: 'assets/images/route-nhatrang.jpg',
     ),
     PopularRoute(
       title: 'Mũi Né cát trắng',
@@ -97,6 +103,7 @@ class PortalContent {
       estimatedPrice: 2800000,
       description: 'Đồi cát bay, san hô đỏ, resort nghỉ dưỡng.',
       icon: '🏜️',
+      image: 'assets/images/route-muine.jpg',
     ),
     PopularRoute(
       title: 'Cần Thơ miền Tây',
@@ -109,6 +116,7 @@ class PortalContent {
       estimatedPrice: 1800000,
       description: 'Chợ nổi Cái Răng, vườn trái, ẩm thực miền Tây.',
       icon: '🛶',
+      image: 'assets/images/route-cantho.jpg',
     ),
     PopularRoute(
       title: 'Tour nội thành',
@@ -121,6 +129,7 @@ class PortalContent {
       estimatedPrice: 600000,
       description: 'Tham quan Dinh Độc Lập, Bùi Viện, Landmark 81.',
       icon: '🏙️',
+      image: 'assets/images/route-hcm.jpg',
     ),
   ];
 

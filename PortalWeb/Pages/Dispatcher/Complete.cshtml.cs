@@ -40,7 +40,7 @@ public class CompleteModel(CarRentalApiClient api, AuthSession auth) : RolePageM
     private bool ValidateInput()
     {
         if (Input.OdometerKm is null)
-            ModelState.AddModelError("Input.OdometerKm", "Vui lòng nhập số km khi trả xe.");
+            ModelState.AddModelError("Input.OdometerKm", "Vui lòng nhập số km hợp lệ.");
         else if (Input.OdometerKm < 0)
             ModelState.AddModelError("Input.OdometerKm", "Số km không được âm.");
         if (Input.FuelLevel is null)

@@ -105,106 +105,22 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         return await ActionOkAsync(data);
     }
 
-    public async Task<IActionResult> OnGetHandoverInfoAsync(int id)
+    public async Task<IActionResult> OnPostHandoverAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
 
-        var booking = await api.GetBookingAsync(id);
-        if (booking is null)
-            return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
-
-        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
-            return new JsonResult(new { ok = false, error = "Chỉ đơn tự lái mới dùng giao xe tại điều phối." });
-
-        if (!string.Equals(booking.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
-            return new JsonResult(new { ok = false, error = "Chỉ giao xe khi đơn đã được gán xe." });
-
-        var snap = await HandoverVehicleState.ResolveAsync(api, booking);
-        if (snap is null)
-            return new JsonResult(new { ok = false, error = "Không lấy được thông tin xe." }) { StatusCode = 404 };
-
-        var kmOk = snap.BlockReason is null && snap.CurrentKm is not null;
-        return new JsonResult(new
-        {
-            ok = true,
-            bookingId = booking.BookingId,
-            vehicleId = snap.VehicleId,
-            vehicle = snap.VehicleName,
-            plate = snap.LicensePlate,
-            currentKm = snap.CurrentKm,
-            fuelLevel = snap.FuelLevel,
-            requiresFuelInput = snap.RequiresFuelInput,
-            canConfirm = kmOk && !snap.RequiresFuelInput,
-            blockReason = snap.BlockReason
-        });
-    }
-
-    public async Task<IActionResult> OnPostHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel)
-    {
-        var denied = RequireRole(auth, "Dispatcher");
-        if (denied is not null) return denied;
-
-        var booking = await api.GetBookingAsync(id);
-        if (booking is null) return ActionFail("Không tìm thấy đơn.");
-
-        var snap = await HandoverVehicleState.ResolveAsync(api, booking);
-        if (snap is null)
-            return ActionFail("Không lấy được thông tin xe.");
-
-        var (odo, fuel, err) = HandoverVehicleState.ResolveHandoverCondition(snap, fuelLevel);
-        if (err is not null)
-            return ActionFail(err);
-
-        var condition = new VehicleConditionRequest
-        {
-            OdometerKm = odo,
-            FuelLevel = fuel
-        };
-
-        var (data, error) = await api.HandoverBookingAsync(id, condition);
+        var (data, error) = await api.HandoverBookingAsync(id);
         if (data is null) return ActionFail(error ?? "Giao xe thất bại (API SelfDrive).");
         return await ActionOkAsync(data);
     }
 
-    public async Task<IActionResult> OnGetReturnInfoAsync(int id)
+    public async Task<IActionResult> OnPostCompleteAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
 
-        var booking = await api.GetBookingAsync(id);
-        if (booking is null)
-            return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
-
-        var (info, error) = await ReturnVehicleContext.LoadAsync(api, booking);
-        if (info is null)
-            return new JsonResult(new { ok = false, error = error ?? "Không thể tải dữ liệu trả xe." });
-
-        return new JsonResult(new
-        {
-            ok = true,
-            bookingId = booking.BookingId,
-            vehicleId = info.VehicleId,
-            vehicle = info.VehicleName,
-            plate = info.LicensePlate,
-            handoverOdometerKm = info.HandoverOdometerKm
-        });
-    }
-
-    public async Task<IActionResult> OnPostCompleteAsync(int id, decimal? odometerKm, decimal? fuelLevel)
-    {
-        var denied = RequireRole(auth, "Dispatcher");
-        if (denied is not null) return denied;
-
-        var (odo, fuel, err) = ReturnVehicleContext.ValidateInput(odometerKm, fuelLevel);
-        if (err is not null)
-            return ActionFail(err);
-
-        var (data, error) = await api.CompleteSelfDriveAsync(id, new VehicleConditionRequest
-        {
-            OdometerKm = odo,
-            FuelLevel = fuel
-        });
+        var (data, error) = await api.CompleteSelfDriveAsync(id);
         if (data is null) return ActionFail(error ?? "Hoàn thành thất bại (API SelfDrive).");
         return await ActionOkAsync(data);
     }

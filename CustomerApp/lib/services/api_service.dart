@@ -384,6 +384,7 @@ class ApiService {
         'endDate': Formatters.rentalQuery(endDate),
         'estimatedDistance': estimatedDistance,
         'notes': notes,
+        // ignore: use_null_aware_elements
         if (vehicleId != null) 'vehicleId': vehicleId,
       }),
     );

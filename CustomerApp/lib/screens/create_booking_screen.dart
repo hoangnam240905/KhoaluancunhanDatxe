@@ -569,6 +569,21 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                       : Icons.radio_button_off,
                   color: selected ? AppColors.primary : AppColors.muted,
                 ),
+                const SizedBox(width: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 56,
+                    height: 42,
+                    child: VehicleImage(
+                      imageUrl: type.imageUrl,
+                      typeName: type.typeName,
+                      seatCapacity: type.seatCapacity,
+                      height: 42,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

@@ -20,15 +20,7 @@
     <link rel="stylesheet" href="~/css/booking-create.css" asp-append-version="true" />
 }
 
-<div class="ch-page"
-     data-cb-page
-     data-cb-quote-url="@Url.Page("Create", "QuoteJson")"
-     data-cb-availability-url="@Url.Page("Create", "AvailabilityJson")"
-     data-cb-creating="@BookingSubmitUi.Creating"
-     data-cb-quote-loading="@BookingSubmitUi.QuoteLoading"
-     data-cb-availability-loading="@BookingSubmitUi.AvailabilityLoading"
-     data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable"
-     data-cb-vehicle-unavailable="@BookingSubmitUi.VehicleUnavailable">
+<div class="ch-page" data-cb-page data-cb-quote-url="@Url.Page("Create", "QuoteJson")" data-cb-creating="@BookingSubmitUi.Creating" data-cb-quote-loading="@BookingSubmitUi.QuoteLoading" data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable">
     <header class="ch-nav">
         <div class="ch-container ch-nav-inner">
             <a class="ch-brand" href="/">
