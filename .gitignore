@@ -39,3 +39,13 @@ Thumbs.db
 **/*.db-wal
 **/__pycache__/
 *.pyc
+
+# Python Virtual Environments
+**/.venv/
+**/venv/
+**/env/
+
+# Temp test artifacts & audit files
+artifacts/
+_audit_*.txt
+*.txt.bak
