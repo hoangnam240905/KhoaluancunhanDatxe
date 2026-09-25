@@ -1,0 +1,111 @@
+@page "/Dispatcher/Assign/{id:int}"
+@model PortalWeb.Pages.Dispatcher.AssignModel
+@{ ViewData["Title"] = "Phân công"; }
+<h2 class="mb-3">Phân công đơn #@Model.Booking?.BookingId</h2>
+@if (Model.Booking is not null)
+{
+    <p>
+        <strong>Khách:</strong> @Model.Booking.CustomerName
+        · <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
+        · <strong>Hình thức:</strong> @AssignModel.RentalModeLabel(Model.Booking.RentalMode)
+        · <strong>Thời gian:</strong> @UiDisplay.Rental(Model.Booking.StartDate) → @UiDisplay.Rental(Model.Booking.EndDate)
+    </p>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+@if (Model.Conflict is not null)
+{
+    <div class="alert alert-warning">
+        <p class="mb-2"><strong>Xung đột lịch</strong> (@Model.Conflict.ConflictType). Khoảng đệm kỹ thuật 2 giờ.</p>
+        @if ((Model.Conflict.VehicleAlternatives?.Count ?? 0) > 0)
+        {
+            <p class="mb-1">Xe thay thế:</p>
+            <ul class="mb-2">
+            @foreach (var v in Model.Conflict.VehicleAlternatives!)
+            {
+                <li>
+                    <form method="post" class="d-inline">
+                        <input type="hidden" name="Input.VehicleId" value="@v.VehicleId" />
+                        @if (!Model.IsSelfDrive)
+                        {
+                            <input type="hidden" name="Input.DriverId" value="@Model.Input.DriverId" />
+                        }
+                        <button type="submit" class="btn btn-sm btn-outline-primary mb-1">
+                            Gán @v.LicensePlate (@v.Brand @v.Model)
+                        </button>
+                    </form>
+                </li>
+            }
+            </ul>
+        }
+        else
+        {
+            <p class="mb-2">Không còn xe thay thế cùng loại trong khoảng thời gian này.</p>
+        }
+        @if (!Model.IsSelfDrive)
+        {
+            if ((Model.Conflict.DriverAlternatives?.Count ?? 0) > 0)
+            {
+                <p class="mb-1">Tài xế thay thế:</p>
+                <ul class="mb-0">
+                @foreach (var d in Model.Conflict.DriverAlternatives!)
+                {
+                    <li>
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="Input.VehicleId" value="@Model.Input.VehicleId" />
+                            <input type="hidden" name="Input.DriverId" value="@d.DriverId" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary mb-1">
+                                Gán tài xế @d.FullName
+                            </button>
+                        </form>
+                    </li>
+                }
+                </ul>
+            }
+            else
+            {
+                <p class="mb-0">Không còn tài xế thay thế trong khoảng thời gian này.</p>
+            }
+        }
+    </div>
+}
+<form method="post" class="col-md-6">
+    @if (!Model.IsSelfDrive)
+    {
+        <div class="mb-3">
+            <label class="form-label">Tài xế</label>
+            <select asp-for="Input.DriverId" class="form-select">
+                @foreach (var d in Model.Drivers)
+                {
+                    <option value="@d.DriverId">@d.FullName</option>
+                }
+            </select>
+            @if (!Model.Drivers.Any())
+            {
+                <div class="form-text text-danger">Không có tài xế Available, không trùng lịch (đệm 2 giờ).</div>
+            }
+            else
+            {
+                <div class="form-text">Chỉ hiện tài xế Available, không Offline/Busy, không trùng lịch (đệm 2 giờ).</div>
+            }
+        </div>
+    }
+    <div class="mb-3">
+        <label class="form-label">Xe</label>
+        <select asp-for="Input.VehicleId" class="form-select">
+            @foreach (var v in Model.Vehicles)
+            {
+                <option value="@v.VehicleId">@v.LicensePlate - @v.Brand @v.Model</option>
+            }
+        </select>
+            @if (!Model.Vehicles.Any())
+            {
+                <div class="form-text text-danger">Không có xe Available đúng loại, không bảo trì, không trùng lịch (đệm 2 giờ).</div>
+            }
+            else
+            {
+                <div class="form-text">Chỉ hiện xe Available đúng loại, không Rented/Maintenance/Inactive, không trùng lịch (đệm 2 giờ).</div>
+            }
+    </div>
+    <button type="submit" class="btn btn-primary">@(Model.IsSelfDrive ? "Gán xe" : "Phân công")</button>
+    <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lại</a>
+</form>

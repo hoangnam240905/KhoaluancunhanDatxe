@@ -1,0 +1,597 @@
+@page
+@model DispatcherWeb.Pages.IndexModel
+@using DispatcherWeb.Display
+@using DispatcherWeb.Models
+@{
+    ViewData["Title"] = "Booking & Approval Hub";
+    var selected = Model.Selected;
+    var selectedContract = Model.SelectedContract;
+    ContractResponse? ContractOf(int id) => Model.Contracts.TryGetValue(id, out var c) ? c : null;
+}
+<section class="dx-hub">
+    <header class="dx-hub-head">
+        <div>
+            <h2>Booking &amp; Approval Hub</h2>
+            <p>Tiếp nhận, kiểm tra và xác nhận yêu cầu thuê xe</p>
+        </div>
+        <div class="dx-hub-tabs" role="tablist">
+            <span class="is-on">Danh sách</span>
+            <span title="Lịch điều phối là task riêng — chưa triển khai">Lịch</span>
+        </div>
+    </header>
+
+    <div class="dx-hub-metrics">
+        <a class="dx-metric @(Model.Status == "Pending" ? "is-on" : null)" asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Status="Pending">
+            <span class="dx-metric-label">Chờ xác nhận</span>
+            <strong class="dx-metric-value">@Model.Count("Pending")</strong>
+        </a>
+        <a class="dx-metric @(Model.Status == "Confirmed" && Model.Queue != "assign" ? "is-on" : null)" asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Status="Confirmed">
+            <span class="dx-metric-label">Đã xác nhận</span>
+            <strong class="dx-metric-value">@Model.Count("Confirmed")</strong>
+        </a>
+        <a class="dx-metric dx-metric-queue @(Model.Queue == "assign" ? "is-on" : null)" asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Queue="assign">
+            <span class="dx-metric-label">🚦 Cần phân công</span>
+            <strong class="dx-metric-value">@Model.NeedsAssignment.Count</strong>
+        </a>
+        <a class="dx-metric @(Model.Status == "InProgress" ? "is-on" : null)" asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Status="InProgress">
+            <span class="dx-metric-label">Đang thực hiện</span>
+            <strong class="dx-metric-value">@Model.Count("InProgress")</strong>
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-success">@Model.Message</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <strong>Không thể xác nhận đơn</strong>
+            <div>@Model.ErrorMessage</div>
+        </div>
+    }
+    @if (Model.Conflict is not null)
+    {
+        <div class="alert alert-warning">
+            @if (!string.IsNullOrEmpty(Model.Conflict.ConflictType))
+            {
+                <p class="mb-1"><strong>Loại xung đột:</strong> @Model.Conflict.ConflictType</p>
+            }
+            @if (!string.IsNullOrEmpty(Model.Conflict.Message) && Model.Conflict.Message != Model.ErrorMessage)
+            {
+                <p class="mb-2">@Model.Conflict.Message</p>
+            }
+            @if ((Model.Conflict.VehicleAlternatives?.Count ?? 0) > 0)
+            {
+                <p class="mb-1"><strong>Xe thay thế khả dụng</strong></p>
+                <ul class="mb-2">
+                    @foreach (var v in Model.Conflict.VehicleAlternatives!)
+                    {
+                        <li>@v.Brand @v.Model · @v.LicensePlate (@UiDisplay.VehicleStatus(v.Status))</li>
+                    }
+                </ul>
+            }
+            @if ((Model.Conflict.DriverAlternatives?.Count ?? 0) > 0)
+            {
+                <p class="mb-1"><strong>Tài xế thay thế khả dụng</strong></p>
+                <ul class="mb-0">
+                    @foreach (var d in Model.Conflict.DriverAlternatives!)
+                    {
+                        <li>@d.FullName (@UiDisplay.DriverStatus(d.Status))</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+
+    <form method="get" class="dx-hub-toolbar dx-card">
+        <label class="dx-hub-search">
+            <i class="bi bi-search"></i>
+            <input type="search" name="Q" value="@Model.Q" placeholder="Mã đơn, khách hàng, loại xe, biển số" />
+        </label>
+        <label>
+            <span>Trạng thái</span>
+            <select name="Status" class="form-select form-select-sm">
+                @foreach (var filter in BookingHubUi.Filters)
+                {
+                    if (Model.Status == filter.Status)
+                    {
+                        <option value="@filter.Status" selected>@filter.Label</option>
+                    }
+                    else
+                    {
+                        <option value="@filter.Status">@filter.Label</option>
+                    }
+                }
+            </select>
+        </label>
+        <label>
+            <span>Hình thức</span>
+            <select name="Mode" class="form-select form-select-sm">
+                <option value="">Tất cả</option>
+                @if (Model.Mode == "SelfDrive") { <option value="SelfDrive" selected>Tự lái</option> } else { <option value="SelfDrive">Tự lái</option> }
+                @if (Model.Mode == "WithDriver") { <option value="WithDriver" selected>Có tài xế</option> } else { <option value="WithDriver">Có tài xế</option> }
+            </select>
+        </label>
+        <label>
+            <span>Loại xe</span>
+            <select name="TypeId" class="form-select form-select-sm">
+                <option value="">Tất cả</option>
+                @foreach (var type in Model.VehicleTypes)
+                {
+                    if (Model.TypeId == type.TypeId)
+                    {
+                        <option value="@type.TypeId" selected>@type.TypeName</option>
+                    }
+                    else
+                    {
+                        <option value="@type.TypeId">@type.TypeName</option>
+                    }
+                }
+            </select>
+        </label>
+        <label>
+            <span>Từ ngày</span>
+            <input type="date" name="From" value="@Model.From" class="form-control form-control-sm" />
+        </label>
+        <label>
+            <span>Đến ngày</span>
+            <input type="date" name="To" value="@Model.To" class="form-control form-control-sm" />
+        </label>
+        <input type="hidden" name="Queue" value="@Model.Queue" />
+        <div class="dx-hub-toolbar-actions">
+            <button type="submit" class="btn btn-sm btn-primary">🔍 Tìm kiếm</button>
+            <a class="btn btn-sm btn-outline-secondary" asp-page="/Index">↻ Đặt lại</a>
+        </div>
+    </form>
+
+    <div class="dx-hub-filters">
+        @foreach (var filter in BookingHubUi.Filters)
+        {
+            <a class="@(Model.Queue != "assign" && Model.Status == filter.Status ? "is-on" : null)"
+               asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Status="@filter.Status">
+                @filter.Label <span>@Model.Count(filter.Status)</span>
+            </a>
+        }
+        <a class="@(Model.Queue == "assign" ? "is-on" : null)"
+           asp-page="/Index" asp-all-route-data="Model.BaseFilters()" asp-route-Queue="assign">
+            🚦 Cần phân công <span>@Model.NeedsAssignment.Count</span>
+        </a>
+    </div>
+
+    @if (Model.Queue == "assign")
+    {
+        <div class="dx-hub-assign-note">
+            <strong>Confirmed ≠ xe đã giữ.</strong>
+            Đơn đã xác nhận chưa có cọc hiệu lực / phân công thì xe vẫn chưa bị occupy. Cột giữ xe và cọc lấy từ dữ liệu đơn hiện có.
+        </div>
+    }
+
+    <div class="dx-hub-layout">
+        <div class="dx-card dx-hub-list">
+            @if (!Model.VisibleBookings.Any())
+            {
+                <p class="dx-empty mb-0">Không có đơn thuê khớp bộ lọc.</p>
+            }
+            else
+            {
+                <div class="table-responsive d-none d-xl-block">
+                    <table class="table table-sm dx-hub-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Booking</th>
+                                <th>Customer</th>
+                                <th>Rental</th>
+                                <th>Vehicle</th>
+                                <th>Contract</th>
+                                <th>Payment</th>
+                                <th>Service status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var b in Model.VisibleBookings)
+                        {
+                            var contract = ContractOf(b.BookingId);
+                            <tr class="@(selected?.BookingId == b.BookingId ? "is-on" : null)">
+                                <td>
+                                    <strong>#@b.BookingId</strong>
+                                    <div class="dx-hub-muted">@UiDisplay.Timestamp(b.CreatedAt)</div>
+                                </td>
+                                <td>
+                                    <strong>@b.CustomerName</strong>
+                                    <div class="dx-hub-muted">SĐT/email không có trong API đơn</div>
+                                </td>
+                                <td>
+                                    <div>@UiDisplay.RentalMode(b.RentalMode)</div>
+                                    <div class="dx-hub-muted">@UiDisplay.Rental(b.StartDate)</div>
+                                    <div class="dx-hub-muted">@UiDisplay.Rental(b.EndDate)</div>
+                                </td>
+                                <td>
+                                    <div>@BookingHubUi.VehicleText(b)</div>
+                                    <div class="dx-hub-muted">@b.VehicleTypeName</div>
+                                    <div class="dx-hub-muted">@BookingHubUi.HoldLabel(b)</div>
+                                </td>
+                                <td>
+                                    @if (contract is null)
+                                    {
+                                        <span class="dx-badge dx-badge-gray">Chưa tạo</span>
+                                    }
+                                    else
+                                    {
+                                        <partial name="_StatusBadge" model="@("contract", contract.Status)" />
+                                    }
+                                </td>
+                                <td>
+                                    <span class="dx-badge @(b.HasActiveDeposit ? "dx-badge-paid" : "dx-badge-gray")">@BookingHubUi.DepositLabel(b)</span>
+                                </td>
+                                <td><partial name="_StatusBadge" model="@("booking", b.Status)" /></td>
+                                <td class="dx-hub-row-actions">
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="/Index" asp-all-route-data="Model.FilterRoutes(b.BookingId)">👁 Xem chi tiết</a>
+                                    @if (BookingHubUi.CanConfirm(b))
+                                    {
+                                        <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success">✓ Xác nhận đơn</button>
+                                        </form>
+                                    }
+                                    @if (BookingHubUi.CanCancel(b))
+                                    {
+                                        <form method="post" asp-page-handler="Reject" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Không duyệt / Hủy đơn</button>
+                                        </form>
+                                    }
+                                    @if (BookingHubUi.CanAssign(b))
+                                    {
+                                        <a asp-page="/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Phân công</a>
+                                    }
+                                    @if (BookingHubUi.CanHandover(b))
+                                    {
+                                        <a asp-page="/Handover" asp-route-id="@b.BookingId" class="btn btn-sm btn-info">Giao xe</a>
+                                    }
+                                    @if (BookingHubUi.CanComplete(b))
+                                    {
+                                        <a asp-page="/Complete" asp-route-id="@b.BookingId" class="btn btn-sm btn-success">Tiếp nhận trả xe</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="dx-hub-cards d-xl-none">
+                    @foreach (var b in Model.VisibleBookings)
+                    {
+                        var contract = ContractOf(b.BookingId);
+                        <article class="dx-card p-3 @(selected?.BookingId == b.BookingId ? "is-on" : null)">
+                            <div class="d-flex justify-content-between gap-2">
+                                <strong>Booking #@b.BookingId</strong>
+                                <partial name="_StatusBadge" model="@("booking", b.Status)" />
+                            </div>
+                            <p class="mb-1">Khách: @b.CustomerName</p>
+                            <p class="mb-1">@BookingHubUi.VehicleRoleLabel(b): @BookingHubUi.VehicleText(b)</p>
+                            <p class="mb-1">Thuê: @UiDisplay.RentalMode(b.RentalMode)</p>
+                            <p class="mb-1">@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</p>
+                            <p class="mb-1">HĐ: @BookingHubUi.ContractLabel(contract) · @BookingHubUi.DepositLabel(b)</p>
+                            <p class="mb-3">@UiDisplay.Money(b.TotalAmount)</p>
+                            <a class="btn btn-sm btn-outline-primary" asp-page="/Index" asp-all-route-data="Model.FilterRoutes(b.BookingId)">👁 Xem chi tiết</a>
+                            @if (BookingHubUi.CanConfirm(b))
+                            {
+                                <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success">✓ Xác nhận đơn</button>
+                                </form>
+                            }
+                            @if (BookingHubUi.CanCancel(b))
+                            {
+                                <form method="post" asp-page-handler="Reject" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Không duyệt / Hủy đơn</button>
+                                </form>
+                            }
+                            @if (BookingHubUi.CanAssign(b))
+                            {
+                                <a asp-page="/Assign" asp-route-id="@b.BookingId" class="btn btn-sm btn-outline-primary">Phân công</a>
+                            }
+                            @if (BookingHubUi.CanHandover(b))
+                            {
+                                <a asp-page="/Handover" asp-route-id="@b.BookingId" class="btn btn-sm btn-info">Giao xe</a>
+                            }
+                            @if (BookingHubUi.CanComplete(b))
+                            {
+                                <a asp-page="/Complete" asp-route-id="@b.BookingId" class="btn btn-sm btn-success">Tiếp nhận trả xe</a>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+
+        <aside class="dx-card dx-hub-detail">
+            @if (selected is null)
+            {
+                <p class="dx-empty mb-0">Chọn một đơn để xem chi tiết.</p>
+            }
+            else
+            {
+                <div class="dx-hub-detail-head">
+                    <div>
+                        <h3>Thông tin đơn #@selected.BookingId</h3>
+                        <partial name="_StatusBadge" model="@("booking", selected.Status)" />
+                    </div>
+                    <span class="dx-hub-hold">Giữ xe: @BookingHubUi.HoldLabel(selected)</span>
+                </div>
+
+                <section class="dx-hub-block">
+                    <h4>Customer information</h4>
+                    <dl class="dx-hub-dl">
+                        <div><dt>Khách hàng</dt><dd>@selected.CustomerName</dd></div>
+                        <div><dt>Số điện thoại</dt><dd>Không có trong payload đơn</dd></div>
+                        <div><dt>Email</dt><dd>Không có trong payload đơn</dd></div>
+                    </dl>
+                </section>
+
+                <section class="dx-hub-block">
+                    <h4>Booking information</h4>
+                    <dl class="dx-hub-dl">
+                        <div><dt>Mã đơn</dt><dd>#@selected.BookingId</dd></div>
+                        <div><dt>Hình thức thuê</dt><dd>@UiDisplay.RentalMode(selected.RentalMode)</dd></div>
+                        <div><dt>Bắt đầu</dt><dd>@UiDisplay.Rental(selected.StartDate)</dd></div>
+                        <div><dt>Kết thúc</dt><dd>@UiDisplay.Rental(selected.EndDate)</dd></div>
+                        <div><dt>Thời lượng</dt><dd>@BookingHubUi.Duration(selected)</dd></div>
+                        <div><dt>Điểm nhận</dt><dd>@selected.PickupAddress</dd></div>
+                        <div><dt>Điểm trả</dt><dd>@selected.DropoffAddress</dd></div>
+                        <div><dt>Loại xe yêu cầu</dt><dd>@selected.VehicleTypeName</dd></div>
+                        <div>
+                            <dt>@BookingHubUi.VehicleRoleLabel(selected)</dt>
+                            <dd>
+                                @if (selected.AssignedVehicle is null)
+                                {
+                                    <span>Chưa gắn xe cụ thể · @selected.VehicleTypeName</span>
+                                }
+                                else
+                                {
+                                    <span>@selected.AssignedVehicle.Brand @selected.AssignedVehicle.Model · @selected.AssignedVehicle.LicensePlate</span>
+                                    <div class="dx-hub-muted">Trạng thái xe: @UiDisplay.VehicleStatus(selected.AssignedVehicle.Status)</div>
+                                }
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="dx-hub-block">
+                    <h4>Price</h4>
+                    <dl class="dx-hub-dl">
+                        <div><dt>Giá thuê</dt><dd>@UiDisplay.Money(selected.TotalAmount)</dd></div>
+                        @if (selected.QuotedPricePerDay is decimal perDay)
+                        {
+                            <div><dt>Giá/ngày (báo giá)</dt><dd>@UiDisplay.Money(perDay)</dd></div>
+                        }
+                        <div><dt>Số tiền cọc (báo giá)</dt><dd>@(selected.QuotedDepositAmount is decimal quotedDeposit ? UiDisplay.Money(quotedDeposit) : "—")</dd></div>
+                        <div><dt>Tổng cộng</dt><dd>@UiDisplay.Money(selected.FinalAmount ?? selected.TotalAmount)</dd></div>
+                    </dl>
+                </section>
+
+                <section class="dx-hub-block">
+                    <h4>Contract / Payment / Current flow</h4>
+                    <dl class="dx-hub-dl">
+                        <div><dt>Hợp đồng</dt><dd>@BookingHubUi.ContractLabel(selectedContract)</dd></div>
+                        <div><dt>Cọc</dt><dd>@BookingHubUi.DepositLabel(selected)</dd></div>
+                        <div><dt>Thanh toán chi tiết</dt><dd>API payments chỉ mở cho khách hàng — điều phối không đọc Pending/Paid/Failed riêng.</dd></div>
+                        <div><dt>Trạng thái</dt><dd><partial name="_StatusBadge" model="@("booking", selected.Status)" /></dd></div>
+                    </dl>
+                </section>
+
+                <section class="dx-hub-block">
+                    <h4>Tiến trình</h4>
+                    <ol class="dx-hub-timeline">
+                        @foreach (var step in BookingHubUi.Timeline(selected, selectedContract))
+                        {
+                            <li class="@(step.Done ? "is-done" : null) @(step.Current ? "is-current" : null)">
+                                <strong>@step.Title</strong>
+                                @if (!string.IsNullOrEmpty(step.When))
+                                {
+                                    <span>@step.When</span>
+                                }
+                            </li>
+                        }
+                    </ol>
+                </section>
+
+                @if ((selected.Inspections?.Count ?? 0) > 0)
+                {
+                    <h4 class="h6 mt-3">Kiểm xe</h4>
+                    <ul class="small mb-3">
+                        @foreach (var inspection in selected.Inspections!)
+                        {
+                            <li>@inspection.InspectionType · @UiDisplay.Timestamp(inspection.ActualAt)</li>
+                        }
+                    </ul>
+                }
+
+                @if (selected.Assignment is not null)
+                {
+                    <p class="small mb-3">
+                        Phân công: @selected.Assignment.DriverName
+                        · xe @selected.Assignment.LicensePlate
+                        · @UiDisplay.Timestamp(selected.Assignment.AssignedAt)
+                    </p>
+                }
+
+                @if (selected.Status is "Pending" or "Confirmed")
+                {
+                    <section class="dx-hub-block">
+                        <h4>Kiểm tra khả năng phục vụ</h4>
+                        <p class="dx-hub-muted mb-2">Khả năng đáp ứng lấy từ API assignable và dữ liệu đơn. Confirm API mới là bước kiểm tra xung đột chính thức.</p>
+                        @if (selected.RentalMode == "WithDriver")
+                        {
+                            <p class="small text-muted mb-2">Đang kiểm tra khả năng đáp ứng tài xế — không phân công tại bước này.</p>
+                        }
+                        else
+                        {
+                            <p class="small text-muted mb-2">Hình thức thuê: Tự lái. Không yêu cầu phân công tài xế.</p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.AssignableError) && Model.Assignable is null)
+                        {
+                            <p class="text-danger small">Không tải được khả năng đáp ứng: @Model.AssignableError</p>
+                        }
+                        @{
+                            var vehicle = BookingHubUi.VehicleAvailability(selected, Model.Assignable);
+                            var driver = BookingHubUi.DriverAvailability(selected, Model.Assignable);
+                            var buffer = BookingHubUi.BufferCheck(selected, Model.Assignable);
+                            var maintenance = BookingHubUi.MaintenanceCheck(selected);
+                            var contractCheck = BookingHubUi.ContractCheck(selectedContract);
+                            var depositCheck = BookingHubUi.DepositCheck(selected);
+                        }
+                        <ul class="dx-hub-checks">
+                            <li class="@BookingHubUi.CheckClass(vehicle.State)">🚗 @BookingHubUi.CheckMark(vehicle.State) · @vehicle.Detail</li>
+                            <li class="@BookingHubUi.CheckClass(driver.State)">👨‍✈️ @BookingHubUi.CheckMark(driver.State) · @driver.Detail</li>
+                            <li class="@BookingHubUi.CheckClass(buffer.State)">⏱️ @BookingHubUi.CheckMark(buffer.State) · @buffer.Detail</li>
+                            <li class="@BookingHubUi.CheckClass(maintenance.State)">🔧 @BookingHubUi.CheckMark(maintenance.State) · @maintenance.Detail</li>
+                            <li class="@BookingHubUi.CheckClass(contractCheck.State)">📄 @BookingHubUi.CheckMark(contractCheck.State) · @contractCheck.Detail</li>
+                            <li class="@BookingHubUi.CheckClass(depositCheck.State)">💳 @BookingHubUi.CheckMark(depositCheck.State) · @depositCheck.Detail</li>
+                        </ul>
+                        @if (Model.Assignable is not null)
+                        {
+                            var vehicleOk = BookingHubUi.VehicleEligible(selected);
+                            var scheduleOk = BookingHubUi.RequestedVehicleCanServe(selected, Model.Assignable);
+                            var maintenanceOk = BookingHubUi.MaintenanceOk(selected);
+                            var driverOk = BookingHubUi.DriverCanServe(selected, Model.Assignable);
+                            <ul class="dx-hub-checks">
+                                <li class="@(vehicleOk ? "is-ok" : "is-bad")">@(vehicleOk ? "✓" : "✗") Xe hợp lệ</li>
+                                <li class="@(scheduleOk ? "is-ok" : "is-bad")">@(scheduleOk ? "✓" : "✗") Không trùng lịch</li>
+                                <li class="@(maintenanceOk ? "is-ok" : "is-bad")">@(maintenanceOk ? "✓" : "✗") Không bị bảo trì</li>
+                                <li class="@((vehicleOk && scheduleOk && maintenanceOk && driverOk) ? "is-ok" : "is-bad")">@((vehicleOk && scheduleOk && maintenanceOk && driverOk) ? "✓" : "✗") Đủ điều kiện phục vụ</li>
+                                @if (selected.RentalMode == "WithDriver")
+                                {
+                                    <li class="@(driverOk ? "is-ok" : "is-bad")">
+                                        @(driverOk ? "✓ Tài xế khả dụng" : "✗ Không có tài xế khả dụng trong khoảng thời gian này.")
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+                }
+
+                <p class="dx-hub-muted">Xác nhận đơn không giữ xe, không đổi Vehicle.Status thành Rented, không tạo TripAssignment và không tạo thanh toán.</p>
+
+                <div class="dx-hub-actions">
+                    @if (BookingHubUi.CanCancel(selected))
+                    {
+                        <form method="post" asp-page-handler="Reject" asp-route-id="@selected.BookingId" asp-all-route-data="Model.FilterRoutes()" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                            <button type="submit" class="btn btn-outline-danger">Không duyệt / Hủy đơn</button>
+                        </form>
+                    }
+                    @if (BookingHubUi.CanConfirm(selected))
+                    {
+                        <form method="post" asp-page-handler="Confirm" asp-route-id="@selected.BookingId" asp-all-route-data="Model.FilterRoutes()">
+                            <button type="submit" class="btn btn-success">✓ Xác nhận đơn</button>
+                        </form>
+                    }
+                    @if (BookingHubUi.CanAssign(selected))
+                    {
+                        <a asp-page="/Assign" asp-route-id="@selected.BookingId" class="btn btn-outline-primary">Mở màn phân công</a>
+                    }
+                    @if (BookingHubUi.CanHandover(selected))
+                    {
+                        <a asp-page="/Handover" asp-route-id="@selected.BookingId" class="btn btn-info">Giao xe</a>
+                    }
+                    @if (BookingHubUi.CanComplete(selected))
+                    {
+                        <a asp-page="/Complete" asp-route-id="@selected.BookingId" class="btn btn-success">Tiếp nhận trả xe</a>
+                    }
+                </div>
+            }
+        </aside>
+    </div>
+</section>
+
+<h4 class="mt-4">📊 Tình trạng xe &amp; tài xế</h4>
+<p class="text-muted small">Trạng thái lấy từ Backend. SelfDrive không gắn tài xế; WithDriver hiện tài xế của assignment đang mở.</p>
+@if (!Model.Fleet.Vehicles.Any())
+{
+    <p class="text-muted">Không có dữ liệu xe.</p>
+}
+else
+{
+    <table class="table table-sm mb-4">
+        <thead>
+            <tr>
+                <th>Biển số</th>
+                <th>Loại xe</th>
+                <th>Trạng thái xe</th>
+                <th>Tài xế hiện tại</th>
+                <th>Trạng thái tài xế</th>
+                <th>Chuyến</th>
+                <th>Thời gian</th>
+                <th>Hình thức</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var v in Model.Fleet.Vehicles)
+        {
+            <tr>
+                <td>@v.LicensePlate</td>
+                <td>@v.TypeName</td>
+                <td>@UiDisplay.VehicleStatus(v.VehicleStatus)</td>
+                <td>@(v.DriverName ?? "—")</td>
+                <td>@(string.IsNullOrEmpty(v.DriverStatus) ? "—" : UiDisplay.DriverStatus(v.DriverStatus))</td>
+                <td>@(v.BookingId is int bid ? $"#{bid}" : "—")</td>
+                <td>
+                    @if (v.StartDate is DateTime start && v.EndDate is DateTime end)
+                    {
+                        @UiDisplay.Rental(start) <text>→</text> @UiDisplay.Rental(end)
+                    }
+                    else
+                    {
+                        <text>—</text>
+                    }
+                </td>
+                <td>@UiDisplay.RentalMode(v.RentalMode)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<h4>Tài xế</h4>
+@if (!Model.Fleet.Drivers.Any())
+{
+    <p class="text-muted">Không có dữ liệu tài xế.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Tài xế</th>
+                <th>Trạng thái</th>
+                <th>Hoạt động</th>
+                <th>Xe hiện tại</th>
+                <th>Chuyến</th>
+                <th>Thời gian</th>
+                <th>Hình thức</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var d in Model.Fleet.Drivers)
+        {
+            <tr>
+                <td>@d.FullName</td>
+                <td>@UiDisplay.DriverStatus(d.DriverStatus)</td>
+                <td>@(d.IsActive ? "Có" : "Không")</td>
+                <td>@(d.LicensePlate ?? "—")</td>
+                <td>@(d.BookingId is int did ? $"#{did}" : "—")</td>
+                <td>
+                    @if (d.StartDate is DateTime start && d.EndDate is DateTime end)
+                    {
+                        @UiDisplay.Rental(start) <text>→</text> @UiDisplay.Rental(end)
+                    }
+                    else
+                    {
+                        <text>—</text>
+                    }
+                </td>
+                <td>@UiDisplay.RentalMode(d.RentalMode)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

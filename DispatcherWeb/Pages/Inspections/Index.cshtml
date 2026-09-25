@@ -1,0 +1,31 @@
+@page
+@model DispatcherWeb.Pages.Inspections.IndexModel
+@{ ViewData["Title"] = "Kiem xe"; }
+
+<h2 class="mb-3">Bien ban van hanh</h2>
+<p class="text-muted">Chi xem km, nhien lieu, ngoai that, ky thuat.</p>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ma</th><th>Don</th><th>Xe</th><th>Loai</th><th>Km</th><th>Nhien lieu</th>
+            <th>Ngoai that</th><th>Ky thuat</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var i in Model.Inspections)
+    {
+        <tr>
+            <td>#@i.InspectionId</td>
+            <td>#@i.BookingId</td>
+            <td>#@i.VehicleId</td>
+            <td>@i.InspectionType</td>
+            <td>@(i.OdometerKm?.ToString("N0") ?? "—")</td>
+            <td>@(i.FuelLevel?.ToString("N0") ?? "—")</td>
+            <td>@(i.ExteriorCondition ?? i.Condition ?? "—")</td>
+            <td>@(i.TechnicalCondition ?? "—")</td>
+        </tr>
+    }
+    </tbody>
+</table>

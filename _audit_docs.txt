@@ -1,0 +1,131 @@
+﻿Backend\Validation\CustomerRegistrationRules.cs:6:public static class CustomerRegistrationRules
+Backend\Validation\VehicleInspectionRules.cs:29:        string? technicalCondition = null)
+Backend\Validation\VehicleInspectionRules.cs:53:            technicalCondition is { Length: > ConditionMaxLength })
+Backend\Data\DemoRichSeeder.cs:208:            RegistrationNumber = reg,
+Backend\Data\DemoRichSeeder.cs:209:            RegistrationExpiryDate = regExp,
+Backend\Data\DemoRichSeeder.cs:211:            InsuranceExpiryDate = insuExp
+Backend\Data\DemoRichSeeder.cs:239:        v1.RegistrationNumber = "VR-51A-12345";
+Backend\Data\DemoRichSeeder.cs:240:        v1.RegistrationExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:242:        v1.InsuranceExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:243:        v3.RegistrationNumber = "VR-51C-11111";
+Backend\Data\DemoRichSeeder.cs:244:        v3.RegistrationExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:246:        v3.InsuranceExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:247:        v4.RegistrationNumber = "VR-51D-22222";
+Backend\Data\DemoRichSeeder.cs:248:        v4.RegistrationExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:250:        v4.InsuranceExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:251:        v5.RegistrationNumber = "VR-51E-33333";
+Backend\Data\DemoRichSeeder.cs:252:        v5.RegistrationExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:254:        v5.InsuranceExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:255:        v6.RegistrationNumber = "VR-51F-44444";
+Backend\Data\DemoRichSeeder.cs:256:        v6.RegistrationExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:258:        v6.InsuranceExpiryDate = far;
+Backend\Data\DemoRichSeeder.cs:584:                TechnicalCondition = "─Éß╗Öng c╞í ß╗òn",
+Backend\Data\DemoRichSeeder.cs:598:                TechnicalCondition = "─É├¿n, phanh OK",
+Backend\Validation\VehicleLegalRules.cs:5:    public const int RegistrationNumberMaxLength = 30;
+Backend\Validation\VehicleLegalRules.cs:12:    public const string RegistrationTooLong = "Sß╗æ giß║Ñy ─æ─âng k├╜ kh├┤ng ─æ╞░ß╗úc v╞░ß╗út qu├í 30 k├╜ tß╗▒.";
+Backend\Validation\VehicleLegalRules.cs:13:    public const string DuplicateRegistration = "Sß╗æ giß║Ñy ─æ─âng k├╜ ─æ├ú ─æ╞░ß╗úc sß╗¡ dß╗Ñng.";
+Backend\Validation\VehicleLegalRules.cs:20:    public static string? NormalizeRegistration(string? value)
+Backend\Validation\VehicleLegalRules.cs:49:        string? registrationNumber,
+Backend\Validation\VehicleLegalRules.cs:50:        DateOnly? registrationExpiry,
+Backend\Validation\VehicleLegalRules.cs:52:        DateOnly? insuranceExpiry,
+Backend\Validation\VehicleLegalRules.cs:53:        out string? normalizedRegistration)
+Backend\Validation\VehicleLegalRules.cs:55:        normalizedRegistration = NormalizeRegistration(registrationNumber);
+Backend\Validation\VehicleLegalRules.cs:56:        if (normalizedRegistration is { Length: > RegistrationNumberMaxLength })
+Backend\Validation\VehicleLegalRules.cs:57:            return RegistrationTooLong;
+Backend\Validation\VehicleLegalRules.cs:59:        if (!IsValidExpiry(registrationExpiry)
+Backend\Validation\VehicleLegalRules.cs:61:            || !IsValidExpiry(insuranceExpiry))
+Backend\DTOs\Bookings\BookingDtos.cs:87:    string? TechnicalCondition = null);
+Backend\DTOs\Bookings\BookingDtos.cs:102:    string? TechnicalCondition = null);
+Backend\Data\CarRentalDbContext.cs:104:            e.Property(x => x.RegistrationNumber).HasMaxLength(30);
+Backend\Data\CarRentalDbContext.cs:209:            e.Property(x => x.TechnicalCondition).HasMaxLength(100);
+Backend\Data\CarRentalDbContext.cs:769:    /// Adds ExteriorCondition / TechnicalCondition on existing SQLite VehicleInspections.
+Backend\Data\CarRentalDbContext.cs:792:        if (!columns.Contains("TechnicalCondition"))
+Backend\Data\CarRentalDbContext.cs:793:            Database.ExecuteSqlRaw("ALTER TABLE VehicleInspections ADD COLUMN TechnicalCondition TEXT NULL");
+Backend\Data\CarRentalDbContext.cs:843:    /// Adds legal circulation metadata on existing SQLite Vehicles. Existing rows stay NULL.
+Backend\Data\CarRentalDbContext.cs:864:        if (!columns.Contains("RegistrationNumber"))
+Backend\Data\CarRentalDbContext.cs:865:            Database.ExecuteSqlRaw("ALTER TABLE Vehicles ADD COLUMN RegistrationNumber TEXT NULL");
+Backend\Data\CarRentalDbContext.cs:866:        if (!columns.Contains("RegistrationExpiryDate"))
+Backend\Data\CarRentalDbContext.cs:867:            Database.ExecuteSqlRaw("ALTER TABLE Vehicles ADD COLUMN RegistrationExpiryDate TEXT NULL");
+Backend\Data\CarRentalDbContext.cs:870:        if (!columns.Contains("InsuranceExpiryDate"))
+Backend\Data\CarRentalDbContext.cs:871:            Database.ExecuteSqlRaw("ALTER TABLE Vehicles ADD COLUMN InsuranceExpiryDate TEXT NULL");
+Backend\DTOs\Vehicles\VehicleDtos.cs:54:    string? RegistrationNumber = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:55:    DateOnly? RegistrationExpiryDate = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:57:    DateOnly? InsuranceExpiryDate = null);
+Backend\DTOs\Vehicles\VehicleDtos.cs:67:    string? RegistrationNumber = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:68:    DateOnly? RegistrationExpiryDate = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:70:    DateOnly? InsuranceExpiryDate = null);
+Backend\DTOs\Vehicles\VehicleDtos.cs:81:    string? RegistrationNumber = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:82:    DateOnly? RegistrationExpiryDate = null,
+Backend\DTOs\Vehicles\VehicleDtos.cs:84:    DateOnly? InsuranceExpiryDate = null);
+Backend\DTOs\Vehicles\VehicleOperationalProfileDtos.cs:13:    string? LatestTechnicalCondition,
+Backend\Entities\Vehicle.cs:14:    public string? RegistrationNumber { get; set; }
+Backend\Entities\Vehicle.cs:15:    public DateOnly? RegistrationExpiryDate { get; set; }
+Backend\Entities\Vehicle.cs:17:    public DateOnly? InsuranceExpiryDate { get; set; }
+Backend\Services\AuthService.cs:43:            return (null, CustomerRegistrationRules.EmailNotVerified, StatusCodes.Status403Forbidden);
+Backend\Services\AuthService.cs:51:            return (null, CustomerRegistrationRules.ConfirmPasswordMismatch);
+Backend\Services\AuthService.cs:53:        var error = CustomerRegistrationRules.ValidateAndNormalize(
+Backend\Services\AuthService.cs:69:                return (null, CustomerRegistrationRules.EmailInUse);
+Backend\Services\AuthService.cs:72:                return (null, CustomerRegistrationRules.PhoneInUse);
+Backend\Services\AuthService.cs:87:            return (null, CustomerRegistrationRules.PhoneInUse);
+Backend\Services\AuthService.cs:168:            return (false, CustomerRegistrationRules.ConfirmPasswordMismatch);
+Backend\Services\AuthService.cs:170:        if (!CustomerRegistrationRules.IsStrongPassword(request.NewPassword))
+Backend\Services\AuthService.cs:171:            return (false, CustomerRegistrationRules.InvalidPassword);
+Backend\Services\AuthService.cs:232:            : CustomerRegistrationRules.NormalizeFullName(identity.Name);
+Backend\Services\AuthService.cs:266:        if (!CustomerRegistrationRules.IsStrongPassword(request.NewPassword))
+Backend\Services\AuthService.cs:267:            return (false, CustomerRegistrationRules.InvalidPassword);
+Backend\Entities\VehicleInspection.cs:14:    public string? TechnicalCondition { get; set; }
+Backend\Services\DispatchService.cs:87:            request?.TechnicalCondition);
+Backend\Services\DispatchService.cs:133:            request?.TechnicalCondition);
+Backend\Services\AdminCustomerService.cs:53:        var error = CustomerRegistrationRules.ValidateAndNormalize(
+Backend\Services\AdminCustomerService.cs:65:            return Fail(CustomerRegistrationRules.EmailInUse, StatusCodes.Status400BadRequest);
+Backend\Services\AdminCustomerService.cs:68:            return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
+Backend\Services\AdminCustomerService.cs:112:        var error = CustomerRegistrationRules.ValidateCustomerProfile(
+Backend\Services\AdminCustomerService.cs:123:            return Fail(CustomerRegistrationRules.EmailInUse, StatusCodes.Status400BadRequest);
+Backend\Services\AdminCustomerService.cs:126:            return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
+Backend\Services\ScheduleConflictService.cs:35:        var bufferHours = ScheduleBuffers.TechnicalHours;
+Backend\Services\ScheduleConflictService.cs:41:                start < b.EndDate.AddHours(bufferHours)
+Backend\Services\ScheduleConflictService.cs:42:                && end > b.StartDate.AddHours(-bufferHours));
+Backend\Services\ScheduleConflictService.cs:48:        var bufferHours = ScheduleBuffers.TechnicalHours;
+Backend\Services\ScheduleConflictService.cs:52:                start < b.EndDate.AddHours(bufferHours)
+Backend\Services\ScheduleConflictService.cs:53:                && end > b.StartDate.AddHours(-bufferHours));
+Backend\Services\DriverService.cs:157:            request?.TechnicalCondition);
+Backend\Services\DriverService.cs:223:        var error = CustomerRegistrationRules.ValidateAdminDriver(
+Backend\Services\DriverService.cs:230:            return (null, CustomerRegistrationRules.EmailInUse, StatusCodes.Status400BadRequest);
+Backend\Services\DriverService.cs:233:            return (null, CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
+Backend\Services\DriverService.cs:279:            driver.User.FullName = CustomerRegistrationRules.NormalizeFullName(request.FullName);
+Backend\Services\DriverService.cs:283:            var phone = CustomerRegistrationRules.NormalizePhone(request.Phone);
+Backend\Services\DriverService.cs:284:            if (!CustomerRegistrationRules.IsValidPhone(phone))
+Backend\Services\DriverService.cs:285:                return (null, CustomerRegistrationRules.InvalidPhone, StatusCodes.Status400BadRequest);
+Backend\Services\DriverService.cs:287:                return (null, CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
+Backend\Services\VehicleService.cs:35:                v.RegistrationNumber, v.RegistrationExpiryDate,
+Backend\Services\VehicleService.cs:36:                v.InspectionExpiryDate, v.InsuranceExpiryDate))
+Backend\Services\VehicleService.cs:48:                v.RegistrationNumber, v.RegistrationExpiryDate,
+Backend\Services\VehicleService.cs:49:                v.InspectionExpiryDate, v.InsuranceExpiryDate))
+Backend\Services\VehicleService.cs:69:            request.RegistrationNumber,
+Backend\Services\VehicleService.cs:70:            request.RegistrationExpiryDate,
+Backend\Services\VehicleService.cs:72:            request.InsuranceExpiryDate,
+Backend\Services\VehicleService.cs:73:            out var registration);
+Backend\Services\VehicleService.cs:84:        if (registration is not null && await RegistrationTakenAsync(registration, excludeVehicleId: null))
+Backend\Services\VehicleService.cs:85:            return (null, VehicleLegalRules.DuplicateRegistration, StatusCodes.Status400BadRequest);
+Backend\Services\VehicleService.cs:97:            RegistrationNumber = registration,
+Backend\Services\VehicleService.cs:98:            RegistrationExpiryDate = request.RegistrationExpiryDate,
+Backend\Services\VehicleService.cs:100:            InsuranceExpiryDate = request.InsuranceExpiryDate,
+Backend\Services\VehicleService.cs:138:            request.RegistrationNumber,
+Backend\Services\VehicleService.cs:139:            request.RegistrationExpiryDate,
+Backend\Services\VehicleService.cs:141:            request.InsuranceExpiryDate,
+Backend\Services\VehicleService.cs:142:            out var registration);
+Backend\Services\VehicleService.cs:153:        if (registration is not null && await RegistrationTakenAsync(registration, excludeVehicleId: id))
+Backend\Services\VehicleService.cs:154:            return (null, VehicleLegalRules.DuplicateRegistration, StatusCodes.Status400BadRequest);
+Backend\Services\VehicleService.cs:169:        vehicle.RegistrationNumber = registration;
+Backend\Services\VehicleService.cs:170:        vehicle.RegistrationExpiryDate = request.RegistrationExpiryDate;
+Backend\Services\VehicleService.cs:172:        vehicle.InsuranceExpiryDate = request.InsuranceExpiryDate;
+Backend\Services\VehicleService.cs:214:    private async Task<bool> RegistrationTakenAsync(string registration, int? excludeVehicleId)
+Backend\Services\VehicleService.cs:216:        var query = db.Vehicles.Where(v => v.RegistrationNumber != null);
+Backend\Services\VehicleService.cs:220:        var normalized = registration.ToLower();
+Backend\Services\VehicleService.cs:221:        return await query.AnyAsync(v => v.RegistrationNumber!.ToLower() == normalized);
+Backend\Services\VehicleInspectionService.cs:20:        string? technicalCondition = null)
+Backend\Services\VehicleInspectionService.cs:24:            exteriorCondition, technicalCondition);
+Backend\Services\VehicleInspectionService.cs:74:        var technical = TrimOrNull(technicalCondition);
+Backend\Services\VehicleInspectionService.cs:85:            TechnicalCondition = technical,
+Backend\Services\VehicleInspectionService.cs:136:        i.TechnicalCondition);
+Backend\Services\VehicleOperationalProfileService.cs:78:            latest?.TechnicalCondition,

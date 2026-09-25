@@ -1,0 +1,84 @@
+@page
+@model CustomerWeb.Pages.Account.VerifyEmailModel
+@{
+    ViewData["Title"] = "Nhập mã xác thực";
+    ViewData["AuthShell"] = true;
+    Layout = "_LayoutAuth";
+    var otpError = ViewData.ModelState["Input.Otp"]?.Errors.Count > 0 || !string.IsNullOrEmpty(Model.ErrorMessage);
+}
+
+<div class="ax-register">
+    <div class="ax-register-bg">
+        <img src="~/images/auth/register.jpg" alt="Trải nghiệm DriveX" />
+    </div>
+    <div class="ax-card">
+        <div class="ax-card-top">
+            <a class="ax-brand" asp-page="/Index" style="color:#0f1f3d">
+                <span><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <span class="ax-lang" title="Chỉ hiển thị giao diện tiếng Việt"><i class="bi bi-globe2"></i> Tiếng Việt</span>
+        </div>
+
+        <h1>Nhập mã xác thực</h1>
+        <p class="ax-lead">Chúng tôi đã gửi mã 6 chữ số đến email của bạn.</p>
+        @if (!string.IsNullOrWhiteSpace(Model.Input.Email))
+        {
+            <div class="ax-otp-mail"><i class="bi bi-envelope-check"></i> @Model.Input.Email</div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="ax-alert">@Model.ErrorMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(Model.InfoMessage))
+        {
+            <div class="ax-success">@Model.InfoMessage</div>
+        }
+        <div asp-validation-summary="ModelOnly" class="ax-alert"></div>
+
+        <form method="post" data-ax-form>
+            @if (string.IsNullOrWhiteSpace(Model.Input.Email))
+            {
+                <div class="ax-field">
+                    <label asp-for="Input.Email">Địa chỉ Email</label>
+                    <div class="ax-icon-field">
+                        <i class="bi bi-envelope"></i>
+                        <input asp-for="Input.Email" type="email" placeholder="Nhập email của bạn" autocomplete="username" />
+                    </div>
+                    <span asp-validation-for="Input.Email" class="field-validation-error"></span>
+                </div>
+            }
+            else
+            {
+                <input type="hidden" asp-for="Input.Email" />
+            }
+            <div class="ax-field">
+                <div class="ax-otp@(otpError ? " is-error" : "")" data-ax-otp>
+                    @for (var i = 1; i <= 6; i++)
+                    {
+                        <input type="text" inputmode="numeric" maxlength="1" pattern="[0-9]*" autocomplete="@(i == 1 ? "one-time-code" : "off")" aria-label="Chữ số @i" />
+                    }
+                </div>
+                <input asp-for="Input.Otp" class="ax-otp-value" data-ax-otp-value maxlength="6" inputmode="numeric" />
+                <span asp-validation-for="Input.Otp" class="field-validation-error"></span>
+            </div>
+            <button type="submit" class="ax-submit" data-ax-submit>Xác thực mã</button>
+        </form>
+
+        <form method="post" asp-page-handler="Resend" class="ax-resend">
+            <input type="hidden" asp-for="Input.Email" />
+            <span>Không nhận được mã?</span>
+            <button type="submit">Gửi lại mã</button>
+        </form>
+
+        <div class="ax-nav">
+            <a class="ax-back" asp-page="/Account/Register"><i class="bi bi-arrow-left"></i> Quay lại</a>
+            <a class="ax-signin" asp-page="/Account/Login">Đăng nhập ngay</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

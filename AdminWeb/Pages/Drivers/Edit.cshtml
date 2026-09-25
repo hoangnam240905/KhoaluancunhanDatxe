@@ -1,0 +1,18 @@
+@page "{id:int}"
+@model AdminWeb.Pages.Drivers.EditModel
+@{ ViewData["Title"] = "Sua tai xe"; }
+<h2 class="mb-3">Sua tai xe #@Model.DriverId</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Ho ten</label><input asp-for="Input.FullName" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">So dien thoai</label><input asp-for="Input.Phone" class="form-control" /></div>
+    <div class="col-md-6">
+        <label class="form-label">Trang thai</label>
+        <select asp-for="Input.Status" class="form-select">
+            <option>Available</option>
+            <option>Busy</option>
+            <option>Offline</option>
+        </select>
+    </div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Luu</button> <a asp-page="Index" class="btn btn-secondary">Huy</a></div>
+</form>

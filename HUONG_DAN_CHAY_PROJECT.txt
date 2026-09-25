@@ -1,0 +1,1538 @@
+==================================================
+HƯỚNG DẪN CHẠY CAR RENTAL SYSTEM
+==================================================
+
+File này dựa trên source trong repository, trạng thái **code freeze**
+(PHASE A–F2, GAP 1–3, P0.1–P0.4, hardening 4 gap, DemoRich).
+Mục nào không xác định được sẽ ghi: "Chưa xác định được từ source code".
+
+Lịch sử Tuần 3 + PHASE 4 Group 1–3: Tuan 3.md.
+Bổ sung điều phối/buffer/lock, Python FastAPI, khóa bảo trì, SignalR, hợp đồng,
+cọc mô phỏng, driver ops, dashboard, P0/hardening: Tuan 4.md.
+Bảng chức năng / Role / API: README.md
+PHASE 3 — COMPLETED. PHASE 4 Group 1–3 — COMPLETED. PHASE A–F2 — COMPLETED.
+P0 + final hardening — COMPLETED. CODE FREEZE — không feature mới.
+
+Tests Backend gần nhất: 361 passed / 0 failed / 0 skipped.
+
+Remote Git:
+https://github.com/hoangnam240905/KhoaluancunhanDatxe.git
+
+Thư mục gốc:
+D:\DoAnCuNhan\CarRentalSystem
+
+Lưu ý: Source mặc định dùng SQLite (Backend/appsettings.json).
+Không dùng EF Core Migration. Backend: EnsureCreated + ALTER/CREATE TABLE IF NOT EXISTS.
+
+==================================================
+1. TỔNG QUAN REPOSITORY
+--------------------------------------------------
+
+Hệ thống cho thuê xe du lịch trực tuyến (đồ án CNTT-KLCN108).
+
+Gồm:
+- 1 Backend API (ASP.NET Core) + SignalR Hub
+- 1 Python FastAPI Recommender (Recommender/) — không truy cập DB
+- 1 project test Backend (Backend.Tests)
+- 2 ứng dụng Flutter (CustomerApp, DriverApp)
+- 4 website Razor Pages (PortalWeb, AdminWeb, CustomerWeb, DispatcherWeb)
+- 1 thư mục script SQL Server (Database/) — không bắt buộc khi chạy mặc định
+
+Phụ thuộc:
+- Mọi app/web gọi Backend qua HTTP REST + JWT.
+- Backend đọc database (mặc định SQLite file carrental.db).
+- Profile Demo: carrental.demo.db + SeedDemoRich (KHÔNG ghi vào carrental.db live).
+- Website/App không kết nối database trực tiếp.
+- Gợi ý: Backend gọi Python REST (http://127.0.0.1:8001). Python không chạm SQLite.
+- Realtime: web/app native kết nối SignalR Hub trên Backend (không polling).
+- CustomerApp và DriverApp không phụ thuộc nhau.
+- Phải chạy Backend trước khi chạy app hoặc web.
+- Phải chạy Recommender khi demo gợi ý (không bắt buộc cho login/CRUD xe).
+
+Tối thiểu để demo thuê cơ bản:
+Backend + PortalWeb (hoặc CustomerApp).
+
+Tối thiểu để demo gợi ý:
+Backend + Recommender (:8001) + PortalWeb hoặc CustomerApp.
+
+Hai hình thức thuê (RentalMode):
+- WithDriver: Dispatcher gán tài xế + xe (TripAssignment). Tài xế start/complete.
+- SelfDrive: Dispatcher gán chỉ xe (AssignedVehicleId), không TripAssignment.
+  Dispatcher handover (Assigned → InProgress) và complete (InProgress → Completed).
+
+==================================================
+2. DANH SÁCH PROJECT
+--------------------------------------------------
+
+1) Backend/       — REST API + JWT + SignalR + EF Core
+2) Recommender/   — Python FastAPI (port 8001; Backend/appsettings Recommender:BaseUrl)
+3) Backend.Tests/ — xunit (giá, phí, kiểm xe, Group 1–3, PHASE A–F2, P0, hardening, DemoRich)
+4) CustomerApp/   — Flutter: khách hàng và tài xế (RoleRouter)
+5) DriverApp/     — Flutter: chỉ tài xế
+6) PortalWeb/     — Web tổng hợp Customer / Admin / Dispatcher + login chính
+7) AdminWeb/      — Web Admin riêng (không login riêng)
+8) CustomerWeb/   — Web khách hàng riêng (login qua PortalWeb)
+9) DispatcherWeb/ — Web điều phối riêng (CÓ login riêng, role Dispatcher)
+10) Database/     — Script SQL Server (không phải app chạy)
+
+Không có trong repository:
+- File .sln / .slnx được commit
+- Swagger UI (không dùng UseSwagger / UseSwaggerUI)
+- File SQLite carrental.db được commit (tạo lúc chạy Backend)
+- package.json / Node.js
+- Dockerfile
+
+==================================================
+2.1. CHỨC NĂNG CỦA TỪNG THÀNH PHẦN
+--------------------------------------------------
+(Chỉ liệt kê chức năng có trong source. Không bịa.)
+
+A) LUỒNG TỔNG
+
+Người dùng
+    ↓
+PortalWeb  /  CustomerApp  /  DriverApp  /  AdminWeb  /  CustomerWeb  /  DispatcherWeb
+    ↓  REST + JWT          ↓ SignalR /hubs/realtime (web JS + app native)
+Backend API  (http://localhost:5199)
+    ↓ SQLite                    ↓ REST POST /recommend (khi gợi ý)
+carrental.db                    Python FastAPI  (127.0.0.1:8001)
+                                (không truy cập DB)
+
+Role (từ source):
+
+Admin
+    → PortalWeb /Account/Login (RoleRoutes.HomeFor → /Admin)
+    → khu Admin trên PortalWeb (hoặc AdminWeb nếu đã có cookie CarRentalAdminAuth)
+
+Dispatcher
+    → PortalWeb /Account/Login (→ /Dispatcher)
+    → hoặc DispatcherWeb /Account/Login (cookie CarRentalDispatcherAuth, chỉ role Dispatcher)
+
+Customer
+    → PortalWeb / CustomerApp / CustomerWeb
+    → chức năng khách hàng (đặt xe + quote + cọc trên CustomerApp, PortalWeb, CustomerWeb)
+
+Driver
+    → DriverApp, hoặc CustomerApp (RoleRouter case Driver → DriverTripsScreen)
+    → chức năng tài xế
+    → KHÔNG có khu vực Driver trên PortalWeb (role khác Customer/Admin/Dispatcher → /Account/Login)
+
+B) CUSTOMER APP  (CustomerApp/lib/)
+
+Nguồn: screens/, services/api_service.dart, navigation/role_router.dart,
+       data/portal_content.dart, models/, config/api_config.dart, main.dart
+
+Khách hàng (role Customer):
+- Màn hình chờ / khôi phục phiên (Splash + SharedPreferences)
+- Đăng ký (POST /api/auth/register) → OTP Gmail → POST /api/auth/verify-email
+- Quên mật khẩu / đặt lại: forgot-password + reset-password (OTP)
+- Đăng nhập / đăng xuất (logout = xóa token local; không POST /logout)
+- Nút Google trên Windows: dùng Portal Web (GIS). Native Google Sign-In chưa cấu hình.
+- Trang chủ: loại xe + form gợi ý (start/end bắt buộc, seats/priceMax optional) → GET /api/vehicle-types/recommended
+- KHÔNG gọi GET /api/vehicles (không xem đội xe theo biển số)
+- Tạo đơn: GET /api/bookings/quote rồi POST /api/bookings (fromRecommendation nếu chọn từ gợi ý)
+- Danh sách đơn; màn hình chi tiết đơn
+- Cọc Deposit Pending; nút mô phỏng Paid/Failed (simulate-success / simulate-failure) — không cổng thật
+- Lập / xem / ký giả lập hợp đồng
+- Đánh giá khi Status == Completed, không SelfDrive, có assignment
+- Realtime native (không Flutter Web): SignalR + reload REST
+- GET /api/auth/me trên màn Account
+- RoleRouter: Admin/Dispatcher bị từ chối
+
+Tài xế trên cùng app (driver_trips_screen.dart):
+- GET /api/drivers/me/trips
+- Nhận / bắt đầu / hoàn thành (complete KHÔNG gửi body điều kiện xe — form km/sự cố nằm ở DriverApp)
+- Cập nhật trạng thái Available / Busy / Offline
+
+Không có trong CustomerApp source:
+- Cổng thanh toán thật / Refund / Balance
+- Form kiểm xe lúc Driver complete (DriverApp mới có form + incident)
+
+C) DRIVER APP  (DriverApp/lib/)
+
+Nguồn: screens/driver_shell.dart, trips_screen.dart, trip_detail_screen.dart,
+       status_screen.dart, account_screen.dart, services/api_service.dart, main.dart
+
+- Khôi phục phiên nếu role Driver còn hạn JWT
+- Đăng nhập tài xế (chỉ chấp nhận role Driver)
+- Đăng xuất
+- NavigationBar: Chuyến / Trạng thái / Tài khoản
+- Danh sách chuyến; màn hình chi tiết chuyến
+- Nhận chuyến (Assigned → Accepted) — BẮT BUỘC trước Start
+- Bắt đầu chuyến (chỉ Accepted → InProgress; Assigned chưa Accept → bị từ chối)
+- Hoàn thành chuyến (InProgress) — POST complete, body optional:
+  odometerKm, fuelLevel (0–100), exteriorCondition, technicalCondition, notes
+  (không còn chỉ 4 field cũ: đã bổ sung ngoại thất + kỹ thuật)
+- Báo sự cố: POST /api/drivers/trips/{assignmentId}/incidents (type Accident|VehicleIssue|CustomerIssue|Other)
+- Cập nhật trạng thái Available / Busy / Offline
+- GET /api/auth/me trên màn Account
+- Realtime native (kIsWeb = tắt WebSocket)
+
+Không có trong DriverApp source:
+- Đăng ký
+- Đặt xe / quote / cọc
+- Đánh giá
+- Handover (chỉ Dispatcher SelfDrive)
+- SignalR trên Flutter Web
+
+D) PORTAL WEB  (cổng đăng nhập web chính — :5180)
+
+Nguồn: Pages/, Services/CarRentalApiClient.cs, Services/AuthSession.cs (RoleRoutes), Program.cs
+
+AUTHENTICATION:
+- Đăng nhập chung (Pages/Account/Login → POST /api/auth/login)
+- Đăng ký khách hàng (Pages/Account/Register → POST /api/auth/register)
+- Đăng xuất
+- Role routing: Admin → /Admin, Dispatcher → /Dispatcher, Customer → /, khác → /Account/Login
+- Cookie: CarRentalPortalAuth (không chia sẻ với AdminWeb/CustomerWeb/DispatcherWeb)
+
+CUSTOMER:
+- Trang chủ: loại xe từ API + form gợi ý (seats/price/ngày)
+- Đặt xe: chọn RentalMode; GET /api/bookings/quote rồi POST /api/bookings
+- Xem danh sách + chi tiết đơn (hình thức, snapshot, TotalAmount, FinalAmount, fees, inspections)
+- UI cọc: GET/POST payments trên Details; mô phỏng Paid/Failed
+- Lập / ký giả lập hợp đồng trên Details
+- /Customer/Index redirect /#bang-gia
+- Có trang Đánh giá: /Customer/Bookings/Review/{id} (Completed + TripAssignment; 1–3 sao bắt buộc comment ≤500)
+- realtime.js (JWT cookie token) → Hub /hubs/realtime; nhận event thì reload trang
+
+ADMIN:
+- Dashboard: GET /api/admin/dashboard (cọc Paid mô phỏng, số đơn/chuyến, top xe, tài xế runtime, alert BT, attribution gợi ý)
+  Không phải tổng doanh thu thuê; không utilization theo giờ
+- Danh sách / thêm / sửa / xóa xe; giấy tờ (số ĐK, hạn ĐK/đăng kiểm/BH); Year 1990–2100; bảo trì + badge
+  Xóa/vô hiệu hóa bị chặn nếu xe đang hold hoặc open assignment
+- Giá loại xe: GET/PUT/POST/DELETE /api/admin/vehicle-types
+- Khách hàng: CRUD + khóa + vô hiệu hóa (DELETE = IsActive=false, không xóa lịch sử)
+- Xem thanh toán: GET /api/admin/payments (read-only; PaymentType null = «Thanh toán cũ»)
+- Hợp đồng: GET /api/admin/contracts
+- Xem đơn (lọc status query)
+- Hủy đơn (PATCH chỉ Pending/Confirmed → Cancelled; void contract nếu có)
+
+DISPATCHER:
+- Pending: xác nhận
+- Confirmed: phân công (Assign: overlap + T_buffer 2h; conflict hiện alternatives)
+- SelfDrive Assigned: nút Giao xe → POST handover (không body trên Portal)
+- SelfDrive InProgress: nút Hoàn thành → POST complete (không body trên Portal)
+- WithDriver: không handover/complete trên web — tài xế làm trên app
+
+Driver: không có khu vực web trên PortalWeb.
+
+E) ADMIN WEB  (:5258) — web Admin riêng
+
+Nguồn: Pages/Index, Pages/Vehicles/*, Pages/Pricing/*, Pages/Payments/Index, Pages/Bookings/Index, Pages/Account/Logout
+- KHÔNG còn trang Login riêng (không có Pages/Account/Login)
+- Không page nào gọi AuthSession.SetAuth → cookie CarRentalAdminAuth không được tạo từ UI
+- Chưa đăng nhập → redirect http://localhost:5180/Account/Login
+- Cookie riêng CarRentalAdminAuth (đăng nhập PortalWeb không ghi cookie này)
+- Đăng xuất (xóa cookie local, rồi chuyển PortalWeb login)
+- Dashboard: GET /api/admin/dashboard (cùng limitation: cọc Paid ≠ doanh thu thuê)
+- Quản lý xe: danh sách, thêm, sửa, xóa; bảo trì/badge
+- Giá loại xe; xem thanh toán (mirror Portal Admin; không tạo payment)
+- Hợp đồng; Kiểm xe; Sự cố
+- Xem đơn; hủy đơn (Cancelled)
+
+F) DISPATCHER WEB  (:5206) — web điều phối riêng
+
+Nguồn: Pages/Index, Pages/Assign, Pages/Handover, Pages/Complete, Pages/Account/Login, Pages/Account/Logout
+- CÓ Login riêng (Pages/Account/Login): chỉ chấp nhận role Dispatcher
+- Chưa login → redirect /Account/Login (KHÔNG redirect PortalWeb)
+- Cookie riêng CarRentalDispatcherAuth
+- Đăng xuất
+- Pending: xác nhận đơn
+- Confirmed: phân công (SelfDrive: chỉ xe; WithDriver: tài xế + xe; alternatives khi conflict 2h)
+- SelfDrive Assigned: Giao xe (Pages/Handover — form km/fuel/condition)
+- SelfDrive InProgress: Hoàn thành trả xe (Pages/Complete)
+- /Inspections, /Incidents (GET)
+- Handover/complete gửi VehicleConditionRequest nếu user nhập
+- realtime.js
+
+G) CUSTOMER WEB  (:5162) — web khách hàng riêng
+
+Nguồn: Pages/Index, Pages/Bookings/*, Pages/Account/Register, Pages/Account/Logout
+- KHÔNG còn Login riêng; link/redirect login → http://localhost:5180/Account/Login
+- Register vẫn còn (Pages/Account/Register): đăng ký rồi ghi cookie local CarRentalAuth
+- Đăng xuất → trang chủ CustomerWeb
+- Trang chủ: xem loại xe + form gợi ý
+- Đặt xe có RentalMode; GET quote rồi POST booking
+- Xem danh sách + chi tiết (snapshot, FinalAmount, fees, inspections, cọc, simulate pay, hợp đồng)
+- Đánh giá khi Status == Completed (Pages/Bookings/Review)
+  Backend yêu cầu TripAssignment → đơn SelfDrive Completed sẽ không đánh giá được
+
+==================================================
+2.2. PAGE / HANDLER / API / SIDE EFFECT (WEB)
+--------------------------------------------------
+Chỉ page có trong source. Chi tiết đầy đủ: Tuan 3.md mục 31.
+
+PORTALWEB (CarRentalPortalAuth)
+
+GET/POST /Account/Login     POST /api/auth/login; POST /api/auth/google (handler Google)
+  Pre: chưa login (đã login → RoleRoutes.HomeFor)
+  Post: cookie JWT. DB: không đổi (trừ Google user mới / link GoogleSubject).
+  Redirect: Admin /Admin | Dispatcher /Dispatcher | Customer /
+  401: "Email hoặc mật khẩu không đúng."
+  403 Customer chưa verify: "Vui lòng xác minh email trước khi đăng nhập."
+  Google chỉ Customer. AdminWeb/DriverApp không có nút này.
+
+GET/POST /Account/Register  POST /api/auth/register
+  Pre: Gmail, SĐT 0 + 9 số, StrongPassword, ConfirmPassword
+  Post: INSERT Users+Customers Role=Customer, IsEmailVerified=false; gửi OTP; KHÔNG cookie
+  Redirect /Account/VerifyEmail?email=
+
+GET/POST /Account/VerifyEmail  POST /api/auth/verify-email (+ Resend)
+  Post: IsEmailVerified=true; cookie JWT → /
+
+GET/POST /Account/ForgotPassword  POST /api/auth/forgot-password
+  Response chung, không tiết lộ email tồn tại → ResetPassword
+
+GET/POST /Account/ResetPassword  POST /api/auth/reset-password
+  UPDATE PasswordHash. JWT cũ vẫn hạn đến ExpireHours (không blacklist).
+
+GET /Account/Logout          xóa cookie → Login. Không API.
+
+GET /                      GET /api/vehicle-types
+  Admin/Dispatcher logged-in → redirect khu họ. Nội dung tĩnh PortalContent.
+
+GET /Customer               redirect /#bang-gia
+
+GET /Customer/Bookings      GET /api/bookings   Role Customer
+  Chỉ đọc. Link Details + Review (nếu Completed WithDriver, chưa review).
+
+GET Create + POST Quote     GET vehicle-types; GET /api/bookings/quote
+  Fingerprint type|mode|start|end|distance. Không INSERT.
+
+POST Create (đặt)          POST /api/bookings
+  Pre: QuoteConfirmed + fingerprint khớp, không thì quote lại
+  Post: Booking Pending + snapshot + history "Khach tao don dat xe"
+  400: "Dữ liệu đặt xe không hợp lệ."
+  Redirect Details.
+
+GET Details + POST Deposit GET booking, payments, inspections, contract; POST /api/payments Deposit
+  Pre UI: QuotedDepositAmount != null, chưa Deposit Pending/Paid
+  Post: Payment Pending Amount=QuotedDepositAmount; hold xe nếu có VehicleId
+  SimulateSuccess/Failure: Paid/Failed (mô phỏng)
+  IssueContract / SignContract: Issued / Signed mô phỏng
+
+GET /Admin                  GET /api/admin/dashboard
+GET Vehicles + POST Delete GET/DELETE /api/vehicles
+  Xóa fail nếu xe occupied (hold / open assignment) hoặc đã có lịch sử sử dụng
+GET/POST Vehicles/Create   POST /api/vehicles Status=Available
+  Form: Year, biển số, giấy tờ (RegistrationNumber + hạn)
+GET/POST Vehicles/Edit     PUT vehicle (Status, CurrentKm, Year 1990–2100, giấy tờ)
+GET Pricing                 GET /api/admin/vehicle-types
+GET/POST Pricing/Edit       PUT 8 giá; không Booking
+GET Payments                GET /api/admin/payments (lọc GET query; không POST)
+GET Contracts               GET /api/admin/contracts
+GET/POST Admin/Customers    GET/POST/PUT/DELETE /api/admin/customers; PUT lock
+GET Bookings + POST Cancel  PATCH status Cancelled note "Admin huy"
+  Nút chỉ Pending/Confirmed; API whitelist CanPatch; void contract nếu có
+
+GET /Dispatcher             GET bookings Pending/Confirmed/Assigned/InProgress
+POST Confirm                POST .../confirm  Pending→Confirmed
+GET/POST Assign/{id}        chỉ load Confirmed; POST assign
+  Conflict: buffer 2h + alternatives (không ghi gán)
+  WithDriver: TripAssignment + Driver Busy + Vehicle Rented
+  SelfDrive: AssignedVehicleId, không TripAssignment
+POST Handover               POST .../handover KHÔNG body → Inspection Handover; InProgress
+POST Complete               POST .../complete KHÔNG body → Return + FinalAmount + Completed
+
+DISPATCHERWEB (CarRentalDispatcherAuth)
+
+Login: chỉ Role Dispatcher. Index Confirm trên chỗ. Assign/Handover/Complete page riêng.
+Assign conflict: alternatives xe/tài (buffer 2h).
+Handover pre UI: SelfDrive Assigned. Complete: SelfDrive InProgress.
+Form optional: odo≥0, fuel 0–100, exterior/technical ≤100, notes≤500.
+/Inspections, /Incidents đọc GET dispatch.
+
+CUSTOMERWEB (CarRentalAuth)
+
+Không Login page. Register ghi cookie local. Logout → Index.
+Bookings/Create quote+POST như Portal. Details: Deposit + simulate pay + hợp đồng như Portal.
+Review: UI chặn SelfDrive; API cần Completed + TripAssignment; 1–3 sao bắt buộc comment ≤500.
+
+ADMINWEB (CarRentalAdminAuth)
+
+Không Login. Không Page gọi SetAuth. Mọi page redirect Portal nếu chưa cookie.
+Nếu cookie tồn tại: mirror Portal Admin + Inspections + Incidents (Create xe CÓ Color/Km).
+Dashboard gọi GET /api/admin/dashboard.
+
+==================================================
+H) BACKEND / API
+--------------------------------------------------
+
+AUTH:
+- Đăng nhập JWT (POST /api/auth/login)
+- Đăng ký khách hàng (POST /api/auth/register) — email, password, fullName, phone?, address?, idNumber?, dateOfBirth?
+- Lấy hồ sơ (GET /api/auth/me) — CustomerApp + DriverApp Account; web không gọi
+- Đổi mật khẩu (POST /api/auth/change-password)
+- Logout web = xóa cookie; không POST /api/auth/logout
+
+VEHICLES / TYPES / MAINTENANCE:
+- GET /api/vehicle-types (public) — không trả DriverFeePerDay / deposit / included km
+- GET /api/vehicle-types/recommended (public) — Backend gọi Python FastAPI; 503 nếu :8001 down
+- GET /api/vehicles, GET /api/vehicles/{id} (public)
+- POST/PUT/DELETE /api/vehicles (Admin)
+  Year 1990–2100; LicensePlate unique NOCASE; RegistrationNumber unique ở service
+  Không xóa/inactive xe đang hold hoặc open assignment
+- GET/PUT/POST/DELETE /api/admin/vehicle-types (Admin)
+- POST /api/vehicles/{id}/maintenance; GET history; GET /api/vehicles/maintenance-alerts
+  Alert 5000 km / 180 ngày; auto-block lịch mới; không tự đổi Vehicle.Status
+
+BOOKINGS:
+- GET /api/bookings/quote (Customer) — query vehicleTypeId, startDate, endDate, estimatedDistance?, rentalMode?
+- Tạo đơn (Customer) — PricingService; snapshot; query fromRecommendation → SourceRecommended
+- Xem danh sách / chi tiết
+  Customer: đơn mình; Driver GET by id: chỉ assignment của JWT; Admin/Dispatcher: tất cả
+  GET /api/bookings list: Driver 403
+- PATCH /api/bookings/{id}/status (Admin, Dispatcher) — chỉ Pending/Confirmed → Cancelled
+- Đánh giá (Customer) — chỉ Completed + có TripAssignment; 1 review/booking
+
+HỢP ĐỒNG:
+- POST/GET /api/bookings/{id}/contract
+- POST /api/contracts/{id}/simulate-sign (Customer)
+- GET /api/admin/contracts
+- Không chữ ký số thật
+
+PAYMENTS (Customer):
+- POST /api/payments — chỉ Deposit; Amount = QuotedDepositAmount; Status Pending; hold xe (BEGIN IMMEDIATE)
+  Booking Cancelled → 400 "Không thể tạo tiền cọc cho đơn đã hủy."
+- POST /api/payments/{id}/simulate-success → Paid (mô phỏng)
+- POST /api/payments/{id}/simulate-failure → Failed + nhả hold
+- GET /api/bookings/{id}/payments — chỉ chủ đơn
+- GET /api/admin/payments (Admin, read-only)
+- Balance / Refund → 400. Không gateway MoMo/VNPay thật
+
+DISPATCH (Dispatcher):
+- Xác nhận đơn Pending
+- Phân công: overlap + T_buffer 2h; alternatives khi conflict; lock IMMEDIATE
+  WithDriver bắt buộc DriverId + VehicleId → TripAssignment;
+  SelfDrive cấm DriverId, ghi AssignedVehicleId
+- Xe/tài đến hạn bảo trì: không nhận lịch mới
+- Handover SelfDrive / Complete SelfDrive
+- GET /api/dispatch/incidents, GET /api/dispatch/inspections
+
+DRIVERS:
+- GET /api/drivers (Admin, Dispatcher — active)
+- GET /api/drivers/me, GET /api/drivers/me/trips (Driver — chỉ chuyến mình)
+- PATCH /api/drivers/me/status
+- accept / start / complete
+  start: chỉ khi assignment Status = Accepted (phải Accept trước)
+  complete: odometerKm, fuelLevel, exteriorCondition, technicalCondition, notes optional
+- GET /api/drivers/me/incidents; POST /api/drivers/trips/{id}/incidents
+
+ADMIN KHÁC:
+- GET /api/admin/dashboard (Admin, read-only)
+- GET /api/admin/incidents, GET /api/admin/inspections
+- CRUD /api/admin/drivers; Customer CRUD GET/POST/PUT/DELETE /api/admin/customers; PUT lock
+
+SIGNALR:
+- Hub /hubs/realtime (JWT). Không phải polling.
+
+PYTHON:
+- GET http://127.0.0.1:8001/health
+- POST http://127.0.0.1:8001/recommend (chỉ Backend gọi; không DB)
+
+Không có: Refund/Balance write, inspection CRUD công khai, fee CRUD, OTP, email, Redis, FCM.
+
+I) DATABASE
+
+Nguồn: Backend/Entities, Backend/Data/CarRentalDbContext.cs, Database/02_CreateTables.sql, DbSeeder.cs
+
+Có:
+- Roles, Users (IsLocked)
+- Customers, Drivers (IsActive)
+- VehicleTypes (PricePerDay/Km + DriverFeePerDay, SelfDrive*, deposit*)
+- Vehicles (CurrentKm; Return có odometer mới cập nhật, không giảm).
+  Cột giấy tờ: RegistrationNumber, RegistrationExpiryDate, InspectionExpiryDate, InsuranceExpiryDate.
+  Year required 1990–2100. LicensePlate unique COLLATE NOCASE.
+- Bookings (RentalMode, AssignedVehicleId, snapshot quoted*, FinalAmount, SourceRecommended)
+- TripAssignments (1-1 Booking; chỉ WithDriver)
+- BookingStatusHistory
+- Payments (PaymentType nullable: Deposit/Balance/Refund; Status Pending/Paid/Failed)
+- Reviews (cần DriverId từ TripAssignment)
+- VehicleInspections (Handover | Return; ExteriorCondition, TechnicalCondition)
+- BookingFees (LateFee, ExtraKm, Fuel, Damage, Other)
+- MaintenanceRecords
+- Contracts (Issued / Signed / Voided)
+- IncidentReports (Open; type Accident/VehicleIssue/CustomerIssue/Other)
+
+Không có trong source:
+- RefreshToken
+- DriverVehicle
+- Bảng đơn giá LateFee/Fuel/Damage trên VehicleType
+- Redis / bảng impression gợi ý
+
+Seed (chỉ khi chưa có Roles): 2 booking mẫu, 1 TripAssignment đơn #2, 1 Payment Paid đơn #2
+(PaymentType null; booking seed không có snapshot giá). FillVehicleTypePricingDefaults chạy mỗi startup
+cho cột VehicleType còn NULL — không sửa Bookings.
+
+SQLite: EnsureCreated + helper ALTER/CREATE idempotent (gồm giấy tờ xe, unique LicensePlate).
+**Không reset carrental.db** nếu muốn giữ dữ liệu live/development hiện tại.
+DemoRich KHÔNG chạy trên carrental.db. Dùng profile Demo → carrental.demo.db.
+Chỉ xóa file DB khi development được phép và chấp nhận mất data.
+
+Core seed (DbSeeder, khi chưa có Roles): 2 booking mẫu, 1 TripAssignment đơn #2, 1 Payment Paid đơn #2.
+Tests dùng Core seed (isolated SQLite), không dùng DemoRich trừ PhaseDemoRichDataTests.
+
+==================================================
+Hết mục 2.1
+==================================================
+
+==================================================
+3. YÊU CẦU MÔI TRƯỜNG
+--------------------------------------------------
+
+A) .NET SDK
+   - Tất cả file .csproj: TargetFramework = net10.0
+   - Cần .NET SDK 10.x
+
+B) Flutter / Dart
+   - CustomerApp/pubspec.yaml và DriverApp/pubspec.yaml: sdk: ^3.11.1
+   - Project KHÔNG pin version Flutter trong repo.
+     Cần Flutter tương thích Dart >= 3.11.1
+
+C) Android (nếu chạy app trên emulator/điện thoại)
+   - JDK: CustomerApp và DriverApp android/app/build.gradle.kts dùng JavaVersion.VERSION_17
+   - Android SDK: CustomerApp/android/local.properties có sdk.dir (đường dẫn local từng máy)
+   - Android Studio: Chưa xác định được từ source code
+   - minSdk / targetSdk số cụ thể: Chưa xác định được từ source code
+     (app dùng flutter.minSdkVersion / flutter.targetSdkVersion)
+
+D) Database
+   - Mặc định: SQLite (Backend/appsettings.json: DatabaseProvider = Sqlite)
+   - Tùy chọn: SQL Server (Program.cs hỗ trợ DatabaseProvider = SqlServer)
+   - SSMS/sqlcmd chỉ cần nếu dùng SQL Server + script trong Database/
+   - Không reset carrental.db nếu muốn giữ dữ liệu hiện tại
+   - Startup tự EnsureCreated + helper bảng/cột (Contracts, IncidentReports, …)
+
+E) Python (bắt buộc khi demo gợi ý)
+   - Cần Python 3 (repo không pin version Python trong file; Recommender/requirements.txt:
+     fastapi, uvicorn, pydantic, httpx, pytest)
+   - Thư mục Recommender/; phụ thuộc: Recommender/requirements.txt
+     (fastapi, uvicorn, pydantic, httpx, pytest)
+   - Port khóa theo config: 8001 (Backend Recommender:BaseUrl = http://127.0.0.1:8001)
+   - Lệnh:
+       cd Recommender
+       py -3 -m pip install -r requirements.txt
+       py -3 -m uvicorn app:app --host 127.0.0.1 --port 8001
+   - Kiểm tra: http://127.0.0.1:8001/health
+
+F) IDE
+   - Visual Studio: Chưa xác định được version bắt buộc từ source code
+     (cần VS hỗ trợ .NET 10 nếu dùng Visual Studio)
+   - VS Code / Cursor: dùng được
+   - Không bắt buộc Visual Studio nếu dùng `dotnet run`
+
+G) Không cần
+   - Node.js / npm
+   - Docker
+   - Redis (lock dùng SQLite BEGIN IMMEDIATE)
+   - Firebase/FCM
+
+==================================================
+4. CUSTOMER APP
+--------------------------------------------------
+
+Đường dẫn: CustomerApp/
+Framework: Flutter (package name: customer_app)
+Entry point: CustomerApp/lib/main.dart
+ApplicationId Android: com.carrental.customer_app
+
+Dependencies (CustomerApp/pubspec.yaml):
+- flutter (sdk)
+- cupertino_icons: ^1.0.8
+- http: ^1.2.2
+- shared_preferences: ^2.3.3
+- intl: ^0.20.2
+- Dart SDK: ^3.11.1
+
+Phải chạy Backend trước (port 5199).
+
+Lệnh cài đặt:
+
+  cd CustomerApp
+  flutter pub get
+
+Lệnh chạy:
+
+  flutter devices
+  flutter run
+
+API URL:
+- File: CustomerApp/lib/config/api_config.dart
+- ApiConfig.baseUrl (runtime):
+  + kIsWeb → http://localhost:5199
+  + Android → http://10.0.2.2:5199
+  + khác (Windows / iOS / desktop) → http://localhost:5199
+- Chrome/Windows: KHÔNG cần sửa file nếu dùng logic trên
+- Điện thoại Android thật: vẫn ra 10.0.2.2 — PHẢI đổi thành http://<IP-LAN>:5199
+  IP LAN cụ thể: Chưa xác định được từ source code
+
+Port: không có port riêng (app gọi Backend 5199)
+
+Database: không kết nối DB. Chỉ gọi API.
+
+Lưu ý Android:
+- CustomerApp/android/app/build.gradle.kts lọc ABI x86_64
+- Phù hợp emulator x86_64
+- Điện thoại ARM có thể không chạy với cấu hình này
+
+Script Windows (không bắt buộc, chỉ có ở CustomerApp):
+- CustomerApp/run_android.ps1
+- CustomerApp/setup_build_junction.ps1
+- Dùng khi build bị Windows file-lock / antivirus
+- Script chuyển thư mục build sang C:\Temp\carrental-customer-build
+
+Tài khoản demo (hiện trên màn hình Login):
+- Khách hàng: customer1@gmail.com
+- Tài xế:     driver1@carrental.vn
+- Mật khẩu:   Password123!
+
+CustomerApp đăng nhập được Customer và Driver.
+Admin / Dispatcher bị từ chối trên app (RoleRouter).
+
+==================================================
+5. DRIVER APP
+--------------------------------------------------
+
+Đường dẫn: DriverApp/
+Framework: Flutter (package name: driver_app)
+Entry point: DriverApp/lib/main.dart
+ApplicationId Android: com.carrental.driver_app
+
+Dependencies (DriverApp/pubspec.yaml):
+- flutter (sdk)
+- cupertino_icons: ^1.0.8
+- http: ^1.2.2
+- shared_preferences: ^2.3.3
+- intl: ^0.20.2
+- Dart SDK: ^3.11.1
+
+Phải chạy Backend trước (port 5199).
+
+Lệnh cài đặt:
+
+  cd DriverApp
+  flutter pub get
+
+Lệnh chạy:
+
+  flutter devices
+  flutter run
+
+API URL: DriverApp/lib/config/api_config.dart — cùng quy tắc CustomerApp
+(Android emulator 10.0.2.2; web/desktop/iOS localhost; Android thật cần IP LAN).
+
+Port: không có port riêng
+
+Database: không kết nối DB. Chỉ gọi API.
+
+DriverApp/android/app/build.gradle.kts KHÔNG lọc ABI x86_64
+(khác CustomerApp).
+
+Không có run_android.ps1 trong DriverApp.
+
+Tài khoản demo (đã điền sẵn trên Login):
+- Email:    driver1@carrental.vn
+- Mật khẩu: Password123!
+- App chỉ chấp nhận role Driver.
+
+==================================================
+6. ADMIN / WEB
+--------------------------------------------------
+
+Đường dẫn: AdminWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: AdminWeb/Program.cs
+Project: AdminWeb/AdminWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd AdminWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (AdminWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5258
+- Profile https: https://localhost:7008 và http://localhost:5258
+
+API URL:
+- File: AdminWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+- AdminWeb/appsettings.Development.json không ghi đè ApiBaseUrl
+
+Database: không kết nối DB. Gọi Backend qua CarRentalApiClient.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: KHÔNG còn Pages/Account/Login. Chưa login → http://localhost:5180/Account/Login
+Chức năng còn lại: xem mục 2.1.E (dashboard, xe, đơn, hủy đơn, logout).
+
+==================================================
+7. DISPATCHER / WEB
+--------------------------------------------------
+
+Đường dẫn: DispatcherWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: DispatcherWeb/Program.cs
+Project: DispatcherWeb/DispatcherWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd DispatcherWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (DispatcherWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5206
+- Profile https: https://localhost:7278 và http://localhost:5206
+
+API URL:
+- File: DispatcherWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: CÓ Pages/Account/Login (http://localhost:5206/Account/Login).
+Chỉ tài khoản role Dispatcher. Cookie CarRentalDispatcherAuth.
+Chức năng: xem mục 2.1.F (xác nhận, phân công, giao/trả xe SelfDrive).
+
+==================================================
+8. CUSTOMER / WEB
+--------------------------------------------------
+
+Đường dẫn: CustomerWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: CustomerWeb/Program.cs
+Project: CustomerWeb/CustomerWeb.csproj
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd CustomerWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (CustomerWeb/Properties/launchSettings.json):
+- Profile http (profile đầu tiên): http://localhost:5162
+- Profile https: https://localhost:7280 và http://localhost:5162
+
+API URL:
+- File: CustomerWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Đăng nhập: KHÔNG còn Pages/Account/Login. Link/redirect → http://localhost:5180/Account/Login
+Đăng ký: Pages/Account/Register → VerifyEmail (OTP) rồi cookie local. Forgot/Reset password local.
+Google Customer login: trên Portal, không nhúng vào CustomerWeb login (không có trang Login).
+Chức năng: xem mục 2.1.G (loại xe, đặt xe có hình thức, xem đơn, đánh giá Completed).
+
+==================================================
+9. PORTAL / WEB
+--------------------------------------------------
+
+Đường dẫn: PortalWeb/
+Framework: ASP.NET Core Razor Pages, TargetFramework net10.0
+Entry point: PortalWeb/Program.cs
+Project: PortalWeb/PortalWeb.csproj
+
+Đây là website tổng hợp (Customer + Admin + Dispatcher) và CỔNG ĐĂNG NHẬP WEB CHÍNH.
+URL login: http://localhost:5180/Account/Login
+Khuyên dùng nếu chỉ muốn chạy một web (Admin + Customer + Dispatcher trên Portal).
+DispatcherWeb vẫn chạy độc lập được vì có login riêng.
+
+Dependencies:
+- Không có PackageReference trong .csproj
+- Chỉ dùng Microsoft.NET.Sdk.Web
+
+Lệnh cài đặt:
+
+  cd PortalWeb
+  dotnet restore
+
+Lệnh chạy:
+
+  dotnet run
+
+Port / URL (PortalWeb/Properties/launchSettings.json):
+- Chỉ có profile "PortalWeb": http://localhost:5180
+- Không có profile https trong launchSettings.json
+
+API URL:
+- File: PortalWeb/appsettings.json
+- Key: ApiBaseUrl
+- Giá trị: http://localhost:5199
+- Đọc tại PortalWeb/Program.cs (HttpClient.BaseAddress)
+
+Database: không kết nối DB.
+
+Cấu hình cần thay đổi:
+- Thường không cần sửa nếu Backend chạy http://localhost:5199
+
+Chức năng chi tiết: mục 2.1.D
+- Auth: đăng nhập, đăng ký, đăng xuất, role routing
+- Customer: trang chủ, đặt xe (quote + RentalMode), xem đơn + cọc/fees/inspections, Review WithDriver
+- Admin: dashboard, CRUD xe + giấy tờ, giá loại xe, Customer CRUD, xem thanh toán, xem/hủy đơn
+- Dispatcher: xác nhận, phân công theo mode, giao xe / hoàn thành SelfDrive
+
+Không bắt buộc chạy đồng thời AdminWeb / CustomerWeb / DispatcherWeb khi đã chạy PortalWeb.
+
+==================================================
+10. BACKEND / API
+--------------------------------------------------
+
+Đường dẫn: Backend/
+Framework: ASP.NET Core Web API
+TargetFramework: net10.0
+Project chính: Backend/Backend.csproj
+Entry point: Backend/Program.cs
+
+NuGet (Backend/Backend.csproj):
+- BCrypt.Net-Next 4.2.0
+- Microsoft.AspNetCore.Authentication.JwtBearer 10.0.11
+- Microsoft.AspNetCore.OpenApi 10.0.3
+- Microsoft.EntityFrameworkCore.Sqlite 10.0.11
+- Microsoft.EntityFrameworkCore.SqlServer 10.0.11
+
+Lệnh cài đặt:
+
+  cd Backend
+  dotnet restore
+
+Lệnh chạy (live/dev — carrental.db, SeedDemoRich=false):
+
+  dotnet run
+
+Hoặc profile mặc định "Backend" / "http": http://localhost:5199
+
+Lệnh chạy DemoRich (DB riêng, KHÔNG dùng carrental.db):
+
+  dotnet run --launch-profile Demo
+
+  - Environment: Demo (Backend/appsettings.Demo.json)
+  - Data Source=carrental.demo.db
+  - SeedDemoRich=true
+  - Program.cs chỉ seed DemoRich khi connection string chứa "carrental.demo.db"
+  - Port vẫn http://localhost:5199
+  - Core DbSeeder vẫn chạy trước; DemoRich append (Bus 29 chỗ, dataset phong phú)
+
+Port / URL:
+- Backend/appsettings.json: "Urls": "http://localhost:5199"
+- Backend/Properties/launchSettings.json:
+  + Profile "Backend" (đầu tiên): http://localhost:5199
+    launchBrowser true, launchUrl api/vehicle-types, Environment Development
+  + Profile "Demo": http://localhost:5199, Environment Demo, launchBrowser false
+  + Profile "http": http://localhost:5199, Environment Development
+  + Profile "https": https://localhost:7068 và http://localhost:5199
+
+API URL mặc định:
+http://localhost:5199
+
+Kiểm tra nhanh:
+http://localhost:5199/api/vehicle-types
+
+OpenAPI (khi ASPNETCORE_ENVIRONMENT=Development):
+http://localhost:5199/openapi/v1.json
+
+Không có Swagger UI trong source.
+Chỉ có app.MapOpenApi() trong Backend/Program.cs.
+
+Khi chạy, Backend sẽ:
+1. Đọc DatabaseProvider (mặc định Sqlite) và ConnectionStrings
+2. db.Database.EnsureCreated()
+3. EnsureSqlite* (RentalMode, snapshot giá, VehicleType pricing, PaymentType,
+   VehicleInspections, FinalAmount, BookingFees, IsLocked, Drivers.IsActive,
+   MaintenanceRecords, SourceRecommended, Contracts, IncidentReports,
+   cột giấy tờ xe, unique LicensePlate) — idempotent
+4. DbSeeder.Seed(db) nếu chưa có Roles (Core seed — dùng cho tests)
+5. Nếu SeedDemoRich=true VÀ connection chứa carrental.demo.db → DemoRichSeeder.Seed
+6. FillVehicleTypePricingDefaults() — cột VehicleType NULL
+7. ReconcileOpenAssignmentResourceStatus() — Driver/Vehicle theo TripAssignment đang mở
+
+Không cần EF Core Migration.
+Không cần tạo database thủ công nếu dùng SQLite.
+
+Tài khoản seed (Backend/Data/DbSeeder.cs).
+Mật khẩu Password123! (cùng bcrypt hash với Database/03_SeedData.sql):
+
+- admin@carrental.vn           (Admin)
+- dispatcher@carrental.vn      (Dispatcher)
+- customer1@gmail.com          (Customer)
+- customer2@gmail.com          (Customer)
+- driver1@carrental.vn         (Driver)
+- driver2@carrental.vn         (Driver)
+- driver3@carrental.vn         (Driver)
+
+Endpoint (từ Controllers):
+- POST /api/auth/login
+- POST /api/auth/register
+- POST /api/auth/verify-email
+- POST /api/auth/resend-verification-otp
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password
+- POST /api/auth/google
+- GET  /api/auth/login-options
+- GET  /api/auth/me
+- GET  /api/vehicle-types
+- GET  /api/vehicles
+- GET  /api/vehicles/{id}
+- POST /api/vehicles
+- PUT  /api/vehicles/{id}
+- DELETE /api/vehicles/{id}
+- GET  /api/bookings
+- GET  /api/bookings/quote
+- GET  /api/bookings/{id}
+- POST /api/bookings
+- POST /api/bookings/{id}/reviews
+- PATCH /api/bookings/{id}/status
+- POST /api/payments
+- GET  /api/bookings/{bookingId}/payments
+- POST /api/dispatch/bookings/{id}/confirm
+- POST /api/dispatch/bookings/{id}/assign
+- POST /api/dispatch/bookings/{id}/handover
+- POST /api/dispatch/bookings/{id}/complete
+- GET  /api/drivers
+- GET  /api/drivers/me
+- GET  /api/drivers/me/trips
+- PATCH /api/drivers/me/status
+- POST /api/drivers/trips/{assignmentId}/accept
+- POST /api/drivers/trips/{assignmentId}/start
+- POST /api/drivers/trips/{assignmentId}/complete
+
+Tests:
+  dotnet test Backend.Tests/Backend.Tests.csproj -c Release
+  Kết quả: 385 passed / 0 failed / 0 skipped.
+
+Nếu Backend đang `dotnet run` (lock Backend.dll), test/build Release có thể fail MSB3027.
+Không kill process đang giữ port 5199 trừ khi được giao.
+
+==================================================
+11. DATABASE
+--------------------------------------------------
+
+Mặc định khi chạy Backend: SQLite.
+
+File cấu hình:
+- Backend/appsettings.json          (live/dev: SeedDemoRich=false, carrental.db)
+- Backend/appsettings.Development.json
+- Backend/appsettings.Demo.json     (Demo: SeedDemoRich=true, carrental.demo.db)
+
+Giá trị live/dev (appsettings.json):
+- DatabaseProvider: Sqlite
+- SeedDemoRich: false
+- ConnectionStrings:DefaultConnection: Data Source=carrental.db
+- Email:Enabled = false (mặc định, không gửi Gmail)
+- Google:ClientId / ClientSecret = rỗng (nút Google ẩn)
+
+Email OTP / Google OAuth (KHÔNG commit secret):
+- Placeholder: Backend/appsettings.example.json
+- Repo mặc định: Email:Enabled=false, SmtpPassword rỗng → NullEmailSender
+- User Secrets (Development), cd Backend:
+
+    dotnet user-secrets set "Email:Enabled" "true"
+    dotnet user-secrets set "Email:SmtpHost" "smtp.gmail.com"
+    dotnet user-secrets set "Email:SmtpPort" "587"
+    dotnet user-secrets set "Email:SmtpUsername" "YOUR_GMAIL_ADDRESS"
+    dotnet user-secrets set "Email:SmtpPassword" "YOUR_GMAIL_APP_PASSWORD"
+    dotnet user-secrets set "Email:FromEmail" "YOUR_GMAIL_ADDRESS"
+    dotnet user-secrets set "Email:FromName" "Car Rental"
+
+- Environment (ví dụ PowerShell):
+    $env:Email__Enabled = "true"
+    $env:Email__SmtpUsername = "YOUR_GMAIL_ADDRESS"
+    $env:Email__SmtpPassword = "YOUR_GMAIL_APP_PASSWORD"
+    $env:Email__FromEmail = "YOUR_GMAIL_ADDRESS"
+- YOUR_GMAIL_APP_PASSWORD = Gmail App Password (2FA), KHÔNG phải mật khẩu Gmail thường.
+- Không commit App Password. Restart Backend. Log: "Email delivery: SMTP."
+- Tests không gọi Gmail/Google thật (CapturingEmailSender + FakeGoogleIdTokenValidator).
+- Schema SQLite thêm: Users.IsEmailVerified (DEFAULT 1), EmailVerifiedAt, GoogleSubject; bảng EmailOtps.
+  Không reset carrental.db. Seed/demo vẫn login được.
+
+Hai file SQLite:
+
+1) carrental.db
+   - Live / Development hiện tại
+   - Tạo tự động khi `dotnet run` (profile Backend/http)
+   - Core seed (DbSeeder) lần đầu khi chưa có Roles
+   - KHÔNG chạy DemoRich
+   - Không reset, không xóa trừ khi được giao
+   - Không commit
+
+2) carrental.demo.db
+   - Chỉ profile Demo (`dotnet run --launch-profile Demo`)
+   - SeedDemoRich=true
+   - DemoRich append sau Core (Bus 29 chỗ, booking/review/contract/maintenance/incident/inspection)
+   - Không phải file live
+   - Có trong .gitignore (`**/carrental.demo.db`)
+
+Vị trí: thư mục làm việc khi chạy `dotnet run` (thường là Backend/)
+Không có EF Core Migration trong repository.
+Không cần chạy script SQL nếu dùng mặc định SQLite.
+Dữ liệu mẫu Core lần đầu: Backend/Data/DbSeeder.cs
+Dữ liệu DemoRich: Backend/Data/DemoRichSeeder.cs (chỉ carrental.demo.db)
+
+--------------------------------------------------
+Tùy chọn SQL Server (KHÔNG bắt buộc)
+--------------------------------------------------
+
+Thư mục Database/:
+1. Database/01_CreateDatabase.sql  → tạo database CarRentalDB (COLLATE Vietnamese_CI_AS)
+2. Database/02_CreateTables.sql    → tạo bảng, FK, index (gồm VehicleInspections, BookingFees, snapshot, FinalAmount)
+3. Database/03_SeedData.sql        → dữ liệu mẫu
+
+Nếu muốn dùng SQL Server:
+1. Cài SQL Server + SSMS hoặc sqlcmd
+2. Chạy 3 script theo thứ tự 01 → 02 → 03
+3. Sửa Backend/appsettings.json:
+   - DatabaseProvider: "SqlServer"
+   - DefaultConnection: connection string SQL Server
+4. Connection string SQL Server mẫu: Chưa xác định được từ source code
+   (appsettings đang để SQLite)
+
+Cách nhanh nhất cho thành viên mới: giữ Sqlite, chỉ `dotnet run` ở Backend.
+
+==================================================
+12. API CONFIGURATION
+--------------------------------------------------
+
+CustomerApp:
+- CustomerApp/lib/config/api_config.dart
+- Android emulator: http://10.0.2.2:5199
+- Web / Windows / iOS: http://localhost:5199
+
+DriverApp:
+- DriverApp/lib/config/api_config.dart
+- Cùng quy tắc CustomerApp
+
+PortalWeb:
+- PortalWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+AdminWeb:
+- AdminWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+CustomerWeb:
+- CustomerWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+DispatcherWeb:
+- DispatcherWeb/appsettings.json → ApiBaseUrl = http://localhost:5199
+
+Backend:
+- HTTP: http://localhost:5199
+- HTTPS (profile https): https://localhost:7068
+- OpenAPI: http://localhost:5199/openapi/v1.json (Development)
+- SignalR: http://localhost:5199/hubs/realtime
+- Recommender: http://127.0.0.1:8001 (Backend/appsettings.json Recommender:BaseUrl)
+
+Địa chỉ tìm thấy trong source:
+- localhost
+- 10.0.2.2
+- 127.0.0.1:8001 (Python Recommender)
+- Port: 5199, 7068, 5180, 5258, 7008, 5162, 7280, 5206, 7278, 8001
+- IP LAN cố định: không có trong source
+
+Khi nào thành viên mới BẮT BUỘC sửa:
+1. Flutter trên điện thoại Android thật: đổi 10.0.2.2 → IP LAN máy Backend
+2. Backend không chạy port 5199: sửa Urls/launchSettings và mọi ApiBaseUrl/baseUrl
+3. Recommender không chạy port 8001: sửa Recommender:BaseUrl
+4. Muốn SQL Server: sửa DatabaseProvider + DefaultConnection
+
+Chrome/Windows/iOS Simulator: source đã chọn localhost — không bắt buộc sửa.
+
+==================================================
+13. THỨ TỰ CHẠY TOÀN BỘ HỆ THỐNG
+--------------------------------------------------
+
+1. Database
+   - SQLite live/dev: KHÔNG cần bước này. Backend tự tạo carrental.db (Core seed).
+   - SQLite Demo: `dotnet run --launch-profile Demo` → carrental.demo.db + DemoRich.
+     Không dùng carrental.db live cho DemoRich.
+   - SQL Server: chạy Database/01 → 02 → 03, rồi sửa appsettings.
+
+2. Backend / API
+   cd Backend
+   dotnet restore
+   dotnet run
+   (hoặc: dotnet run --launch-profile Demo)
+   Kiểm tra: http://localhost:5199/api/vehicle-types
+
+2b. Python Recommender (khi demo gợi ý)
+   cd Recommender
+   py -3 -m pip install -r requirements.txt
+   py -3 -m uvicorn app:app --host 127.0.0.1 --port 8001
+   Kiểm tra: http://127.0.0.1:8001/health
+   Không đổi port trừ khi sửa Backend/appsettings.json Recommender:BaseUrl.
+
+3. Web (chọn 1 hoặc nhiều, mỗi cái một terminal)
+   - PortalWeb:     cd PortalWeb     && dotnet run  → http://localhost:5180
+   - AdminWeb:      cd AdminWeb      && dotnet run  → http://localhost:5258
+   - CustomerWeb:   cd CustomerWeb   && dotnet run  → http://localhost:5162
+   - DispatcherWeb: cd DispatcherWeb && dotnet run  → http://localhost:5206
+
+4. Customer App
+   cd CustomerApp
+   flutter pub get
+   flutter run
+   (cần emulator/device)
+
+5. Driver App
+   cd DriverApp
+   flutter pub get
+   flutter run
+
+Không bắt buộc chạy cả 4 website.
+Không bắt buộc chạy cả 2 Flutter app.
+
+==================================================
+14. QUICK START
+--------------------------------------------------
+
+Giả sử đang ở thư mục gốc CarRentalSystem.
+
+---- BACKEND (bắt buộc, chạy trước) ----
+
+cd Backend
+dotnet restore
+dotnet run
+
+(DemoRich, DB riêng:)
+dotnet run --launch-profile Demo
+
+Mở:
+http://localhost:5199/api/vehicle-types
+http://localhost:5199/openapi/v1.json
+
+---- PYTHON RECOMMENDER (khi demo gợi ý) ----
+
+Terminal mới:
+
+cd Recommender
+py -3 -m pip install -r requirements.txt
+py -3 -m uvicorn app:app --host 127.0.0.1 --port 8001
+
+Mở:
+http://127.0.0.1:8001/health
+
+---- PORTAL WEB (khuyên dùng) ----
+
+Terminal mới:
+
+cd PortalWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5180
+
+---- ADMIN WEB (tùy chọn) ----
+
+cd AdminWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5258
+
+---- CUSTOMER WEB (tùy chọn) ----
+
+cd CustomerWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5162
+
+---- DISPATCHER WEB (tùy chọn; có login riêng) ----
+
+cd DispatcherWeb
+dotnet restore
+dotnet run
+
+Mở:
+http://localhost:5206
+
+---- CUSTOMER APP ----
+
+Terminal mới. Bật Android Emulator nếu muốn chạy Android.
+
+cd CustomerApp
+flutter pub get
+flutter devices
+flutter run
+
+---- DRIVER APP ----
+
+cd DriverApp
+flutter pub get
+flutter devices
+flutter run
+
+Tài khoản thử nhanh:
+Admin:      admin@carrental.vn / Password123!
+Dispatcher: dispatcher@carrental.vn / Password123!
+Customer:   customer1@gmail.com / Password123!
+Driver:     driver1@carrental.vn / Password123!
+
+Luồng demo ngắn (đến 3.6.3):
+1. Customer đặt WithDriver hoặc SelfDrive (app có quote + cọc Pending).
+2. Dispatcher xác nhận + gán (SelfDrive không chọn tài xế).
+3. WithDriver: tài xế accept → start → complete trên DriverApp/CustomerApp.
+4. SelfDrive: Dispatcher Giao xe → Hoàn thành trả xe.
+5. GET /api/bookings/{id}: TotalAmount không đổi; FinalAmount sau complete;
+   fees ExtraKm nếu ExtraKmAmount > 0; totalFees không gồm ExtraKm.
+6. Payment tạo ra Status=Pending; không tự Paid.
+
+==================================================
+15. KIỂM TRA SAU KHI CHẠY
+--------------------------------------------------
+
+Backend:
+- Terminal lắng nghe http://localhost:5199
+- http://localhost:5199/api/vehicle-types trả JSON danh sách loại xe
+- Lần chạy đầu: file carrental.db xuất hiện ở thư mục chạy Backend
+
+OpenAPI:
+- http://localhost:5199/openapi/v1.json khi Environment = Development
+- Không có trang Swagger UI
+
+Database:
+- SQLite: có carrental.db sau khi Backend start
+- SQL Server: chỉ kiểm nếu đã đổi provider
+
+Web:
+- PortalWeb:     http://localhost:5180
+- AdminWeb:      http://localhost:5258
+- CustomerWeb:   http://localhost:5162
+- DispatcherWeb: http://localhost:5206
+- Đăng nhập được bằng tài khoản seed
+- Nếu web không load dữ liệu: kiểm tra Backend còn chạy ở 5199
+
+Emulator / Device:
+
+  flutter devices
+
+- Cần ít nhất 1 device
+- Muốn chạy Android: bật emulator rồi chạy lại flutter devices
+
+App:
+- CustomerApp: splash → trang chủ / login
+- Đặt xe cần Backend đang chạy
+- Lỗi mạng: sai baseUrl (10.0.2.2 vs localhost vs IP LAN) — Android thật hay gặp
+
+==================================================
+16. CÁC LỖI THƯỜNG GẶP
+--------------------------------------------------
+
+Chỉ ghi lỗi liên quan đến project thực tế.
+
+1) flutter pub get thất bại
+   Nguyên nhân: chưa cài Flutter, hoặc Dart < 3.11.1 (pubspec yêu cầu sdk: ^3.11.1)
+   Xử lý: cài Flutter, chạy `flutter doctor`, kiểm tra `dart --version`
+
+2) flutter run không thấy Android device
+   Nguyên nhân: chưa bật emulator / chưa cắm điện thoại
+   Xử lý:
+     flutter devices
+     Android Studio → Device Manager → Start emulator
+
+3) App không gọi được API (Android Emulator)
+   Nguyên nhân: Backend chưa chạy, hoặc đã đổi baseUrl thành localhost
+   Xử lý: chạy Backend port 5199; Android emulator cần 10.0.2.2 (đúng với api_config hiện tại)
+
+4) App không gọi được API (Chrome / Windows)
+   Nguyên nhân: Backend chưa chạy, hoặc đã sửa tay baseUrl thành 10.0.2.2
+   Xử lý: source mặc định localhost cho non-Android; giữ vậy và chạy Backend 5199
+
+5) App trên điện thoại thật không gọi được API
+   Nguyên nhân: Android thật vẫn dùng 10.0.2.2 trong api_config
+   Xử lý: đổi baseUrl thành http://<IP-LAN-máy-Backend>:5199
+          cùng Wi-Fi; tường lửa Windows cho phép port 5199
+
+6) Port 5199 bị chiếm
+   Nguyên nhân: Backend cũ còn chạy, hoặc process khác dùng 5199
+   Xử lý: đóng process cũ, hoặc đổi Urls rồi cập nhật mọi ApiBaseUrl/baseUrl
+   Không force-kill Backend.exe đang lock 5199 trừ khi được giao.
+
+7) dotnet run / restore lỗi thiếu SDK
+   Nguyên nhân: chưa cài .NET 10 SDK (csproj TargetFramework = net10.0)
+   Xử lý: cài .NET 10 SDK, kiểm tra `dotnet --version`
+
+8) Web chạy nhưng không load dữ liệu
+   Nguyên nhân: Backend chưa chạy, hoặc ApiBaseUrl sai
+   Xử lý: chạy Backend trước; giữ ApiBaseUrl = http://localhost:5199
+
+9) Database SQLite không tạo
+   Nguyên nhân: Backend crash trước EnsureCreated, hoặc không quyền ghi thư mục
+   Xử lý: chạy `dotnet run` từ thư mục Backend, xem log
+          Không cần tạo file .db thủ công
+          Không xóa carrental.db trừ khi được giao
+
+10) Chuyển SQL Server thất bại
+    Nguyên nhân: vẫn để DatabaseProvider = Sqlite; connection string sai;
+                 chưa chạy script Database/
+    Xử lý: chỉ làm nếu thật sự cần SQL Server.
+           Chạy 01 → 02 → 03. Sửa DatabaseProvider = SqlServer và DefaultConnection.
+
+11) Flutter Android build lỗi Gradle / CMake / file lock (Windows)
+    Nguyên nhân: antivirus khóa file build (repo đã có script)
+    Xử lý (chỉ CustomerApp):
+      cd CustomerApp
+      powershell -ExecutionPolicy Bypass -File .\run_android.ps1
+    Hoặc:
+      powershell -ExecutionPolicy Bypass -File .\setup_build_junction.ps1
+
+12) CustomerApp cài lên điện thoại ARM thất bại
+    Nguyên nhân: android/app/build.gradle.kts có abiFilters.add("x86_64")
+    Xử lý: dùng emulator x86_64, hoặc sửa abiFilters cho đúng kiến trúc máy
+           (cấu hình Android hiện tại, không phải lỗi Flutter SDK)
+
+13) flutter clean khi build hỏng
+      cd CustomerApp
+      flutter clean
+      flutter pub get
+      flutter run
+    Làm tương tự với DriverApp.
+
+14) HTTPS redirection
+    Backend/Program.cs có app.UseHttpsRedirection()
+    Client đang dùng http://localhost:5199
+    Nếu gặp redirect/SSL: dùng URL HTTP port 5199 như cấu hình hiện tại.
+
+15) dotnet restore Backend cảnh báo NU1903
+    Warning Microsoft.OpenApi (gói kéo theo OpenApi 10.0.3)
+    Restore vẫn thành công (exit code 0). Không chặn chạy.
+    Không tự ý đổi package version trừ khi được giao.
+
+16) dotnet test / build MSB3027 copy Backend.dll
+    Nguyên nhân: Backend.exe đang chạy (thường port 5199)
+    Xử lý: test -c Release; hoặc dừng instance test. Không kill API chính nếu đang dùng.
+
+17) POST /api/payments 400 "Đơn này đã có khoản cọc..."
+    Đúng hành vi: một đơn chỉ một Deposit Pending hoặc Paid.
+
+18) Đánh giá SelfDrive thất bại
+    Backend CreateReview yêu cầu TripAssignment. SelfDrive không có assignment.
+
+19) Complete SelfDrive / Driver 400 "đã có biên bản trả xe"
+    Mỗi đơn một Return. Complete lần 2 bị chặn (cũng chặn nhân BookingFee).
+
+==================================================
+17. GIT WORKFLOW
+--------------------------------------------------
+
+Clone:
+
+  git clone https://github.com/hoangnam240905/KhoaluancunhanDatxe.git
+  cd KhoaluancunhanDatxe
+
+(Tên thư mục clone theo tên repo GitHub. Nếu clone vào tên khác, cd vào thư mục đó.)
+
+Trước khi làm:
+
+  git pull
+
+Sau khi sửa:
+
+  git add .
+  git commit -m "mô tả thay đổi"
+  git push
+
+Không commit:
+- build/
+- .dart_tool/
+- .flutter-plugins
+- .flutter-plugins-dependencies
+- bin/ và obj/ của .NET
+- .vs/
+- pubspec.lock (đang nằm trong .gitignore)
+- carrental.db
+- .env, file chứa password / JWT key nếu copy ra ngoài
+- android/local.properties (đường dẫn SDK từng máy)
+
+.gitignore hiện tại đã loại:
+.vs/, **/bin/, **/obj/, **/.dart_tool/, **/build/,
+**/.flutter-plugins, **/.flutter-plugins-dependencies,
+**/pubspec.lock, .env
+
+Lưu ý:
+- Backend/appsettings.json có Jwt:Key trong source.
+- Không sửa key nếu không được giao.
+
+==================================================
+PHỤ LỤC A — ENTRY POINT
+--------------------------------------------------
+
+CustomerApp:    CustomerApp/lib/main.dart
+DriverApp:      DriverApp/lib/main.dart
+Backend:        Backend/Program.cs
+Recommender:    Recommender/app.py
+PortalWeb:      PortalWeb/Program.cs
+AdminWeb:       AdminWeb/Program.cs
+CustomerWeb:    CustomerWeb/Program.cs
+DispatcherWeb:  DispatcherWeb/Program.cs
+
+==================================================
+PHỤ LỤC B — CẤU HÌNH BẮT BUỘC VỚI THÀNH VIÊN MỚI
+--------------------------------------------------
+
+THƯỜNG KHÔNG CẦN SỬA nếu:
+- Chạy Backend bằng `dotnet run` (port 5199)
+- Chạy Recommender `uvicorn` port 8001 khi demo gợi ý
+- Dùng SQLite mặc định (không xóa carrental.db)
+- Chạy Flutter app trên Android Emulator, hoặc Chrome/Windows (api_config tự localhost)
+- Mở web bằng localhost
+
+CẦN SỬA nếu:
+- Flutter app chạy trên điện thoại Android thật: đổi 10.0.2.2 → IP LAN
+- Backend đổi port: sửa Urls + toàn bộ ApiBaseUrl/baseUrl
+- Recommender đổi port: sửa Recommender:BaseUrl trong Backend/appsettings.json
+- Dùng SQL Server: sửa DatabaseProvider + DefaultConnection
+
+==================================================
+PHỤ LỤC C — CHƯA XÁC ĐỊNH ĐƯỢC TỪ SOURCE CODE
+--------------------------------------------------
+
+- Version Android Studio bắt buộc
+- Version Visual Studio bắt buộc
+- Version Flutter được pin trong project (chỉ có Dart SDK ^3.11.1)
+- minSdk / targetSdk số cụ thể
+- IP LAN để điện thoại thật gọi Backend
+- Connection string SQL Server mẫu
+- Swagger UI URL (project không dùng Swagger UI)
+
+==================================================
+PHỤ LỤC D — PHASE ĐÃ XONG / CHƯA XONG
+--------------------------------------------------
+
+Lịch sử đến Group 3: Tuan 3.md. Bổ sung A–F2: Tuan 4.md.
+
+Đã có (giữ nguyên từ trước):
+PHASE 3.1–3.9 giá/cọc/inspection/Admin giá;
+PHASE 4 Group 1 đổi MK + CRUD loại xe/tài xế + khóa khách;
+PHASE 4 Group 2 overlap Assign tối thiểu;
+PHASE 4 Group 3 recommended path + MaintenanceRecord + alert UI.
+
+Đã bổ sung (PHASE A–F2, đã hoàn thiện / đã kiểm thử):
+A: T_buffer = 2h; alternatives Assign; BEGIN IMMEDIATE Deposit+Assign; hold xe.
+B: Python FastAPI scoring (cùng formula 0.5/0.3/0.2); C# chỉ snapshot+HTTP — không ML.
+C: auto-block lịch mới khi đến hạn BT (không đổi Vehicle.Status).
+D: SignalR /hubs/realtime JWT groups; event sau DB success; reconnect + REST reload.
+E: Contracts Issued/Signed/Voided; simulate-success/failure (không gateway).
+F1: complete km/fuel/exterior/technical; IncidentReports; Driver chỉ chuyến mình; Accept trước Start.
+F2: GET /api/admin/dashboard — cọc Paid mô phỏng ≠ doanh thu thuê.
+
+Đã bổ sung sau F2 (GAP / P0 / hardening — đã hoàn thiện, không phải “đang triển khai”):
+- Booking state machine + PATCH chỉ Cancel
+- Xe occupied không xóa/inactive
+- LicensePlate unique NOCASE
+- Driver GET booking ownership
+- Vehicle.Year 1990–2100
+- Không Deposit sau Cancelled
+- Customer CRUD + giấy tờ xe + Portal Review
+- DemoRich DB riêng, một Driver một open assignment
+
+Tests Backend lần chạy đầy đủ gần nhất (code freeze): 361 passed, 0 failed, 0 skipped.
+Python: Recommender/tests/test_recommend.py.
+Flutter: dart analyze DriverApp PASS; CustomerApp 1 info cũ.
+
+Không có trong source (phạm vi / tùy chọn đề cương, không ghi là “thiếu bắt buộc”):
+availability API riêng / reassign / FCM;
+Balance/Refund/settlement; cổng MoMo/VNPay thật;
+đơn giá Late/Fuel/Damage; Admin tạo payment;
+endpoint fee công khai; login riêng AdminWeb;
+Customer self-cancel; form km trên Portal Dispatcher;
+Redis; chữ ký số; CTR/impression; utilization theo giờ; GPS; ML;
+SignalR Flutter Web (kIsWeb tắt);
+unique index DB cho RegistrationNumber.
+
+==================================================
+PHỤ LỤC E — SIGNALR
+--------------------------------------------------
+
+- Hub: http://localhost:5199/hubs/realtime
+- Auth: JWT bắt buộc (negotiate header Authorization: Bearer; WebSocket query access_token)
+- Groups từ role JWT: customer:{userId}, driver:{userId}, dispatcher, admin
+- Client method: ReceiveEvent
+- Event sau khi thao tác DB thành công (failure không phát success event)
+- Web: PortalWeb/AdminWeb/CustomerWeb/DispatcherWeb wwwroot/js/realtime.js
+  Reconnect tối đa 8 lần; khi có event → reload REST (không dùng hub làm nguồn dữ liệu)
+- App: CustomerApp + DriverApp realtime_service.dart (dart:io WebSocket)
+- Flutter Web: không kết nối (if (kIsWeb) return)
+- SignalR không phải polling
+- Python Recommender không liên quan SignalR; chỉ cần khi demo gợi ý
+
+==================================================
+PHỤ LỤC F — DATABASE KHI CHẠY
+--------------------------------------------------
+
+- Live: Backend/carrental.db (sau `dotnet run`; cwd thường là thư mục Backend)
+- Demo: Backend/carrental.demo.db (sau `dotnet run --launch-profile Demo`)
+- Không commit. Không reset carrental.db live.
+- DemoRich chỉ trên carrental.demo.db. Core seed dành cho tests / live lần đầu.
+- EnsureCreated + helper tự thêm bảng/cột còn thiếu (không EF Migration).
+- Seed Core chỉ khi DB chưa có Roles.
+- Chỉ xóa file .db khi development được phép và chấp nhận mất dữ liệu.
+
+==================================================
+PHỤ LỤC G — CHECKLIST DEMO
+--------------------------------------------------
+
+Không cần chạy mọi service cho mọi bước. Backend luôn cần.
+Gợi ý: cần Python FastAPI :8001. Demo dataset phong phú: `dotnet run --launch-profile Demo`.
+
+1. Login — PortalWeb :5180 (admin / dispatcher / customer) hoặc Flutter app
+2. Search/filter — Home: ngày + chỗ + giá tối đa; bảng giá loại xe
+3. Recommendation — cần Recommender :8001; form Gợi ý → danh sách score (Python, không đọc SQLite)
+4. Quote — GET /api/bookings/quote trên form đặt
+5. Booking — POST sau khi quote khớp fingerprint
+6. Contract — Details: lập hợp đồng Issued; ký giả lập Signed
+7. Deposit — POST /api/payments Deposit Pending + hold xe (browser: nút cọc trên Details)
+8. Simulate Paid — POST simulate-success (mô phỏng, không gateway)
+9. Dispatcher Confirm — Portal `/Dispatcher` hoặc DispatcherWeb (Pending → Confirmed)
+10. Assign — WithDriver: tài+xe; SelfDrive: chỉ xe
+11. Conflict + 2h — Assign trùng khoảng ±2h → 400 + alternatives (UI Assign)
+12. Driver Accept — DriverApp / CustomerApp DriverTrips: Assigned → Nhận chuyến
+13. Driver Start — chỉ sau Accept (Accepted → Bắt đầu chuyến)
+14. Complete + Inspection — DriverApp form km/fuel/ngoại thất/kỹ thuật (Return); SelfDrive: Dispatcher Handover/Complete (form km trên DispatcherWeb; Portal không gửi body)
+15. Incident — DriverApp POST incident; xem list: AdminWeb/DispatcherWeb /Incidents (Portal không có page)
+16. Review — Portal `/Customer/Bookings/Review/{id}` hoặc CustomerWeb/CustomerApp; Completed + TripAssignment; 1–3 sao bắt buộc comment. SelfDrive không review
+17. Maintenance block — Admin Vehicles badge; xe due không hold/assign/recommend/alternative
+18. Realtime — web đã login: đổi trạng thái ở app/web khác → trang reload (không Flutter Web; không polling)
+19. Dashboard — Portal `/Admin` hoặc AdminWeb `/` : cọc Paid mô phỏng ≠ doanh thu thuê
+20. Customer CRUD / Vehicle legal — Portal `/Admin/Customers` (tạo/sửa/khóa/vô hiệu hóa); Vehicles Create/Edit: Year 1990–2100, biển số unique, giấy tờ xe
+
+Tài khoản Core seed (Password123!):
+admin@carrental.vn, dispatcher@carrental.vn, customer1@gmail.com, driver1@carrental.vn
+
+==================================================
+HẾT FILE HƯỚNG DẪN
+==================================================

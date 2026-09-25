@@ -1,0 +1,155 @@
+@page
+@model PortalWeb.Pages.Mockup.TripsModel
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Vận hành chuyến";
+    ViewData["Nav"] = "trips";
+}
+@if (!string.IsNullOrEmpty(Model.LoadError))
+{
+    <div class="alert alert-warning">@Model.LoadError</div>
+}
+else
+{
+    <div class="mk-banner">Vận hành chuyến — dữ liệu từ Backend (bookings, inspections, incidents, fleet-status). Giao/trả xe SelfDrive gọi API thật. Bản đồ GPS, quyết toán chốt, cập nhật sự cố dispatcher vẫn presentation-only (thiếu API).</div>
+}
+
+<section class="mk-hub-head">
+    <div>
+        <h1>Vận hành chuyến</h1>
+        <p>Theo dõi và xử lý các chuyến thuê xe đang vận hành</p>
+    </div>
+</section>
+
+<div class="mk-metrics op-metrics" id="opMetrics" data-source="api">
+    <div class="mk-metric"><span>🚗 Chuyến hôm nay</span><strong id="opMetricToday">@Model.MetricToday</strong></div>
+    <div class="mk-metric"><span>🟡 Chờ nhận xe</span><strong id="opMetricWaiting">@Model.MetricWaiting</strong></div>
+    <div class="mk-metric"><span>🔵 Đang thực hiện</span><strong id="opMetricInProgress">@Model.MetricInProgress</strong></div>
+    <div class="mk-metric"><span>🔴 Có sự cố</span><strong id="opMetricIncidents">@Model.MetricIncidents</strong></div>
+    <div class="mk-metric"><span>💰 Chờ quyết toán</span><strong id="opMetricSettlement">@Model.MetricSettlement</strong></div>
+</div>
+
+<section class="mk-card mk-toolbar">
+    <h2>Tìm kiếm &amp; bộ lọc</h2>
+    <form id="opFilter" class="op-filter-grid" autocomplete="off">
+        <label class="mk-field">
+            <span>Tìm kiếm</span>
+            <input type="search" name="q" placeholder="Tìm mã đơn, khách hàng, xe..." />
+        </label>
+        <label class="mk-field">
+            <span>Trạng thái</span>
+            <select name="status">
+                <option value="">Tất cả</option>
+                <option value="waitingHandover">Chờ giao xe</option>
+                <option value="handedOver">Đã giao xe</option>
+                <option value="accepted">Đã nhận chuyến</option>
+                <option value="inProgress">Đang thực hiện</option>
+                <option value="returning">Đang trả xe</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="incident">Có sự cố</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Hình thức</span>
+            <select name="mode">
+                <option value="">Tất cả</option>
+                <option value="SelfDrive">Tự lái</option>
+                <option value="WithDriver">Có tài xế</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Tài xế</span>
+            <select name="dstatus">
+                <option value="">Tất cả</option>
+                <option value="Available">Khả dụng</option>
+                <option value="Busy">Đang bận</option>
+            </select>
+        </label>
+        <label class="mk-field">
+            <span>Xe</span>
+            <select name="vehicle" id="opVehicleFilter">
+                <option value="">Tất cả</option>
+            </select>
+        </label>
+        <div class="mk-toolbar-actions">
+            <button type="submit" class="mk-btn mk-btn-primary">🔍 Tìm kiếm</button>
+            <button type="reset" class="mk-btn mk-btn-ghost" id="opReset">↻ Đặt lại</button>
+        </div>
+    </form>
+</section>
+
+<div class="op-top-grid">
+    <section class="mk-card op-alert-card">
+        <h2>⚠️ Cần chú ý</h2>
+        <div id="opAlerts"></div>
+    </section>
+    <section class="mk-card op-driver-card">
+        <h2>Trạng thái tài xế</h2>
+        <div id="opDriverPanel"></div>
+    </section>
+    <section class="mk-card op-map-card">
+        <div class="op-map-head">
+            <h2>Vị trí mô phỏng</h2>
+            <span class="mk-badge mk-badge-gray">Chế độ trình diễn</span>
+        </div>
+        <div class="op-map" id="opMap" aria-hidden="true">
+            <span class="op-map-label">Vị trí mô phỏng — không phải GPS thật (thiếu API)</span>
+        </div>
+    </section>
+</div>
+
+<section class="mk-card sch-board-card">
+    <div class="sch-board-title">
+        <h2>Bảng chuyến đang chạy</h2>
+        <p class="mk-muted">Thẻ chuyến vận hành từ Backend. Nhấn để mở chi tiết.</p>
+    </div>
+    <div class="op-board" id="opBoard"></div>
+</section>
+
+<section class="mk-card sch-board-card">
+    <div class="sch-board-title">
+        <h2>Bảng vận hành</h2>
+        <p class="mk-muted" id="opTableMeta"></p>
+    </div>
+    <div class="mk-table-wrap op-table-wrap">
+        <table class="mk-table">
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Xe</th>
+                    <th>Tài xế</th>
+                    <th>Hình thức</th>
+                    <th>Bắt đầu</th>
+                    <th>Trả xe</th>
+                    <th>Trạng thái</th>
+                    <th>Sự cố</th>
+                    <th>Quyết toán</th>
+                </tr>
+            </thead>
+            <tbody id="opTableBody"></tbody>
+        </table>
+    </div>
+    <div class="op-pager" id="opPager"></div>
+</section>
+
+<aside class="mk-drawer op-drawer" id="opDrawer" aria-hidden="true"></aside>
+<div class="mk-modal" id="opModal" hidden>
+    <div class="mk-modal-dialog" id="opModalBody"></div>
+</div>
+<div class="mk-toast" id="opToast"></div>
+
+@section Scripts {
+    <form id="opAntiForgery" class="d-none">@Html.AntiForgeryToken()</form>
+    <script>
+        window.__TRIPS_BOOTSTRAP__ = @Html.Raw(Model.BootstrapJson);
+        window.__TRIPS_READY__ = @(Model.HasBootstrap ? "true" : "false");
+        window.__TRIPS_HANDLERS__ = {
+            reload: '@Url.Page("/Mockup/Trips", "Reload")',
+            detail: '@Url.Page("/Mockup/Trips", "Detail")',
+            handover: '@Url.Page("/Mockup/Trips", "Handover")',
+            complete: '@Url.Page("/Mockup/Trips", "Complete")'
+        };
+    </script>
+    <script src="~/js/mockup-trips.js" asp-append-version="true"></script>
+}

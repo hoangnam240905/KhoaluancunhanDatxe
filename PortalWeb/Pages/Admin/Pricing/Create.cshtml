@@ -1,0 +1,14 @@
+@page "/Admin/Pricing/Create"
+@model PortalWeb.Pages.Admin.Pricing.CreateModel
+@{ ViewData["Title"] = "Thêm loại xe"; }
+<h2 class="mb-3">Thêm loại xe</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-12"><label class="form-label">Tên loại</label><input asp-for="Input.TypeName" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Giá/ngày</label><input asp-for="Input.PricePerDay" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-md-6"><label class="form-label">Giá/km</label><input asp-for="Input.PricePerKm" class="form-control" type="number" min="0" step="1000" /></div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Tạo</button>
+        <a asp-page="Index" class="btn btn-secondary">Hủy</a>
+    </div>
+</form>

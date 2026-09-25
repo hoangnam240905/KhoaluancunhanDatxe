@@ -1,0 +1,273 @@
+@page "{slug}"
+@model CustomerWeb.Pages.Catalog.DetailsModel
+@inject IConfiguration Config
+@{
+    var v = Model.Vehicle!;
+    ViewData["Title"] = v.Name;
+    ViewData["HomeShell"] = true;
+    var initials = string.IsNullOrWhiteSpace(Model.CustomerName)
+        ? "DX"
+        : string.Concat(Model.CustomerName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/catalog.css" asp-append-version="true" />
+}
+
+<div class="ch-page cc-page">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" asp-page="/Index">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a asp-page="/Index">Trang chủ</a>
+                <a class="is-active" asp-page="/Catalog">Xe</a>
+                @if (Model.IsLoggedIn)
+                {
+                    <a asp-page="/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                @if (Model.IsLoggedIn)
+                {
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta ch-user-meta">
+                                <span class="dx-user-name">@Model.CustomerName</span>
+                                <span class="dx-user-role">Khách hàng</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a asp-page="/Index">Trang chủ</a>
+                <a asp-page="/Catalog">Xe</a>
+                @if (Model.IsLoggedIn)
+                {
+                    <a asp-page="/Bookings/Index">Đơn đặt</a>
+                }
+                else
+                {
+                    <a asp-page="/Account/Login">Đơn đặt</a>
+                }
+                <a asp-page="/Index" asp-fragment="about">Về chúng tôi</a>
+                @if (!Model.IsLoggedIn)
+                {
+                    <a asp-page="/Account/Login">Đăng nhập</a>
+                    <a asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <div class="ch-container cd-wrap">
+        <nav class="cd-crumb" aria-label="Đường dẫn">
+            <a asp-page="/Catalog">Xe</a>
+            <span>→</span>
+            <span>Chi tiết xe</span>
+        </nav>
+
+        <div class="cd-hero">
+            <div class="cd-gallery" data-cd-gallery>
+                <div class="cd-gallery-main">
+                    <img src="@v.Gallery[0]" alt="@v.Name" data-cd-main />
+                    @if (!string.IsNullOrEmpty(v.Badge))
+                    {
+                        <span class="ch-badge @(v.Badge == "Gợi ý" ? "ch-badge-alt" : v.Badge == "Được yêu thích" ? "ch-badge-fav" : "")">@v.Badge</span>
+                    }
+                </div>
+                <div class="cd-thumbs" role="list">
+                    @for (var i = 0; i < v.Gallery.Count; i++)
+                    {
+                        <button type="button" class="cd-thumb @(i == 0 ? "is-on" : "")" data-cd-thumb="@v.Gallery[i]" aria-label="Ảnh @(i + 1)">
+                            <img src="@v.Gallery[i]" alt="" />
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="cd-info">
+                <p class="cd-cat">@v.Category</p>
+                <h1>@v.Name</h1>
+                <p class="cd-tagline">@v.Tagline</p>
+                <div class="ch-rating cd-rating">
+                    <i class="bi bi-star-fill"></i> @v.Rating.ToString("0.0")
+                    <span>(@v.ReviewCount đánh giá)</span>
+                </div>
+
+                <ul class="cd-specs">
+                    <li><i class="bi bi-people"></i> @HomeUi.SeatLabel(v.Seats)</li>
+                    <li><i class="bi bi-gear"></i> @v.Transmission</li>
+                    <li><i class="bi bi-fuel-pump"></i> @v.Fuel</li>
+                    <li><i class="bi bi-door-closed"></i> @v.Doors cửa</li>
+                    @if (!string.IsNullOrWhiteSpace(v.LicensePlate))
+                    {
+                        <li><i class="bi bi-card-text"></i> @v.LicensePlate</li>
+                    }
+                </ul>
+
+                <div class="cd-modes">
+                    @foreach (var mode in v.RentalModes)
+                    {
+                        <span>@mode</span>
+                    }
+                </div>
+
+                <div class="cd-price-row">
+                    <strong>@HomeUi.PricePerDay(v.PricePerDay)</strong>
+                    <span>Giá hiển thị cho giao diện</span>
+                </div>
+
+                <div class="cd-actions">
+                    <a class="ch-search-btn cd-book" asp-page="/Bookings/Create" asp-route-slug="@v.Slug" asp-route-vehicleId="@v.VehicleId" asp-route-start="@Model.StartDate" asp-route-end="@Model.EndDate">Đặt xe</a>
+                    <button type="button" class="cd-schedule" data-cd-schedule>
+                        <i class="bi bi-calendar3"></i> Xem lịch xe
+                    </button>
+                    <button type="button" class="cd-wish" data-cc-fav><i class="bi bi-heart"></i> Thêm vào yêu thích</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="cd-tabs" data-cd-tabs>
+            <div class="cd-tablist" role="tablist">
+                <button type="button" class="is-on" data-cd-tab="overview">Tổng quan</button>
+                <button type="button" data-cd-tab="specs">Thông số</button>
+                <button type="button" data-cd-tab="features">Tính năng</button>
+                <button type="button" data-cd-tab="rates">Giá thuê</button>
+                <button type="button" data-cd-tab="reviews">Đánh giá</button>
+            </div>
+
+            <section class="cd-panel is-on" data-cd-panel="overview">
+                <h2>Giới thiệu xe</h2>
+                <p>@v.Overview</p>
+                <h3>Điểm nổi bật</h3>
+                <ul class="cd-highlights">
+                    @foreach (var h in v.Highlights)
+                    {
+                        <li><i class="bi bi-check2-circle"></i> @h</li>
+                    }
+                </ul>
+            </section>
+
+            <section class="cd-panel" data-cd-panel="specs">
+                <h2>Thông số</h2>
+                <dl class="cd-dl">
+                    <div><dt>Loại xe</dt><dd>@v.Category</dd></div>
+                    <div><dt>Số chỗ</dt><dd>@HomeUi.SeatLabel(v.Seats)</dd></div>
+                    <div><dt>Hộp số</dt><dd>@v.Transmission</dd></div>
+                    <div><dt>Nhiên liệu</dt><dd>@v.Fuel</dd></div>
+                    <div><dt>Số cửa</dt><dd>@v.Doors cửa</dd></div>
+                </dl>
+            </section>
+
+            <section class="cd-panel" data-cd-panel="features">
+                <h2>Tính năng</h2>
+                <ul class="cd-feature-list">
+                    @foreach (var f in v.Features)
+                    {
+                        <li><i class="bi bi-check2"></i> @f</li>
+                    }
+                </ul>
+                <p class="cc-ui-note">Danh sách tính năng là dữ liệu minh họa giao diện.</p>
+            </section>
+
+            <section class="cd-panel" data-cd-panel="rates">
+                <h2>Giá thuê</h2>
+                <div class="cd-rates">
+                    @foreach (var r in Model.RateTiers)
+                    {
+                        <div>
+                            <span>@r.Label</span>
+                            <strong>@HomeUi.PricePerDay(r.AmountPerDay)</strong>
+                        </div>
+                    }
+                </div>
+                <p class="cc-ui-note">Bảng giá theo ngày là minh họa giao diện — chưa phải giá cơ sở dữ liệu.</p>
+            </section>
+
+            <section class="cd-panel" data-cd-panel="reviews">
+                <h2>Đánh giá</h2>
+                <div class="cd-reviews">
+                    @foreach (var r in Model.Reviews)
+                    {
+                        <article>
+                            <div>
+                                <strong>@r.Author</strong>
+                                <span class="ch-rating"><i class="bi bi-star-fill"></i> @r.Rating.ToString("0.0")</span>
+                            </div>
+                            <p>@r.Text</p>
+                            <time>@r.Time</time>
+                        </article>
+                    }
+                </div>
+                <p class="cc-ui-note">Đánh giá đang là nội dung minh họa giao diện.</p>
+            </section>
+        </div>
+    </div>
+
+    <div class="cd-sticky">
+        <div>
+            <strong>@HomeUi.PricePerDay(v.PricePerDay)</strong>
+            <span>@v.Name</span>
+        </div>
+        <a class="ch-search-btn" asp-page="/Bookings/Create" asp-route-slug="@v.Slug" asp-route-vehicleId="@v.VehicleId" asp-route-start="@Model.StartDate" asp-route-end="@Model.EndDate">Đặt xe</a>
+    </div>
+</div>
+
+<div class="cd-cal-overlay" hidden data-cd-cal
+     data-cd-busy-url="/catalog/busy-periods/@v.VehicleId"
+     data-cd-handler-url="@Url.Page("/Catalog/Details", "BusyPeriods", new { slug = v.Slug })"
+     data-cd-api-base="@(Config["ApiBaseUrl"] ?? "")"
+     data-cd-vehicle-id="@v.VehicleId">
+    <div class="cd-cal" role="dialog" aria-modal="true" aria-labelledby="cd-cal-title">
+        <header class="cd-cal-head">
+            <div>
+                <h2 id="cd-cal-title">Lịch xe</h2>
+                <p>@v.Name@(v.VehicleId is int vid ? $" · Xe #{vid}" : "")</p>
+            </div>
+            <button type="button" class="cd-cal-close" data-cd-cal-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div class="cd-cal-nav">
+            <button type="button" data-cd-cal-prev aria-label="Tháng trước"><i class="bi bi-chevron-left"></i></button>
+            <strong data-cd-cal-month></strong>
+            <button type="button" data-cd-cal-next aria-label="Tháng sau"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <div class="cd-cal-week" aria-hidden="true">
+            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+        </div>
+        <div class="cd-cal-grid" data-cd-cal-grid></div>
+        <p class="cd-cal-status" data-cd-cal-status></p>
+        <ul class="cd-cal-list" data-cd-cal-list></ul>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/catalog.js" asp-append-version="true"></script>
+}

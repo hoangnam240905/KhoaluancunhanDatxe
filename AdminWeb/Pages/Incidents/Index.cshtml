@@ -1,0 +1,46 @@
+@page
+@model AdminWeb.Pages.Incidents.IndexModel
+@{ ViewData["Title"] = "Su co"; }
+
+<h2 class="mb-3">Bao cao su co</h2>
+<p class="text-muted">Chi xem. Tai xe ghi nhan su co tren chuyen cua minh.</p>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-3"><label class="form-label">Ma don</label><input name="bookingId" value="@Model.FilterBookingId" class="form-control" type="number" min="1" /></div>
+    <div class="col-md-3">
+        <label class="form-label">Trang thai</label>
+        <select name="status" class="form-select">
+            <option value="">Tat ca</option>
+            <option value="Open" selected="@(Model.FilterStatus == "Open" ? "selected" : null)">Open</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <button type="submit" class="btn btn-primary">Loc</button>
+        <a asp-page="Index" class="btn btn-outline-secondary">Xoa loc</a>
+    </div>
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ma</th><th>Don</th><th>Chuyen</th><th>Tai xe</th><th>Loai</th>
+            <th>Mo ta</th><th>Luc</th><th>Trang thai</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var i in Model.Incidents)
+    {
+        <tr>
+            <td>#@i.IncidentId</td>
+            <td>#@i.BookingId</td>
+            <td>#@i.AssignmentId</td>
+            <td>@i.DriverName</td>
+            <td>@i.IncidentType</td>
+            <td>@i.Description</td>
+            <td>@i.OccurredAt.ToString("dd/MM/yyyy HH:mm")</td>
+            <td>@i.Status</td>
+        </tr>
+    }
+    </tbody>
+</table>

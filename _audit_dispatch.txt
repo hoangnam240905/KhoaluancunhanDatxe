@@ -1,0 +1,109 @@
+﻿Backend\Program.cs:41:builder.Services.AddScoped<ScheduleConflictService>();
+Backend\Validation\BookingDateRules.cs:12:    /// New quote / create booking. Same calendar day with later time is 1 day (existing convention).
+Backend\Data\DbSeeder.cs:101:                MaintenanceType = MaintenanceTypes.Scheduled,
+Backend\Data\DbSeeder.cs:102:                ScheduledDate = servicedAt,
+Backend\Data\CarRentalDbContext.cs:683:                    "ScheduledDate" TEXT NOT NULL,
+Backend\Data\DemoRichSeeder.cs:620:                ScheduledDate = when,
+Backend\Data\DemoRichSeeder.cs:629:        void OpenSchedule(string plate, DateTime when, string notes)
+Backend\Data\DemoRichSeeder.cs:635:                MaintenanceType = MaintenanceTypes.Scheduled,
+Backend\Data\DemoRichSeeder.cs:636:                ScheduledDate = when,
+Backend\Data\DemoRichSeeder.cs:649:            Completed(plate, now.AddDays(-7), 0, MaintenanceTypes.Scheduled, "Bß║úo tr├¼ ─æß╗ïnh kß╗│ gß║ºn ─æ├óy");
+Backend\Data\DemoRichSeeder.cs:652:        Completed("51G-10008", now.AddDays(-12), -4800, MaintenanceTypes.Scheduled, "Gß║ºn ng╞░ß╗íng 5000 km");
+Backend\Data\DemoRichSeeder.cs:656:        Completed("51H-20012", now.AddDays(-15), -6200, MaintenanceTypes.Scheduled, "Qu├í hß║ín kilomet");
+Backend\Data\DemoRichSeeder.cs:659:        Completed("51H-20013", now.AddDays(-170), -200, MaintenanceTypes.Scheduled, "Gß║ºn 180 ng├áy");
+Backend\Data\DemoRichSeeder.cs:660:        Completed("51D-22222", now.AddDays(-170), -150, MaintenanceTypes.Scheduled, "Gß║ºn 180 ng├áy");
+Backend\Data\DemoRichSeeder.cs:664:        Completed("51M-50020", now.AddDays(-200), -80, MaintenanceTypes.Scheduled, "Qu├í hß║ín thß╗¥i gian");
+Backend\Data\DemoRichSeeder.cs:665:        Completed("51F-44444", now.AddDays(-20), -5500, MaintenanceTypes.Scheduled, "Xe ─æang Maintenance ΓÇö qu├í hß║ín km");
+Backend\Data\DemoRichSeeder.cs:668:        OpenSchedule("51G-10009", now.AddDays(10), "Inactive ΓÇö lß╗ïch mß╗ƒ, ch╞░a ho├án th├ánh");
+Backend\Data\DemoRichSeeder.cs:670:        // 8. Scheduled ch╞░a ho├án th├ánh tr├¬n xe vß╗½a bß║úo tr├¼
+Backend\Data\DemoRichSeeder.cs:671:        OpenSchedule("51H-20011", now.AddDays(14), "Lß╗ïch ─æß╗ïnh kß╗│ tiß║┐p theo");
+Backend\Data\DemoRichSeeder.cs:672:        OpenSchedule("51N-60022", now.AddDays(20), "Lß╗ïch bus sß║»p tß╗¢i");
+Backend\Constants\AppConstants.cs:222:    public const string Scheduled = "Scheduled";
+Backend\Constants\AppConstants.cs:235:        if (trimmed is Scheduled or Repair or Inspection)
+Backend\Constants\AppConstants.cs:254:    public const string BlockedForNewSchedule = "Xe ─æ├ú ─æß║┐n hß║ín bß║úo tr├¼, kh├┤ng nhß║¡n lß╗ïch mß╗¢i.";
+Backend\Constants\AppConstants.cs:265:    public const decimal Availability = 0.2m;
+Backend\Constants\AppConstants.cs:270:/// Thesis spec: T_buffer = 2 hours.
+Backend\Constants\AppConstants.cs:272:public static class ScheduleBuffers
+Backend\Constants\AppConstants.cs:278:public static class ScheduleConflictTypes
+Backend\DTOs\Bookings\BookingDtos.cs:118:public record VehicleAlternativeResponse(
+Backend\DTOs\Bookings\BookingDtos.cs:125:public record DriverAlternativeResponse(
+Backend\DTOs\Bookings\BookingDtos.cs:131:public record AssignConflictResponse(
+Backend\DTOs\Bookings\BookingDtos.cs:133:    string ConflictType,
+Backend\DTOs\Bookings\BookingDtos.cs:134:    IReadOnlyList<VehicleAlternativeResponse> VehicleAlternatives,
+Backend\DTOs\Bookings\BookingDtos.cs:135:    IReadOnlyList<DriverAlternativeResponse> DriverAlternatives);
+Backend\DTOs\Bookings\BookingDtos.cs:140:    AssignConflictResponse? Conflict)
+Backend\DTOs\Bookings\BookingDtos.cs:146:    public static AssignTripResult FromConflict(AssignConflictResponse conflict)
+Backend\DTOs\Bookings\BookingDtos.cs:147:        => new(null, conflict.Message, conflict);
+Backend\Services\DispatchService.cs:16:    ScheduleConflictService schedule,
+Backend\Services\DispatchService.cs:171:        if (await schedule.HasVehicleConflictAsync(
+Backend\Services\DispatchService.cs:174:            return AssignTripResult.FromConflict(await BuildConflictAsync(
+Backend\Services\DispatchService.cs:177:                ScheduleConflictTypes.Vehicle,
+Backend\Services\DispatchService.cs:189:            return AssignTripResult.FromConflict(await BuildConflictAsync(
+Backend\Services\DispatchService.cs:192:                ScheduleConflictTypes.Driver,
+Backend\Services\DispatchService.cs:197:        if (await schedule.HasDriverConflictAsync(
+Backend\Services\DispatchService.cs:200:            return AssignTripResult.FromConflict(await BuildConflictAsync(
+Backend\Services\DispatchService.cs:203:                ScheduleConflictTypes.Driver,
+Backend\Services\DispatchService.cs:260:        if (await schedule.HasVehicleConflictAsync(
+Backend\Services\DispatchService.cs:263:            return AssignTripResult.FromConflict(await BuildConflictAsync(
+Backend\Services\DispatchService.cs:266:                ScheduleConflictTypes.Vehicle,
+Backend\Services\DispatchService.cs:304:        var block = await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicle.VehicleId);
+Backend\Services\DispatchService.cs:315:    private async Task<AssignConflictResponse> BuildConflictAsync(
+Backend\Services\DispatchService.cs:318:        string conflictType,
+Backend\Services\DispatchService.cs:322:        var vehicles = await schedule.FindAssignableVehiclesAsync(
+Backend\Services\DispatchService.cs:325:            .Select(v => new VehicleAlternativeResponse(
+Backend\Services\DispatchService.cs:329:        var driverAlts = new List<DriverAlternativeResponse>();
+Backend\Services\DispatchService.cs:332:            var drivers = await schedule.FindAssignableDriversAsync(
+Backend\Services\DispatchService.cs:338:                driverAlts.Add(new DriverAlternativeResponse(
+Backend\Services\DispatchService.cs:343:        return new AssignConflictResponse(message, conflictType, vehicleAlts, driverAlts);
+Backend\DTOs\Vehicles\RecommendationDtos.cs:34:    bool IsCalendarAvailable,
+Backend\Services\MaintenanceAlertService.cs:60:    public static bool IsBlockedForNewSchedule(
+Backend\Entities\MaintenanceRecord.cs:8:    public DateTime ScheduledDate { get; set; }
+Backend\Services\RecommendationService.cs:10:    ScheduleConflictService schedule,
+Backend\Services\RecommendationService.cs:62:        var maintenanceBlocked = await schedule.GetMaintenanceBlockedVehicleIdsAsync();
+Backend\Services\RecommendationService.cs:65:            var calendarFree = !await schedule.HasVehicleConflictAsync(
+Backend\Services\RecommendationService.cs:71:                calendarFree,
+Backend\Services\PaymentService.cs:9:public class PaymentService(CarRentalDbContext db, ScheduleConflictService schedule, IRealtimePublisher? realtime = null)
+Backend\Services\PaymentService.cs:186:        var maintenanceBlock = await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicle.VehicleId);
+Backend\Services\PaymentService.cs:193:        if (await schedule.HasVehicleConflictAsync(
+Backend\Services\ScheduleConflictService.cs:8:public class ScheduleConflictService(CarRentalDbContext db)
+Backend\Services\ScheduleConflictService.cs:19:    /// Overlap after expanding each booking by T_buffer on both sides of the gap.
+Backend\Services\ScheduleConflictService.cs:20:    /// Gap == T_buffer is not conflict (newStart == existingEnd + buffer).
+Backend\Services\ScheduleConflictService.cs:24:        => newStart < existingEnd + ScheduleBuffers.Technical
+Backend\Services\ScheduleConflictService.cs:25:           && newEnd > existingStart - ScheduleBuffers.Technical;
+Backend\Services\ScheduleConflictService.cs:27:    public static bool OccupiesSchedule(string? status)
+Backend\Services\ScheduleConflictService.cs:32:    public Task<bool> HasVehicleConflictAsync(
+Backend\Services\ScheduleConflictService.cs:35:        var bufferHours = ScheduleBuffers.TechnicalHours;
+Backend\Services\ScheduleConflictService.cs:41:                start < b.EndDate.AddHours(bufferHours)
+Backend\Services\ScheduleConflictService.cs:42:                && end > b.StartDate.AddHours(-bufferHours));
+Backend\Services\ScheduleConflictService.cs:45:    public Task<bool> HasDriverConflictAsync(
+Backend\Services\ScheduleConflictService.cs:48:        var bufferHours = ScheduleBuffers.TechnicalHours;
+Backend\Services\ScheduleConflictService.cs:52:                start < b.EndDate.AddHours(bufferHours)
+Backend\Services\ScheduleConflictService.cs:53:                && end > b.StartDate.AddHours(-bufferHours));
+Backend\Services\ScheduleConflictService.cs:66:    public async Task<string?> GetMaintenanceNewScheduleBlockReasonAsync(int vehicleId)
+Backend\Services\ScheduleConflictService.cs:71:            return MaintenanceLock.BlockedForNewSchedule;
+Backend\Services\ScheduleConflictService.cs:82:        return MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, DateTime.UtcNow);
+Backend\Services\ScheduleConflictService.cs:94:                return MaintenanceAlertService.IsBlockedForNewSchedule(v, last, utcNow);
+Backend\Services\ScheduleConflictService.cs:119:            if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
+Backend\Services\ScheduleConflictService.cs:121:            if (!await HasVehicleConflictAsync(vehicle.VehicleId, start, end))
+Backend\Services\ScheduleConflictService.cs:139:            if (!await HasDriverConflictAsync(driver.DriverId, start, end))
+Backend\Services\ScheduleConflictService.cs:147:    /// Vehicles the current Assign flow can accept: Status=Available, same type, no calendar+buffer conflict.
+Backend\Services\ScheduleConflictService.cs:172:            if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
+Backend\Services\ScheduleConflictService.cs:174:            if (!await HasVehicleConflictAsync(vehicle.VehicleId, start, end, excludeBookingId))
+Backend\Services\ScheduleConflictService.cs:182:    /// Drivers Assign can accept: IsActive, Status=Available, no calendar+buffer conflict.
+Backend\Services\ScheduleConflictService.cs:200:            if (!await HasDriverConflictAsync(driver.DriverId, start, end, excludeBookingId))
+Backend\Services\ScheduleConflictService.cs:230:    /// (not calendar-scoped). Completed/Cancelled do not occupy.
+Backend\DTOs\Maintenance\MaintenanceDtos.cs:5:    DateTime ScheduledDate,
+Backend\DTOs\Maintenance\MaintenanceDtos.cs:17:    DateTime ScheduledDate,
+Backend\Services\VehicleOperationalProfileService.cs:14:    ScheduleConflictService schedule)
+Backend\Services\VehicleOperationalProfileService.cs:49:        var hasOpen = openRecord is not null || await schedule.HasOpenMaintenanceAsync(vehicleId);
+Backend\Services\VehicleOperationalProfileService.cs:102:                record.ScheduledDate,
+Backend\Controllers\DispatchController.cs:35:        if (result.Conflict is not null)
+Backend\Controllers\DispatchController.cs:36:            return BadRequest(result.Conflict);
+Backend\Services\VehicleService.cs:11:    private readonly ScheduleConflictService schedule = new(db);
+Backend\Services\VehicleService.cs:158:            && await schedule.IsVehicleOccupiedAsync(id))
+Backend\Services\VehicleService.cs:233:        if (await schedule.IsVehicleOccupiedAsync(id))
+Backend\Services\VehicleMaintenanceService.cs:11:    private readonly ScheduleConflictService schedule = new(db);
+Backend\Services\VehicleMaintenanceService.cs:46:            ScheduledDate = request.ScheduledDate,
+Backend\Services\VehicleMaintenanceService.cs:116:        if (await schedule.IsVehicleOccupiedAsync(vehicle.VehicleId))
+Backend\Services\VehicleMaintenanceService.cs:119:        if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, justCompleted, DateTime.UtcNow))
+Backend\Services\VehicleMaintenanceService.cs:130:        m.ScheduledDate,

@@ -1,0 +1,115 @@
+@inject CustomerWeb.Services.AuthSession Auth
+@inject IConfiguration Config
+@{
+    var path = Context.Request.Path.Value ?? "";
+    string Nav(string href, bool exact = false)
+    {
+        var on = exact
+            ? path.Equals(href, StringComparison.OrdinalIgnoreCase)
+            : path.StartsWith(href, StringComparison.OrdinalIgnoreCase);
+        return on ? "dx-nav-link is-active" : "dx-nav-link";
+    }
+    var initials = string.IsNullOrWhiteSpace(Auth.FullName)
+        ? "KH"
+        : string.Concat(Auth.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    var homeShell = ViewData["HomeShell"] as bool? == true;
+}
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "DriveX") — DriveX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/drivex.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="dx-body">
+<div class="dx-shell @(Auth.IsLoggedIn && !homeShell ? "" : "dx-shell-top")">
+    @if (Auth.IsLoggedIn && !homeShell)
+    {
+        <div class="dx-backdrop" data-dx-backdrop></div>
+        <aside class="dx-sidebar">
+            <a class="dx-brand" asp-page="/Index">
+                <span class="dx-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                <span>DriveX<span class="dx-brand-sub">Thuê xe</span></span>
+            </a>
+            <div class="dx-nav-label">Khách hàng</div>
+            <nav class="dx-nav">
+                <a class="@Nav("/", true)" asp-page="/Index"><i class="bi bi-house"></i> Trang chủ</a>
+                <a class="@Nav("/Bookings/Create")" asp-page="/Bookings/Create"><i class="bi bi-plus-circle"></i> Đặt xe</a>
+                <a class="@(path.StartsWith("/Bookings", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/Bookings/Create", StringComparison.OrdinalIgnoreCase) ? "dx-nav-link is-active" : "dx-nav-link")" asp-page="/Bookings/Index"><i class="bi bi-journal-text"></i> Đơn của tôi</a>
+            </nav>
+        </aside>
+    }
+    <div class="dx-main">
+        @if (homeShell)
+        {
+            @RenderBody()
+        }
+        else
+        {
+        <header class="dx-topbar">
+            @if (Auth.IsLoggedIn)
+            {
+                <button type="button" class="dx-sidebar-toggle" data-dx-toggle aria-label="Mở menu"><i class="bi bi-list"></i></button>
+            }
+            else
+            {
+                <a class="dx-brand py-0 px-0" asp-page="/Index">
+                    <span class="dx-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                    <span>DriveX</span>
+                </a>
+            }
+            <h1 class="dx-topbar-title">@ViewData["Title"]</h1>
+            <div class="dx-topbar-actions">
+                @if (Auth.IsLoggedIn)
+                {
+                    <div class="dropdown">
+                        <a class="dx-user" href="#" data-bs-toggle="dropdown">
+                            <span class="dx-avatar">@initials</span>
+                            <span class="dx-user-meta">
+                                <span class="dx-user-name">@Auth.FullName</span>
+                                <span class="dx-user-role">Khách hàng</span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-page="/Profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a class="btn btn-sm btn-outline-primary" asp-page="/Account/Login">Đăng nhập</a>
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Register">Đăng ký</a>
+                }
+            </div>
+        </header>
+        <main class="dx-content">@RenderBody()</main>
+        }
+    </div>
+</div>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/drivex.js" asp-append-version="true"></script>
+@* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
+@if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+{
+    <script>
+        window.carRentalRealtime = {
+            hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+            accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+        };
+    </script>
+    <script src="~/js/realtime.js" asp-append-version="true"></script>
+}
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

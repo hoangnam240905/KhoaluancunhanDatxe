@@ -1,0 +1,54 @@
+@page "/Dispatcher/Complete/{id:int}"
+@model PortalWeb.Pages.Dispatcher.CompleteModel
+@{ ViewData["Title"] = "Tiếp nhận trả xe"; }
+
+<h2 class="mb-3">Tiếp nhận trả xe — đơn #@Model.Booking?.BookingId</h2>
+
+@if (Model.Booking is not null)
+{
+    <p class="mb-2">
+        <strong>Khách:</strong> @Model.Booking.CustomerName
+        | <strong>Loại xe:</strong> @Model.Booking.VehicleTypeName
+        | <strong>Xe:</strong> @(Model.Booking.AssignedVehicle?.LicensePlate ?? "—")
+        | <strong>Hình thức:</strong> Tự lái
+    </p>
+}
+
+<div class="alert alert-info">
+    <div class="fw-bold">Biên bản kiểm xe lúc trả</div>
+    <div class="small mb-0">Số km lúc trả không được nhỏ hơn số km lúc giao và số km hiện tại của xe. Nhiên liệu từ 0 đến 100.</div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<form method="post" class="col-lg-6">
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.OdometerKm">Số km lúc trả</label>
+        <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" required />
+        <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % lúc trả</label>
+        <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" required />
+        <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.ExteriorCondition">Ngoại thất lúc trả</label>
+        <input asp-for="Input.ExteriorCondition" class="form-control" maxlength="100" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.TechnicalCondition">Kỹ thuật lúc trả</label>
+        <input asp-for="Input.TechnicalCondition" class="form-control" maxlength="100" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" asp-for="Input.Notes">Ghi chú / sự cố</label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
+        <span asp-validation-for="Input.Notes" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-success">Tiếp nhận trả xe</button>
+    <a asp-page="/Dispatcher/Index" class="btn btn-secondary">Quay lại</a>
+</form>

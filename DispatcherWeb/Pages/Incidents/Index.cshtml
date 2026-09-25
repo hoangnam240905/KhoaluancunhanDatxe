@@ -1,0 +1,29 @@
+@page
+@model DispatcherWeb.Pages.Incidents.IndexModel
+@{ ViewData["Title"] = "Su co"; }
+
+<h2 class="mb-3">Bao cao su co</h2>
+<p class="text-muted">Chi xem. Tai xe ghi nhan su co tren chuyen cua minh.</p>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Ma</th><th>Don</th><th>Tai xe</th><th>Loai</th><th>Mo ta</th><th>Luc</th><th>Trang thai</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var i in Model.Incidents)
+    {
+        <tr>
+            <td>#@i.IncidentId</td>
+            <td>#@i.BookingId</td>
+            <td>@i.DriverName</td>
+            <td>@i.IncidentType</td>
+            <td>@i.Description</td>
+            <td>@i.OccurredAt.ToString("dd/MM/yyyy HH:mm")</td>
+            <td>@i.Status</td>
+        </tr>
+    }
+    </tbody>
+</table>

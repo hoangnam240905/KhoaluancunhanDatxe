@@ -1,0 +1,121 @@
+@page
+@model PortalWeb.Pages.Mockup.IndexModel
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Tổng quan";
+    ViewData["Nav"] = "dashboard";
+    ViewData["DashMeta"] = true;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/mockup-dashboard.css" asp-append-version="true" />
+}
+
+<div class="mk-banner">Giao diện mô phỏng — số liệu, biểu đồ và vị trí dưới đây là dữ liệu mẫu, chưa gọi hệ thống.</div>
+
+<section class="mk-hub-head dash-hero">
+    <div>
+        <h1>Chào buổi sáng, Điều phối viên!</h1>
+        <p>Tổng quan hoạt động điều phối của bạn hôm nay.</p>
+    </div>
+    <div class="dash-quick" id="dashQuick">
+        <span>Thao tác nhanh</span>
+        <a class="mk-btn mk-btn-primary" asp-page="/Mockup/Hub">+ Đơn thuê</a>
+        <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Hub">Điều phối</a>
+        <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Schedule">Lịch xe</a>
+        <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Trips">Vận hành chuyến</a>
+    </div>
+</section>
+
+<div class="dash-kpis" id="dashKpis"></div>
+
+<div class="dash-row dash-row-a">
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Hiệu suất điều phối</h2>
+            <select id="dashPeriod" aria-label="Kỳ biểu đồ">
+                <option value="today">Hôm nay</option>
+                <option value="week">Tuần này</option>
+                <option value="month">Tháng này</option>
+            </select>
+        </div>
+        <div class="dash-chart-wrap"><canvas id="dashPerfChart"></canvas></div>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head"><h2>Trạng thái chuyến hôm nay</h2></div>
+        <div class="dash-donut-wrap">
+            <canvas id="dashDonut"></canvas>
+            <div class="dash-donut-center"><strong>68</strong><span>Tổng số chuyến</span></div>
+        </div>
+        <ul class="dash-legend" id="dashDonutLegend"></ul>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Công việc cần xử lý</h2>
+            <a asp-page="/Mockup/Hub">Xem tất cả</a>
+        </div>
+        <div id="dashTasks"></div>
+    </section>
+</div>
+
+<div class="dash-row dash-row-b">
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Đơn thuê hôm nay</h2>
+            <a asp-page="/Mockup/Hub">Xem tất cả</a>
+        </div>
+        <div id="dashBookings"></div>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Tài xế đang hoạt động</h2>
+            <a asp-page="/Mockup/Schedule">Xem tất cả</a>
+        </div>
+        <div id="dashDrivers"></div>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Tình trạng xe</h2>
+            <a asp-page="/Mockup/Schedule">Xem tất cả</a>
+        </div>
+        <div id="dashVehicles"></div>
+    </section>
+</div>
+
+<div class="dash-row dash-row-c">
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Hoạt động gần đây</h2>
+            <a asp-page="/Mockup/Notifications">Xem tất cả</a>
+        </div>
+        <div id="dashActivities"></div>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Bản đồ theo dõi</h2>
+            <a asp-page="/Mockup/Trips">Xem bản đồ</a>
+        </div>
+        <div class="dash-map" id="dashMap">
+            <span class="dash-map-label">Chế độ mô phỏng · Vị trí mô phỏng</span>
+            <div class="dash-map-zoom">
+                <button type="button" data-map="in" title="Phóng to" aria-label="Phóng to">+</button>
+                <button type="button" data-map="out" title="Thu nhỏ" aria-label="Thu nhỏ">−</button>
+                <button type="button" data-map="center" title="Về giữa" aria-label="Về giữa">⊙</button>
+            </div>
+        </div>
+    </section>
+    <section class="mk-card dash-card">
+        <div class="dash-card-head">
+            <h2>Thông báo hệ thống</h2>
+            <a asp-page="/Mockup/Notifications">Xem tất cả</a>
+        </div>
+        <div id="dashNotices"></div>
+    </section>
+</div>
+
+<aside class="mk-drawer" id="dashDrawer" aria-hidden="true"></aside>
+<div class="mk-toast" id="dashToast"></div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="~/js/mockup-dashboard.js" asp-append-version="true"></script>
+}

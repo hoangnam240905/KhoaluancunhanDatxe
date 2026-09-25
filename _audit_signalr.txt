@@ -1,0 +1,4 @@
+﻿PortalWeb\wwwroot\js\realtime.js:2:    // DEMO TEMP: SignalR client off. Next week: delete this return to restore.
+PortalWeb\Pages\Shared\_Layout.cshtml:75:@* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
+PortalWeb\Pages\Shared\_Layout.cshtml:80:            hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+PortalWeb\Pages\Shared\_Layout.cshtml:84:    <script src="~/js/realtime.js" asp-append-version="true"></script>

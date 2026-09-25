@@ -1,0 +1,34 @@
+@page "/Admin/Drivers"
+@model PortalWeb.Pages.Admin.Drivers.IndexModel
+@{ ViewData["Title"] = "Tài xế"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Quản lý tài xế</h2>
+    <a asp-page="Create" class="btn btn-primary">Thêm tài xế</a>
+</div>
+@if (!string.IsNullOrEmpty(Model.Message)) { <div class="alert alert-info">@Model.Message</div> }
+<table class="table table-striped">
+    <thead><tr><th>Mã</th><th>Tên</th><th>Email</th><th>SĐT</th><th>Trạng thái</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var d in Model.Drivers)
+    {
+        <tr>
+            <td>#@d.DriverId</td>
+            <td>@d.FullName</td>
+            <td>@d.Email</td>
+            <td>@d.Phone</td>
+            <td>@d.Status</td>
+            <td>@(d.IsActive ? "Có" : "Không")</td>
+            <td>
+                <a asp-page="Edit" asp-route-id="@d.DriverId" class="btn btn-sm btn-outline-primary">Sửa</a>
+                @if (d.IsActive)
+                {
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@d.DriverId" class="d-inline">
+                        <button class="btn btn-sm btn-outline-danger">Khóa</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

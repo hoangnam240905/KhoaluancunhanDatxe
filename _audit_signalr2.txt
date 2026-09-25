@@ -1,0 +1,4 @@
+﻿DispatcherWeb\wwwroot\js\realtime.js:2:    // DEMO TEMP: SignalR client off. Next week: delete this return to restore.
+DispatcherWeb\Pages\Shared\_Layout.cshtml:30:    @* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
+DispatcherWeb\Pages\Shared\_Layout.cshtml:35:                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+DispatcherWeb\Pages\Shared\_Layout.cshtml:39:        <script src="~/js/realtime.js" asp-append-version="true"></script>

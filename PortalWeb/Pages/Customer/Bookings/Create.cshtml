@@ -1,0 +1,281 @@
+@page "/Customer/Bookings/Create"
+@model PortalWeb.Pages.Customer.Bookings.CreateModel
+@{
+    ViewData["Title"] = "Đặt xe";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var v = Model.SelectedVehicle;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    var quote = Model.Quote;
+    var selfDrive = CreateModel.IsSelfDrive(Model.Input.RentalMode);
+    var samePlace = Model.SameReturnPlace;
+    var startError = ViewData.ModelState["Input.StartDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
+    var endError = ViewData.ModelState["Input.EndDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/booking-create.css" asp-append-version="true" />
+}
+
+<div class="ch-page" data-cb-page data-cb-quote-url="@Url.Page("Create", "QuoteJson")" data-cb-creating="@BookingSubmitUi.Creating" data-cb-quote-loading="@BookingSubmitUi.QuoteLoading" data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="cb-head">
+        <div class="ch-container">
+            <div class="ch-eyebrow">Đặt xe</div>
+            <h1>Đặt xe cho hành trình của bạn</h1>
+            <p>Chỉ vài bước để hoàn tất thông tin thuê xe.</p>
+            <div class="cb-steps" aria-label="Tiến trình đặt xe">
+                <div class="cb-step is-on"><span>1</span> Thông tin đặt xe</div>
+                <div class="cb-step"><span>2</span> Xác nhận</div>
+                <div class="cb-step"><span>3</span> Thanh toán</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cb-body">
+        <div class="ch-container">
+            @if (Model.CreatedBooking is not null)
+            {
+                var created = Model.CreatedBooking;
+                <div class="cb-card cb-success">
+                    <h2>Yêu cầu đặt xe đã được ghi nhận</h2>
+                    <p>Hình thức @CreateModel.RentalModeLabel(created.RentalMode) · @created.VehicleTypeName</p>
+                    <p>@UiDisplay.Rental(created.StartDate) → @UiDisplay.Rental(created.EndDate)</p>
+                    <div class="cb-success-actions">
+                        <a asp-page="Details" asp-route-id="@created.BookingId" class="ch-search-btn">Xem chi tiết đơn</a>
+                        <a asp-page="Index" class="btn btn-outline-primary">Danh sách đơn</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
+                <input type="hidden" asp-for="Input.VehicleTypeId" />
+                <input type="hidden" asp-for="Input.VehicleId" />
+                <input type="hidden" asp-for="Input.RentalMode" data-cb-rental-mode />
+                <input type="hidden" asp-for="Input.EstimatedDistance" data-cb-distance-input />
+                <input type="hidden" asp-for="QuoteConfirmed" data-cb-quote-confirmed />
+                <input type="hidden" asp-for="QuotedFingerprint" data-cb-quote-fingerprint />
+                <input type="hidden" asp-for="FromRecommendation" />
+                <div class="cb-layout">
+                    <div>
+                        <article class="cb-card cb-vehicle">
+                            <img src="@v.ImageUrl" alt="@v.Name" />
+                            <div>
+                                <h2>@v.Name</h2>
+                                <div class="ch-meta">
+                                    <span>@v.Category@(string.IsNullOrWhiteSpace(v.LicensePlate) ? "" : $" · {v.LicensePlate}") · @HomeUi.SeatLabel(v.Seats) · @v.Transmission · @v.Fuel</span>
+                                    <span class="ch-rating"><i class="bi bi-star-fill"></i> @v.Rating.ToString("0.0") (@v.ReviewCount đánh giá)</span>
+                                </div>
+                                <div class="ch-price"><strong>@HomeUi.PricePerDay(v.PricePerDay)</strong></div>
+                            </div>
+                        </article>
+
+                        <div class="cb-card cb-section">
+                            <h3>1. Chọn hình thức thuê</h3>
+                            <div class="cb-modes">
+                                <button type="button" class="cb-mode @(selfDrive ? "is-on" : null)" data-cb-mode="SelfDrive">
+                                    <strong>Tự lái</strong>
+                                    <em>Chủ động điều khiển hành trình của bạn.</em>
+                                </button>
+                                <button type="button" class="cb-mode @(selfDrive ? null : "is-on")" data-cb-mode="WithDriver">
+                                    <strong>Có tài xế</strong>
+                                    <em>Thoải mái tận hưởng chuyến đi cùng tài xế.</em>
+                                </button>
+                            </div>
+                            <div class="cb-driver-note @(selfDrive ? null : "is-on")" data-cb-driver-note>
+                                <i class="bi bi-person-badge"></i>
+                                <span>Tài xế sẽ được điều phối cho chuyến đi. Bạn không cần chọn tài xế cụ thể.</span>
+                            </div>
+                        </div>
+
+                        <div class="cb-card cb-section">
+                            <h3>2. Chọn thời gian thuê</h3>
+                            <div class="cb-fields">
+                                <div class="cb-field @(string.IsNullOrEmpty(startError) ? null : "is-invalid")">
+                                    <label for="cbPickup">Ngày &amp; giờ nhận xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <input id="cbPickup" asp-for="Input.StartDate" type="datetime-local" data-cb-pickup value="@Model.Input.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                    </div>
+                                    <div class="cb-error">@(startError ?? "Vui lòng chọn ngày nhận xe.")</div>
+                                </div>
+                                <div class="cb-field @(string.IsNullOrEmpty(endError) ? null : "is-invalid")">
+                                    <label for="cbDropoff">Ngày &amp; giờ trả xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <input id="cbDropoff" asp-for="Input.EndDate" type="datetime-local" data-cb-dropoff value="@Model.Input.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                    </div>
+                                    <div class="cb-error" data-cb-end-error>@(endError ?? "Vui lòng chọn ngày trả xe.")</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cb-card cb-section">
+                            <h3>3. Địa điểm nhận &amp; trả xe</h3>
+                            <div class="cb-loc">
+                                <div class="cb-field">
+                                    <label for="cbPickupPlace">Địa điểm nhận xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <input id="cbPickupPlace" asp-for="Input.PickupAddress" type="text" data-cb-pickup-place />
+                                    </div>
+                                </div>
+                                <button type="button" class="cb-swap" data-cb-swap title="Đổi địa điểm" aria-label="Đổi địa điểm"><i class="bi bi-arrow-left-right"></i></button>
+                                <div class="cb-field">
+                                    <label for="cbReturnPlace">Địa điểm trả xe</label>
+                                    <div class="cb-input">
+                                        <i class="bi bi-geo"></i>
+                                        <input id="cbReturnPlace" asp-for="Input.DropoffAddress" type="text" data-cb-return-place />
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="cb-same">
+                                <input type="checkbox" data-cb-same @(samePlace ? "checked" : null) />
+                                Giống địa điểm nhận xe
+                            </label>
+                            <p class="cb-note">Địa điểm nhận và trả xe được lưu cùng đơn thuê.</p>
+                        </div>
+
+                        <div class="cb-card cb-section">
+                            <h3>4. Dịch vụ bổ sung (Tùy chọn)</h3>
+                            <div class="cb-addons">
+                                @foreach (var a in CreateBookingUi.Addons)
+                                {
+                                    <label class="cb-addon">
+                                        <i class="bi @a.Icon"></i>
+                                        <span>
+                                            <strong>@a.Title</strong>
+                                            <span>@a.Description</span>
+                                        </span>
+                                        <em>@CreateBookingUi.Money(a.Price)</em>
+                                        <input type="checkbox" data-cb-addon data-cb-addon-price="@a.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                    </label>
+                                }
+                            </div>
+                            <p class="cb-note">Dịch vụ bổ sung là minh họa giao diện — chưa phải hạng mục thanh toán thật.</p>
+                        </div>
+                    </div>
+
+                    <aside class="cb-card cb-quote">
+                        <h2>Tóm tắt chi phí</h2>
+                        <div class="cb-line">
+                            <span>Giá thuê xe<small data-cb-days>@(quote is null ? "—" : $"{CreateBookingUi.Money(quote.QuotedPricePerDay)} × {quote.QuotedDays} ngày")</small></span>
+                            <span data-cb-rental>@(quote is null ? "—" : CreateBookingUi.Money(quote.RentalAmount))</span>
+                        </div>
+                        <div class="cb-line" data-cb-driver-row @(quote is null || quote.DriverAmount <= 0 ? "hidden" : null)>
+                            <span>Phí tài xế</span>
+                            <span data-cb-driver>@(quote is null ? "—" : CreateBookingUi.Money(quote.DriverAmount))</span>
+                        </div>
+                        <div class="cb-line" data-cb-distance-row @(quote is null || quote.DistanceAmount <= 0 ? "hidden" : null)>
+                            <span>Phụ phí km</span>
+                            <span data-cb-distance>@(quote is null ? "—" : CreateBookingUi.Money(quote.DistanceAmount))</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Dịch vụ bổ sung</span>
+                            <span data-cb-addons-total>0 VNĐ</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Phí dịch vụ</span>
+                            <span>0 VNĐ</span>
+                        </div>
+                        <div class="cb-line">
+                            <span>Tiền cọc</span>
+                            <span>50%</span>
+                        </div>
+                        <div class="cb-line cb-total">
+                            <span>Tổng tiền thuê</span>
+                            <strong data-cb-total>@(quote is null ? "—" : CreateBookingUi.Money(quote.TotalAmount))</strong>
+                        </div>
+                        <div class="cb-line">
+                            <span>Tiền cọc dự kiến</span>
+                            <strong data-cb-deposit-amount>@(quote is null ? "—" : CreateBookingUi.Money(quote.DepositAmount))</strong>
+                        </div>
+                        <div class="cb-line" data-cb-remain-row @(quote is null ? "hidden" : null)>
+                            <span>Còn lại</span>
+                            <span data-cb-remain>@(quote is null ? "—" : CreateBookingUi.Money(quote.TotalAmount - quote.DepositAmount))</span>
+                        </div>
+                        <div class="cb-deposit-box">
+                            <h3>Tiền cọc</h3>
+                            <p>Tiền cọc được thanh toán sau khi đơn thuê được tạo và xác nhận.</p>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                        {
+                            <p class="cb-note" data-cb-status role="alert" style="color:#dc2626">@Model.ErrorMessage</p>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(Model.InfoMessage))
+                        {
+                            <p class="cb-note" data-cb-status>@Model.InfoMessage</p>
+                        }
+                        else
+                        {
+                            <p class="cb-note" data-cb-status>@(quote is null ? BookingSubmitUi.QuoteLoading : null)</p>
+                        }
+                        <button type="submit" class="ch-search-btn cb-confirm" data-cb-confirm>Xác nhận đặt xe</button>
+                        <p class="cb-secure">Thông tin của bạn được bảo mật và an toàn.</p>
+                        @if (v.Slug != "selected")
+                        {
+                            <a class="cb-back" asp-page="/Catalog/Details" asp-route-slug="@v.Slug"><i class="bi bi-arrow-left"></i> Quay lại chi tiết xe</a>
+                        }
+                        else
+                        {
+                            <a class="cb-back" asp-page="/Catalog"><i class="bi bi-arrow-left"></i> Quay lại chi tiết xe</a>
+                        }
+                    </aside>
+                </div>
+                </form>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/booking-create.js" asp-append-version="true"></script>
+}

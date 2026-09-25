@@ -1,0 +1,65 @@
+@using PortalWeb.Display
+@using PortalWeb.Models
+@{
+    var types = ViewData["VehicleTypes"] as IReadOnlyList<VehicleTypeResponse> ?? [];
+    var selectedTypes = ViewData["SelectedTypeIds"] as IEnumerable<int> ?? [];
+    var selectedSeats = ViewData["SelectedSeats"] as IEnumerable<int> ?? [];
+    var priceMax = ViewData["PriceMax"] as decimal?;
+    var formId = ViewData["FilterFormId"] as string ?? "customer-search";
+    var bind = ViewData["BindFilters"] as bool? ?? true;
+    var formAttr = bind ? $"form=\"{formId}\"" : "";
+    var nameType = bind ? "name=\"TypeId\"" : "";
+    var nameSeats = bind ? "name=\"Seats\"" : "";
+    var selectedTypeSet = selectedTypes.ToHashSet();
+    var selectedSeatSet = selectedSeats.ToHashSet();
+    var rangeValue = priceMax is decimal p and > 0 ? (int)Math.Clamp(p, 500000, 8000000) : 8000000;
+    int[] seatOptions = [4, 5, 7, 9, 16];
+}
+<div class="cs-filter-head">
+    <h2>Bộ lọc</h2>
+    <a class="cs-clear" asp-page="/Search">Xóa tất cả</a>
+</div>
+<div data-cs-filters>
+    <div class="cs-filter-group" style="border-top:0;padding-top:0">
+        <h3>Loại xe</h3>
+        @foreach (var type in types)
+        {
+            <label class="cs-check">
+                <input @Html.Raw(formAttr) type="checkbox" @Html.Raw(nameType) value="@type.TypeId"
+                       data-cs-filter="TypeId"
+                       @(selectedTypeSet.Contains(type.TypeId) ? "checked" : null) />
+                @type.TypeName
+            </label>
+        }
+    </div>
+    <div class="cs-filter-group">
+        <h3>Khoảng giá / ngày</h3>
+        <input class="cs-range" type="range" min="500000" max="8000000" step="100000"
+               value="@rangeValue" data-cs-price data-cs-price-target="PriceMax" />
+        <div class="cs-range-meta">
+            <span>500.000</span>
+            <span data-cs-price-label>@rangeValue.ToString("N0") VNĐ</span>
+        </div>
+    </div>
+    <div class="cs-filter-group">
+        <h3>Số chỗ</h3>
+        @foreach (var seats in seatOptions)
+        {
+            <label class="cs-check">
+                <input @Html.Raw(formAttr) type="checkbox" @Html.Raw(nameSeats) value="@seats"
+                       data-cs-filter="Seats"
+                       @(selectedSeatSet.Contains(seats) ? "checked" : null) />
+                @seats chỗ
+            </label>
+        }
+    </div>
+    <div class="cs-filter-group">
+        <h3>Thương hiệu</h3>
+        <p class="cc-ui-note">Lọc thương hiệu chưa có trên API — không áp dụng.</p>
+        <label class="cs-check"><input type="checkbox" disabled /> Mercedes-Benz</label>
+        <label class="cs-check"><input type="checkbox" disabled /> Toyota</label>
+        <label class="cs-check"><input type="checkbox" disabled /> Hyundai</label>
+        <label class="cs-check"><input type="checkbox" disabled /> Kia</label>
+        <label class="cs-check"><input type="checkbox" disabled /> Ford</label>
+    </div>
+</div>

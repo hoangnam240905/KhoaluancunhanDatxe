@@ -1,0 +1,6 @@
+﻿Backend\Hubs\RealtimeHub.cs:5:using Microsoft.AspNetCore.SignalR;
+Backend\Program.cs:62:builder.Services.AddSignalR();
+Backend\Program.cs:63:builder.Services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
+Backend\Program.cs:159:app.MapHub<RealtimeHub>("/hubs/realtime");
+Backend\Services\SignalRRealtimePublisher.cs:3:using Microsoft.AspNetCore.SignalR;
+Backend\Services\SignalRRealtimePublisher.cs:7:public class SignalRRealtimePublisher(IHubContext<RealtimeHub> hub, ILogger<SignalRRealtimePublisher> logger)

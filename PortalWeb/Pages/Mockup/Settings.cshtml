@@ -1,0 +1,241 @@
+@page
+@model PortalWeb.Pages.Mockup.SettingsModel
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Cài đặt tài khoản";
+    ViewData["Nav"] = "settings";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/mockup-settings.css" asp-append-version="true" />
+}
+
+@if (!string.IsNullOrEmpty(Model.LoadError))
+{
+    <div class="alert alert-warning">@Model.LoadError</div>
+}
+<div class="mk-banner">Hồ sơ từ Backend (GET /api/auth/me). Đổi mật khẩu gọi API thật (POST /api/auth/change-password). Cập nhật hồ sơ, tùy chọn thông báo, giao diện, 2FA và phiên đăng nhập vẫn presentation-only (thiếu API).</div>
+
+<section class="mk-hub-head">
+    <div>
+        <p class="st-crumb">Điều phối viên / Cài đặt tài khoản</p>
+        <h1>Cài đặt tài khoản</h1>
+        <p>Quản lý thông tin cá nhân, thông báo và tùy chọn làm việc</p>
+    </div>
+</section>
+
+<div class="st-layout">
+    <aside class="mk-card st-nav" aria-label="Menu cài đặt">
+        <label class="st-nav-select-wrap">
+            <span class="mk-muted">Mục cài đặt</span>
+            <select id="stNavSelect" class="st-nav-select" aria-label="Chọn mục cài đặt">
+                <option value="profile">👤 Hồ sơ cá nhân</option>
+                <option value="notifications">🔔 Tùy chọn thông báo</option>
+                <option value="appearance">🎨 Giao diện</option>
+                <option value="security">🔐 Bảo mật</option>
+                <option value="sessions">🖥️ Phiên đăng nhập</option>
+            </select>
+        </label>
+        <nav class="st-nav-list" id="stNav">
+            <button type="button" class="st-nav-btn is-on" data-section="profile">👤 Hồ sơ cá nhân</button>
+            <button type="button" class="st-nav-btn" data-section="notifications">🔔 Tùy chọn thông báo</button>
+            <button type="button" class="st-nav-btn" data-section="appearance">🎨 Giao diện</button>
+            <button type="button" class="st-nav-btn" data-section="security">🔐 Bảo mật</button>
+            <button type="button" class="st-nav-btn" data-section="sessions">🖥️ Phiên đăng nhập</button>
+        </nav>
+    </aside>
+
+    <div class="st-panels">
+        <!-- Hồ sơ cá nhân -->
+        <section class="st-panel is-on" id="stPanelProfile" data-panel="profile">
+            <div class="mk-card st-card">
+                <div class="st-card-head">
+                    <div>
+                        <h2>Thông tin cá nhân</h2>
+                        <p class="mk-muted">Thông tin từ tài khoản đăng nhập — lưu hồ sơ chưa có API cập nhật</p>
+                    </div>
+                </div>
+                <div class="st-profile-top">
+                    <div class="st-avatar-lg" id="stAvatar">—</div>
+                    <div>
+                        <strong id="stDisplayName">—</strong>
+                        <span class="mk-badge mk-badge-assigned" id="stRoleBadge">—</span>
+                        <p class="mk-muted mb-0">Mã nhân viên <strong id="stCodeLabel">—</strong> <span class="mk-note">(không có trong API)</span></p>
+                    </div>
+                </div>
+                <form id="stProfileForm" class="st-form" novalidate>
+                    <div class="st-form-grid">
+                        <label class="mk-field">
+                            <span>Họ và tên</span>
+                            <input type="text" id="stFullName" name="fullName" autocomplete="name" />
+                        </label>
+                        <label class="mk-field">
+                            <span>Số điện thoại</span>
+                            <input type="tel" id="stPhone" name="phone" autocomplete="tel" />
+                        </label>
+                        <label class="mk-field">
+                            <span>Email</span>
+                            <input type="email" id="stEmail" name="email" autocomplete="email" />
+                        </label>
+                        <label class="mk-field">
+                            <span>Vai trò</span>
+                            <input type="text" id="stRole" readonly />
+                        </label>
+                        <label class="mk-field">
+                            <span>Mã nhân viên</span>
+                            <input type="text" id="stCode" readonly />
+                        </label>
+                        <label class="mk-field">
+                            <span>Phòng ban</span>
+                            <input type="text" id="stDept" readonly />
+                        </label>
+                        <label class="mk-field st-span-2">
+                            <span>Ngày tham gia</span>
+                            <input type="text" id="stJoined" readonly />
+                        </label>
+                    </div>
+                    <p class="mk-note">Mã nhân viên / phòng ban / ngày tham gia không có trong GET /api/auth/me — giữ trống, không dùng dữ liệu mẫu.</p>
+                    <p class="st-error" id="stProfileError" hidden></p>
+                    <div class="st-actions">
+                        <button type="submit" class="mk-btn mk-btn-primary">Lưu thay đổi</button>
+                        <button type="button" class="mk-btn mk-btn-ghost" id="stProfileCancel">Hủy</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Tùy chọn thông báo -->
+        <section class="st-panel" id="stPanelNotifications" data-panel="notifications" hidden>
+            <div class="mk-card st-card">
+                <div class="st-card-head">
+                    <div>
+                        <h2>Tùy chọn thông báo</h2>
+                        <p class="mk-muted">Chọn những thông báo bạn muốn nhận trong quá trình điều phối</p>
+                    </div>
+                </div>
+                <div class="st-toggle-list" id="stNotifyList"></div>
+                <div class="st-divider"></div>
+                <div class="st-toggle-list" id="stNotifyExtra"></div>
+                <div class="st-actions">
+                    <button type="button" class="mk-btn mk-btn-primary" id="stNotifySave">Lưu tùy chọn thông báo</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Giao diện -->
+        <section class="st-panel" id="stPanelAppearance" data-panel="appearance" hidden>
+            <div class="mk-card st-card">
+                <div class="st-card-head">
+                    <div>
+                        <h2>Giao diện</h2>
+                        <p class="mk-muted">Tùy chọn hiển thị cho màn hình điều phối</p>
+                    </div>
+                </div>
+                <div class="st-option-group">
+                    <h3>Chế độ hiển thị</h3>
+                    <div class="st-radios" id="stThemeRadios">
+                        <label class="st-radio"><input type="radio" name="stTheme" value="light" /> Sáng</label>
+                        <label class="st-radio"><input type="radio" name="stTheme" value="dark" /> Tối</label>
+                    </div>
+                    <p class="mk-note">Chế độ tối chỉ mô phỏng — hệ thống mock hiện tại vẫn dùng giao diện sáng.</p>
+                </div>
+                <div class="st-option-group">
+                    <h3>Mật độ hiển thị</h3>
+                    <div class="st-radios" id="stDensityRadios">
+                        <label class="st-radio"><input type="radio" name="stDensity" value="standard" /> Tiêu chuẩn</label>
+                        <label class="st-radio"><input type="radio" name="stDensity" value="compact" /> Gọn</label>
+                    </div>
+                </div>
+                <div class="st-option-group">
+                    <h3>Ngôn ngữ</h3>
+                    <label class="mk-field st-lang">
+                        <span>Ngôn ngữ giao diện</span>
+                        <input type="text" value="Tiếng Việt" readonly />
+                    </label>
+                </div>
+                <div class="st-actions">
+                    <button type="button" class="mk-btn mk-btn-primary" id="stAppearanceSave">Lưu tùy chọn giao diện</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bảo mật -->
+        <section class="st-panel" id="stPanelSecurity" data-panel="security" hidden>
+            <div class="mk-card st-card">
+                <div class="st-card-head">
+                    <div>
+                        <h2>Bảo mật tài khoản</h2>
+                        <p class="mk-muted">Đổi mật khẩu gọi API thật; xác thực hai bước vẫn mô phỏng (thiếu API)</p>
+                    </div>
+                </div>
+                <h3 class="st-sub">Đổi mật khẩu</h3>
+                <form id="stPasswordForm" class="st-form" novalidate>
+                    <div class="st-form-grid st-form-grid-1">
+                        <label class="mk-field">
+                            <span>Mật khẩu hiện tại</span>
+                            <input type="password" id="stPwdCurrent" autocomplete="current-password" />
+                        </label>
+                        <label class="mk-field">
+                            <span>Mật khẩu mới</span>
+                            <input type="password" id="stPwdNew" autocomplete="new-password" />
+                        </label>
+                        <label class="mk-field">
+                            <span>Xác nhận mật khẩu mới</span>
+                            <input type="password" id="stPwdConfirm" autocomplete="new-password" />
+                        </label>
+                    </div>
+                    <p class="st-error" id="stPwdError" hidden></p>
+                    <div class="st-actions">
+                        <button type="submit" class="mk-btn mk-btn-primary">Đổi mật khẩu</button>
+                    </div>
+                </form>
+            </div>
+            <div class="mk-card st-card">
+                <div class="st-twofa">
+                    <div>
+                        <h3 class="st-sub mb-1">Xác thực hai bước</h3>
+                        <p class="mk-muted mb-0">Thêm lớp bảo vệ khi đăng nhập (mô phỏng, không gửi OTP thật).</p>
+                        <p class="st-twofa-status">Trạng thái: <strong id="stTwoFaStatus">Đang tắt</strong></p>
+                    </div>
+                    <button type="button" class="mk-btn mk-btn-ghost" id="stTwoFaBtn">Bật xác thực hai bước</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Phiên đăng nhập -->
+        <section class="st-panel" id="stPanelSessions" data-panel="sessions" hidden>
+            <div class="mk-card st-card">
+                <div class="st-card-head">
+                    <div>
+                        <h2>Phiên đăng nhập</h2>
+                        <p class="mk-muted">Quản lý các thiết bị đang đăng nhập (dữ liệu mẫu)</p>
+                    </div>
+                    <button type="button" class="mk-btn mk-btn-danger" id="stLogoutAll">Đăng xuất khỏi tất cả thiết bị</button>
+                </div>
+                <div class="st-session-list" id="stSessionList"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="mk-modal" id="stModal" hidden>
+    <div class="mk-modal-dialog st-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="stModalTitle">
+        <h2 id="stModalTitle">Xác nhận</h2>
+        <p id="stModalBody" class="mk-muted"></p>
+        <div class="st-actions">
+            <button type="button" class="mk-btn mk-btn-danger" id="stModalOk">Xác nhận</button>
+            <button type="button" class="mk-btn mk-btn-ghost" id="stModalCancel">Hủy</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <form id="stAntiForgery" class="d-none">@Html.AntiForgeryToken()</form>
+    <script>
+        window.__SETTINGS_BOOTSTRAP__ = @Html.Raw(Model.BootstrapJson);
+        window.__SETTINGS_HANDLERS__ = {
+            changePassword: '@Url.Page("/Mockup/Settings", "ChangePassword")'
+        };
+    </script>
+    <script src="~/js/mockup-settings.js" asp-append-version="true"></script>
+}

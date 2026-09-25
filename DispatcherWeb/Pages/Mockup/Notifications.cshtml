@@ -1,0 +1,42 @@
+@page
+@{
+    Layout = "_MockupLayout";
+    ViewData["Title"] = "Thông báo";
+    ViewData["Nav"] = "notifications";
+}
+
+<div class="mk-banner">Giao diện mô phỏng — thông báo dưới đây là dữ liệu mẫu, chưa gọi hệ thống, chưa dùng thời gian thực.</div>
+
+<section class="mk-hub-head">
+    <div>
+        <h1>Thông báo</h1>
+        <p>Cập nhật các hoạt động và vấn đề cần được điều phối viên xử lý</p>
+    </div>
+    <button type="button" class="mk-btn mk-btn-primary" id="ntMarkAll">Đánh dấu tất cả đã đọc</button>
+</section>
+
+<div class="nt-kpis" id="ntKpis"></div>
+
+<section class="mk-card mk-toolbar">
+    <h2>Tìm kiếm &amp; bộ lọc</h2>
+    <label class="mk-field nt-search">
+        <span>Tìm kiếm</span>
+        <input type="search" id="ntSearch" placeholder="Tìm kiếm thông báo..." />
+    </label>
+    <div class="mk-pills" id="ntTabs"></div>
+</section>
+
+<div class="mk-card nt-list-card">
+    <div id="ntList"></div>
+    <div class="nt-empty" id="ntEmpty" hidden>
+        <div>🔔</div>
+        <strong>Không có thông báo</strong>
+        <p>Hiện tại không có thông báo phù hợp.</p>
+    </div>
+    <div class="nt-more-row">
+        <p class="mk-muted" id="ntMeta"></p>
+        <button type="button" class="mk-btn mk-btn-ghost" id="ntMore">Xem thêm</button>
+    </div>
+</div>
+
+<aside class="mk-drawer nt-drawer" id="ntDrawer" aria-hidden="true"></aside>

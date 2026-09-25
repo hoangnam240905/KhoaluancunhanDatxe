@@ -1,0 +1,271 @@
+@page "/Customer/Bookings/Details/{id:int}"
+@model PortalWeb.Pages.Customer.Bookings.DetailsModel
+@{
+    ViewData["Title"] = "Chi tiết đơn thuê";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var d = Model.Presentation;
+    var steps = d is null ? Array.Empty<TimelineStep>() : BookingDetailUi.Timeline(d.Status);
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+    var modeLabel = d is null ? "" : BookingDetailUi.RentalModeLabel(d.WithDriver ? "WithDriver" : "SelfDrive");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/booking-detail.css" asp-append-version="true" />
+}
+
+<div class="ch-page">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="bd-head">
+        <div class="ch-container">
+            <div class="bd-head-row">
+                <div>
+                    <div class="ch-eyebrow">Chi tiết đơn đặt</div>
+                    <h1>Chi tiết đơn thuê</h1>
+                    <p class="bd-code">Mã đơn: <strong>@(d?.Code ?? "—")</strong></p>
+                </div>
+                <a class="bd-back" asp-page="Index"><i class="bi bi-arrow-left"></i> Quay lại danh sách đơn</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="bd-body">
+        <div class="ch-container">
+            @if (d is null)
+            {
+                <div class="bd-card bd-empty">
+                    <h2>@(Model.AccessDenied ? "Không thể xem đơn này" : "Không tìm thấy đơn thuê")</h2>
+                    <p>@(Model.ErrorMessage ?? BookingDetailUi.NotFound)</p>
+                    <a class="bd-btn bd-btn-primary" asp-page="Index">Quay lại danh sách đơn</a>
+                </div>
+            }
+            else
+            {
+            <div class="bd-timeline-wrap bd-card">
+                <h2>Trạng thái đơn</h2>
+                @if (d.IsCancelled)
+                {
+                    <div class="bd-cancelled-banner">
+                        <i class="bi bi-x-circle"></i>
+                        <div>
+                            Đơn thuê đã được hủy
+                            <p>Đơn này đang ở trạng thái Đã hủy.</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="bd-timeline" aria-label="Tiến trình đơn thuê">
+                        @foreach (var step in steps)
+                        {
+                            var cls = step.State == "done" ? "is-done" : step.State == "current" ? "is-current" : "";
+                            <div class="bd-tl @cls">
+                                <div class="bd-dot">
+                                    @if (step.State == "done")
+                                    {
+                                        <i class="bi bi-check-lg"></i>
+                                    }
+                                    else if (step.State == "current")
+                                    {
+                                        <i class="bi bi-circle-fill" style="font-size:0.45rem"></i>
+                                    }
+                                </div>
+                                <span>@step.Label</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="bd-layout">
+                <div>
+                    <article class="bd-card">
+                        <h2>Thông tin đơn thuê</h2>
+                        <div class="bd-facts">
+                            <div class="bd-fact"><small>Mã đơn</small><strong>@d.Code</strong></div>
+                            <div class="bd-fact"><small>Ngày tạo</small><strong>@BookingDetailUi.Day(d.CreatedAt)</strong></div>
+                            <div class="bd-fact"><small>Hình thức thuê</small><strong>@modeLabel</strong></div>
+                            <div class="bd-fact"><small>Thời lượng</small><strong>@d.Days ngày</strong></div>
+                            <div class="bd-fact"><small>Ngày nhận</small><strong>@BookingDetailUi.When(d.PickupAt)</strong></div>
+                            <div class="bd-fact"><small>Ngày trả</small><strong>@BookingDetailUi.When(d.ReturnAt)</strong></div>
+                            <div class="bd-fact"><small>Địa điểm nhận</small><strong>@d.PickupPlace</strong></div>
+                            <div class="bd-fact"><small>Địa điểm trả</small><strong>@d.ReturnPlace</strong></div>
+                        </div>
+                    </article>
+
+                    <article class="bd-card bd-vehicle">
+                        <img src="@d.VehicleImage" alt="@d.VehicleTitle" />
+                        <div>
+                            <h3>@d.VehicleTitle</h3>
+                            @if (!string.IsNullOrWhiteSpace(d.VehicleMeta))
+                            {
+                                <div class="ch-meta"><span>@d.VehicleMeta</span></div>
+                            }
+                        </div>
+                    </article>
+
+                    @if (d.WithDriver)
+                    {
+                        <article class="bd-card">
+                            <h2>Thông tin tài xế</h2>
+                            <div class="bd-driver">
+                                <span class="bd-avatar"><i class="bi bi-person-badge"></i></span>
+                                <div>
+                                    <strong>@d.DriverTitle</strong>
+                                    @if (!string.IsNullOrWhiteSpace(d.DriverMeta))
+                                    {
+                                        <em>@d.DriverMeta</em>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+
+                    <article class="bd-card">
+                        <h2>Thông tin chuyến thuê</h2>
+                        <p class="bd-trip">Hành trình dự kiến từ @BookingDetailUi.When(d.PickupAt) đến @BookingDetailUi.When(d.ReturnAt) tại @d.PickupPlace.</p>
+                        <div class="bd-next">
+                            <h3>Tiếp theo</h3>
+                            <p>@d.NextStep</p>
+                        </div>
+                    </article>
+                </div>
+
+                <aside>
+                    <div class="bd-card bd-quote">
+                        <h2>Tóm tắt chi phí</h2>
+                        @if (d.RentalLine is decimal rental)
+                        {
+                            <div class="bd-line"><span>Giá thuê xe</span><span>@BookingDetailUi.Money(rental)</span></div>
+                        }
+                        @if (d.DriverFee is decimal driverFee)
+                        {
+                            <div class="bd-line"><span>Phí tài xế</span><span>@BookingDetailUi.Money(driverFee)</span></div>
+                        }
+                        <div class="bd-line bd-total"><span>Tổng tiền thuê</span><strong>@BookingDetailUi.Money(d.TotalAmount)</strong></div>
+                        @if (d.Deposit is decimal deposit)
+                        {
+                            <div class="bd-line"><span>Tiền cọc</span><span>@BookingDetailUi.Money(deposit)</span></div>
+                        }
+                        @if (d.Remaining is decimal remain)
+                        {
+                            <div class="bd-line"><span>Còn lại</span><span>@BookingDetailUi.Money(remain)</span></div>
+                        }
+
+                        @if (d.Deposit is decimal depositBox)
+                        {
+                            <div class="bd-pay-box">
+                                <h3>Tiền cọc</h3>
+                                <p>@BookingDetailUi.Money(depositBox)</p>
+                            </div>
+                        }
+
+                        @if (Model.IsAwaitingDispatcher)
+                        {
+                            <div class="bd-wait">
+                                <h3>@BookingDetailUi.WaitingTitle</h3>
+                                <p>@BookingDetailUi.WaitingBody</p>
+                            </div>
+                            <div class="bd-actions">
+                                <a class="bd-btn bd-btn-ghost" asp-page="Index">Quay lại danh sách đơn</a>
+                                <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
+                            </div>
+                        }
+                        else
+                        {
+                        @if (Model.CanViewContract)
+                        {
+                            <div class="bd-card bd-contract" style="padding:0;border:0;box-shadow:none;margin-top:1rem;">
+                                <div class="bd-contract-status">
+                                    <h3 style="margin:0">Hợp đồng điện tử</h3>
+                                </div>
+                                <div class="bd-actions">
+                                    <a class="bd-btn bd-btn-ghost" asp-page="Contract" asp-route-id="@d.BookingId">Xem hợp đồng</a>
+                                </div>
+                            </div>
+                        }
+
+                        @if (Model.Booking is { } reviewBooking && (reviewBooking.Review is not null || ReviewUi.CanOfferReview(reviewBooking)))
+                        {
+                            <div class="bd-actions">
+                                <a class="bd-btn @(reviewBooking.Review is null ? "bd-btn-primary" : "bd-btn-ghost")" asp-page="Review" asp-route-id="@reviewBooking.BookingId">@(reviewBooking.Review is null ? "Đánh giá chuyến" : "Đã đánh giá")</a>
+                            </div>
+                        }
+
+                        @if (!d.IsCancelled)
+                        {
+                            <div class="bd-actions">
+                                @if (Model.CanPayDeposit)
+                                {
+                                    <a class="bd-btn bd-btn-primary" asp-page="Pay" asp-route-id="@d.BookingId">Thanh toán tiền cọc</a>
+                                }
+                                <button type="button" class="bd-btn bd-btn-danger" data-bd-ui="Hủy đơn sẽ được kết nối sau. Trạng thái đơn thật không đổi.">Hủy đơn</button>
+                                <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="bd-actions">
+                                <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
+                            </div>
+                        }
+                        }
+                        <div class="bd-toast" data-bd-toast></div>
+                    </div>
+                </aside>
+            </div>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/booking-detail.js" asp-append-version="true"></script>
+}

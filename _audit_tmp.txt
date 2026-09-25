@@ -1,0 +1,161 @@
+﻿Backend\Controllers\AdminDashboardController.cs:11:[Route("api/admin/dashboard")]
+Backend\Controllers\AdminDashboardController.cs:14:    [HttpGet]
+Backend\Controllers\AdminDashboardController.cs:15:    public async Task<ActionResult<DashboardResponse>> Get(
+Backend\Controllers\AdminCustomersController.cs:12:[Route("api/admin/customers")]
+Backend\Controllers\AdminCustomersController.cs:15:    [HttpGet]
+Backend\Controllers\AdminCustomersController.cs:16:    public async Task<ActionResult<AdminCustomerListResponse>> GetAll(
+Backend\Controllers\AdminCustomersController.cs:22:    [HttpGet("{id:int}")]
+Backend\Controllers\AdminCustomersController.cs:23:    public async Task<ActionResult<AdminCustomerResponse>> GetById(int id)
+Backend\Controllers\AdminCustomersController.cs:29:    [HttpPost]
+Backend\Controllers\AdminCustomersController.cs:30:    public async Task<ActionResult<AdminCustomerResponse>> Create(CreateAdminCustomerRequest request)
+Backend\Controllers\AdminCustomersController.cs:39:    [HttpPut("{id:int}")]
+Backend\Controllers\AdminCustomersController.cs:40:    public async Task<ActionResult<AdminCustomerResponse>> Update(int id, UpdateAdminCustomerRequest request)
+Backend\Controllers\AdminCustomersController.cs:49:    [HttpPut("{id:int}/lock")]
+Backend\Controllers\AdminCustomersController.cs:50:    public async Task<ActionResult<AdminCustomerResponse>> Lock(int id, LockCustomerRequest request)
+Backend\Controllers\AdminCustomersController.cs:60:    [HttpDelete("{id:int}")]
+Backend\Controllers\AdminCustomersController.cs:61:    public async Task<IActionResult> Deactivate(int id, [FromBody] DeactivateCustomerRequest? request)
+Backend\Controllers\AdminContractsController.cs:11:[Route("api/admin/contracts")]
+Backend\Controllers\AdminContractsController.cs:14:    [HttpGet]
+Backend\Controllers\AdminContractsController.cs:15:    public async Task<ActionResult<List<ContractResponse>>> GetAll(
+Backend\Controllers\AdminDriversController.cs:11:[Route("api/admin/drivers")]
+Backend\Controllers\AdminDriversController.cs:14:    [HttpGet]
+Backend\Controllers\AdminDriversController.cs:15:    public async Task<ActionResult<List<AdminDriverResponse>>> GetAll()
+Backend\Controllers\AdminDriversController.cs:18:    [HttpGet("{id:int}")]
+Backend\Controllers\AdminDriversController.cs:19:    public async Task<ActionResult<AdminDriverResponse>> GetById(int id)
+Backend\Controllers\AdminDriversController.cs:25:    [HttpPost]
+Backend\Controllers\AdminDriversController.cs:26:    public async Task<ActionResult<AdminDriverResponse>> Create(CreateAdminDriverRequest request)
+Backend\Controllers\AdminDriversController.cs:37:    [HttpPut("{id:int}")]
+Backend\Controllers\AdminDriversController.cs:38:    public async Task<ActionResult<AdminDriverResponse>> Update(int id, UpdateAdminDriverRequest request)
+Backend\Controllers\AdminDriversController.cs:49:    [HttpDelete("{id:int}")]
+Backend\Controllers\AdminDriversController.cs:50:    public async Task<IActionResult> Delete(int id)
+Backend\Controllers\AdminIncidentsController.cs:11:[Route("api/admin/incidents")]
+Backend\Controllers\AdminIncidentsController.cs:14:    [HttpGet]
+Backend\Controllers\AdminIncidentsController.cs:15:    public async Task<ActionResult<List<IncidentResponse>>> GetAll(
+Backend\Controllers\AdminInspectionsController.cs:11:[Route("api/admin/inspections")]
+Backend\Controllers\AdminInspectionsController.cs:14:    [HttpGet]
+Backend\Controllers\AdminInspectionsController.cs:15:    public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetAll([FromQuery] int? bookingId)
+Backend\Controllers\AdminPaymentsController.cs:11:[Route("api/admin/payments")]
+Backend\Controllers\AdminPaymentsController.cs:14:    [HttpGet]
+Backend\Controllers\AdminPaymentsController.cs:15:    public async Task<ActionResult<List<PaymentResponse>>> GetAll(
+Backend\Controllers\AdminVehicleTypesController.cs:11:[Route("api/admin/vehicle-types")]
+Backend\Controllers\AdminVehicleTypesController.cs:14:    [HttpGet]
+Backend\Controllers\AdminVehicleTypesController.cs:15:    public async Task<ActionResult<List<AdminVehicleTypeResponse>>> GetAll()
+Backend\Controllers\AdminVehicleTypesController.cs:18:    [HttpGet("{id:int}")]
+Backend\Controllers\AdminVehicleTypesController.cs:19:    public async Task<ActionResult<AdminVehicleTypeResponse>> GetById(int id)
+Backend\Controllers\AdminVehicleTypesController.cs:25:    [HttpPut("{id:int}")]
+Backend\Controllers\AdminVehicleTypesController.cs:26:    public async Task<ActionResult<AdminVehicleTypeResponse>> Update(int id, UpdateVehicleTypePricingRequest request)
+Backend\Controllers\AdminVehicleTypesController.cs:39:    [HttpPost]
+Backend\Controllers\AdminVehicleTypesController.cs:40:    public async Task<ActionResult<AdminVehicleTypeResponse>> Create(CreateVehicleTypeRequest request)
+Backend\Controllers\AdminVehicleTypesController.cs:51:    [HttpDelete("{id:int}")]
+Backend\Controllers\AdminVehicleTypesController.cs:52:    public async Task<IActionResult> Delete(int id)
+Backend\Controllers\AuthController.cs:10:[Route("api/[controller]")]
+Backend\Controllers\AuthController.cs:13:    [HttpGet("login-options")]
+Backend\Controllers\AuthController.cs:14:    public ActionResult<LoginOptionsResponse> LoginOptions() => Ok(authService.GetLoginOptions());
+Backend\Controllers\AuthController.cs:16:    [HttpPost("login")]
+Backend\Controllers\AuthController.cs:17:    public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
+Backend\Controllers\AuthController.cs:29:    [HttpPost("register")]
+Backend\Controllers\AuthController.cs:30:    public async Task<ActionResult<RegisterPendingResponse>> Register(RegisterCustomerRequest request)
+Backend\Controllers\AuthController.cs:38:    [HttpPost("verify-email")]
+Backend\Controllers\AuthController.cs:39:    public async Task<ActionResult<AuthResponse>> VerifyEmail(VerifyEmailRequest request)
+Backend\Controllers\AuthController.cs:47:    [HttpPost("resend-verification-otp")]
+Backend\Controllers\AuthController.cs:48:    public async Task<ActionResult<RegisterPendingResponse>> ResendVerification(ResendVerificationRequest request)
+Backend\Controllers\AuthController.cs:56:    [HttpPost("forgot-password")]
+Backend\Controllers\AuthController.cs:57:    public async Task<ActionResult<MessageResponse>> ForgotPassword(ForgotPasswordRequest request)
+Backend\Controllers\AuthController.cs:62:    [HttpPost("reset-password")]
+Backend\Controllers\AuthController.cs:63:    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+Backend\Controllers\AuthController.cs:71:    [HttpPost("google")]
+Backend\Controllers\AuthController.cs:72:    public async Task<ActionResult<AuthResponse>> Google(GoogleLoginRequest request)
+Backend\Controllers\AuthController.cs:82:    [HttpGet("me")]
+Backend\Controllers\AuthController.cs:83:    public async Task<ActionResult<UserProfileResponse>> GetProfile()
+Backend\Controllers\AuthController.cs:91:    [HttpPost("change-password")]
+Backend\Controllers\AuthController.cs:92:    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+Backend\Controllers\BookingsController.cs:13:[Route("api/bookings")]
+Backend\Controllers\BookingsController.cs:18:    [HttpGet]
+Backend\Controllers\BookingsController.cs:19:    public async Task<ActionResult<List<BookingResponse>>> GetAll([FromQuery] string? status)
+Backend\Controllers\BookingsController.cs:34:    [HttpGet("quote")]
+Backend\Controllers\BookingsController.cs:35:    public async Task<ActionResult<BookingQuoteResponse>> Quote(
+Backend\Controllers\BookingsController.cs:64:    [HttpGet("{id:int}")]
+Backend\Controllers\BookingsController.cs:65:    public async Task<ActionResult<BookingResponse>> GetById(int id)
+Backend\Controllers\BookingsController.cs:85:    [HttpGet("{id:int}/inspections")]
+Backend\Controllers\BookingsController.cs:86:    public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetInspections(int id)
+Backend\Controllers\BookingsController.cs:107:    [HttpPost]
+Backend\Controllers\BookingsController.cs:108:    public async Task<ActionResult<BookingResponse>> Create(
+Backend\Controllers\BookingsController.cs:127:    [HttpPost("{id:int}/reviews")]
+Backend\Controllers\BookingsController.cs:128:    public async Task<ActionResult<ReviewResponse>> CreateReview(int id, CreateReviewRequest request)
+Backend\Controllers\BookingsController.cs:138:    [HttpPatch("{id:int}/status")]
+Backend\Controllers\BookingsController.cs:139:    public async Task<ActionResult<BookingResponse>> UpdateStatus(int id, UpdateBookingStatusRequest request)
+Backend\Controllers\ContractsController.cs:12:[Route("api")]
+Backend\Controllers\ContractsController.cs:16:    [HttpPost("bookings/{bookingId:int}/contract")]
+Backend\Controllers\ContractsController.cs:17:    public async Task<ActionResult<ContractResponse>> Create(int bookingId)
+Backend\Controllers\ContractsController.cs:29:    [HttpGet("bookings/{bookingId:int}/contract")]
+Backend\Controllers\ContractsController.cs:30:    public async Task<ActionResult<ContractResponse>> GetByBooking(int bookingId)
+Backend\Controllers\ContractsController.cs:42:    [HttpPost("contracts/{id:int}/simulate-sign")]
+Backend\Controllers\ContractsController.cs:43:    public async Task<ActionResult<ContractResponse>> SimulateSign(int id)
+Backend\Controllers\DispatchController.cs:14:[Route("api/dispatch")]
+Backend\Controllers\DispatchController.cs:20:    [HttpPost("bookings/{id:int}/confirm")]
+Backend\Controllers\DispatchController.cs:21:    public async Task<ActionResult<BookingResponse>> Confirm(int id)
+Backend\Controllers\DispatchController.cs:28:    [HttpPost("bookings/{id:int}/assign")]
+Backend\Controllers\DispatchController.cs:29:    public async Task<ActionResult<BookingResponse>> Assign(int id, AssignTripRequest request)
+Backend\Controllers\DispatchController.cs:40:    [HttpPost("bookings/{id:int}/handover")]
+Backend\Controllers\DispatchController.cs:41:    public async Task<ActionResult<BookingResponse>> Handover(
+Backend\Controllers\DispatchController.cs:50:    [HttpPost("bookings/{id:int}/complete")]
+Backend\Controllers\DispatchController.cs:51:    public async Task<ActionResult<BookingResponse>> Complete(
+Backend\Controllers\DispatchController.cs:60:    [HttpGet("incidents")]
+Backend\Controllers\DispatchController.cs:61:    public async Task<ActionResult<List<IncidentResponse>>> GetIncidents(
+Backend\Controllers\DispatchController.cs:66:    [HttpGet("inspections")]
+Backend\Controllers\DispatchController.cs:67:    public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetInspections(
+Backend\Controllers\DriversController.cs:14:[Route("api/drivers")]
+Backend\Controllers\DriversController.cs:18:    [HttpGet]
+Backend\Controllers\DriversController.cs:19:    public async Task<ActionResult<List<DriverResponse>>> GetAll([FromQuery] string? status)
+Backend\Controllers\DriversController.cs:23:    [HttpGet("me")]
+Backend\Controllers\DriversController.cs:24:    public async Task<ActionResult<DriverResponse>> GetMe()
+Backend\Controllers\DriversController.cs:32:    [HttpGet("me/trips")]
+Backend\Controllers\DriversController.cs:33:    public async Task<ActionResult<List<BookingResponse>>> GetMyTrips()
+Backend\Controllers\DriversController.cs:40:    [HttpPatch("me/status")]
+Backend\Controllers\DriversController.cs:41:    public async Task<ActionResult<DriverResponse>> UpdateMyStatus(UpdateDriverStatusRequest request)
+Backend\Controllers\DriversController.cs:49:    [HttpPost("trips/{assignmentId:int}/accept")]
+Backend\Controllers\DriversController.cs:50:    public async Task<IActionResult> AcceptTrip(int assignmentId)
+Backend\Controllers\DriversController.cs:58:    [HttpPost("trips/{assignmentId:int}/start")]
+Backend\Controllers\DriversController.cs:59:    public async Task<IActionResult> StartTrip(int assignmentId)
+Backend\Controllers\DriversController.cs:67:    [HttpPost("trips/{assignmentId:int}/complete")]
+Backend\Controllers\DriversController.cs:68:    public async Task<IActionResult> CompleteTrip(
+Backend\Controllers\DriversController.cs:80:    [HttpGet("me/incidents")]
+Backend\Controllers\DriversController.cs:81:    public async Task<ActionResult<List<IncidentResponse>>> GetMyIncidents()
+Backend\Controllers\DriversController.cs:89:    [HttpPost("trips/{assignmentId:int}/incidents")]
+Backend\Controllers\DriversController.cs:90:    public async Task<ActionResult<IncidentResponse>> ReportIncident(int assignmentId, CreateIncidentRequest request)
+Backend\Controllers\VehiclesController.cs:12:[Route("api/vehicle-types")]
+Backend\Controllers\VehiclesController.cs:16:    [HttpGet]
+Backend\Controllers\VehiclesController.cs:17:    public async Task<ActionResult<List<VehicleTypeResponse>>> GetAll()
+Backend\Controllers\VehiclesController.cs:21:    [HttpGet("recommended")]
+Backend\Controllers\VehiclesController.cs:22:    public async Task<ActionResult<List<VehicleTypeRecommendationResponse>>> GetRecommended(
+Backend\Controllers\VehiclesController.cs:44:[Route("api/vehicles")]
+Backend\Controllers\VehiclesController.cs:48:    [HttpGet]
+Backend\Controllers\VehiclesController.cs:49:    public async Task<ActionResult<List<VehicleResponse>>> GetAll([FromQuery] string? status)
+Backend\Controllers\VehiclesController.cs:53:    [HttpGet("{id:int}")]
+Backend\Controllers\VehiclesController.cs:54:    public async Task<ActionResult<VehicleResponse>> GetById(int id)
+Backend\Controllers\VehiclesController.cs:61:    [HttpGet("{id:int}/operational-profile")]
+Backend\Controllers\VehiclesController.cs:62:    public async Task<ActionResult<VehicleOperationalProfileResponse>> GetOperationalProfile(int id)
+Backend\Controllers\VehiclesController.cs:74:    [HttpPost]
+Backend\Controllers\VehiclesController.cs:75:    public async Task<ActionResult<VehicleResponse>> Create(CreateVehicleRequest request)
+Backend\Controllers\VehiclesController.cs:84:    [HttpPut("{id:int}")]
+Backend\Controllers\VehiclesController.cs:85:    public async Task<ActionResult<VehicleResponse>> Update(int id, UpdateVehicleRequest request)
+Backend\Controllers\VehiclesController.cs:94:    [HttpDelete("{id:int}")]
+Backend\Controllers\VehiclesController.cs:95:    public async Task<IActionResult> Delete(int id)
+Backend\Controllers\VehicleMaintenanceController.cs:10:[Route("api/vehicles")]
+Backend\Controllers\VehicleMaintenanceController.cs:16:    [HttpPost("{id:int}/maintenance")]
+Backend\Controllers\VehicleMaintenanceController.cs:17:    public async Task<ActionResult<MaintenanceRecordResponse>> Create(int id, CreateMaintenanceRequest request)
+Backend\Controllers\VehicleMaintenanceController.cs:29:    [HttpPatch("{id:int}/maintenance/{maintenanceId:int}/complete")]
+Backend\Controllers\VehicleMaintenanceController.cs:30:    public async Task<ActionResult<MaintenanceRecordResponse>> Complete(
+Backend\Controllers\VehicleMaintenanceController.cs:43:    [HttpGet("{id:int}/maintenance-history")]
+Backend\Controllers\VehicleMaintenanceController.cs:44:    public async Task<ActionResult<List<MaintenanceRecordResponse>>> GetHistory(int id)
+Backend\Controllers\VehicleMaintenanceController.cs:53:    [HttpGet("maintenance-alerts")]
+Backend\Controllers\VehicleMaintenanceController.cs:54:    public async Task<ActionResult<List<MaintenanceAlertResponse>>> GetAlerts()
+Backend\Controllers\PaymentsController.cs:12:[Route("api/payments")]
+Backend\Controllers\PaymentsController.cs:15:    [HttpPost]
+Backend\Controllers\PaymentsController.cs:16:    public async Task<ActionResult<PaymentResponse>> Create(CreatePaymentRequest request)
+Backend\Controllers\PaymentsController.cs:31:    [HttpGet("/api/bookings/{bookingId:int}/payments")]
+Backend\Controllers\PaymentsController.cs:32:    public async Task<ActionResult<List<PaymentResponse>>> GetByBooking(int bookingId)
+Backend\Controllers\PaymentsController.cs:47:    [HttpPost("{id:int}/simulate-success")]
+Backend\Controllers\PaymentsController.cs:48:    public async Task<ActionResult<PaymentResponse>> SimulateSuccess(int id)
+Backend\Controllers\PaymentsController.cs:63:    [HttpPost("{id:int}/simulate-failure")]
+Backend\Controllers\PaymentsController.cs:64:    public async Task<ActionResult<PaymentResponse>> SimulateFailure(int id)

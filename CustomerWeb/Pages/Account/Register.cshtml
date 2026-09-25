@@ -1,0 +1,115 @@
+@page
+@model CustomerWeb.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Đăng ký";
+    ViewData["AuthShell"] = true;
+    Layout = "_LayoutAuth";
+}
+
+<div class="ax-register">
+    <div class="ax-register-bg">
+        <img src="~/images/auth/register.jpg" alt="Trải nghiệm DriveX" />
+    </div>
+    <div class="ax-card">
+        <div class="ax-card-top">
+            <a class="ax-brand" asp-page="/Index" style="color:#0f1f3d">
+                <span><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <span class="ax-lang" title="Chỉ hiển thị giao diện tiếng Việt"><i class="bi bi-globe2"></i> Tiếng Việt</span>
+        </div>
+
+        <h1>Tạo tài khoản mới</h1>
+        <p class="ax-lead">Tham gia DriveX để bắt đầu hành trình của bạn.</p>
+        <p class="ax-hint"><i class="bi bi-envelope-check"></i> Sau khi đăng ký, bạn sẽ nhận mã OTP để xác thực email trước khi đăng nhập.</p>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="ax-alert">@Model.ErrorMessage</div>
+        }
+        <div asp-validation-summary="ModelOnly" class="ax-alert"></div>
+
+        <form method="post" data-ax-form>
+            <input type="hidden" asp-for="Input.Address" />
+            <div class="ax-field">
+                <label asp-for="Input.FullName">Họ và tên</label>
+                <input asp-for="Input.FullName" placeholder="Nguyễn Văn A" autocomplete="name" />
+                <span asp-validation-for="Input.FullName" class="field-validation-error"></span>
+            </div>
+            <div class="ax-field">
+                <label asp-for="Input.Email">Địa chỉ Email</label>
+                <input asp-for="Input.Email" type="email" placeholder="abc@gmail.com" autocomplete="username" />
+                <span asp-validation-for="Input.Email" class="field-validation-error"></span>
+            </div>
+            <div class="ax-field">
+                <label asp-for="Input.Phone">Số điện thoại</label>
+                <input asp-for="Input.Phone" type="tel" placeholder="09xxxxxxxx" autocomplete="tel" />
+                <span asp-validation-for="Input.Phone" class="field-validation-error"></span>
+            </div>
+            <div class="ax-field">
+                <label asp-for="Input.Password">Mật khẩu</label>
+                <div class="ax-wrap">
+                    <input asp-for="Input.Password" id="register-password" type="password" placeholder="Nhập mật khẩu" autocomplete="new-password" />
+                    <button type="button" class="ax-toggle" aria-label="Hiện mật khẩu"><i class="bi bi-eye"></i></button>
+                </div>
+                <div class="ax-strength" data-ax-strength><span></span></div>
+                <span asp-validation-for="Input.Password" class="field-validation-error"></span>
+                <ul class="ax-rules password-rules">
+                    <li id="rule-length">Ít nhất 8 ký tự</li>
+                    <li id="rule-upper">Bao gồm chữ hoa, chữ thường và số</li>
+                    <li id="rule-special">Bao gồm ít nhất 1 ký tự đặc biệt</li>
+                </ul>
+            </div>
+            <div class="ax-field">
+                <label asp-for="Input.ConfirmPassword">Xác nhận mật khẩu</label>
+                <div class="ax-wrap">
+                    <input asp-for="Input.ConfirmPassword" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password" />
+                    <button type="button" class="ax-toggle" aria-label="Hiện mật khẩu"><i class="bi bi-eye"></i></button>
+                </div>
+                <span asp-validation-for="Input.ConfirmPassword" class="field-validation-error"></span>
+            </div>
+            <label class="ax-terms">
+                <input type="checkbox" required />
+                <span>Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.</span>
+            </label>
+            <button type="submit" class="ax-submit" data-ax-submit>Tạo tài khoản</button>
+        </form>
+
+        @if (Model.GoogleEnabled)
+        {
+            <div class="ax-or">Hoặc đăng nhập với</div>
+            <div class="ax-social">
+                <div class="ax-google-slot">
+                    <div id="g_id_onload"
+                         data-client_id="@Model.GoogleClientId"
+                         data-callback="handleGoogleCredential"
+                         data-auto_prompt="false"
+                         data-locale="vi"></div>
+                    <div class="g_id_signin" data-type="standard" data-size="medium" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+                </div>
+                <button type="button" class="ax-social-btn" disabled title="Sắp ra mắt"><i class="bi bi-facebook"></i> Facebook</button>
+                <button type="button" class="ax-social-btn" disabled title="Sắp ra mắt"><i class="bi bi-apple"></i> Apple</button>
+            </div>
+            <form id="google-form" method="post" asp-page-handler="Google" class="d-none">
+                <input type="hidden" asp-for="GoogleIdToken" id="google-id-token" />
+            </form>
+        }
+
+        <p class="ax-foot">Đã có tài khoản? <a asp-page="/Account/Login">Đăng nhập ngay</a></p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @if (Model.GoogleEnabled)
+    {
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script>
+            function handleGoogleCredential(response) {
+                if (!response || !response.credential) return;
+                document.getElementById('google-id-token').value = response.credential;
+                document.getElementById('google-form').submit();
+            }
+        </script>
+    }
+}

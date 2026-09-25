@@ -1,0 +1,89 @@
+﻿Backend\Controllers\AdminDashboardController.cs:2:using Backend.DTOs.Dashboard;
+Backend\Controllers\AdminDashboardController.cs:12:public class AdminDashboardController(DashboardService dashboard) : ControllerBase
+Backend\Controllers\AdminDashboardController.cs:15:    public async Task<ActionResult<DashboardResponse>> Get(
+Backend\Program.cs:51:builder.Services.AddScoped<MaintenanceAlertService>();
+Backend\Program.cs:52:builder.Services.AddScoped<DashboardService>();
+Backend\Program.cs:61:builder.Services.AddScoped<RecommendationService>();
+Backend\Program.cs:128:    db.EnsureSqliteBookingRecommendationColumn();
+Backend\Constants\AppConstants.cs:246:public static class MaintenanceAlertThresholds
+Backend\Constants\AppConstants.cs:261:public static class RecommendationWeights
+Backend\Controllers\VehiclesController.cs:13:public class VehicleTypesController(VehicleService vehicleService, RecommendationService recommendations) : ControllerBase
+Backend\Controllers\VehiclesController.cs:22:    public async Task<ActionResult<List<VehicleTypeRecommendationResponse>>> GetRecommended(
+Backend\Controllers\VehicleMaintenanceController.cs:13:    MaintenanceAlertService alerts) : ControllerBase
+Backend\Controllers\VehicleMaintenanceController.cs:54:    public async Task<ActionResult<List<MaintenanceAlertResponse>>> GetAlerts()
+Backend\Data\DemoRichSeeder.cs:61:        db.EnsureSqliteBookingRecommendationColumn();
+Backend\Data\CarRentalDbContext.cs:698:    public void EnsureSqliteBookingRecommendationColumn()
+Backend\Controllers\BookingsController.cs:110:        [FromQuery] bool fromRecommendation = false)
+Backend\Controllers\BookingsController.cs:120:        var booking = await bookingService.CreateBookingAsync(userId, request, fromRecommendation);
+Backend\DTOs\Maintenance\MaintenanceDtos.cs:24:public record MaintenanceAlertResponse(
+Backend\DTOs\Dashboard\DashboardDtos.cs:3:namespace Backend.DTOs.Dashboard;
+Backend\DTOs\Dashboard\DashboardDtos.cs:5:public record DashboardResponse(
+Backend\DTOs\Dashboard\DashboardDtos.cs:6:    DashboardRange Range,
+Backend\DTOs\Dashboard\DashboardDtos.cs:7:    DashboardSummary Summary,
+Backend\DTOs\Dashboard\DashboardDtos.cs:8:    DashboardBookings Bookings,
+Backend\DTOs\Dashboard\DashboardDtos.cs:9:    DashboardPayments Payments,
+Backend\DTOs\Dashboard\DashboardDtos.cs:10:    DashboardVehicles Vehicles,
+Backend\DTOs\Dashboard\DashboardDtos.cs:11:    DashboardDrivers Drivers,
+Backend\DTOs\Dashboard\DashboardDtos.cs:12:    IReadOnlyList<DashboardTopVehicle> TopVehicles,
+Backend\DTOs\Dashboard\DashboardDtos.cs:13:    DashboardMaintenance Maintenance,
+Backend\DTOs\Dashboard\DashboardDtos.cs:14:    DashboardRecommendation Recommendation);
+Backend\DTOs\Dashboard\DashboardDtos.cs:16:public record DashboardRange(
+Backend\DTOs\Dashboard\DashboardDtos.cs:23:public record DashboardSummary(
+Backend\DTOs\Dashboard\DashboardDtos.cs:30:public record DashboardBookings(
+Backend\DTOs\Dashboard\DashboardDtos.cs:38:    DashboardDriverTrips DriverTrips);
+Backend\DTOs\Dashboard\DashboardDtos.cs:40:public record DashboardDriverTrips(
+Backend\DTOs\Dashboard\DashboardDtos.cs:47:public record DashboardPayments(
+Backend\DTOs\Dashboard\DashboardDtos.cs:55:public record DashboardVehicles(
+Backend\DTOs\Dashboard\DashboardDtos.cs:63:public record DashboardDrivers(
+Backend\DTOs\Dashboard\DashboardDtos.cs:69:    IReadOnlyList<DashboardDriverRow> Performance);
+Backend\DTOs\Dashboard\DashboardDtos.cs:71:public record DashboardDriverRow(
+Backend\DTOs\Dashboard\DashboardDtos.cs:80:public record DashboardTopVehicle(
+Backend\DTOs\Dashboard\DashboardDtos.cs:87:public record DashboardMaintenance(
+Backend\DTOs\Dashboard\DashboardDtos.cs:89:    IReadOnlyList<MaintenanceAlertResponse> Alerts);
+Backend\DTOs\Dashboard\DashboardDtos.cs:91:public record DashboardRecommendation(
+Backend\Services\DashboardService.cs:3:using Backend.DTOs.Dashboard;
+Backend\Services\DashboardService.cs:13:public class DashboardService(CarRentalDbContext db, MaintenanceAlertService alerts)
+Backend\Services\DashboardService.cs:19:        "Dashboard hiß╗çn ─æo tiß╗ün cß╗ìc m├┤ phß╗Ång ─æ├ú Paid, kh├┤ng phß║úi tß╗òng doanh thu thu├¬ xe.";
+Backend\Services\DashboardService.cs:28:    public async Task<(DashboardResponse? Data, string? Error)> GetAsync(DateTime? from, DateTime? to)
+Backend\Services\DashboardService.cs:71:        var performance = await GetDriverPerformanceAsync(fromUtc, toUtc);
+Backend\Services\DashboardService.cs:72:        var recommendation = await GetRecommendationAsync(fromUtc, toUtc);
+Backend\Services\DashboardService.cs:80:        var bookings = new DashboardBookings(
+Backend\Services\DashboardService.cs:88:            new DashboardDriverTrips(
+Backend\Services\DashboardService.cs:95:        var payments = new DashboardPayments(
+Backend\Services\DashboardService.cs:103:        var vehicles = new DashboardVehicles(
+Backend\Services\DashboardService.cs:111:        var drivers = new DashboardDrivers(
+Backend\Services\DashboardService.cs:119:        return (new DashboardResponse(
+Backend\Services\DashboardService.cs:120:            new DashboardRange(fromUtc, toUtc, defaultApplied, TimeRangeNote, SnapshotNote),
+Backend\Services\DashboardService.cs:121:            new DashboardSummary(
+Backend\Services\DashboardService.cs:132:            new DashboardMaintenance(alertList.Count, alertList),
+Backend\Services\DashboardService.cs:136:    private async Task<IReadOnlyList<DashboardTopVehicle>> GetTopVehiclesAsync(DateTime fromUtc, DateTime toUtc)
+Backend\Services\DashboardService.cs:174:            return new DashboardTopVehicle(
+Backend\Services\DashboardService.cs:183:    private async Task<IReadOnlyList<DashboardDriverRow>> GetDriverPerformanceAsync(DateTime fromUtc, DateTime toUtc)
+Backend\Services\DashboardService.cs:227:                return new DashboardDriverRow(
+Backend\Services\DashboardService.cs:241:    private async Task<DashboardRecommendation> GetRecommendationAsync(DateTime fromUtc, DateTime toUtc)
+Backend\Services\DashboardService.cs:257:        return new DashboardRecommendation(
+Backend\Services\FastApiRecommenderClient.cs:17:    public async Task<(List<VehicleTypeRecommendationResponse>? Items, string? Error, int StatusCode)> RecommendAsync(
+Backend\Services\FastApiRecommenderClient.cs:43:            .Select(i => new VehicleTypeRecommendationResponse(
+Backend\Services\FastApiRecommenderClient.cs:72:    private static (List<VehicleTypeRecommendationResponse>? Items, string? Error, int StatusCode) Unavailable()
+Backend\DTOs\Vehicles\RecommendationDtos.cs:3:public record VehicleTypeRecommendationResponse(
+Backend\Services\IRecommenderClient.cs:7:    Task<(List<VehicleTypeRecommendationResponse>? Items, string? Error, int StatusCode)> RecommendAsync(
+Backend\Services\MaintenanceAlertService.cs:9:public class MaintenanceAlertService(CarRentalDbContext db)
+Backend\Services\MaintenanceAlertService.cs:11:    public async Task<List<MaintenanceAlertResponse>> GetAlertsAsync()
+Backend\Services\MaintenanceAlertService.cs:20:        var alerts = new List<MaintenanceAlertResponse>();
+Backend\Services\MaintenanceAlertService.cs:27:            alerts.Add(new MaintenanceAlertResponse(
+Backend\Services\MaintenanceAlertService.cs:76:        var kmAlert = kmSince is int km && km >= MaintenanceAlertThresholds.KmThreshold;
+Backend\Services\MaintenanceAlertService.cs:77:        var dayAlert = daysSince >= MaintenanceAlertThresholds.DaysThreshold;
+Backend\Services\RecommendationService.cs:8:public class RecommendationService(
+Backend\Services\RecommendationService.cs:13:    public async Task<(List<VehicleTypeRecommendationResponse>? Data, string? Error, int StatusCode)> RecommendAsync(
+Backend\Services\RecommendationService.cs:97:    private static (List<VehicleTypeRecommendationResponse>? Data, string? Error, int StatusCode) Fail(
+Backend\Services\BookingService.cs:13:        int customerId, CreateBookingRequest request, bool fromRecommendation = false)
+Backend\Services\BookingService.cs:66:            SourceRecommended = fromRecommendation,
+Backend\Services\ScheduleConflictService.cs:10:    private readonly MaintenanceAlertService _alerts = new(db);
+Backend\Services\ScheduleConflictService.cs:82:        return MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, DateTime.UtcNow);
+Backend\Services\ScheduleConflictService.cs:94:                return MaintenanceAlertService.IsBlockedForNewSchedule(v, last, utcNow);
+Backend\Services\ScheduleConflictService.cs:119:            if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
+Backend\Services\ScheduleConflictService.cs:172:            if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, last, utcNow))
+Backend\Services\VehicleMaintenanceService.cs:119:        if (MaintenanceAlertService.IsBlockedForNewSchedule(vehicle, justCompleted, DateTime.UtcNow))
+Backend\Services\VehicleOperationalProfileService.cs:13:    MaintenanceAlertService alerts,
+Backend\Services\VehicleOperationalProfileService.cs:50:        var due = MaintenanceAlertService.NeedsAlert(
+Backend\DTOs\Vehicles\VehicleOperationalProfileDtos.cs:24:    string? MaintenanceAlertReason,

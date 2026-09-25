@@ -1,0 +1,41 @@
+﻿Backend\DTOs\Dashboard\DashboardDtos.cs:77:    decimal? AverageReviewRating,
+Backend\DTOs\Dashboard\DashboardDtos.cs:96:    decimal? AverageRatingRecommendedReviewed,
+Backend\DTOs\Bookings\BookingDtos.cs:150:public record CreateReviewRequest(byte Rating, string? Comment);
+Backend\DTOs\Bookings\BookingDtos.cs:152:public record ReviewResponse(
+Backend\DTOs\Bookings\BookingDtos.cs:153:    int ReviewId,
+Backend\Validation\ReviewRules.cs:3:public static class ReviewRules
+Backend\Validation\ReviewRules.cs:15:    public static string? ValidateComment(byte rating, string? comment, out string? normalizedComment)
+Backend\Validation\ReviewRules.cs:19:        if (rating is >= 1 and <= 3 && normalizedComment is null)
+Backend\Controllers\BookingsController.cs:128:    public async Task<ActionResult<ReviewResponse>> CreateReview(int id, CreateReviewRequest request)
+Backend\Controllers\BookingsController.cs:131:        var (review, error) = await bookingService.CreateReviewAsync(id, userId, request);
+Backend\Data\CarRentalDbContext.cs:20:    public DbSet<Review> Reviews => Set<Review>();
+Backend\Data\CarRentalDbContext.cs:190:        modelBuilder.Entity<Review>(e =>
+Backend\Data\CarRentalDbContext.cs:192:            e.ToTable("Reviews");
+Backend\Data\CarRentalDbContext.cs:195:            e.HasOne(x => x.Booking).WithOne(x => x.Review).HasForeignKey<Review>(x => x.BookingId);
+Backend\Data\DemoRichSeeder.cs:38:        SeedReviews(db, now);
+Backend\Data\DemoRichSeeder.cs:782:    private static void SeedReviews(CarRentalDbContext db, DateTime now)
+Backend\Data\DemoRichSeeder.cs:790:        byte[] ratings = [5, 5, 4, 4, 3, 2, 2, 3, 5, 4, 3, 1];
+Backend\Data\DemoRichSeeder.cs:807:        for (var i = 0; i < ratings.Length && i < rows.Count; i++)
+Backend\Data\DemoRichSeeder.cs:810:            db.Reviews.Add(new Review
+Backend\Data\DemoRichSeeder.cs:815:                Rating = ratings[i],
+Backend\Data\DemoRichSeeder.cs:872:            var ratings = db.Reviews.Where(r => r.DriverId == driver.DriverId).Select(r => (decimal)r.Rating).ToList();
+Backend\Data\DemoRichSeeder.cs:873:            if (ratings.Count > 0)
+Backend\Data\DemoRichSeeder.cs:874:                driver.AverageRating = Math.Round(ratings.Average(), 2);
+Backend\Entities\Booking.cs:40:    public Review? Review { get; set; }
+Backend\Entities\Review.cs:3:public class Review
+Backend\Entities\Review.cs:5:    public int ReviewId { get; set; }
+Backend\Services\BookingService.cs:220:    public async Task<(ReviewResponse? Data, string? Error)> CreateReviewAsync(
+Backend\Services\BookingService.cs:221:        int bookingId, int customerId, CreateReviewRequest request)
+Backend\Services\BookingService.cs:226:        var commentError = ReviewRules.ValidateComment(request.Rating, request.Comment, out var comment);
+Backend\Services\BookingService.cs:237:        if (await db.Reviews.AnyAsync(r => r.BookingId == bookingId))
+Backend\Services\BookingService.cs:240:        var review = new Review
+Backend\Services\BookingService.cs:250:        db.Reviews.Add(review);
+Backend\Services\BookingService.cs:255:            var reviews = await db.Reviews.Where(r => r.DriverId == driver.DriverId).Select(r => (decimal)r.Rating).ToListAsync();
+Backend\Services\BookingService.cs:262:        return (new ReviewResponse(review.ReviewId, review.BookingId, review.Rating, review.Comment, review.CreatedAt), null);
+Backend\Services\DashboardService.cs:23:        "Time-range: Bookings.CreatedAt, Payments.PaidAt (Paid) / CreatedAt (Pending/Failed), TripAssignments.CompletedAt (completed) / AssignedAt (kh├íc), Reviews.CreatedAt, IncidentReports.CreatedAt.";
+Backend\Services\DashboardService.cs:214:        var ratings = (await db.Reviews.AsNoTracking()
+Backend\Services\DashboardService.cs:233:                    ratings.TryGetValue(d.DriverId, out var avg) ? avg : null,
+Backend\Services\DashboardService.cs:250:        var ratingRows = await db.Reviews.AsNoTracking()
+Backend\Services\DashboardService.cs:262:            ratingRows.Count == 0 ? null : Math.Round(ratingRows.Average(), 2),
+Backend\Services\RecommendationService.cs:46:        var ratings = await db.Reviews
+Backend\Services\RecommendationService.cs:58:            ratings.GetValueOrDefault(vt.TypeId),

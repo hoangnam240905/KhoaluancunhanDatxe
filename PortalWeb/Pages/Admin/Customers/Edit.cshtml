@@ -1,0 +1,15 @@
+@page "/Admin/Customers/Edit/{id:int}"
+@model PortalWeb.Pages.Admin.Customers.EditModel
+@{ ViewData["Title"] = "Sửa khách hàng"; }
+<h2 class="mb-3">Sửa khách hàng #@Model.CustomerId</h2>
+@if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger">@Model.ErrorMessage</div> }
+<form method="post" class="row g-3 col-md-8">
+    <div class="col-md-6"><label class="form-label">Họ tên</label><input asp-for="Input.FullName" class="form-control" /><span asp-validation-for="Input.FullName" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Email (Gmail)</label><input asp-for="Input.Email" class="form-control" /><span asp-validation-for="Input.Email" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Số điện thoại</label><input asp-for="Input.Phone" class="form-control" /><span asp-validation-for="Input.Phone" class="text-danger"></span></div>
+    <div class="col-md-6"><label class="form-label">Địa chỉ</label><input asp-for="Input.Address" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">CCCD/CMND</label><input asp-for="Input.IdNumber" class="form-control" /></div>
+    <div class="col-md-6"><label class="form-label">Ngày sinh</label><input asp-for="Input.DateOfBirth" class="form-control" type="date" /></div>
+    <div class="col-12"><p class="text-muted small">Không đổi mật khẩu tại đây. Khóa/vô hiệu hóa dùng màn danh sách.</p></div>
+    <div class="col-12"><button type="submit" class="btn btn-primary">Lưu</button> <a asp-page="Index" class="btn btn-secondary">Hủy</a></div>
+</form>
