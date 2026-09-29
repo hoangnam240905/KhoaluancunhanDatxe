@@ -108,6 +108,42 @@ public class DriverService(
         if (!BookingStateTransitionRules.CanTransition(assignment.Booking.Status, BookingStatuses.InProgress))
             return false;
 
+        await MarkTripStartedAsync(assignment, driverId);
+        return true;
+    }
+
+    public async Task<(bool Ok, string? Error)> StartTripAsync(
+        int driverId, int assignmentId, VehicleConditionRequest? request)
+    {
+        var assignment = await db.TripAssignments
+            .Include(t => t.Booking)
+            .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
+
+        if (assignment is null || assignment.Status != TripAssignmentStatuses.Accepted)
+            return (false, null);
+        if (!BookingStateTransitionRules.CanTransition(assignment.Booking.Status, BookingStatuses.InProgress))
+            return (false, BookingStateTransitionRules.InvalidTransition);
+        if (request is null)
+            return (false, VehicleInspectionRules.OdometerRequired);
+
+        var (inspection, inspectError) = await inspections.AddAsync(
+            assignment.BookingId,
+            VehicleInspectionTypes.Handover,
+            request.OdometerKm,
+            request.FuelLevel,
+            request.Condition,
+            request.Notes,
+            request.ExteriorCondition,
+            request.TechnicalCondition);
+        if (inspection is null)
+            return (false, inspectError ?? "Không thể ghi nhận kiểm tra đầu chuyến.");
+
+        await MarkTripStartedAsync(assignment, driverId);
+        return (true, null);
+    }
+
+    private async Task MarkTripStartedAsync(TripAssignment assignment, int driverId)
+    {
         assignment.Status = TripAssignmentStatuses.InProgress;
         assignment.StartedAt = DateTime.UtcNow;
         assignment.Booking.Status = BookingStatuses.InProgress;
@@ -129,7 +165,6 @@ public class DriverService(
             assignment.Booking.Status,
             assignment.Booking.AssignedVehicleId,
             driverId);
-        return true;
     }
 
     public async Task<(bool Ok, string? Error)> CompleteTripAsync(

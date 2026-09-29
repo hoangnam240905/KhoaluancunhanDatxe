@@ -7,8 +7,14 @@ import 'trips_screen.dart';
 class DriverShell extends StatefulWidget {
   final ApiService api;
   final String userName;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
 
-  const DriverShell({super.key, required this.api, required this.userName});
+  const DriverShell({
+    super.key,
+    required this.api,
+    required this.userName,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<DriverShell> createState() => _DriverShellState();
@@ -37,7 +43,14 @@ class _DriverShellState extends State<DriverShell> {
         children: [
           TripsScreen(api: widget.api, userName: widget.userName),
           StatusScreen(api: widget.api),
-          AccountScreen(api: widget.api, userName: widget.userName),
+          AccountScreen(
+            api: widget.api,
+            userName: widget.userName,
+            themeMode: Theme.of(context).brightness == Brightness.dark
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            onThemeModeChanged: widget.onThemeModeChanged,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

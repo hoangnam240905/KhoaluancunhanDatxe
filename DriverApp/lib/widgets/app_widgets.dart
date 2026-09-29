@@ -16,16 +16,17 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final card = Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -51,15 +52,16 @@ class AppLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColors.primary),
+          CircularProgressIndicator(color: palette.primary),
           if (message != null) ...[
             const SizedBox(height: 12),
-            Text(message!, style: const TextStyle(color: AppColors.muted)),
+            Text(message!, style: TextStyle(color: palette.muted)),
           ],
         ],
       ),
@@ -78,12 +80,13 @@ class AppErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 40, color: AppColors.danger),
+          Icon(Icons.error_outline, size: 40, color: palette.danger),
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
@@ -108,12 +111,13 @@ class AppEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: AppColors.primary),
+          Icon(icon, size: 48, color: palette.primary),
           const SizedBox(height: 12),
           Text(
             title,
@@ -123,7 +127,7 @@ class AppEmptyState extends StatelessWidget {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted),
+            style: TextStyle(color: palette.muted),
           ),
         ],
       ),
@@ -164,7 +168,7 @@ class AssignmentBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusBadge(
       label: Formatters.assignmentStatus(status),
-      color: Formatters.assignmentColor(status),
+      color: Formatters.assignmentColor(context, status),
     );
   }
 }

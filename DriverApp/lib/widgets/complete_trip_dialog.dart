@@ -16,9 +16,19 @@ typedef CompleteTripSubmit =
 /// disposed in [State.dispose] after the route unmounts — not by the caller
 /// while the dialog is still in the tree.
 class CompleteTripDialog extends StatefulWidget {
-  const CompleteTripDialog({super.key, required this.onSubmit});
+  const CompleteTripDialog({
+    super.key,
+    required this.onSubmit,
+    this.title = 'Hoàn thành chuyến',
+    this.description =
+        'Ghi nhận dữ liệu vận hành khi trả xe. Số km và nhiên liệu là bắt buộc.',
+    this.submitLabel = 'Hoàn thành',
+  });
 
   final CompleteTripSubmit onSubmit;
+  final String title;
+  final String description;
+  final String submitLabel;
 
   @override
   State<CompleteTripDialog> createState() => _CompleteTripDialogState();
@@ -76,23 +86,24 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return PopScope(
       canPop: !_submitting,
       child: AlertDialog(
-        title: const Text('Hoàn thành chuyến'),
+        title: Text(widget.title),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Ghi nhận dữ liệu vận hành khi trả xe. Số km và nhiên liệu là bắt buộc.',
-                style: TextStyle(fontSize: 13),
+              Text(
+                widget.description,
+                style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: palette.muted, fontSize: 12),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -149,7 +160,7 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 const SizedBox(height: 8),
                 Text(
                   _error!,
-                  style: const TextStyle(color: AppColors.danger),
+                  style: TextStyle(color: palette.danger),
                 ),
               ],
             ],
@@ -170,7 +181,7 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Hoàn thành'),
+                : Text(widget.submitLabel),
           ),
         ],
       ),

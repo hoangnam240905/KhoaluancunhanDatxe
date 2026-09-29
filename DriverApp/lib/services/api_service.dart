@@ -198,10 +198,25 @@ class ApiService {
     return _successMessage(response, 'Đã nhận chuyến.');
   }
 
-  Future<String> startTrip(int assignmentId) async {
+  Future<String> startTrip(
+    int assignmentId, {
+    required double odometerKm,
+    required double fuelLevel,
+    String? exteriorCondition,
+    String? technicalCondition,
+    String? notes,
+  }) async {
+    final body = VehicleCondition.toJson(
+      odometerKm: odometerKm,
+      fuelLevel: fuelLevel,
+      exteriorCondition: exteriorCondition,
+      technicalCondition: technicalCondition,
+      notes: notes,
+    );
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/start'),
       headers: await _headers(auth: true),
+      body: body == null ? null : jsonEncode(body),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     return _successMessage(response, 'Đã bắt đầu chuyến.');

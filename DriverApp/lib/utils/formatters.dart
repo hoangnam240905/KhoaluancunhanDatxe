@@ -67,18 +67,19 @@ class Formatters {
     }
   }
 
-  static Color assignmentColor(String status) {
+  static Color assignmentColor(BuildContext context, String status) {
+    final palette = AppPalette.of(context);
     switch (status) {
       case 'Completed':
-        return AppColors.success;
+        return palette.success;
       case 'InProgress':
-        return AppColors.primary;
+        return palette.primary;
       case 'Accepted':
-        return AppColors.accent;
+        return palette.warning;
       case 'Cancelled':
-        return AppColors.danger;
+        return palette.danger;
       default:
-        return AppColors.muted;
+        return palette.muted;
     }
   }
 }

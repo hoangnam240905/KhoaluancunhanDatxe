@@ -8,8 +8,16 @@ import 'login_screen.dart';
 class AccountScreen extends StatefulWidget {
   final ApiService api;
   final String userName;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
 
-  const AccountScreen({super.key, required this.api, required this.userName});
+  const AccountScreen({
+    super.key,
+    required this.api,
+    required this.userName,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -100,13 +108,18 @@ class _AccountScreenState extends State<AccountScreen> {
     await widget.api.authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          onThemeModeChanged: widget.onThemeModeChanged,
+        ),
+      ),
       (_) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final name = _profile?.fullName ?? _session?.fullName ?? widget.userName;
     final email = _profile?.email ?? _session?.email ?? '—';
     final phone = _profile?.phone;
@@ -122,15 +135,19 @@ class _AccountScreenState extends State<AccountScreen> {
                     children: [
                       CircleAvatar(
                         radius: 36,
-                        backgroundColor: const Color(0xFFFFEDD5),
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer,
                         child: Text(
                           name.isEmpty
                               ? 'T'
                               : name.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
                           ),
                         ),
                       ),
@@ -142,10 +159,10 @@ class _AccountScreenState extends State<AccountScreen> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'Tài xế',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: palette.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -157,23 +174,46 @@ class _AccountScreenState extends State<AccountScreen> {
                   AppCard(
                     child: Text(
                       'Không tải được hồ sơ máy chủ: $_error',
-                      style: const TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: palette.muted),
                     ),
                   ),
                 ],
                 const SizedBox(height: 12),
                 AppCard(
+                  padding: EdgeInsets.zero,
+                  child: SwitchListTile(
+                    value: widget.themeMode == ThemeMode.dark,
+                    onChanged: (enabled) => widget.onThemeModeChanged(
+                      enabled ? ThemeMode.dark : ThemeMode.light,
+                    ),
+                    secondary: Icon(
+                      widget.themeMode == ThemeMode.dark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                      color: palette.primary,
+                    ),
+                    title: const Text('Giao diện tối'),
+                    subtitle: Text(
+                      widget.themeMode == ThemeMode.dark
+                          ? 'Đang bật chế độ tối'
+                          : 'Đang bật chế độ sáng',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                AppCard(
                   child: Column(
                     children: [
-                      _row(Icons.email_outlined, 'Email', email),
+                      _row(context, Icons.email_outlined, 'Email', email),
                       const Divider(height: 24),
                       _row(
+                        context,
                         Icons.phone_outlined,
                         'Số điện thoại',
                         (phone == null || phone.isEmpty) ? '—' : phone,
                       ),
                       const Divider(height: 24),
-                      _row(Icons.badge_outlined, 'Vai trò', 'Driver'),
+                      _row(context, Icons.badge_outlined, 'Vai trò', 'Driver'),
                     ],
                   ),
                 ),
@@ -222,8 +262,8 @@ class _AccountScreenState extends State<AccountScreen> {
                   icon: const Icon(Icons.logout),
                   label: const Text('Đăng xuất'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    side: const BorderSide(color: AppColors.danger),
+                    foregroundColor: palette.danger,
+                    side: BorderSide(color: palette.danger),
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -235,10 +275,11 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _row(IconData icon, String label, String value) {
+  Widget _row(BuildContext context, IconData icon, String label, String value) {
+    final palette = AppPalette.of(context);
     return Row(
       children: [
-        Icon(icon, color: AppColors.primary),
+        Icon(icon, color: palette.primary),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -246,7 +287,7 @@ class _AccountScreenState extends State<AccountScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: palette.muted, fontSize: 12),
               ),
               Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
             ],

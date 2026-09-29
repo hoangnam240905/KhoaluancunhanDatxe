@@ -111,6 +111,48 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _start() async {
+    final aid = _trip.assignmentId;
+    if (aid == null) return;
+    final message = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompleteTripDialog(
+        title: 'Kiểm tra đầu chuyến',
+        description:
+            'Ghi nhận tình trạng xe trước khi khởi hành. Số km và nhiên liệu là bắt buộc.',
+        submitLabel: 'Ghi nhận và bắt đầu',
+        onSubmit:
+            ({
+              required odometerKm,
+              required fuelLevel,
+              exteriorCondition,
+              technicalCondition,
+              notes,
+            }) => widget.api.startTrip(
+              aid,
+              odometerKm: odometerKm,
+              fuelLevel: fuelLevel,
+              exteriorCondition: exteriorCondition,
+              technicalCondition: technicalCondition,
+              notes: notes,
+            ),
+      ),
+    );
+    if (!mounted || message == null) return;
+    try {
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _reportIncident() async {
     final aid = _trip.assignmentId;
     if (aid == null) return;
@@ -144,6 +186,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final t = _trip;
     final a = t.assignment;
     return Scaffold(
@@ -246,6 +289,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   List<Widget> _actions(TripAssignment? a) {
+    final palette = AppPalette.of(context);
     final aid = a?.assignmentId;
     if (aid == null) return [];
     switch (a!.status) {
@@ -264,8 +308,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       case 'Accepted':
         return [
           FilledButton(
-            onPressed: () => _run(() => widget.api.startTrip(aid)),
-            child: const Text('Bắt đầu chuyến'),
+            onPressed: _start,
+            child: const Text('Kiểm tra xe & bắt đầu'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
@@ -276,7 +320,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       case 'InProgress':
         return [
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.success,
+              foregroundColor:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? palette.background
+                      : Theme.of(context).colorScheme.onPrimary,
+            ),
             onPressed: _complete,
             child: const Text('Hoàn thành chuyến'),
           ),
@@ -299,6 +349,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   Widget _timeline(String? status) {
+    final palette = AppPalette.of(context);
     const steps = ['Assigned', 'Accepted', 'InProgress', 'Completed'];
     final current = steps.indexOf(status ?? '');
     return AppCard(
@@ -315,7 +366,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 children: [
                   Icon(
                     done ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: done ? AppColors.success : AppColors.muted,
+                    color: done ? palette.success : palette.muted,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -323,7 +374,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     Formatters.assignmentStatus(steps[i]),
                     style: TextStyle(
                       fontWeight: done ? FontWeight.w800 : FontWeight.w500,
-                      color: done ? AppColors.text : AppColors.muted,
+                      color: done ? palette.text : palette.muted,
                     ),
                   ),
                 ],
@@ -336,6 +387,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   Widget _row(String label, String value) {
+    final palette = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -343,7 +395,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         children: [
           SizedBox(
             width: 130,
-            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+            child: Text(label, style: TextStyle(color: palette.muted)),
           ),
           Expanded(
             child: Text(
@@ -360,6 +412,5 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     fontWeight: FontWeight.w800,
     fontSize: 12,
     letterSpacing: 0.4,
-    color: AppColors.muted,
   );
 }

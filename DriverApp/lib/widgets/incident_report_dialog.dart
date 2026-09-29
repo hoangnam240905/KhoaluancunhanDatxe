@@ -64,6 +64,7 @@ class _IncidentReportDialogState extends State<IncidentReportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return PopScope(
       canPop: !_submitting,
       child: AlertDialog(
@@ -101,7 +102,7 @@ class _IncidentReportDialogState extends State<IncidentReportDialog> {
               if (_error != null)
                 Text(
                   _error!,
-                  style: const TextStyle(color: AppColors.danger),
+                  style: TextStyle(color: palette.danger),
                 ),
             ],
           ),

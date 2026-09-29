@@ -82,6 +82,7 @@ class _StatusScreenState extends State<StatusScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Trạng thái tài xế')),
       body: _loading
@@ -96,19 +97,19 @@ class _StatusScreenState extends State<StatusScreen> {
                 AppCard(
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.badge_outlined,
-                        color: AppColors.primary,
+                        color: palette.primary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Trạng thái máy chủ',
                               style: TextStyle(
-                                color: AppColors.muted,
+                                color: palette.muted,
                                 fontSize: 12,
                               ),
                             ),
@@ -159,12 +160,13 @@ class _StatusScreenState extends State<StatusScreen> {
   }
 
   Widget _choice(String value, String subtitle, IconData icon) {
+    final palette = AppPalette.of(context);
     final selected = _status == value;
     return AppCard(
       onTap: _busy ? null : () => _setStatus(value),
       child: Row(
         children: [
-          Icon(icon, color: selected ? AppColors.primary : AppColors.muted),
+          Icon(icon, color: selected ? palette.primary : palette.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -177,13 +179,13 @@ class _StatusScreenState extends State<StatusScreen> {
                     fontSize: 16,
                   ),
                 ),
-                Text(subtitle, style: const TextStyle(color: AppColors.muted)),
+                Text(subtitle, style: TextStyle(color: palette.muted)),
               ],
             ),
           ),
           Icon(
             selected ? Icons.radio_button_checked : Icons.radio_button_off,
-            color: selected ? AppColors.primary : AppColors.muted,
+            color: selected ? palette.primary : palette.muted,
           ),
         ],
       ),

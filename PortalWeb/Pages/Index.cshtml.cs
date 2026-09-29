@@ -27,7 +27,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (auth.IsLoggedIn && auth.Role is not null and not "Customer")
+        if (auth.IsLoggedIn && auth.Role is not null and not "Customer" and not "Driver")
             return Redirect(RoleRoutes.HomeFor(auth.Role));
 
         VehicleTypes = await api.GetVehicleTypesAsync();

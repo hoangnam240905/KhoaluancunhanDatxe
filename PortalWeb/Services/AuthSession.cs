@@ -31,7 +31,14 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
 
     public void Clear() => httpContextAccessor.HttpContext?.Response.Cookies.Delete(CookieName);
     public string? Token => GetAuth()?.Token;
-    public bool IsLoggedIn => GetAuth() is not null;
+    public bool IsLoggedIn
+    {
+        get
+        {
+            var auth = GetAuth();
+            return auth is not null && RoleRoutes.IsKnown(auth.Role);
+        }
+    }
     public string? Role => GetAuth()?.Role;
     public string? FullName => GetAuth()?.FullName;
     public string? Email => GetAuth()?.Email;
@@ -39,11 +46,18 @@ public class AuthSession(IHttpContextAccessor httpContextAccessor)
 
 public static class RoleRoutes
 {
-    public static string HomeFor(string role) => role switch
+    public static bool IsKnown(string? role) => role is not null &&
+        (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(role, "Dispatcher", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(role, "Customer", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(role, "Driver", StringComparison.OrdinalIgnoreCase));
+
+    public static string HomeFor(string role) => role.Trim().ToLowerInvariant() switch
     {
-        "Admin" => "/Admin",
-        "Dispatcher" => "/Mockup",
-        "Customer" => "/",
+        "admin" => "/Admin",
+        "dispatcher" => "/Mockup",
+        "customer" => "/",
+        "driver" => "/",
         _ => "/Account/Login"
     };
 }

@@ -56,11 +56,21 @@ public class DriversController(DriverService driverService, IncidentService inci
 
     [Authorize(Roles = RoleNames.Driver)]
     [HttpPost("trips/{assignmentId:int}/start")]
-    public async Task<IActionResult> StartTrip(int assignmentId)
+    public async Task<IActionResult> StartTrip(
+        int assignmentId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VehicleConditionRequest? request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var ok = await driverService.StartTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Đã bắt đầu chuyến." }) : BadRequest();
+        // Older clients may start without an inspection; DriverApp submits one.
+        if (request is null)
+        {
+            var legacyOk = await driverService.StartTripAsync(userId, assignmentId);
+            return legacyOk ? Ok(new { message = "Đã bắt đầu chuyến." }) : BadRequest();
+        }
+        var (ok, error) = await driverService.StartTripAsync(userId, assignmentId, request);
+        if (ok)
+            return Ok(new { message = "Đã ghi nhận kiểm tra đầu chuyến và bắt đầu chuyến." });
+        return error is null ? BadRequest() : BadRequest(new { message = error });
     }
 
     [Authorize(Roles = RoleNames.Driver)]
