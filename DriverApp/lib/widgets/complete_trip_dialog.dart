@@ -23,12 +23,16 @@ class CompleteTripDialog extends StatefulWidget {
     this.description =
         'Ghi nhận dữ liệu vận hành khi trả xe. Số km và nhiên liệu là bắt buộc.',
     this.submitLabel = 'Hoàn thành',
+    this.initialOdometerKm,
   });
 
   final CompleteTripSubmit onSubmit;
   final String title;
   final String description;
   final String submitLabel;
+  /// When provided, the vehicle's assigned current odometer is displayed as
+  /// read-only. This is used for the start inspection only.
+  final double? initialOdometerKm;
 
   @override
   State<CompleteTripDialog> createState() => _CompleteTripDialogState();
@@ -42,6 +46,13 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
   final _notes = TextEditingController();
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final km = widget.initialOdometerKm;
+    if (km != null) _odo.text = km.toStringAsFixed(0);
+  }
 
   @override
   void dispose() {
@@ -109,12 +120,18 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
               TextField(
                 key: const Key('complete-odometer'),
                 controller: _odo,
+                readOnly: widget.initialOdometerKm != null,
                 enabled: !_submitting,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Số km (bắt buộc)',
+                decoration: InputDecoration(
+                  labelText: widget.initialOdometerKm != null
+                      ? 'Số km hiện tại của xe'
+                      : 'Số km (bắt buộc)',
+                  helperText: widget.initialOdometerKm != null
+                      ? 'Tự động lấy từ hồ sơ xe được phân công'
+                      : null,
                 ),
               ),
               TextField(
@@ -133,8 +150,10 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 controller: _exterior,
                 enabled: !_submitting,
                 maxLength: 100,
-                decoration: const InputDecoration(
-                  labelText: 'Tình trạng ngoại thất',
+                decoration: InputDecoration(
+                  labelText: widget.initialOdometerKm != null
+                      ? 'Khác biệt ngoại thất (nếu có)'
+                      : 'Tình trạng ngoại thất',
                 ),
               ),
               TextField(
@@ -142,8 +161,10 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 controller: _technical,
                 enabled: !_submitting,
                 maxLength: 100,
-                decoration: const InputDecoration(
-                  labelText: 'Tình trạng kỹ thuật',
+                decoration: InputDecoration(
+                  labelText: widget.initialOdometerKm != null
+                      ? 'Khác biệt kỹ thuật (nếu có)'
+                      : 'Tình trạng kỹ thuật',
                 ),
               ),
               TextField(
@@ -152,8 +173,10 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 enabled: !_submitting,
                 maxLength: 500,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú (notes)',
+                decoration: InputDecoration(
+                  labelText: widget.initialOdometerKm != null
+                      ? 'Ghi chú bàn giao (nếu có)'
+                      : 'Ghi chú',
                 ),
               ),
               if (_error != null) ...[

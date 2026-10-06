@@ -80,6 +80,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => CompleteTripDialog(
+        title: 'Báo cáo tình trạng sau chuyến',
+        description:
+            'Ghi nhận số km, nhiên liệu và tình trạng thực tế của xe khi kết thúc chuyến.',
+        submitLabel: 'Gửi báo cáo trả xe',
         onSubmit:
             ({
               required odometerKm,
@@ -114,14 +118,24 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<void> _start() async {
     final aid = _trip.assignmentId;
     if (aid == null) return;
+    final currentKm = _trip.assignedVehicle?.currentKm;
+    if (currentKm == null || currentKm <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa có số km hiện tại trong hồ sơ xe được phân công.'),
+        ),
+      );
+      return;
+    }
     final message = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (_) => CompleteTripDialog(
         title: 'Kiểm tra đầu chuyến',
         description:
-            'Ghi nhận tình trạng xe trước khi khởi hành. Số km và nhiên liệu là bắt buộc.',
+            'Đối chiếu với tình trạng xe điều phối đã kiểm tra. Số km tự lấy từ hồ sơ xe; nhập nhiên liệu và ghi lại khác biệt nếu có.',
         submitLabel: 'Ghi nhận và bắt đầu',
+        initialOdometerKm: currentKm.toDouble(),
         onSubmit:
             ({
               required odometerKm,
@@ -277,6 +291,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          _inspectionHistory(t.inspections),
           const SizedBox(height: 16),
           _timeline(a?.status),
           const SizedBox(height: 20),
@@ -285,6 +301,62 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           const SizedBox(height: 12),
         ],
       ),
+    );
+  }
+
+  Widget _inspectionHistory(List<VehicleInspection> inspections) {
+    final handover = inspections.where((i) => i.inspectionType == 'Handover');
+    final returned = inspections.where((i) => i.inspectionType == 'Return');
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('BIÊN BẢN TÌNH TRẠNG XE', style: _section),
+          const SizedBox(height: 10),
+          _inspectionSummary('Trước chuyến · Điều phối bàn giao', handover),
+          const SizedBox(height: 12),
+          _inspectionSummary('Sau chuyến · Tài xế trả xe', returned),
+        ],
+      ),
+    );
+  }
+
+  Widget _inspectionSummary(
+    String title,
+    Iterable<VehicleInspection> records,
+  ) {
+    final palette = AppPalette.of(context);
+    final inspection = records.isEmpty ? null : records.last;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        if (inspection == null)
+          Text('Chưa có biên bản.', style: TextStyle(color: palette.muted))
+        else ...[
+          Text(
+            'Ghi nhận lúc ${Formatters.dt(inspection.actualAt)}',
+            style: TextStyle(color: palette.muted, fontSize: 12),
+          ),
+          if (inspection.odometerKm != null)
+            _row('Số km', '${inspection.odometerKm!.toStringAsFixed(0)} km'),
+          if (inspection.fuelLevel != null)
+            _row('Nhiên liệu', '${inspection.fuelLevel!.toStringAsFixed(0)}%'),
+          if ((inspection.exteriorCondition ?? inspection.condition)
+                  ?.trim()
+                  .isNotEmpty ==
+              true)
+            _row(
+              'Ngoại thất',
+              (inspection.exteriorCondition ?? inspection.condition)!.trim(),
+            ),
+          if (inspection.technicalCondition?.trim().isNotEmpty == true)
+            _row('Kỹ thuật', inspection.technicalCondition!.trim()),
+          if (inspection.notes?.trim().isNotEmpty == true)
+            _row('Ghi chú', inspection.notes!.trim()),
+        ],
+      ],
     );
   }
 

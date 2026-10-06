@@ -39,7 +39,8 @@ public record AssignedVehicleResponse(
     string LicensePlate,
     string Brand,
     string Model,
-    string Status);
+    string Status,
+    int CurrentKm);
 
 public record BookingResponse(
     int BookingId,

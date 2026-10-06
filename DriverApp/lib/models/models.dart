@@ -153,6 +153,7 @@ class AssignedVehicle {
   final String brand;
   final String model;
   final String status;
+  final int? currentKm;
 
   AssignedVehicle({
     required this.vehicleId,
@@ -160,6 +161,7 @@ class AssignedVehicle {
     required this.brand,
     required this.model,
     required this.status,
+    required this.currentKm,
   });
 
   factory AssignedVehicle.fromJson(Map<String, dynamic> json) =>
@@ -169,6 +171,7 @@ class AssignedVehicle {
         brand: json['brand'] as String? ?? '',
         model: json['model'] as String? ?? '',
         status: json['status'] as String? ?? '',
+        currentKm: (json['currentKm'] as num?)?.toInt(),
       );
 }
 
@@ -186,6 +189,7 @@ class DriverBooking {
   final String rentalMode;
   final TripAssignment? assignment;
   final AssignedVehicle? assignedVehicle;
+  final List<VehicleInspection> inspections;
 
   DriverBooking({
     required this.bookingId,
@@ -201,6 +205,7 @@ class DriverBooking {
     this.rentalMode = 'WithDriver',
     this.assignment,
     this.assignedVehicle,
+    this.inspections = const [],
   });
 
   bool get isSelfDrive => rentalMode == 'SelfDrive';
@@ -230,6 +235,14 @@ class DriverBooking {
       }
     }
 
+    final rawInspections = json['inspections'];
+    final inspections = rawInspections is List
+        ? rawInspections
+              .whereType<Map<String, dynamic>>()
+              .map(VehicleInspection.fromJson)
+              .toList()
+        : <VehicleInspection>[];
+
     return DriverBooking(
       bookingId: json['bookingId'] as int? ?? 0,
       customerName: json['customerName'] as String? ?? '—',
@@ -248,8 +261,48 @@ class DriverBooking {
       rentalMode: json['rentalMode'] as String? ?? 'WithDriver',
       assignment: assignment,
       assignedVehicle: vehicle,
+      inspections: inspections,
     );
   }
+}
+
+class VehicleInspection {
+  final int inspectionId;
+  final String inspectionType;
+  final DateTime actualAt;
+  final double? odometerKm;
+  final double? fuelLevel;
+  final String? exteriorCondition;
+  final String? technicalCondition;
+  final String? condition;
+  final String? notes;
+
+  const VehicleInspection({
+    required this.inspectionId,
+    required this.inspectionType,
+    required this.actualAt,
+    this.odometerKm,
+    this.fuelLevel,
+    this.exteriorCondition,
+    this.technicalCondition,
+    this.condition,
+    this.notes,
+  });
+
+  factory VehicleInspection.fromJson(Map<String, dynamic> json) =>
+      VehicleInspection(
+        inspectionId: json['inspectionId'] as int? ?? 0,
+        inspectionType: json['inspectionType'] as String? ?? '',
+        actualAt:
+            DateTime.tryParse(json['actualAt']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        odometerKm: (json['odometerKm'] as num?)?.toDouble(),
+        fuelLevel: (json['fuelLevel'] as num?)?.toDouble(),
+        exteriorCondition: json['exteriorCondition'] as String?,
+        technicalCondition: json['technicalCondition'] as String?,
+        condition: json['condition'] as String?,
+        notes: json['notes'] as String?,
+      );
 }
 
 class IncidentReport {

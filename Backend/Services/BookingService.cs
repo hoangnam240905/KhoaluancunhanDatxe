@@ -365,14 +365,17 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
                 b.TripAssignment.AssignedAt);
         }
 
-        if (b.AssignedVehicle is not null)
+        var responseVehicle = b.AssignedVehicle
+            ?? (rentalMode == RentalModes.WithDriver ? b.TripAssignment?.Vehicle : null);
+        if (responseVehicle is not null)
         {
             assignedVehicle = new AssignedVehicleResponse(
-                b.AssignedVehicle.VehicleId,
-                b.AssignedVehicle.LicensePlate,
-                b.AssignedVehicle.Brand,
-                b.AssignedVehicle.Model,
-                b.AssignedVehicle.Status);
+                responseVehicle.VehicleId,
+                responseVehicle.LicensePlate,
+                responseVehicle.Brand,
+                responseVehicle.Model,
+                responseVehicle.Status,
+                responseVehicle.CurrentKm);
         }
 
         var fees = (b.Fees ?? [])
