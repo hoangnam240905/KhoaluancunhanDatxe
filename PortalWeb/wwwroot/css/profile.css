@@ -166,6 +166,50 @@
     background: #f8fafc;
 }
 
+.pf-field select,
+.pf-field textarea {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.55rem 0.9rem;
+    font-weight: 700;
+    color: #0f1f3d;
+    background: #fff;
+}
+
+.pf-field textarea {
+    min-height: 96px;
+    resize: vertical;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.pf-field-full { grid-column: 1 / -1; }
+
+.pf-section-title {
+    margin: 1.15rem 0 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #2563eb;
+}
+
+.pf-readonly.is-off { display: none; }
+
+.pf-edit-form {
+    display: block;
+}
+
+.pf-edit-form.is-on {
+    display: block;
+}
+
+.pf-edit-form .pf-edit-actions.is-on {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
 .pf-info.is-edit input,
 [data-pf-info].is-edit input { background: #fff; }
 

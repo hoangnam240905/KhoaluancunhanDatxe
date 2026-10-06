@@ -157,7 +157,12 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
         v.RegistrationNumber, v.RegistrationExpiryDate,
         v.InspectionExpiryDate, v.InsuranceExpiryDate,
-        v.VehicleType.SeatCapacity, v.VehicleType.PricePerDay);
+        v.VehicleType.SeatCapacity, v.VehicleType.PricePerDay,
+        v.Transmission, v.FuelType, v.TrunkCapacity, v.Engine, v.Horsepower,
+        v.FuelConsumption, v.SafetyScore, v.ConditionStatus, v.FuelLevel, v.Notes,
+        v.LastMaintenanceDate, v.LastMaintenanceOdometer,
+        v.MaintenanceIntervalKm, v.MaintenanceIntervalDays,
+        v.NextMaintenanceDate, v.NextMaintenanceOdometer);
 
     public Task<(VehicleResponse? Data, string? Error, int StatusCode)> CreateVehicleAsync(
         CreateVehicleRequest request)
@@ -193,6 +198,10 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         if (registration is not null && await RegistrationTakenAsync(registration, excludeVehicleId: null))
             return (null, VehicleLegalRules.DuplicateRegistration, StatusCodes.Status400BadRequest);
 
+        var specError = ValidateSpecs(request);
+        if (specError is not null)
+            return (null, specError, StatusCodes.Status400BadRequest);
+
         var vehicle = new Entities.Vehicle
         {
             TypeId = request.TypeId,
@@ -207,7 +216,23 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
             RegistrationExpiryDate = request.RegistrationExpiryDate,
             InspectionExpiryDate = request.InspectionExpiryDate,
             InsuranceExpiryDate = request.InsuranceExpiryDate,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Transmission = TrimOrNull(request.Transmission),
+            FuelType = TrimOrNull(request.FuelType),
+            TrunkCapacity = request.TrunkCapacity,
+            Engine = TrimOrNull(request.Engine),
+            Horsepower = request.Horsepower,
+            FuelConsumption = request.FuelConsumption,
+            SafetyScore = request.SafetyScore,
+            ConditionStatus = TrimOrNull(request.ConditionStatus) ?? "Good",
+            FuelLevel = request.FuelLevel,
+            Notes = TrimOrNull(request.Notes),
+            LastMaintenanceDate = request.LastMaintenanceDate,
+            LastMaintenanceOdometer = request.LastMaintenanceOdometer,
+            MaintenanceIntervalKm = request.MaintenanceIntervalKm,
+            MaintenanceIntervalDays = request.MaintenanceIntervalDays,
+            NextMaintenanceDate = request.NextMaintenanceDate,
+            NextMaintenanceOdometer = request.NextMaintenanceOdometer
         };
 
         db.Vehicles.Add(vehicle);
@@ -258,6 +283,10 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         if (registration is not null && await RegistrationTakenAsync(registration, excludeVehicleId: id))
             return (null, VehicleLegalRules.DuplicateRegistration, StatusCodes.Status400BadRequest);
 
+        var specError = ValidateSpecs(request);
+        if (specError is not null)
+            return (null, specError, StatusCodes.Status400BadRequest);
+
         if (request.Status == VehicleStatuses.Inactive
             && vehicle.Status != VehicleStatuses.Inactive
             && await schedule.IsVehicleOccupiedAsync(id))
@@ -283,6 +312,7 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         vehicle.RegistrationExpiryDate = request.RegistrationExpiryDate;
         vehicle.InspectionExpiryDate = request.InspectionExpiryDate;
         vehicle.InsuranceExpiryDate = request.InsuranceExpiryDate;
+        ApplySpecs(vehicle, request);
 
         try
         {
@@ -487,4 +517,80 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         vt.Description,
         vt.ImageUrl,
         vt.IsActive);
+
+    private static string? ValidateSpecs(CreateVehicleRequest request)
+        => ValidateSpecs(
+            request.TrunkCapacity, request.Horsepower, request.FuelConsumption, request.FuelLevel,
+            request.MaintenanceIntervalKm, request.MaintenanceIntervalDays);
+
+    private static string? ValidateSpecs(UpdateVehicleRequest request)
+        => ValidateSpecs(
+            request.TrunkCapacity, request.Horsepower, request.FuelConsumption, request.FuelLevel,
+            request.MaintenanceIntervalKm, request.MaintenanceIntervalDays);
+
+    private static string? ValidateSpecs(
+        double? trunkCapacity,
+        int? horsepower,
+        double? fuelConsumption,
+        double? fuelLevel,
+        int? maintenanceIntervalKm,
+        int? maintenanceIntervalDays)
+    {
+        if (trunkCapacity is < 0)
+            return "Dung tích cốp không được âm.";
+        if (horsepower is < 0)
+            return "Công suất không được âm.";
+        if (fuelConsumption is < 0)
+            return "Mức tiêu hao nhiên liệu không được âm.";
+        if (fuelLevel is < 0 or > 100)
+            return "Mức nhiên liệu phải từ 0 đến 100.";
+        if (maintenanceIntervalKm is <= 0)
+            return "Chu kỳ bảo trì theo km phải lớn hơn 0.";
+        if (maintenanceIntervalDays is <= 0)
+            return "Chu kỳ bảo trì theo ngày phải lớn hơn 0.";
+        return null;
+    }
+
+    private static void ApplySpecs(Entities.Vehicle vehicle, UpdateVehicleRequest request)
+    {
+        if (request.Transmission is not null)
+            vehicle.Transmission = TrimOrNull(request.Transmission);
+        if (request.FuelType is not null)
+            vehicle.FuelType = TrimOrNull(request.FuelType);
+        if (request.TrunkCapacity is not null)
+            vehicle.TrunkCapacity = request.TrunkCapacity;
+        if (request.Engine is not null)
+            vehicle.Engine = TrimOrNull(request.Engine);
+        if (request.Horsepower is not null)
+            vehicle.Horsepower = request.Horsepower;
+        if (request.FuelConsumption is not null)
+            vehicle.FuelConsumption = request.FuelConsumption;
+        if (request.SafetyScore is not null)
+            vehicle.SafetyScore = request.SafetyScore;
+        var condition = TrimOrNull(request.ConditionStatus);
+        if (condition is not null)
+            vehicle.ConditionStatus = condition;
+        if (request.FuelLevel is not null)
+            vehicle.FuelLevel = request.FuelLevel;
+        if (request.Notes is not null)
+            vehicle.Notes = TrimOrNull(request.Notes);
+        if (request.LastMaintenanceDate is not null)
+            vehicle.LastMaintenanceDate = request.LastMaintenanceDate;
+        if (request.LastMaintenanceOdometer is not null)
+            vehicle.LastMaintenanceOdometer = request.LastMaintenanceOdometer;
+        if (request.MaintenanceIntervalKm is not null)
+            vehicle.MaintenanceIntervalKm = request.MaintenanceIntervalKm;
+        if (request.MaintenanceIntervalDays is not null)
+            vehicle.MaintenanceIntervalDays = request.MaintenanceIntervalDays;
+        if (request.NextMaintenanceDate is not null)
+            vehicle.NextMaintenanceDate = request.NextMaintenanceDate;
+        if (request.NextMaintenanceOdometer is not null)
+            vehicle.NextMaintenanceOdometer = request.NextMaintenanceOdometer;
+    }
+
+    private static string? TrimOrNull(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
 }

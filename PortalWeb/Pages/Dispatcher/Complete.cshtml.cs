@@ -58,7 +58,7 @@ public class CompleteModel(CarRentalApiClient api, AuthSession auth) : RolePageM
     {
         Booking = await api.GetBookingAsync(id);
         if (Booking is null) return NotFound();
-        if (Booking.RentalMode != "SelfDrive" || Booking.Status != "InProgress")
+        if (Booking.Status is not ("InProgress" or "Assigned"))
             return RedirectToPage("/Dispatcher/Index");
         return null;
     }

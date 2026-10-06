@@ -8,6 +8,9 @@ public class MaintenanceRecord
     public DateTime ScheduledDate { get; set; }
     public DateTime? CompletedDate { get; set; }
     public int? OdometerAtMaintenance { get; set; }
+    public int? ScheduledOdometer { get; set; }
+    public DateTime? NextMaintenanceDate { get; set; }
+    public int? NextMaintenanceOdometer { get; set; }
     public decimal? Cost { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -81,7 +81,8 @@ public record CreateBookingRequest(
     decimal? EstimatedDistance,
     string? Notes,
     string? RentalMode = null,
-    int? VehicleId = null);
+    int? VehicleId = null,
+    int? DriverId = null);
 
 public record AssignedVehicleResponse(
     int VehicleId,
@@ -186,7 +187,37 @@ public record BookingResponse(
     decimal? FinalBaseAmount = null,
     decimal? TotalFees = null,
     IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
-    ReviewResponse? Review = null);
+    ReviewResponse? Review = null,
+    int? RequestedDriverId = null,
+    string? RequestedDriverName = null);
+
+public record CustomerDriverOptionResponse(
+    int DriverId,
+    string FullName,
+    string? Phone,
+    decimal AverageRating,
+    int TotalTrips,
+    string LicenseNumber,
+    DateOnly LicenseExpiry,
+    string EligibilityStatus,
+    string AvailabilityStatus,
+    string Status = "",
+    double? ExperienceYears = null,
+    bool CanSelect = true);
+
+public record DriverBusyPeriodResponse(
+    DateTime StartDate,
+    DateTime EndDate,
+    string Label,
+    int? BookingId = null,
+    string? Status = null);
+
+public record DriverScheduleResponse(
+    int DriverId,
+    string FullName,
+    IReadOnlyList<DriverBusyPeriodResponse> Busy,
+    decimal AverageRating = 0,
+    int TotalTrips = 0);
 
 public record TripAssignmentResponse(
     int AssignmentId,

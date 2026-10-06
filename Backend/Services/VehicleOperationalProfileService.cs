@@ -104,5 +104,8 @@ public class VehicleOperationalProfileService(
                 record.OdometerAtMaintenance,
                 record.Cost,
                 record.Notes,
-                record.CreatedAt);
+                record.CreatedAt,
+                record.ScheduledOdometer,
+                record.NextMaintenanceDate,
+                record.NextMaintenanceOdometer);
 }

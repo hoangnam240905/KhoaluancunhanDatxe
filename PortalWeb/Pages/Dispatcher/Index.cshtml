@@ -97,10 +97,10 @@
 </div>
 
 <div class="modern-card p-4 mb-4">
-    <h5 class="fw-bold text-info mb-3">Tự lái — chờ giao xe (@Model.SelfDriveAssigned.Count)</h5>
+    <h5 class="fw-bold text-info mb-3">Chờ giao xe (@Model.SelfDriveAssigned.Count)</h5>
     @if (!Model.SelfDriveAssigned.Any())
     {
-        <p class="text-muted mb-0">Không có đơn tự lái chờ giao xe.</p>
+        <p class="text-muted mb-0">Không có đơn chờ giao xe.</p>
     }
     else
     {
@@ -124,7 +124,7 @@
                         <td class="fw-semibold">#@b.BookingId</td>
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
-                        <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
+                        <td>@(b.AssignedVehicle?.LicensePlate ?? b.Assignment?.LicensePlate ?? "—")</td>
                         <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
                         <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td>
@@ -139,10 +139,10 @@
 </div>
 
 <div class="modern-card p-4 mb-4">
-    <h5 class="fw-bold text-success mb-3">Tự lái — đang thuê (@Model.SelfDriveInProgress.Count)</h5>
+    <h5 class="fw-bold text-success mb-3">Cần tiếp nhận trả xe (@Model.SelfDriveInProgress.Count)</h5>
     @if (!Model.SelfDriveInProgress.Any())
     {
-        <p class="text-muted mb-0">Không có đơn tự lái đang thuê.</p>
+        <p class="text-muted mb-0">Không có đơn cần tiếp nhận trả xe.</p>
     }
     else
     {
@@ -166,7 +166,7 @@
                         <td class="fw-semibold">#@b.BookingId</td>
                         <td>@b.CustomerName</td>
                         <td>@b.VehicleTypeName</td>
-                        <td>@(b.AssignedVehicle?.LicensePlate ?? "—")</td>
+                        <td>@(b.AssignedVehicle?.LicensePlate ?? b.Assignment?.LicensePlate ?? "—")</td>
                         <td>@UiDisplay.Rental(b.StartDate) → @UiDisplay.Rental(b.EndDate)</td>
                         <td>@UiDisplay.BookingStatus(b.Status)</td>
                         <td>

@@ -237,7 +237,6 @@ public class PhaseVehicleOperationalProfileTests
 
     [Theory]
     [InlineData("customer1@gmail.com")]
-    [InlineData("dispatcher@carrental.vn")]
     [InlineData("driver1@carrental.vn")]
     public async Task Non_admin_operational_profile_is_403(string email)
     {
@@ -246,6 +245,16 @@ public class PhaseVehicleOperationalProfileTests
         var token = await LoginAsync(client, email);
         var response = await client.SendAsync(Authed(HttpMethod.Get, "/api/vehicles/2/operational-profile", token));
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dispatcher_operational_profile_is_allowed()
+    {
+        using var factory = new IsolatedApiFactory();
+        var client = factory.CreateClient();
+        var token = await LoginAsync(client, "dispatcher@carrental.vn");
+        var response = await client.SendAsync(Authed(HttpMethod.Get, "/api/vehicles/2/operational-profile", token));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

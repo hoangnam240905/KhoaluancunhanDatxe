@@ -79,9 +79,6 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         if (booking is null)
             return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
 
-        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
-            return new JsonResult(new { ok = false, error = "Chỉ đơn tự lái mới dùng giao xe tại điều phối." });
-
         if (!string.Equals(booking.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
             return new JsonResult(new { ok = false, error = "Chỉ giao xe khi đơn đã được gán xe." });
 
@@ -168,8 +165,6 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
 
         var booking = await api.GetBookingAsync(id);
         if (booking is null) return ActionFail("Không tìm thấy đơn.");
-        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
-            return ActionFail("API điều phối chỉ hoàn thành đơn SelfDrive. WithDriver hoàn thành qua tài xế — chưa có API dispatcher.");
 
         var (odo, fuel, err) = ReturnVehicleContext.ValidateInput(odometerKm, fuelLevel);
         if (err is not null)
@@ -185,7 +180,7 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         };
 
         var (data, error) = await api.CompleteSelfDriveAsync(id, condition);
-        if (data is null) return ActionFail(error ?? "Hoàn thành / trả xe thất bại (SelfDrive).");
+        if (data is null) return ActionFail(error ?? "Tiếp nhận trả xe thất bại.");
         return await ActionOkTripAsync(data);
     }
 

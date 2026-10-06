@@ -114,9 +114,6 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         if (booking is null)
             return new JsonResult(new { ok = false, error = "Không tìm thấy đơn." }) { StatusCode = 404 };
 
-        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
-            return new JsonResult(new { ok = false, error = "Chỉ đơn tự lái mới dùng giao xe tại điều phối." });
-
         if (!string.Equals(booking.Status, "Assigned", StringComparison.OrdinalIgnoreCase))
             return new JsonResult(new { ok = false, error = "Chỉ giao xe khi đơn đã được gán xe." });
 
@@ -163,7 +160,7 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         };
 
         var (data, error) = await api.HandoverBookingAsync(id, condition);
-        if (data is null) return ActionFail(error ?? "Giao xe thất bại (API SelfDrive).");
+        if (data is null) return ActionFail(error ?? "Giao xe thất bại.");
         return await ActionOkAsync(data);
     }
 
@@ -205,7 +202,7 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
             OdometerKm = odo,
             FuelLevel = fuel
         });
-        if (data is null) return ActionFail(error ?? "Hoàn thành thất bại (API SelfDrive).");
+        if (data is null) return ActionFail(error ?? "Tiếp nhận trả xe thất bại.");
         return await ActionOkAsync(data);
     }
 

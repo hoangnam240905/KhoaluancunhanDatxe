@@ -1,0 +1,129 @@
+@page "/Customer/Recommendations"
+@model PortalWeb.Pages.Customer.RecommendationsModel
+@{
+    ViewData["Title"] = "Gợi ý xe";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/recommendations.css" asp-append-version="true" />
+}
+
+<div class="ch-page cr-page"
+     data-cr-page
+     data-cr-fetch="@Url.Page("/Customer/Recommendations", "Fetch")"
+     data-cr-book="@Url.Page("/Customer/Recommendations", "Book")"
+     data-cr-search="@Url.Page("/Search")">
+
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a class="is-active" asp-page="/Customer/Recommendations">Gợi ý</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Recommendations">Gợi ý</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="cr-hero">
+        <div class="ch-container cr-hero-grid">
+            <div>
+                <div class="ch-eyebrow">Gợi ý cá nhân</div>
+                <h1>Xe phù hợp với bạn</h1>
+                <p class="cr-hero-lead">
+                    Dựa trên hồ sơ thuê xe của bạn, DriveX đề xuất tối đa 5 xe trước khi bạn chọn và đặt.
+                </p>
+            </div>
+            <div class="cr-segment" data-cr-segment hidden>
+                <span class="cr-segment-label">Phân khúc dự đoán</span>
+                <strong data-cr-segment-value>—</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="cr-body">
+        <div class="ch-container">
+            <div class="cr-toolbar">
+                <div>
+                    <h2 class="cr-title">Danh sách gợi ý</h2>
+                    <p class="cr-sub">Chọn xe để tiếp tục đặt thuê trong luồng hiện tại.</p>
+                </div>
+                <a class="cr-link" asp-page="/Search">Xem toàn bộ xe</a>
+            </div>
+
+            <div data-cr-loading class="cr-state cr-loading" role="status" aria-live="polite">
+                <div class="cr-spinner" aria-hidden="true"></div>
+                <p>Đang tải gợi ý xe…</p>
+            </div>
+
+            <div data-cr-error class="cr-state cr-error" hidden role="alert">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <div>
+                    <strong>Không tải được gợi ý</strong>
+                    <p data-cr-error-msg>Dịch vụ gợi ý tạm thời không khả dụng. Bạn vẫn có thể tìm xe bình thường.</p>
+                </div>
+                <div class="cr-state-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-cr-retry>Thử lại</button>
+                    <a class="btn btn-primary btn-sm" asp-page="/Search">Tìm xe</a>
+                </div>
+            </div>
+
+            <div data-cr-empty class="cr-state cr-empty" hidden>
+                <i class="bi bi-car-front" aria-hidden="true"></i>
+                <div>
+                    <strong>Chưa có gợi ý phù hợp</strong>
+                    <p>Hiện chưa có xe nào được đề xuất. Hãy tìm xe theo ngày thuê của bạn.</p>
+                </div>
+                <a class="btn btn-primary btn-sm" asp-page="/Search">Tìm xe</a>
+            </div>
+
+            <div data-cr-list class="ch-grid cr-grid" hidden></div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/recommendations.js" asp-append-version="true"></script>
+}

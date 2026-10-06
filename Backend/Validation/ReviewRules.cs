@@ -24,4 +24,13 @@ public static class ReviewRules
 
         return null;
     }
+
+    public static string? ValidateOptionalScore(int? rating)
+    {
+        if (rating is null)
+            return null;
+        if (rating is < 1 or > 5)
+            return "Điểm đánh giá phải từ 1 đến 5.";
+        return null;
+    }
 }

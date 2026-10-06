@@ -13,7 +13,8 @@ public record CreateBookingRequest(
     decimal? EstimatedDistance,
     string? Notes,
     string? RentalMode = null,
-    int? VehicleId = null);
+    int? VehicleId = null,
+    int? DriverId = null);
 
 public record BookingQuoteResponse(
     int VehicleTypeId,
@@ -73,7 +74,9 @@ public record BookingResponse(
     IReadOnlyList<VehicleInspectionResponse> Inspections,
     ReviewResponse? Review = null,
     bool HasActiveDeposit = false,
-    string? CancellationReason = null);
+    string? CancellationReason = null,
+    int? RequestedDriverId = null,
+    string? RequestedDriverName = null);
 
 public record CancelBookingRequest(string? CancellationReason);
 
@@ -152,11 +155,23 @@ public sealed record AssignTripResult(
         => new(null, conflict.Message, conflict);
 }
 
-public record CreateReviewRequest(byte Rating, string? Comment);
+public record CreateReviewRequest(
+    byte Rating,
+    string? Comment,
+    int? ComfortRating = null,
+    int? CleanlinessRating = null,
+    int? PerformanceRating = null,
+    int? ValueRating = null);
 
 public record ReviewResponse(
     int ReviewId,
     int BookingId,
     byte Rating,
     string? Comment,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? ComfortRating = null,
+    int? CleanlinessRating = null,
+    int? PerformanceRating = null,
+    int? ValueRating = null,
+    int CustomerId = 0,
+    int DriverId = 0);

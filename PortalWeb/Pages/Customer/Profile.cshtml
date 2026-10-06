@@ -28,6 +28,7 @@
             <nav class="ch-nav-links" aria-label="Khách hàng">
                 <a href="/">Trang chủ</a>
                 <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Recommendations">Gợi ý</a>
                 <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 <a href="/#about">Về chúng tôi</a>
             </nav>
@@ -58,6 +59,7 @@
             <div class="collapse ch-nav-mobile" id="chMobileNav">
                 <a href="/">Trang chủ</a>
                 <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Recommendations">Gợi ý</a>
                 <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 <a href="/#about">Về chúng tôi</a>
             </div>
@@ -68,7 +70,7 @@
         <div class="ch-container">
             <div class="ch-eyebrow">Tài khoản</div>
             <h1>Hồ sơ cá nhân</h1>
-            <p>Quản lý thông tin tài khoản và tùy chọn của bạn.</p>
+            <p>Cập nhật thông tin phục vụ gợi ý xe và quản lý tài khoản của bạn.</p>
         </div>
     </section>
 
@@ -77,6 +79,10 @@
             @if (!string.IsNullOrEmpty(Model.LoadError))
             {
                 <p class="pf-error is-on">@Model.LoadError</p>
+            }
+            @if (!string.IsNullOrEmpty(Model.ProfileSuccess))
+            {
+                <p class="pf-ok is-on">@Model.ProfileSuccess</p>
             }
 
             <article class="pf-hero">
@@ -98,7 +104,7 @@
             </article>
 
             <div class="pf-nav" role="tablist" aria-label="Hồ sơ">
-                <button type="button" class="is-on" data-pf-tab-btn="info">Thông tin cá nhân</button>
+                <button type="button" class="is-on" data-pf-tab-btn="info">Thông tin &amp; gợi ý xe</button>
                 <button type="button" data-pf-tab-btn="security">Bảo mật</button>
                 <button type="button" data-pf-tab-btn="notice">Thông báo</button>
                 <button type="button" data-pf-tab-btn="activity">Hoạt động tài khoản</button>
@@ -108,10 +114,8 @@
                 <div>
                     <article class="pf-card pf-panel is-on" data-pf-panel="info" data-pf-info>
                         <div class="pf-card-head">
-                            <h2>Thông tin cá nhân</h2>
-                            <button type="button" class="pf-btn-ghost pf-edit-show" data-pf-edit>Chỉnh sửa thông tin</button>
+                            <h2>Thông tin tài khoản</h2>
                         </div>
-                        <p class="pf-error" data-pf-profile-error data-pf-unsupported="@ProfileUi.UpdateUnsupported"></p>
                         <div class="pf-fields">
                             <label class="pf-field">
                                 <span>Họ và tên</span>
@@ -128,6 +132,132 @@
                         </div>
                     </article>
 
+                    <article class="pf-card pf-panel is-on" data-pf-panel="info" data-pf-v7-profile>
+                        <div class="pf-card-head">
+                            <h2>Hồ sơ gợi ý xe (V7)</h2>
+                        </div>
+                        <p class="pf-help">
+                            Nhập thông tin bên dưới để hệ thống gợi ý xe phù hợp hơn.
+                            Không nhập tuổi — hệ thống tự tính từ <strong>Ngày sinh</strong>.
+                        </p>
+
+                        <form method="post" asp-page-handler="SaveProfile" class="pf-edit-form is-on" data-pf-profile-form>
+                            <p class="pf-error @(string.IsNullOrEmpty(Model.ProfileError) ? "" : "is-on")" data-pf-profile-error>@Model.ProfileError</p>
+
+                            <div class="pf-section-title">1. Gia đình &amp; khu vực</div>
+                            <div class="pf-fields pf-grid-2">
+                                <label class="pf-field" data-pf-field="DateOfBirth">
+                                    <span>Ngày sinh</span>
+                                    <input asp-for="ProfileInput.DateOfBirth" type="date" />
+                                </label>
+                                <label class="pf-field" data-pf-field="Address">
+                                    <span>Địa chỉ</span>
+                                    <input asp-for="ProfileInput.Address" maxlength="300" />
+                                </label>
+                                <label class="pf-field" data-pf-field="NumberOfChildren">
+                                    <span>Số con</span>
+                                    <input asp-for="ProfileInput.NumberOfChildren" type="number" min="0" max="20" />
+                                </label>
+                                <label class="pf-field" data-pf-field="FamilySize">
+                                    <span>Số thành viên gia đình</span>
+                                    <input asp-for="ProfileInput.FamilySize" type="number" min="1" max="30" />
+                                </label>
+                                <label class="pf-field" data-pf-field="IncomeRange">
+                                    <span>Mức thu nhập</span>
+                                    <select asp-for="ProfileInput.IncomeRange">
+                                        @foreach (var opt in ProfileUi.IncomeOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="pf-field" data-pf-field="CityType">
+                                    <span>Khu vực sinh sống</span>
+                                    <select asp-for="ProfileInput.CityType">
+                                        @foreach (var opt in ProfileUi.CityOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="pf-section-title">2. Di chuyển &amp; ngân sách thuê</div>
+                            <div class="pf-fields pf-grid-2">
+                                <label class="pf-field" data-pf-field="CommuteKmPerDay">
+                                    <span>Quãng đường đi mỗi ngày (km)</span>
+                                    <input asp-for="ProfileInput.CommuteKmPerDay" type="number" min="0" max="500" step="0.1" />
+                                </label>
+                                <label class="pf-field" data-pf-field="AnnualMileage">
+                                    <span>Số km di chuyển mỗi năm</span>
+                                    <input asp-for="ProfileInput.AnnualMileage" type="number" min="0" max="200000" />
+                                </label>
+                                <label class="pf-field" data-pf-field="RentalPurpose">
+                                    <span>Mục đích thuê xe</span>
+                                    <select asp-for="ProfileInput.RentalPurpose">
+                                        @foreach (var opt in ProfileUi.PurposeOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="pf-field" data-pf-field="BudgetMin">
+                                    <span>Ngân sách tối thiểu</span>
+                                    <input asp-for="ProfileInput.BudgetMin" type="number" min="0" step="1" />
+                                </label>
+                                <label class="pf-field" data-pf-field="BudgetMax">
+                                    <span>Ngân sách tối đa</span>
+                                    <input asp-for="ProfileInput.BudgetMax" type="number" min="0" step="1" />
+                                </label>
+                            </div>
+
+                            <div class="pf-section-title">3. Sở thích xe</div>
+                            <div class="pf-fields pf-grid-2">
+                                <label class="pf-field" data-pf-field="PreferredVehicleType">
+                                    <span>Loại xe ưa thích</span>
+                                    <select asp-for="ProfileInput.PreferredVehicleType">
+                                        @foreach (var opt in ProfileUi.VehicleTypeOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="pf-field" data-pf-field="PreferredFuelType">
+                                    <span>Nhiên liệu ưa thích</span>
+                                    <select asp-for="ProfileInput.PreferredFuelType">
+                                        @foreach (var opt in ProfileUi.FuelOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="pf-field" data-pf-field="PreferredTransmission">
+                                    <span>Hộp số ưa thích</span>
+                                    <select asp-for="ProfileInput.PreferredTransmission">
+                                        @foreach (var opt in ProfileUi.TransmissionOptions)
+                                        {
+                                            <option value="@opt.Value">@opt.Label</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="pf-field" data-pf-field="PreferredSeats">
+                                    <span>Số chỗ mong muốn</span>
+                                    <input asp-for="ProfileInput.PreferredSeats" type="number" min="1" max="50" />
+                                </label>
+                                <label class="pf-field pf-field-full" data-pf-field="PreferencesText">
+                                    <span>Ghi chú sở thích</span>
+                                    <textarea asp-for="ProfileInput.PreferencesText" rows="3" maxlength="1000"
+                                              placeholder="Ví dụ: Xe tiết kiệm nhiên liệu, an toàn, phù hợp gia đình"></textarea>
+                                </label>
+                            </div>
+
+                            <div class="pf-edit-actions is-on">
+                                <button type="submit" class="pf-btn" data-pf-profile-save data-pf-busy-label="@ProfileUi.SaveBusy">Lưu hồ sơ</button>
+                                <a class="pf-btn-ghost" asp-page="/Customer/Recommendations">Xem gợi ý xe</a>
+                            </div>
+                        </form>
+                    </article>
+
                     <article class="pf-card pf-panel" data-pf-panel="activity">
                         <h2>Hoạt động gần đây</h2>
                         <p class="pf-help">@ProfileUi.ActivityUnavailable</p>
@@ -138,6 +268,7 @@
                     <article class="pf-card">
                         <h2>Trạng thái tài khoản</h2>
                         <div class="pf-status-row"><span>Loại tài khoản</span><strong>@p.RoleLabel</strong></div>
+                        <a class="pf-btn-ghost mt-2" asp-page="/Customer/Recommendations">Xem gợi ý xe</a>
                     </article>
 
                     <article class="pf-card pf-panel is-on" data-pf-panel="security">

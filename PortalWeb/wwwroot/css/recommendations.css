@@ -1,0 +1,233 @@
+/* Customer V7 recommendations — extends home.css card language */
+
+.cr-hero {
+    padding: 2.25rem 0 0.5rem;
+    background:
+        radial-gradient(ellipse 80% 60% at 90% 0%, rgba(37, 99, 235, 0.08), transparent 55%),
+        linear-gradient(180deg, #fff 0%, #f6f8fc 100%);
+}
+
+.cr-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.25rem;
+    align-items: end;
+}
+
+.cr-hero h1 {
+    margin: 0;
+    font-size: clamp(1.75rem, 3.2vw, 2.45rem);
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    color: #0f1f3d;
+}
+
+.cr-hero-lead {
+    margin: 0.75rem 0 0;
+    max-width: 36rem;
+    color: #64748b;
+    line-height: 1.55;
+    font-size: 1rem;
+}
+
+.cr-segment {
+    min-width: 11rem;
+    padding: 0.95rem 1.15rem;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #e8eef6;
+    box-shadow: 0 10px 28px rgba(15, 31, 61, 0.06);
+}
+
+.cr-segment-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+}
+
+.cr-segment strong {
+    font-size: 1.2rem;
+    color: #2563eb;
+    letter-spacing: -0.02em;
+}
+
+.cr-body {
+    padding: 1.5rem 0 3.5rem;
+}
+
+.cr-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.cr-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f1f3d;
+    letter-spacing: -0.02em;
+}
+
+.cr-sub {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.cr-link {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.cr-link:hover { text-decoration: underline; }
+
+.cr-state {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.5rem 1.35rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid #e8eef6;
+}
+
+.cr-state i {
+    font-size: 1.5rem;
+    color: #2563eb;
+}
+
+.cr-error i { color: #b45309; }
+.cr-empty i { color: #64748b; }
+
+.cr-state strong {
+    display: block;
+    color: #0f1f3d;
+    font-size: 1.02rem;
+}
+
+.cr-state p {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    line-height: 1.5;
+    max-width: 36rem;
+}
+
+.cr-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.cr-loading {
+    align-items: center;
+    text-align: center;
+    min-height: 10rem;
+    justify-content: center;
+}
+
+.cr-loading p {
+    margin: 0;
+    color: #64748b;
+}
+
+.cr-spinner {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 3px solid #dbe4f5;
+    border-top-color: #2563eb;
+    animation: cr-spin 0.75s linear infinite;
+}
+
+@keyframes cr-spin {
+    to { transform: rotate(360deg); }
+}
+
+.cr-grid .ch-card-body h3 {
+    margin-bottom: 0.35rem;
+}
+
+.cr-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.85rem;
+    color: #64748b;
+    font-size: 0.86rem;
+    margin-bottom: 0.85rem;
+}
+
+.cr-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 700;
+    color: #0f1f3d;
+}
+
+.cr-score span {
+    color: #2563eb;
+}
+
+.cr-debug {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.cr-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.35rem;
+}
+
+.cr-search-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem 1.15rem;
+    border-radius: 16px;
+    background: #eff4ff;
+    border: 1px solid #dbe4f5;
+}
+
+.cr-search-banner strong {
+    display: block;
+    color: #0f1f3d;
+    font-size: 0.98rem;
+}
+
+.cr-search-banner p {
+    margin: 0.2rem 0 0;
+    color: #64748b;
+    font-size: 0.88rem;
+}
+
+@media (max-width: 900px) {
+    .cr-hero-grid {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .cr-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cr-search-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

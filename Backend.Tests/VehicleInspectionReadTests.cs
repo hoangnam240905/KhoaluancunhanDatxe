@@ -127,12 +127,16 @@ public class VehicleInspectionReadTests
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        Assert.Equal("Review", names[^1]);
-        Assert.Equal("Inspections", names[^2]);
-        Assert.Equal("TotalFees", names[^3]);
-        Assert.Equal("FinalBaseAmount", names[^4]);
-        Assert.Equal("Fees", names[^5]);
-        Assert.Equal("FinalAmount", names[^6]);
+        Assert.Equal("RequestedDriverName", names[^1]);
+        Assert.Equal("RequestedDriverId", names[^2]);
+        Assert.Equal("CancellationReason", names[^3]);
+        Assert.Equal("HasActiveDeposit", names[^4]);
+        Assert.Equal("Review", names[^5]);
+        Assert.Equal("Inspections", names[^6]);
+        Assert.Equal("TotalFees", names[^7]);
+        Assert.Equal("FinalBaseAmount", names[^8]);
+        Assert.Equal("Fees", names[^9]);
+        Assert.Equal("FinalAmount", names[^10]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

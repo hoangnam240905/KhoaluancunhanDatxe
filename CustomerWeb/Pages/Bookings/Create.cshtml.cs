@@ -67,6 +67,9 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
         [Display(Name = "Xe")]
         public int? VehicleId { get; set; }
+
+        [Display(Name = "Tài xế")]
+        public int? DriverId { get; set; }
     }
 
     public string CurrentFingerprint =>
@@ -113,6 +116,26 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
             return BadRequest(new { message = BookingSubmitUi.FriendlyQuoteFailure(error) });
 
         return new JsonResult(quote);
+    }
+
+    public async Task<IActionResult> OnGetDriversJsonAsync(
+        int? vehicleId, int? vehicleTypeId, DateTime startDate, DateTime endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        var (data, error) = await api.GetAvailableDriversAsync(vehicleId, vehicleTypeId, startDate, endDate);
+        if (error is not null)
+            return BadRequest(new { message = error });
+        return new JsonResult(data);
+    }
+
+    public async Task<IActionResult> OnGetDriverScheduleJsonAsync(
+        int driverId, DateTime startDate, DateTime endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        var (data, error) = await api.GetDriverScheduleAsync(driverId, startDate, endDate);
+        if (data is null)
+            return BadRequest(new { message = error ?? "Không tải được lịch tài xế." });
+        return new JsonResult(data);
     }
 
     public async Task<IActionResult> OnPostQuoteAsync()
@@ -171,7 +194,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
                 Input.EstimatedDistance,
                 string.IsNullOrWhiteSpace(Input.Notes) ? null : Input.Notes.Trim(),
                 Input.RentalMode,
-                Input.VehicleId is > 0 ? Input.VehicleId : null), FromRecommendation);
+                Input.VehicleId is > 0 ? Input.VehicleId : null,
+                IsSelfDrive(Input.RentalMode) ? null : Input.DriverId), FromRecommendation);
         }
         catch
         {
@@ -274,6 +298,11 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : PageModel
 
         if (Input.VehicleId is <= 0)
             Input.VehicleId = null;
+
+        if (IsSelfDrive(Input.RentalMode))
+            Input.DriverId = null;
+        else if (Input.DriverId is <= 0)
+            Input.DriverId = null;
     }
 
     private void ApplyFirstModelError()

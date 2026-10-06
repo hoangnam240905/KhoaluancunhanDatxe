@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="Data\v7-vehicle-catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Data\v7-carid-vehicle-map.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />

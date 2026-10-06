@@ -44,18 +44,38 @@ public class PhaseHandoverReturnInspectionTests
     }
 
     [Fact]
-    public async Task Complete_without_handover_is_rejected()
+    public async Task Complete_inprogress_without_handover_is_rejected_for_selfdrive()
     {
         using var iso = new IsolatedCarRentalDb();
         var (bookings, dispatch, _) = Services(iso);
         var created = await ReadyAssignedSelfDriveAsync(iso, bookings, dispatch);
+        var booking = iso.Db.Bookings.Find(created.BookingId)!;
+        booking.Status = BookingStatuses.InProgress;
+        iso.Db.SaveChanges();
 
         var complete = await dispatch.CompleteSelfDriveAsync(
             created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId, extraKm: 10));
         Assert.Null(complete.Booking);
-        Assert.Equal("Chỉ hoàn thành khi đơn đang trong quá trình thuê.", complete.Error);
-        Assert.Equal(BookingStatuses.Assigned, iso.Db.Bookings.Find(created.BookingId)!.Status);
+        Assert.Equal(VehicleInspectionRules.HandoverRequired, complete.Error);
+        Assert.Equal(BookingStatuses.InProgress, iso.Db.Bookings.Find(created.BookingId)!.Status);
         Assert.False(iso.Db.VehicleInspections.Any(i =>
+            i.BookingId == created.BookingId && i.InspectionType == VehicleInspectionTypes.Return));
+    }
+
+    [Fact]
+    public async Task Dispatcher_complete_assigned_stuck_trip_records_return_and_frees_vehicle()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var (bookings, dispatch, _) = Services(iso);
+        var created = await ReadyAssignedSelfDriveAsync(iso, bookings, dispatch);
+        Assert.Equal(VehicleStatuses.Rented, iso.Db.Vehicles.Find(2)!.Status);
+
+        var complete = await dispatch.CompleteSelfDriveAsync(
+            created.BookingId, 2, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId, extraKm: 10));
+        Assert.Null(complete.Error);
+        Assert.Equal(BookingStatuses.Completed, complete.Booking!.Status);
+        Assert.Equal(VehicleStatuses.Available, iso.Db.Vehicles.Find(2)!.Status);
+        Assert.True(iso.Db.VehicleInspections.Any(i =>
             i.BookingId == created.BookingId && i.InspectionType == VehicleInspectionTypes.Return));
     }
 

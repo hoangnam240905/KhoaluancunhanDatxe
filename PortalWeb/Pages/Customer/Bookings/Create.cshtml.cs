@@ -63,6 +63,9 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
 
         [Display(Name = "Xe")]
         public int? VehicleId { get; set; }
+
+        [Display(Name = "Tài xế")]
+        public int? DriverId { get; set; }
     }
 
     public string CurrentFingerprint =>
@@ -85,6 +88,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
             Input.RentalMode = rentalMode;
         await EnsureSelectedVehicleLoadedAsync();
         ApplyIncoming(typeId, start, end, distance, fromRecommendation, pickup, dropoff, vehicleId, rentalMode);
+        await ValidateRecommendationVehicleAsync(vehicleId);
         await LoadQuoteIfReadyAsync();
         await EnsureVehicleAvailabilityAsync();
         return Page();
@@ -140,6 +144,44 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
             return BadRequest(new { message = BookingSubmitUi.FriendlyQuoteFailure(error) });
 
         return new JsonResult(quote);
+    }
+
+    public async Task<IActionResult> OnGetDriversJsonAsync(
+        int? vehicleId, int? vehicleTypeId, DateTime startDate, DateTime endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        if (auth.Role != "Customer") return Forbid();
+
+        var (data, error) = await api.GetAvailableDriversAsync(vehicleId, vehicleTypeId, startDate, endDate);
+        if (error is not null)
+            return BadRequest(new { message = error });
+        return new JsonResult(data);
+    }
+
+    public async Task<IActionResult> OnGetDriverScheduleJsonAsync(
+        int driverId, DateTime startDate, DateTime endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        if (auth.Role != "Customer") return Forbid();
+
+        var (data, error) = await api.GetDriverScheduleAsync(driverId, startDate, endDate);
+        if (data is null)
+            return BadRequest(new { message = error ?? "Không tải được lịch tài xế." });
+
+        // Privacy: only expose busy intervals (no other-customer PII).
+        return new JsonResult(new
+        {
+            data.DriverId,
+            data.FullName,
+            data.AverageRating,
+            data.TotalTrips,
+            Busy = data.Busy.Select(b => new
+            {
+                b.StartDate,
+                b.EndDate,
+                Label = "Đang bận"
+            })
+        });
     }
 
     public async Task<IActionResult> OnPostQuoteAsync()
@@ -204,7 +246,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
                 Input.EstimatedDistance,
                 string.IsNullOrWhiteSpace(Input.Notes) ? null : Input.Notes.Trim(),
                 Input.RentalMode,
-                Input.VehicleId is > 0 ? Input.VehicleId : null), FromRecommendation);
+                Input.VehicleId is > 0 ? Input.VehicleId : null,
+                IsSelfDrive(Input.RentalMode) ? null : (Input.DriverId is > 0 ? Input.DriverId : null)), FromRecommendation);
         }
         catch
         {
@@ -311,6 +354,11 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
 
         if (Input.VehicleId is <= 0)
             Input.VehicleId = null;
+
+        if (IsSelfDrive(Input.RentalMode))
+            Input.DriverId = null;
+        else if (Input.DriverId is <= 0)
+            Input.DriverId = null;
     }
 
     private void ApplyFirstModelError()
@@ -399,7 +447,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
                       ?? await api.GetVehicleAsync(vehicleId);
         if (vehicle is null)
             return (false, "Không tìm thấy xe.");
-        if (string.Equals(vehicle.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+        if (vehicle.Status is "Inactive" or "Maintenance")
             return (false, BookingSubmitUi.VehicleUnavailable);
 
         var (bookable, searchError) = await api.SearchVehiclesAsync(
@@ -426,6 +474,26 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         var extra = await api.GetVehicleAsync(id);
         if (extra is not null)
             Vehicles.Add(extra);
+    }
+
+    /// <summary>Step 4.6: clear invalid recommendation vehicle without crashing; keep full booking form.</summary>
+    private async Task ValidateRecommendationVehicleAsync(int? incomingVehicleId)
+    {
+        if (!FromRecommendation || incomingVehicleId is not int id || id <= 0)
+            return;
+
+        var vehicle = Vehicles.FirstOrDefault(v => v.VehicleId == id)
+                      ?? await api.GetVehicleAsync(id);
+        if (vehicle is null)
+        {
+            ErrorMessage = "Không tìm thấy xe từ gợi ý. Vui lòng quay lại trang gợi ý hoặc chọn xe khác.";
+            Input.VehicleId = null;
+            SelectedVehicle = CreateBookingUi.Unspecified();
+            return;
+        }
+
+        if (vehicle.Status is "Maintenance" or "Inactive")
+            ErrorMessage = $"{BookingSubmitUi.VehicleUnavailable} Bạn có thể quay lại trang gợi ý để chọn xe khác.";
     }
 
     private void ResolveSelection(int? typeId)

@@ -6,7 +6,10 @@ public record CreateMaintenanceRequest(
     DateTime? CompletedDate,
     int? OdometerAtMaintenance,
     decimal? Cost,
-    string? Notes);
+    string? Notes,
+    int? ScheduledOdometer = null,
+    DateTime? NextMaintenanceDate = null,
+    int? NextMaintenanceOdometer = null);
 
 public record CompleteMaintenanceRequest(int? OdometerAtMaintenance);
 
@@ -19,7 +22,10 @@ public record MaintenanceRecordResponse(
     int? OdometerAtMaintenance,
     decimal? Cost,
     string? Notes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? ScheduledOdometer = null,
+    DateTime? NextMaintenanceDate = null,
+    int? NextMaintenanceOdometer = null);
 
 public record MaintenanceAlertResponse(
     int VehicleId,

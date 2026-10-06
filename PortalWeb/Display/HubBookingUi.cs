@@ -47,6 +47,7 @@ public static class HubBookingUi
             total = Money(total),
             vehicleHeld = held,
             driverAssigned,
+            requestedDriver = b.RequestedDriverName,
             vehicleId = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId
         };
     }

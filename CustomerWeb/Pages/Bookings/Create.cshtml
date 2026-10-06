@@ -12,6 +12,7 @@
     var samePlace = Model.SameReturnPlace;
     var startError = ViewData.ModelState["Input.StartDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
     var endError = ViewData.ModelState["Input.EndDate"]?.Errors.FirstOrDefault()?.ErrorMessage;
+    var driverError = ViewData.ModelState["Input.DriverId"]?.Errors.FirstOrDefault()?.ErrorMessage;
 }
 
 @section Styles {
@@ -19,7 +20,7 @@
     <link rel="stylesheet" href="~/css/booking-create.css" asp-append-version="true" />
 }
 
-<div class="ch-page" data-cb-page data-cb-quote-url="@Url.Page("Create", "QuoteJson")" data-cb-creating="@BookingSubmitUi.Creating" data-cb-quote-loading="@BookingSubmitUi.QuoteLoading" data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable">
+<div class="ch-page" data-cb-page data-cb-quote-url="@Url.Page("Create", "QuoteJson")" data-cb-drivers-url="@Url.Page("Create", "DriversJson")" data-cb-schedule-url="@Url.Page("Create", "DriverScheduleJson")" data-cb-creating="@BookingSubmitUi.Creating" data-cb-quote-loading="@BookingSubmitUi.QuoteLoading" data-cb-quote-unavailable="@BookingSubmitUi.QuoteUnavailable">
     <header class="ch-nav">
         <div class="ch-container ch-nav-inner">
             <a class="ch-brand" asp-page="/Index">
@@ -98,6 +99,7 @@
                 <input type="hidden" asp-for="Input.VehicleTypeId" />
                 <input type="hidden" asp-for="Input.VehicleId" />
                 <input type="hidden" asp-for="Input.RentalMode" data-cb-rental-mode />
+                <input type="hidden" asp-for="Input.DriverId" data-cb-driver-id />
                 <input type="hidden" asp-for="Input.EstimatedDistance" data-cb-distance-input />
                 <input type="hidden" asp-for="QuoteConfirmed" data-cb-quote-confirmed />
                 <input type="hidden" asp-for="QuotedFingerprint" data-cb-quote-fingerprint />
@@ -128,10 +130,7 @@
                                     <em>Thoải mái tận hưởng chuyến đi cùng tài xế.</em>
                                 </button>
                             </div>
-                            <div class="cb-driver-note @(selfDrive ? null : "is-on")" data-cb-driver-note>
-                                <i class="bi bi-person-badge"></i>
-                                <span>Tài xế sẽ được điều phối cho chuyến đi. Bạn không cần chọn tài xế cụ thể.</span>
-                            </div>
+                            <p class="cb-note" data-cb-self-note @(selfDrive ? null : "hidden")>Hình thức tự lái không chọn tài xế.</p>
                         </div>
 
                         <div class="cb-card cb-section">
@@ -154,6 +153,14 @@
                                     <div class="cb-error" data-cb-end-error>@(endError ?? "Vui lòng chọn ngày trả xe.")</div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="cb-card cb-section" data-cb-drivers @(selfDrive ? "hidden" : null)>
+                            <h3>Chọn tài xế</h3>
+                            <p class="cb-note">Bạn có thể chọn tài xế phù hợp, hoặc bỏ trống để điều phối viên gán sau.</p>
+                            <p class="cb-driver-picked" data-cb-driver-picked hidden></p>
+                            <div class="cb-error @(string.IsNullOrEmpty(driverError) ? null : "is-on")" data-cb-driver-error>@(driverError ?? "")</div>
+                            <div class="cb-drivers" data-cb-driver-list></div>
                         </div>
 
                         <div class="cb-card cb-section">
@@ -272,6 +279,15 @@
             }
         </div>
     </section>
+    <div class="cb-modal" data-cb-modal hidden>
+        <div class="cb-modal-card" role="dialog" aria-modal="true" aria-labelledby="cbModalTitle">
+            <div class="cb-modal-head">
+                <h3 id="cbModalTitle" data-cb-modal-title>Tài xế</h3>
+                <button type="button" class="cb-modal-close" data-cb-modal-close>Đóng</button>
+            </div>
+            <div class="cb-modal-body" data-cb-modal-body></div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

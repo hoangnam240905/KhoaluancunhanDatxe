@@ -52,11 +52,13 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
     {
         PendingBookings = await api.GetBookingsAsync("Pending");
         ConfirmedBookings = await api.GetBookingsAsync("Confirmed");
-        SelfDriveAssigned = (await api.GetBookingsAsync("Assigned"))
-            .Where(b => b.RentalMode == "SelfDrive")
-            .ToList();
-        SelfDriveInProgress = (await api.GetBookingsAsync("InProgress"))
-            .Where(b => b.RentalMode == "SelfDrive")
+        var assigned = await api.GetBookingsAsync("Assigned");
+        var inProgress = await api.GetBookingsAsync("InProgress");
+        SelfDriveAssigned = assigned;
+        SelfDriveInProgress = inProgress
+            .Concat(assigned.Where(b => b.EndDate < DateTime.UtcNow))
+            .GroupBy(b => b.BookingId)
+            .Select(g => g.First())
             .ToList();
         var (fleet, _) = await api.GetFleetStatusAsync();
         Fleet = new(fleet?.Vehicles ?? [], fleet?.Drivers ?? []);
