@@ -30,7 +30,6 @@ public class Booking
     public int? RequestedDriverId { get; set; }
     public bool SourceRecommended { get; set; }
     public string? Notes { get; set; }
-    public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

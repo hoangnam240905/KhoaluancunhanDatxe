@@ -27,12 +27,12 @@
 
 <form method="post" class="col-lg-6">
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.OdometerKm">Số KM khi trả xe *</label>
+        <label class="form-label" asp-for="Input.OdometerKm">Số km lúc trả</label>
         <input asp-for="Input.OdometerKm" class="form-control" type="number" step="1" min="0" required />
         <span asp-validation-for="Input.OdometerKm" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label class="form-label" asp-for="Input.FuelLevel">Mức nhiên liệu khi trả xe (%)</label>
+        <label class="form-label" asp-for="Input.FuelLevel">Nhiên liệu % lúc trả</label>
         <input asp-for="Input.FuelLevel" class="form-control" type="number" step="1" min="0" max="100" required />
         <span asp-validation-for="Input.FuelLevel" class="text-danger"></span>
     </div>

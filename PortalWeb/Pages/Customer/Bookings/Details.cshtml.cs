@@ -22,7 +22,6 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
 
     [BindProperty] public string Method { get; set; } = "BankTransfer";
     [BindProperty] public string? TransactionRef { get; set; }
-    [BindProperty] public string? CancellationReason { get; set; }
 
     public static readonly string[] PaymentMethods = ["Cash", "BankTransfer", "MoMo", "VNPay"];
 
@@ -87,9 +86,6 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         "Voided" => "Đã hủy hiệu lực",
         _ => status
     };
-
-    public bool CanCancel =>
-        Booking?.Status is "Pending" or "Confirmed";
 
     public bool HasBlockingDeposit =>
         Payments.Any(p => p.PaymentType == "Deposit" && (p.Status is "Pending" or "Paid"));
@@ -180,37 +176,6 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
         return RedirectToPage("Contract", new { id });
-    }
-
-    public async Task<IActionResult> OnPostCancelAsync(int id)
-    {
-        var denied = RequireRole(auth, "Customer");
-        if (denied is not null) return denied;
-        if (!await LoadAsync(id)) return RedirectToPage("Index");
-
-        if (!CanCancel)
-        {
-            ErrorMessage = "Không thể hủy đơn thuê này.";
-            return Page();
-        }
-
-        if (string.IsNullOrWhiteSpace(CancellationReason))
-        {
-            ErrorMessage = "Vui lòng nhập lý do hủy đơn.";
-            return Page();
-        }
-
-        var (booking, error) = await api.CancelBookingAsync(id, CancellationReason.Trim());
-        if (booking is null)
-        {
-            ErrorMessage = error ?? "Không thể hủy đơn thuê.";
-            await LoadAsync(id);
-            return Page();
-        }
-
-        InfoMessage = "Đã hủy đơn thuê.";
-        await LoadAsync(id);
-        return Page();
     }
 
     public async Task<IActionResult> OnPostSimulateSuccessAsync(int id, int paymentId)

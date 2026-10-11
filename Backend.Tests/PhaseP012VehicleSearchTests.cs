@@ -147,40 +147,8 @@ public class PhaseP012VehicleSearchTests
         var rows = await Ok(iso, start: Start, end: End);
         Assert.Contains(rows, v => v.VehicleId == 2);
         Assert.Contains(rows, v => v.VehicleId == 4);
-        // Vehicle 1 is Rented by an August booking; December does not overlap that interval.
-        Assert.Contains(rows, v => v.VehicleId == 1);
+        Assert.DoesNotContain(rows, v => v.VehicleId == 1);
         Assert.DoesNotContain(rows, v => v.VehicleId == 6);
-    }
-
-    [Fact]
-    public async Task Rented_status_follows_interval_not_status_column()
-    {
-        using var iso = new IsolatedCarRentalDb();
-        var vehicle = iso.Db.Vehicles.Find(2)!;
-        vehicle.Status = VehicleStatuses.Rented;
-        iso.Db.SaveChanges();
-
-        var bookingStart = DateTime.Today.AddDays(10).AddHours(10);
-        var bookingEnd = bookingStart.AddDays(3);
-        Occupy(iso, 2, bookingStart, bookingEnd);
-
-        var before = await Ok(iso, start: bookingEnd.AddDays(9), end: bookingEnd.AddDays(11));
-        Assert.Contains(before, v => v.VehicleId == 2);
-
-        var after = await Ok(iso, start: bookingStart.AddDays(-6), end: bookingStart.AddDays(-4));
-        Assert.Contains(after, v => v.VehicleId == 2);
-
-        var partial = await Ok(iso, start: bookingEnd.AddDays(-1), end: bookingEnd.AddDays(1));
-        Assert.DoesNotContain(partial, v => v.VehicleId == 2);
-
-        var inside = await Ok(iso, start: bookingStart.AddDays(1), end: bookingStart.AddDays(2));
-        Assert.DoesNotContain(inside, v => v.VehicleId == 2);
-
-        var touch = await Ok(iso, start: bookingEnd, end: bookingEnd.AddDays(3));
-        Assert.DoesNotContain(touch, v => v.VehicleId == 2);
-
-        var afterBuffer = await Ok(iso, start: bookingEnd.AddHours(2), end: bookingEnd.AddDays(3));
-        Assert.Contains(afterBuffer, v => v.VehicleId == 2);
     }
 
     [Fact]

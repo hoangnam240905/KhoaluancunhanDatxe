@@ -120,30 +120,6 @@
 </div>
 
 <aside class="mk-drawer" id="mkDrawer" aria-hidden="true"></aside>
-<div class="mk-modal" id="mkHandoverModal" hidden>
-    <div class="mk-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="mkHandoverTitle">
-        <h2 id="mkHandoverTitle">Xác nhận giao xe</h2>
-        <div id="mkHandoverBody">
-            <p class="mk-note">Đang tải dữ liệu xe...</p>
-        </div>
-        <div class="mk-actions" id="mkHandoverActions" style="margin-top:1rem">
-            <button type="button" class="mk-btn mk-btn-ghost" data-handover-cancel>Hủy</button>
-            <button type="button" class="mk-btn mk-btn-info" data-handover-confirm disabled>Xác nhận giao xe</button>
-        </div>
-    </div>
-</div>
-<div class="mk-modal" id="mkReturnModal" hidden>
-    <div class="mk-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="mkReturnTitle">
-        <h2 id="mkReturnTitle">Xác nhận tiếp nhận trả xe</h2>
-        <div id="mkReturnBody">
-            <p class="mk-note">Đang tải dữ liệu xe...</p>
-        </div>
-        <div class="mk-actions" id="mkReturnActions" style="margin-top:1rem">
-            <button type="button" class="mk-btn mk-btn-ghost" data-return-cancel>Hủy</button>
-            <button type="button" class="mk-btn mk-btn-success" data-return-confirm disabled>Xác nhận trả xe</button>
-        </div>
-    </div>
-</div>
 <div class="mk-toast" id="mkToast"></div>
 
 @section Scripts {
@@ -158,9 +134,7 @@
                 reject: '@Url.Page("/Mockup/Hub", "Reject")',
                 assign: '@Url.Page("/Mockup/Hub", "Assign")',
                 handover: '@Url.Page("/Mockup/Hub", "Handover")',
-                handoverInfo: '@Url.Page("/Mockup/Hub", "HandoverInfo")',
-                complete: '@Url.Page("/Mockup/Hub", "Complete")',
-                returnInfo: '@Url.Page("/Mockup/Hub", "ReturnInfo")'
+                complete: '@Url.Page("/Mockup/Hub", "Complete")'
             }
         };
     </script>

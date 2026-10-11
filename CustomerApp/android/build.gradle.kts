@@ -5,13 +5,12 @@ allprojects {
     }
 }
 
-// Build outside Documents (Defender / Controlled Folder Access often locks CMake logs there).
-val externalBuild = file("C:/Temp/carrental-customer-build")
-externalBuild.mkdirs()
-rootProject.layout.buildDirectory.set(externalBuild)
+val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
-    project.layout.buildDirectory.set(File(externalBuild, project.name))
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
 subprojects {

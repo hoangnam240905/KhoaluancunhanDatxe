@@ -105,7 +105,7 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         return await ActionOkAsync(data);
     }
 
-    public async Task<IActionResult> OnGetHandoverInfoAsync(int id)
+    public async Task<IActionResult> OnPostHandoverAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
@@ -164,7 +164,7 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         return await ActionOkAsync(data);
     }
 
-    public async Task<IActionResult> OnGetReturnInfoAsync(int id)
+    public async Task<IActionResult> OnPostCompleteAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;

@@ -58,23 +58,12 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         }
 
         var query = db.Vehicles.Include(v => v.VehicleType).AsQueryable();
-        // A rental window asks "free in this interval", not "Status column is Available".
-        // Rented only means a trip is open; occupancy is the booking interval (+ 2h buffer).
-        var periodSearch = hasStart && hasEnd;
-        var rentableWindow = periodSearch
-            && (string.IsNullOrWhiteSpace(status)
-                || string.Equals(status, VehicleStatuses.Available, StringComparison.OrdinalIgnoreCase));
+        var effectiveStatus = status;
+        if (hasStart && string.IsNullOrWhiteSpace(effectiveStatus))
+            effectiveStatus = VehicleStatuses.Available;
 
-        if (rentableWindow)
-        {
-            query = query.Where(v =>
-                v.Status != VehicleStatuses.Inactive
-                && v.Status != VehicleStatuses.Maintenance);
-        }
-        else if (!string.IsNullOrWhiteSpace(status))
-        {
-            query = query.Where(v => v.Status == status);
-        }
+        if (!string.IsNullOrWhiteSpace(effectiveStatus))
+            query = query.Where(v => v.Status == effectiveStatus);
         if (typeIds.Length > 0)
             query = query.Where(v => typeIds.Contains(v.TypeId));
         if (seatMin is int minSeats)

@@ -6,7 +6,7 @@ class Formatters {
   static final money = NumberFormat('#,###', 'vi_VN');
   static final dateTime = DateFormat('dd/MM/yyyy HH:mm');
 
-  static String vnd(double value) => '${money.format(value)} VND';
+  static String vnd(num value) => '${money.format(value)} VND';
 
   static String rentalDt(DateTime value) {
     final wall = DateTime(
