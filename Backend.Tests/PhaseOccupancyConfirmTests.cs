@@ -247,8 +247,8 @@ public class PhaseOccupancyConfirmTests
     {
         using var iso = new IsolatedCarRentalDb();
         OccupyAssigned(iso, 2, Start, End);
-        var created = await Bookings(iso.Db).CreateBookingAsync(3, SelfDrive());
-        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
+        var created = AddDirect(iso, BookingStatuses.Pending, 2);
+        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
         Assert.Null(confirm.Booking);
         Assert.NotNull(confirm.Conflict);
         Assert.Equal(ScheduleConflictTypes.Vehicle, confirm.Conflict!.ConflictType);
@@ -261,9 +261,8 @@ public class PhaseOccupancyConfirmTests
     {
         using var iso = new IsolatedCarRentalDb();
         OccupyAssigned(iso, 2, Start, End);
-        var created = await Bookings(iso.Db).CreateBookingAsync(
-            3, SelfDrive(2, End.AddHours(1), End.AddHours(5)));
-        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
+        var created = AddDirect(iso, BookingStatuses.Pending, 2, End.AddHours(1), End.AddHours(5));
+        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
         Assert.Null(confirm.Booking);
         Assert.Equal("Xe đã có lịch thuê khác trong khoảng thời gian này.", confirm.Error);
         Assert.Equal(BookingStatuses.Pending, iso.Db.Bookings.Find(created.BookingId)!.Status);
@@ -289,8 +288,8 @@ public class PhaseOccupancyConfirmTests
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(2)!;
         iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
-        var created = await Bookings(iso.Db).CreateBookingAsync(3, SelfDrive());
-        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
+        var created = AddDirect(iso, BookingStatuses.Pending, 2);
+        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created.BookingId, 2);
         Assert.Null(confirm.Booking);
         Assert.Equal(MaintenanceLock.BlockedForNewSchedule, confirm.Error);
         Assert.Equal(BookingStatuses.Pending, iso.Db.Bookings.Find(created.BookingId)!.Status);
@@ -310,15 +309,38 @@ public class PhaseOccupancyConfirmTests
     }
 
     [Fact]
-    public async Task Confirm_rented_vehicle_keeps_pending()
+    public async Task Confirm_rented_vehicle_allows_non_conflicting_future_window()
     {
         using var iso = new IsolatedCarRentalDb();
+        // Current trip keeps vehicle Rented; pending future booking must still confirm when free.
+        OccupyAssigned(iso, 2, new DateTime(2026, 12, 10, 10, 0, 0), new DateTime(2026, 12, 12, 10, 0, 0));
         iso.Db.Vehicles.Find(2)!.Status = VehicleStatuses.Rented;
         iso.Db.SaveChanges();
-        var booking = AddDirect(iso, BookingStatuses.Pending, 2);
+        Assert.Equal(VehicleStatuses.Rented, iso.Db.Vehicles.Find(2)!.Status);
+
+        var booking = AddDirect(iso, BookingStatuses.Pending, 2, Start, End);
+        Assert.False(await Schedule(iso.Db).HasVehicleConflictAsync(2, Start, End, booking.BookingId));
+
+        var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(booking.BookingId, 2);
+        Assert.Null(confirm.Error);
+        Assert.Equal(BookingStatuses.Confirmed, confirm.Booking!.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_rented_vehicle_rejects_overlapping_window()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        OccupyAssigned(iso, 2, Start, End);
+        iso.Db.Vehicles.Find(2)!.Status = VehicleStatuses.Rented;
+        iso.Db.SaveChanges();
+        Assert.Equal(VehicleStatuses.Rented, iso.Db.Vehicles.Find(2)!.Status);
+
+        var booking = AddDirect(
+            iso, BookingStatuses.Pending, 2,
+            Start.AddHours(1), End.AddHours(1));
         var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(booking.BookingId, 2);
         Assert.Null(confirm.Booking);
-        Assert.Equal("Xe không khả dụng.", confirm.Error);
+        Assert.Equal(ScheduleConflictTypes.Vehicle, confirm.Conflict!.ConflictType);
         Assert.Equal(BookingStatuses.Pending, iso.Db.Bookings.Find(booking.BookingId)!.Status);
     }
 
@@ -593,19 +615,42 @@ public class PhaseOccupancyConfirmTests
                 AssignedVehicleId = 2,
                 CreatedAt = DateTime.UtcNow
             });
+            db.Bookings.Add(new Booking
+            {
+                CustomerId = 3,
+                VehicleTypeId = 1,
+                PickupAddress = "A",
+                DropoffAddress = "B",
+                StartDate = Start,
+                EndDate = End,
+                EstimatedDistance = 20,
+                TotalAmount = 1,
+                Status = BookingStatuses.Pending,
+                RentalMode = RentalModes.SelfDrive,
+                AssignedVehicleId = 2,
+                CreatedAt = DateTime.UtcNow
+            });
             db.SaveChanges();
         }
 
-        var created = await (await client.SendAsync(Authed(
-            HttpMethod.Post, "/api/bookings", customer, JsonContent.Create(SelfDrive()))))
-            .Content.ReadFromJsonAsync<BookingResponse>();
+        int pendingId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CarRentalDbContext>();
+            pendingId = db.Bookings
+                .Where(b => b.Status == BookingStatuses.Pending && b.AssignedVehicleId == 2)
+                .OrderByDescending(b => b.BookingId)
+                .Select(b => b.BookingId)
+                .First();
+        }
+
         var confirm = await client.SendAsync(Authed(
-            HttpMethod.Post, $"/api/dispatch/bookings/{created!.BookingId}/confirm", dispatcher));
+            HttpMethod.Post, $"/api/dispatch/bookings/{pendingId}/confirm", dispatcher));
         Assert.Equal(HttpStatusCode.BadRequest, confirm.StatusCode);
         using var doc = JsonDocument.Parse(await confirm.Content.ReadAsStringAsync());
         Assert.Equal(ScheduleConflictTypes.Vehicle, doc.RootElement.GetProperty("conflictType").GetString());
 
-        var stored = await client.SendAsync(Authed(HttpMethod.Get, $"/api/bookings/{created.BookingId}", dispatcher));
+        var stored = await client.SendAsync(Authed(HttpMethod.Get, $"/api/bookings/{pendingId}", dispatcher));
         stored.EnsureSuccessStatusCode();
         var booking = await stored.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.Equal(BookingStatuses.Pending, booking!.Status);

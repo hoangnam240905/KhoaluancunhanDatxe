@@ -4,7 +4,7 @@ using PortalWeb.Services;
 namespace PortalWeb.Display;
 
 /// <summary>
-/// Display context for Dispatcher SelfDrive return. Return KM/Fuel are entered by the dispatcher —
+/// Display context for Dispatcher return (SelfDrive and WithDriver). Return KM/Fuel are entered by the dispatcher —
 /// never copied from CurrentKm and never hardcoded.
 /// </summary>
 public static class ReturnVehicleContext
@@ -23,10 +23,10 @@ public static class ReturnVehicleContext
 
     public static async Task<(Info? Data, string? Error)> LoadAsync(CarRentalApiClient api, BookingResponse booking)
     {
-        if (!string.Equals(booking.RentalMode, "SelfDrive", StringComparison.OrdinalIgnoreCase))
-            return (null, "Chỉ đơn tự lái mới tiếp nhận trả xe tại điều phối.");
-        if (!string.Equals(booking.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
-            return (null, "Chỉ tiếp nhận trả xe khi đơn đang trong quá trình thuê.");
+        var statusOk = string.Equals(booking.Status, "InProgress", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(booking.Status, "Assigned", StringComparison.OrdinalIgnoreCase);
+        if (!statusOk)
+            return (null, "Chỉ tiếp nhận trả xe khi đơn đang thuê hoặc đã gán xe chờ trả.");
 
         var vehicleId = booking.AssignedVehicle?.VehicleId ?? booking.Assignment?.VehicleId;
         if (vehicleId is null or <= 0)

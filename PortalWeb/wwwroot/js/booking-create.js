@@ -5,6 +5,9 @@
     if (!root || !form) return;
 
     const quoteUrl = root.getAttribute("data-cb-quote-url") || "";
+    const availabilityUrl = root.getAttribute("data-cb-availability-url") || "";
+    const driversUrl = root.getAttribute("data-cb-drivers-url") || "";
+    const scheduleUrl = root.getAttribute("data-cb-schedule-url") || "";
     const creatingText = root.getAttribute("data-cb-creating") || "Đang tạo đơn...";
     const loadingText = root.getAttribute("data-cb-quote-loading") || "Đang tính giá...";
     const unavailableText = root.getAttribute("data-cb-quote-unavailable") || "Không thể tính báo giá. Vui lòng kiểm tra lại thông tin.";
@@ -91,6 +94,194 @@
         return !startEmpty && !endEmpty && !orderBad;
     };
 
+    const driverSection = document.querySelector("[data-cb-drivers]");
+    const driverList = document.querySelector("[data-cb-driver-list]");
+    const driverInput = document.querySelector("[data-cb-driver-id]");
+    const driverError = document.querySelector("[data-cb-driver-error]");
+    const driverPicked = document.querySelector("[data-cb-driver-picked]");
+    const selfNote = document.querySelector("[data-cb-self-note]");
+    const modal = document.querySelector("[data-cb-modal]");
+    const modalTitle = document.querySelector("[data-cb-modal-title]");
+    const modalBody = document.querySelector("[data-cb-modal-body]");
+    let driverCache = [];
+    let driverSeq = 0;
+
+    const initials = (name) => {
+        const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+        const letters = parts.slice(-2).map((p) => p[0]).join("");
+        return (letters || "TX").toUpperCase();
+    };
+    const pad = (n) => String(n).padStart(2, "0");
+    const fmtWhen = (value) => {
+        const d = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    const esc = (value) => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && aEnd > bStart;
+    const showDriverError = (text) => {
+        if (!driverError) return;
+        driverError.textContent = text || "";
+        driverError.classList.toggle("is-on", Boolean(text));
+    };
+    const closeModal = () => { if (modal) modal.hidden = true; };
+    const openModal = (title, html) => {
+        if (!modal) return;
+        if (modalTitle) modalTitle.textContent = title;
+        if (modalBody) modalBody.innerHTML = html;
+        modal.hidden = false;
+    };
+    const syncDriverVisibility = () => {
+        const withDriver = currentMode() === "WithDriver";
+        if (driverSection) driverSection.hidden = !withDriver;
+        if (selfNote) selfNote.hidden = withDriver;
+        if (!withDriver && driverInput) driverInput.value = "";
+        if (!withDriver) syncPickedLabel();
+    };
+    const syncPickedLabel = () => {
+        if (!driverPicked) return;
+        const selected = driverInput?.value || "";
+        if (currentMode() !== "WithDriver" || !selected) {
+            driverPicked.hidden = true;
+            driverPicked.textContent = "";
+            return;
+        }
+        const row = driverCache.find((d) => String(field(d, "driverId", "DriverId")) === selected);
+        const name = row ? (field(row, "fullName", "FullName") || "") : "";
+        driverPicked.hidden = false;
+        driverPicked.textContent = name ? `Đã chọn: ${name}` : `Đã chọn tài xế #${selected}`;
+    };
+    const selectionState = (d, selected) => {
+        const id = String(field(d, "driverId", "DriverId"));
+        const canSelect = field(d, "canSelect", "CanSelect");
+        const available = canSelect !== false
+            && (field(d, "availabilityStatus", "AvailabilityStatus") || "").indexOf("Không") < 0;
+        if (id === selected) return { key: "selected", label: "Đã chọn" };
+        if (!available) return { key: "unavailable", label: "Không khả dụng" };
+        return { key: "selectable", label: "Có thể chọn" };
+    };
+    const buildSegments = (windowStart, windowEnd, busyRows) => {
+        const clipped = busyRows
+            .map((b) => {
+                const start = new Date(field(b, "startDate", "StartDate"));
+                const end = new Date(field(b, "endDate", "EndDate"));
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+                if (!overlaps(start, end, windowStart, windowEnd)) return null;
+                return {
+                    start: new Date(Math.max(start.getTime(), windowStart.getTime())),
+                    end: new Date(Math.min(end.getTime(), windowEnd.getTime()))
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.start - b.start);
+
+        const merged = [];
+        for (const row of clipped) {
+            const last = merged[merged.length - 1];
+            if (last && row.start <= last.end) {
+                if (row.end > last.end) last.end = row.end;
+            } else {
+                merged.push({ start: row.start, end: row.end });
+            }
+        }
+
+        const segments = [];
+        let cursor = windowStart;
+        for (const busy of merged) {
+            if (busy.start > cursor) {
+                segments.push({ start: cursor, end: busy.start, busy: false });
+            }
+            segments.push({ start: busy.start, end: busy.end, busy: true });
+            cursor = busy.end;
+        }
+        if (cursor < windowEnd) {
+            segments.push({ start: cursor, end: windowEnd, busy: false });
+        }
+        return { segments, hasBusy: merged.length > 0 };
+    };
+    const renderDrivers = (rows) => {
+        driverCache = rows;
+        if (!driverList) return;
+        const selected = driverInput?.value || "";
+        if (selected) {
+            const current = rows.find((d) => String(field(d, "driverId", "DriverId")) === selected);
+            const canKeep = current && selectionState(current, selected).key !== "unavailable";
+            if (!canKeep) {
+                if (driverInput) driverInput.value = "";
+                showDriverError("Tài xế không còn khả dụng. Vui lòng chọn tài xế khác.");
+            }
+        }
+        syncPickedLabel();
+        if (rows.length === 0) {
+            driverList.innerHTML = `<p class="cb-note">Không có tài xế phù hợp trong khoảng thời gian này.</p>`;
+            return;
+        }
+        driverList.innerHTML = rows.map((d) => {
+            const id = field(d, "driverId", "DriverId");
+            const name = field(d, "fullName", "FullName") || "";
+            const phone = field(d, "phone", "Phone") || "—";
+            const rating = field(d, "averageRating", "AverageRating");
+            const trips = field(d, "totalTrips", "TotalTrips");
+            const status = field(d, "status", "Status") || "—";
+            const experience = field(d, "experienceYears", "ExperienceYears");
+            const expText = experience == null || experience === "" ? "—" : `${experience} năm`;
+            const state = selectionState(d, selected);
+            const pickDisabled = state.key === "unavailable" ? " disabled" : "";
+            return `<article class="cb-driver is-${state.key}" data-driver-card="${id}">
+                <span class="cb-driver-avatar">${esc(initials(name))}</span>
+                <div>
+                    <div class="cb-driver-top">
+                        <strong>${esc(name)}</strong>
+                        <span class="cb-driver-badge is-${state.key}">${state.label}</span>
+                    </div>
+                    <p>Điện thoại ${esc(phone)}</p>
+                    <p>Đánh giá ${esc(rating)} · ${esc(trips)} chuyến</p>
+                    <p>Trạng thái ${esc(status)} · Kinh nghiệm ${esc(expText)}</p>
+                    <div class="cb-driver-actions">
+                        <button type="button" data-driver-schedule="${id}">Xem lịch</button>
+                        <button type="button" data-driver-pick="${id}"${pickDisabled}>${state.key === "selected" ? "Đã chọn" : "Chọn tài xế"}</button>
+                    </div>
+                </div>
+            </article>`;
+        }).join("");
+    };
+    const loadDrivers = async () => {
+        syncDriverVisibility();
+        if (currentMode() !== "WithDriver" || !driversUrl || !driverList) return;
+        if (!datesValid()) {
+            driverList.innerHTML = `<p class="cb-note">Chọn thời gian thuê để xem tài xế.</p>`;
+            syncPickedLabel();
+            return;
+        }
+        const seq = ++driverSeq;
+        const vehicleId = vehicleInput?.value || "";
+        const typeId = typeInput?.value || "";
+        const qs = new URLSearchParams({
+            startDate: pickup.value,
+            endDate: dropoff.value
+        });
+        if (vehicleId) qs.set("vehicleId", vehicleId);
+        if (typeId) qs.set("vehicleTypeId", typeId);
+        driverList.innerHTML = `<p class="cb-note">Đang tải tài xế...</p>`;
+        try {
+            const res = await fetch(`${driversUrl}&${qs.toString()}`, { headers: { Accept: "application/json" } });
+            const body = await res.json().catch(() => null);
+            if (seq !== driverSeq) return;
+            if (!res.ok) {
+                driverList.innerHTML = `<p class="cb-note">${esc(body?.message || "Không tải được danh sách tài xế.")}</p>`;
+                return;
+            }
+            renderDrivers(Array.isArray(body) ? body : []);
+        } catch {
+            if (seq !== driverSeq) return;
+            driverList.innerHTML = `<p class="cb-note">Không tải được danh sách tài xế.</p>`;
+        }
+    };
+
     const syncDropoff = () => {
         const a = document.querySelector("[data-cb-pickup-place]");
         const b = document.querySelector("[data-cb-return-place]");
@@ -150,8 +341,9 @@
             btn.classList.add("is-on");
             const mode = btn.getAttribute("data-cb-mode") || "WithDriver";
             if (modeInput) modeInput.value = mode;
-            document.querySelector("[data-cb-driver-note]")?.classList.toggle("is-on", mode === "WithDriver");
+            syncDriverVisibility();
             scheduleQuote();
+            loadDrivers();
         });
     });
 
@@ -189,8 +381,68 @@
         b.value = tmp;
     });
 
-    pickup?.addEventListener("change", scheduleQuote);
-    dropoff?.addEventListener("change", scheduleQuote);
+    pickup?.addEventListener("change", () => { scheduleQuote(); loadDrivers(); });
+    dropoff?.addEventListener("change", () => { scheduleQuote(); loadDrivers(); });
+
+    driverList?.addEventListener("click", async (e) => {
+        const schedule = e.target.closest("[data-driver-schedule]");
+        const pick = e.target.closest("[data-driver-pick]");
+        const id = (schedule || pick)?.getAttribute(schedule ? "data-driver-schedule" : "data-driver-pick");
+        if (!id) return;
+        const row = driverCache.find((d) => String(field(d, "driverId", "DriverId")) === id);
+        if (pick) {
+            if (pick.disabled) {
+                showDriverError("Tài xế đang có chuyến trong khoảng thời gian này.");
+                return;
+            }
+            if (driverInput) driverInput.value = id;
+            showDriverError("");
+            renderDrivers(driverCache);
+            return;
+        }
+        if (!schedule || !scheduleUrl || !datesValid()) return;
+        const requestedStart = new Date(pickup.value);
+        const requestedEnd = new Date(dropoff.value);
+        const qs = new URLSearchParams({
+            driverId: id,
+            startDate: pickup.value,
+            endDate: dropoff.value
+        });
+        openModal("Lịch tài xế", `<p class="cb-note">Đang tải lịch...</p>`);
+        try {
+            const res = await fetch(`${scheduleUrl}&${qs.toString()}`, { headers: { Accept: "application/json" } });
+            const body = await res.json().catch(() => null);
+            if (!res.ok || !body) {
+                openModal("Lịch tài xế", `<p>${esc(body?.message || "Không tải được lịch tài xế.")}</p>`);
+                return;
+            }
+            const name = field(body, "fullName", "FullName") || (row ? field(row, "fullName", "FullName") : "");
+            const busy = field(body, "busy", "Busy") || [];
+            const { segments, hasBusy } = buildSegments(requestedStart, requestedEnd, busy);
+            const conflict = hasBusy;
+            const windowVerdict = conflict
+                ? `<div class="cb-schedule-verdict is-bad">🔴 Tài xế đang bận trong khoảng thời gian bạn chọn.</div>`
+                : `<div class="cb-schedule-verdict is-ok">🟢 Tài xế không bận trong khoảng thời gian bạn chọn.</div>`;
+            const items = segments.length === 0 || (!hasBusy && segments.length === 1)
+                ? `<li class="is-free"><span>${esc(fmtWhen(requestedStart))} → ${esc(fmtWhen(requestedEnd))}</span><em>🟢 Không có chuyến trong khoảng thời gian này. Tài xế không bận.</em></li>`
+                : segments.map((seg) => `<li class="${seg.busy ? "is-busy" : "is-free"}">
+                        <span>${esc(fmtWhen(seg.start))} → ${esc(fmtWhen(seg.end))}</span>
+                        <em>${seg.busy ? "🔴 Đang bận" : "🟢 Không bận"}</em>
+                    </li>`).join("");
+            openModal(`Lịch tài xế — ${name}`, `
+                <div class="cb-schedule-window">
+                    <strong>Khoảng thời gian bạn chọn</strong>
+                    <p>${esc(fmtWhen(requestedStart))} → ${esc(fmtWhen(requestedEnd))}</p>
+                    ${windowVerdict}
+                </div>
+                <h4 class="cb-schedule-title">Lịch</h4>
+                <ul class="cb-schedule">${items}</ul>`);
+        } catch {
+            openModal("Lịch tài xế", `<p>Không tải được lịch tài xế.</p>`);
+        }
+    });
+    modal?.querySelector("[data-cb-modal-close]")?.addEventListener("click", closeModal);
+    modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
     form.addEventListener("submit", (e) => {
         if (submitLock) {
@@ -200,6 +452,14 @@
         if (!datesValid()) {
             e.preventDefault();
             return;
+        }
+        if (currentMode() === "WithDriver" && driverInput?.value) {
+            const row = driverCache.find((d) => String(field(d, "driverId", "DriverId")) === driverInput.value);
+            if (row && selectionState(row, driverInput.value).key === "unavailable") {
+                e.preventDefault();
+                showDriverError("Tài xế đang có chuyến trong khoảng thời gian này.");
+                return;
+            }
         }
         if (quoteBusy) {
             e.preventDefault();
@@ -217,4 +477,5 @@
     if (!confirmedInput?.value || confirmedInput.value.toLowerCase() !== "true") {
         fetchQuote();
     }
+    loadDrivers();
 })();

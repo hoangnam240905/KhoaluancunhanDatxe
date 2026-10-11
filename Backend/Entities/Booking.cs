@@ -26,6 +26,8 @@ public class Booking
     public string Status { get; set; } = "Pending";
     public string RentalMode { get; set; } = "WithDriver";
     public int? AssignedVehicleId { get; set; }
+    /// <summary>Customer preference for WithDriver. The confirmed driver remains on TripAssignment.</summary>
+    public int? RequestedDriverId { get; set; }
     public bool SourceRecommended { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -34,6 +36,7 @@ public class Booking
     public Customer Customer { get; set; } = null!;
     public VehicleType VehicleType { get; set; } = null!;
     public Vehicle? AssignedVehicle { get; set; }
+    public Driver? RequestedDriver { get; set; }
     public TripAssignment? TripAssignment { get; set; }
     public ICollection<Payment> Payments { get; set; } = [];
     public Contract? Contract { get; set; }

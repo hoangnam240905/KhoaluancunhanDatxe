@@ -10,4 +10,5 @@ public class EmailOtp
     public int AttemptCount { get; set; }
     public DateTime? UsedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? UserId { get; set; }
 }

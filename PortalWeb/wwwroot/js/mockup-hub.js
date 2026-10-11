@@ -51,7 +51,8 @@
         if (b.status === "Assigned" || b.status === "InProgress") return `<div class="mk-hold held">Xe đã giữ · Đã phân công</div>`;
         if (b.status !== "Confirmed") return "";
         const veh = b.vehicleHeld ? "Xe đã giữ" : "Xe chưa giữ";
-        const drv = b.mode === "WithDriver" && !b.driverAssigned ? " · Tài xế chưa phân công" : "";
+        const requested = b.requestedDriver ? ` · Khách chọn ${b.requestedDriver}` : "";
+        const drv = b.mode === "WithDriver" && !b.driverAssigned ? ` · Tài xế chưa phân công${requested}` : "";
         return `<div class="mk-hold ${b.vehicleHeld ? "held" : "free"}">${veh}${drv}</div>`;
     }
 
@@ -110,6 +111,7 @@
         }
         if (b.status === "Assigned") {
             bits.push(`<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
+            bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
         }
         if (b.status === "InProgress") {
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
@@ -215,6 +217,7 @@
                     <dl class="mk-dl">
                         <div><dt>Mã đơn</dt><dd>#${b.id}</dd></div>
                         <div><dt>Hình thức thuê</dt><dd>${MODE_LABEL[b.mode] || b.mode}</dd></div>
+                        ${b.requestedDriver ? `<div><dt>Tài xế khách chọn</dt><dd>${escapeHtml(b.requestedDriver)}</dd></div>` : ""}
                         <div><dt>Xe</dt><dd>${escapeHtml(b.vehicle)} · ${escapeHtml(b.plate)}</dd></div>
                         <div><dt>Loại xe</dt><dd>${TYPE_LABEL[b.type] || escapeHtml(b.type)}</dd></div>
                         <div><dt>Ngày nhận</dt><dd>${b.start}</dd></div>

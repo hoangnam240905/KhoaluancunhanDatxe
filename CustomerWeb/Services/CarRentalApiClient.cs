@@ -249,6 +249,36 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), code);
     }
 
+    public async Task<(List<CustomerDriverOptionResponse> Data, string? Error)> GetAvailableDriversAsync(
+        int? vehicleId, int? vehicleTypeId, DateTime startDate, DateTime endDate)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
+        if (vehicleId is int id)
+            query += $"&vehicleId={id}";
+        if (vehicleTypeId is int typeId)
+            query += $"&vehicleTypeId={typeId}";
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/drivers/available?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return ([], await GetErrorAsync(response) ?? "Không tải được danh sách tài xế.");
+        var data = await response.Content.ReadFromJsonAsync<List<CustomerDriverOptionResponse>>(JsonOptions);
+        return (data ?? [], null);
+    }
+
+    public async Task<(DriverScheduleResponse? Data, string? Error)> GetDriverScheduleAsync(
+        int driverId, DateTime startDate, DateTime endDate)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/drivers/{driverId}/schedule?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không tải được lịch tài xế.");
+        return (await response.Content.ReadFromJsonAsync<DriverScheduleResponse>(JsonOptions), null);
+    }
+
     public async Task<(BookingQuoteResponse? Data, string? Error)> GetQuoteAsync(
         int vehicleTypeId, DateTime startDate, DateTime endDate, string rentalMode, decimal? estimatedDistance)
     {

@@ -84,9 +84,9 @@ public class PhaseCMaintenanceLockTests
     public async Task Km_5000_blocks_deposit_and_does_not_create_payment()
     {
         using var iso = new IsolatedCarRentalDb();
-        MarkKmSince(iso, 2, 5000);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         await iso.ConfirmBookingAsync(created!.BookingId);
+        MarkKmSince(iso, 2, 5000);
         var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
 
         Assert.Equal(400, status);
@@ -112,9 +112,9 @@ public class PhaseCMaintenanceLockTests
     public async Task Days_180_blocks_deposit()
     {
         using var iso = new IsolatedCarRentalDb();
-        MarkDaysSince(iso, 2, 180);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         await iso.ConfirmBookingAsync(created!.BookingId);
+        MarkDaysSince(iso, 2, 180);
         var (_, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
         Assert.Equal(400, status);
         Assert.Equal(MaintenanceLock.BlockedForNewSchedule, error);
@@ -124,9 +124,9 @@ public class PhaseCMaintenanceLockTests
     public async Task No_completed_maintenance_blocks_new_schedule()
     {
         using var iso = new IsolatedCarRentalDb();
-        iso.ClearMaintenanceRecords(2);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         await iso.ConfirmBookingAsync(created!.BookingId);
+        iso.ClearMaintenanceRecords(2);
         var (_, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
         Assert.Equal(400, status);
         Assert.Equal(MaintenanceLock.BlockedForNewSchedule, error);

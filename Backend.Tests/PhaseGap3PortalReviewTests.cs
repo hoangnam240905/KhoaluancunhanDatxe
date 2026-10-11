@@ -127,8 +127,9 @@ public class PhaseGap3PortalReviewTests
         Assert.Equal(bookingId, doc.RootElement.GetProperty("bookingId").GetInt32());
         Assert.Equal(5, doc.RootElement.GetProperty("rating").GetInt32());
         Assert.Equal("Tài xế tốt", doc.RootElement.GetProperty("comment").GetString());
-        Assert.False(doc.RootElement.TryGetProperty("customerId", out _));
-        Assert.False(doc.RootElement.TryGetProperty("driverId", out _));
+        Assert.Equal(3, doc.RootElement.GetProperty("customerId").GetInt32());
+        Assert.Equal(5, doc.RootElement.GetProperty("driverId").GetInt32());
+        Assert.False(doc.RootElement.TryGetProperty("vehicleId", out _));
 
         var loaded = await client.SendAsync(Authed(HttpMethod.Get, $"/api/bookings/{bookingId}", token));
         Assert.Equal(HttpStatusCode.OK, loaded.StatusCode);

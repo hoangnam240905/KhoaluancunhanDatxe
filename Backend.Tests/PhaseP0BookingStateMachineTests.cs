@@ -280,12 +280,12 @@ public class PhaseP0BookingStateMachineTests
     public async Task Patch_does_not_bypass_maintenance_lock()
     {
         using var iso = new IsolatedCarRentalDb();
-        var vehicle = iso.Db.Vehicles.Find(2)!;
-        iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
         var (bookings, dispatch, _, _) = Services(iso);
         var created = await bookings.CreateBookingAsync(3, SelfDrive());
         await iso.ConfirmBookingAsync(created!.BookingId);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
+        var vehicle = iso.Db.Vehicles.Find(2)!;
+        iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
 
         var (data, error, status) = await bookings.UpdateStatusAsync(
             created.BookingId, BookingStatuses.Assigned, 2, "force assign");
@@ -322,7 +322,7 @@ public class PhaseP0BookingStateMachineTests
         iso.Db.SaveChanges();
 
         var (bookings, dispatch, _, _) = Services(iso);
-        var created = await bookings.CreateBookingAsync(3, SelfDrive());
+        var created = await bookings.CreateBookingAsync(3, SelfDrive(null));
         await iso.ConfirmBookingAsync(created!.BookingId);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
 

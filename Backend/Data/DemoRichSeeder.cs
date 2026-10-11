@@ -64,6 +64,7 @@ public static class DemoRichSeeder
         db.EnsureSqliteIncidentReportsTable();
         db.EnsureSqliteVehicleLegalColumns();
         db.EnsureSqliteLicensePlateUniqueIndex();
+        db.EnsureSqlitePhase1FinalSchema();
     }
 
     public static void CreateDemoDatabase(string path)

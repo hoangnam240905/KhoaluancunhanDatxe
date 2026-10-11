@@ -63,10 +63,13 @@ public static class TripsUi
             depositAmountText = Money(b.QuotedDepositAmount ?? 0m),
             hasActiveDeposit = b.HasActiveDeposit,
             ops,
-            canHandoverApi = isSelf && string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase),
-            canCompleteApi = isSelf && string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase),
-            // Dispatcher complete/return for WithDriver is not exposed by Backend.
-            canCompleteMockOnly = !isSelf && status is "inProgress" or "accepted" or "returning",
+            canHandoverApi = string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase),
+            canCompleteApi = string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase),
+            canCompleteMockOnly = false,
+            vehicleId = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId,
+            // Latest fuel across vehicle inspections (already loaded with Trips bootstrap).
+            lastFuel = lastKnownFuel,
             apiSource = true
         };
     }

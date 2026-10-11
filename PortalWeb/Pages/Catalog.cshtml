@@ -26,6 +26,7 @@
                 <a class="is-active" asp-page="/Catalog">Xe</a>
                 @if (Model.IsCustomer)
                 {
+                    <a asp-page="/Customer/Recommendations">Gợi ý</a>
                     <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 }
                 else
@@ -71,6 +72,7 @@
                 <a asp-page="/Catalog">Xe</a>
                 @if (Model.IsCustomer)
                 {
+                    <a asp-page="/Customer/Recommendations">Gợi ý</a>
                     <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 }
                 else

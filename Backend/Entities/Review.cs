@@ -7,6 +7,10 @@ public class Review
     public int CustomerId { get; set; }
     public int DriverId { get; set; }
     public byte Rating { get; set; }
+    public int? ComfortRating { get; set; }
+    public int? CleanlinessRating { get; set; }
+    public int? PerformanceRating { get; set; }
+    public int? ValueRating { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
 

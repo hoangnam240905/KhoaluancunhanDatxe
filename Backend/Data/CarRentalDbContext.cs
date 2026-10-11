@@ -23,6 +23,11 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<MaintenanceRecord> MaintenanceRecords => Set<MaintenanceRecord>();
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
     public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
+    public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
+    public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
+    public DbSet<CustomerVehicleInteraction> CustomerVehicleInteractions => Set<CustomerVehicleInteraction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,6 +68,10 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasKey(x => x.CustomerId);
             e.Property(x => x.Address).HasMaxLength(255);
             e.Property(x => x.IdNumber).HasMaxLength(20);
+            e.Property(x => x.VerificationStatus).HasDefaultValue("Pending");
+            e.Property(x => x.MembershipTier).HasDefaultValue("Standard");
+            e.HasIndex(x => x.VerificationStatus);
+            e.HasIndex(x => x.MembershipTier);
             e.HasOne(x => x.User).WithOne(x => x.Customer).HasForeignKey<Customer>(x => x.CustomerId);
         });
 
@@ -73,6 +82,9 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.LicenseNumber).HasMaxLength(30);
             e.Property(x => x.Status).HasMaxLength(20);
             e.Property(x => x.AverageRating).HasPrecision(3, 2);
+            e.Property(x => x.VerificationStatus).HasDefaultValue("Pending");
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.IsActive);
             e.HasOne(x => x.User).WithOne(x => x.Driver).HasForeignKey<Driver>(x => x.DriverId);
         });
 
@@ -102,6 +114,10 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.Color).HasMaxLength(30);
             e.Property(x => x.Status).HasMaxLength(20);
             e.Property(x => x.RegistrationNumber).HasMaxLength(30);
+            e.Property(x => x.ConditionStatus).HasDefaultValue("Good");
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.FuelType);
+            e.HasIndex(x => x.Transmission);
             e.HasOne(x => x.VehicleType).WithMany(x => x.Vehicles).HasForeignKey(x => x.TypeId);
         });
 
@@ -131,6 +147,11 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.AssignedVehicle)
                 .WithMany()
                 .HasForeignKey(x => x.AssignedVehicleId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+            e.HasOne(x => x.RequestedDriver)
+                .WithMany()
+                .HasForeignKey(x => x.RequestedDriverId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
         });
@@ -255,6 +276,80 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<Notification>(e =>
+        {
+            e.ToTable("Notifications");
+            e.HasKey(x => x.NotificationId);
+            e.Property(x => x.IsRead).HasDefaultValue(false);
+            e.HasIndex(x => x.UserId);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<VehicleStatusHistory>(e =>
+        {
+            e.ToTable("VehicleStatusHistory");
+            e.HasKey(x => x.StatusHistoryId);
+            e.HasIndex(x => x.VehicleId);
+            e.HasOne(x => x.Vehicle)
+                .WithMany(x => x.StatusHistory)
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ChangedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.ChangedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+        });
+
+        modelBuilder.Entity<RecommendationLog>(e =>
+        {
+            e.ToTable("RecommendationLogs");
+            e.HasKey(x => x.RecommendationId);
+            e.HasIndex(x => x.CustomerId);
+            e.HasIndex(x => x.VehicleId);
+            e.HasOne(x => x.Customer)
+                .WithMany(x => x.RecommendationLogs)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Vehicle)
+                .WithMany(x => x.RecommendationLogs)
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<VehicleImage>(e =>
+        {
+            e.ToTable("VehicleImages");
+            e.HasKey(x => x.VehicleImageId);
+            e.Property(x => x.IsPrimary).HasDefaultValue(false);
+            e.Property(x => x.DisplayOrder).HasDefaultValue(0);
+            e.HasIndex(x => x.VehicleId);
+            e.HasOne(x => x.Vehicle)
+                .WithMany(x => x.Images)
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CustomerVehicleInteraction>(e =>
+        {
+            e.ToTable("CustomerVehicleInteractions");
+            e.HasKey(x => x.InteractionId);
+            e.HasIndex(x => x.CustomerId);
+            e.HasIndex(x => x.VehicleId);
+            e.HasIndex(x => new { x.InteractionType, x.CreatedAt });
+            e.HasOne(x => x.Customer)
+                .WithMany(x => x.VehicleInteractions)
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Vehicle)
+                .WithMany(x => x.VehicleInteractions)
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 
@@ -658,6 +753,26 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             Database.ExecuteSqlRaw("ALTER TABLE Drivers ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1");
     }
 
+    public void EnsureSqliteBookingRequestedDriverColumn()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Bookings')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+
+        if (!columns.Contains("RequestedDriverId"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN RequestedDriverId INTEGER NULL");
+    }
+
     public void EnsureSqliteMaintenanceRecordsTable()
     {
         if (Database.ProviderName is null ||
@@ -958,5 +1073,241 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
         }
 
         SaveChanges();
+    }
+
+    /// <summary>
+    /// Phase 1 final schema for an existing SQLite file.
+    /// Adds missing columns and the five tables that are not on the EF model.
+    /// Does not drop, rebuild, or rewrite existing rows. RequestedDriverId is left to its existing helper.
+    /// </summary>
+    public void EnsureSqlitePhase1FinalSchema()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+
+        AddMissingColumns("Customers",
+        [
+            ("DriverLicenseNumber", "TEXT NULL"),
+            ("DriverLicenseClass", "TEXT NULL"),
+            ("DriverLicenseExpiry", "TEXT NULL"),
+            ("VerificationStatus", "TEXT NOT NULL DEFAULT 'Pending'"),
+            ("MembershipTier", "TEXT NOT NULL DEFAULT 'Standard'"),
+            ("JoinedAt", "TEXT NULL"),
+            ("Occupation", "TEXT NULL"),
+            ("IncomeRange", "TEXT NULL"),
+            ("FamilySize", "INTEGER NULL"),
+            ("NumberOfChildren", "INTEGER NULL"),
+            ("CityType", "TEXT NULL"),
+            ("AnnualMileage", "INTEGER NULL"),
+            ("CommuteKmPerDay", "REAL NULL"),
+            ("RentalPurpose", "TEXT NULL"),
+            ("PreferredVehicleType", "TEXT NULL"),
+            ("PreferredFuelType", "TEXT NULL"),
+            ("PreferredTransmission", "TEXT NULL"),
+            ("PreferredSeats", "INTEGER NULL"),
+            ("BudgetMin", "REAL NULL"),
+            ("BudgetMax", "REAL NULL"),
+            ("PreferencesText", "TEXT NULL"),
+            ("AvatarUrl", "TEXT NULL")
+        ]);
+
+        AddMissingColumns("Drivers",
+        [
+            ("LicenseClass", "TEXT NULL"),
+            ("LicenseIssueDate", "TEXT NULL"),
+            ("IdNumber", "TEXT NULL"),
+            ("DateOfBirth", "TEXT NULL"),
+            ("Address", "TEXT NULL"),
+            ("AvatarUrl", "TEXT NULL"),
+            ("ExperienceYears", "REAL NULL"),
+            ("OnTimeRate", "REAL NULL"),
+            ("TotalDistanceKm", "REAL NULL"),
+            ("VerificationStatus", "TEXT NOT NULL DEFAULT 'Pending'")
+        ]);
+
+        AddMissingColumns("Vehicles",
+        [
+            ("Transmission", "TEXT NULL"),
+            ("FuelType", "TEXT NULL"),
+            ("TrunkCapacity", "REAL NULL"),
+            ("Engine", "TEXT NULL"),
+            ("Horsepower", "INTEGER NULL"),
+            ("FuelConsumption", "REAL NULL"),
+            ("SafetyScore", "REAL NULL"),
+            ("ConditionStatus", "TEXT NOT NULL DEFAULT 'Good'"),
+            ("FuelLevel", "REAL NULL"),
+            ("Notes", "TEXT NULL"),
+            ("LastMaintenanceDate", "TEXT NULL"),
+            ("LastMaintenanceOdometer", "INTEGER NULL"),
+            ("MaintenanceIntervalKm", "INTEGER NULL"),
+            ("MaintenanceIntervalDays", "INTEGER NULL"),
+            ("NextMaintenanceDate", "TEXT NULL"),
+            ("NextMaintenanceOdometer", "INTEGER NULL")
+        ]);
+
+        AddMissingColumns("Reviews",
+        [
+            ("ComfortRating", "INTEGER NULL"),
+            ("CleanlinessRating", "INTEGER NULL"),
+            ("PerformanceRating", "INTEGER NULL"),
+            ("ValueRating", "INTEGER NULL")
+        ]);
+
+        AddMissingColumns("MaintenanceRecords",
+        [
+            ("ScheduledOdometer", "INTEGER NULL"),
+            ("NextMaintenanceDate", "TEXT NULL"),
+            ("NextMaintenanceOdometer", "INTEGER NULL")
+        ]);
+
+        AddMissingColumns("EmailOtps",
+        [
+            ("UserId", "INTEGER NULL")
+        ]);
+
+        EnsureTable("Notifications", """
+            CREATE TABLE "Notifications" (
+                "NotificationId" INTEGER NOT NULL CONSTRAINT "PK_Notifications" PRIMARY KEY AUTOINCREMENT,
+                "UserId" INTEGER NOT NULL,
+                "Title" TEXT NOT NULL,
+                "Message" TEXT NOT NULL,
+                "Type" TEXT NULL,
+                "IsRead" INTEGER NOT NULL DEFAULT 0,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_Notifications_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId") ON DELETE RESTRICT
+            );
+            """);
+
+        EnsureTable("VehicleStatusHistory", """
+            CREATE TABLE "VehicleStatusHistory" (
+                "StatusHistoryId" INTEGER NOT NULL CONSTRAINT "PK_VehicleStatusHistory" PRIMARY KEY AUTOINCREMENT,
+                "VehicleId" INTEGER NOT NULL,
+                "OldStatus" TEXT NULL,
+                "NewStatus" TEXT NOT NULL,
+                "Reason" TEXT NULL,
+                "ChangedByUserId" INTEGER NULL,
+                "ChangedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_VehicleStatusHistory_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_VehicleStatusHistory_Users_ChangedByUserId" FOREIGN KEY ("ChangedByUserId") REFERENCES "Users" ("UserId") ON DELETE SET NULL
+            );
+            """);
+
+        EnsureTable("RecommendationLogs", """
+            CREATE TABLE "RecommendationLogs" (
+                "RecommendationId" INTEGER NOT NULL CONSTRAINT "PK_RecommendationLogs" PRIMARY KEY AUTOINCREMENT,
+                "CustomerId" INTEGER NOT NULL,
+                "VehicleId" INTEGER NOT NULL,
+                "Score" REAL NOT NULL,
+                "RecommendationReason" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_RecommendationLogs_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("CustomerId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_RecommendationLogs_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+            );
+            """);
+
+        EnsureTable("VehicleImages", """
+            CREATE TABLE "VehicleImages" (
+                "VehicleImageId" INTEGER NOT NULL CONSTRAINT "PK_VehicleImages" PRIMARY KEY AUTOINCREMENT,
+                "VehicleId" INTEGER NOT NULL,
+                "ImageUrl" TEXT NOT NULL,
+                "ImageType" TEXT NULL,
+                "IsPrimary" INTEGER NOT NULL DEFAULT 0,
+                "DisplayOrder" INTEGER NOT NULL DEFAULT 0,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_VehicleImages_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+            );
+            """);
+
+        EnsureTable("CustomerVehicleInteractions", """
+            CREATE TABLE "CustomerVehicleInteractions" (
+                "InteractionId" INTEGER NOT NULL CONSTRAINT "PK_CustomerVehicleInteractions" PRIMARY KEY AUTOINCREMENT,
+                "CustomerId" INTEGER NOT NULL,
+                "VehicleId" INTEGER NOT NULL,
+                "InteractionType" TEXT NOT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_CustomerVehicleInteractions_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("CustomerId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_CustomerVehicleInteractions_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+            );
+            """);
+
+        EnsureIndex("IX_Customers_VerificationStatus", "Customers", "\"VerificationStatus\"");
+        EnsureIndex("IX_Customers_MembershipTier", "Customers", "\"MembershipTier\"");
+        EnsureIndex("IX_Drivers_Status", "Drivers", "\"Status\"");
+        EnsureIndex("IX_Drivers_IsActive", "Drivers", "\"IsActive\"");
+        EnsureIndex("IX_Vehicles_TypeId", "Vehicles", "\"TypeId\"");
+        EnsureIndex("IX_Vehicles_Status", "Vehicles", "\"Status\"");
+        EnsureIndex("IX_Vehicles_FuelType", "Vehicles", "\"FuelType\"");
+        EnsureIndex("IX_Vehicles_Transmission", "Vehicles", "\"Transmission\"");
+        EnsureIndex("IX_Bookings_CustomerId", "Bookings", "\"CustomerId\"");
+        EnsureIndex("IX_Bookings_VehicleTypeId", "Bookings", "\"VehicleTypeId\"");
+        EnsureIndex("IX_Bookings_AssignedVehicleId", "Bookings", "\"AssignedVehicleId\"");
+        EnsureIndex("IX_Bookings_RequestedDriverId", "Bookings", "\"RequestedDriverId\"");
+        EnsureIndex("IX_Bookings_Status", "Bookings", "\"Status\"");
+        EnsureIndex("IX_Bookings_StartDate_EndDate", "Bookings", "\"StartDate\", \"EndDate\"");
+        EnsureIndex("IX_TripAssignments_DriverId", "TripAssignments", "\"DriverId\"");
+        EnsureIndex("IX_TripAssignments_VehicleId", "TripAssignments", "\"VehicleId\"");
+        EnsureIndex("IX_VehicleImages_VehicleId", "VehicleImages", "\"VehicleId\"");
+        EnsureIndex("IX_CustomerVehicleInteractions_CustomerId", "CustomerVehicleInteractions", "\"CustomerId\"");
+        EnsureIndex("IX_CustomerVehicleInteractions_VehicleId", "CustomerVehicleInteractions", "\"VehicleId\"");
+        EnsureIndex("IX_CustomerVehicleInteractions_Type_CreatedAt", "CustomerVehicleInteractions", "\"InteractionType\", \"CreatedAt\"");
+        EnsureIndex("IX_RecommendationLogs_CustomerId", "RecommendationLogs", "\"CustomerId\"");
+        EnsureIndex("IX_RecommendationLogs_VehicleId", "RecommendationLogs", "\"VehicleId\"");
+    }
+
+    private void AddMissingColumns(string table, (string Name, string Definition)[] columns)
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA table_info('{table}')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                existing.Add(reader.GetString(1));
+        }
+
+        if (existing.Count == 0)
+            return;
+
+        foreach (var (name, definition) in columns)
+        {
+            if (existing.Contains(name))
+                continue;
+            var addColumn = "ALTER TABLE \"" + table + "\" ADD COLUMN \"" + name + "\" " + definition;
+            Database.ExecuteSqlRaw(addColumn);
+        }
+    }
+
+    private void EnsureTable(string table, string createSql)
+    {
+        using var cmd = Database.GetDbConnection().CreateCommand();
+        cmd.CommandText =
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name LIMIT 1";
+        var parameter = cmd.CreateParameter();
+        parameter.ParameterName = "$name";
+        parameter.Value = table;
+        cmd.Parameters.Add(parameter);
+        if (cmd.ExecuteScalar() is not null)
+            return;
+
+        Database.ExecuteSqlRaw(createSql);
+    }
+
+    private void EnsureIndex(string indexName, string table, string columns)
+    {
+        using var cmd = Database.GetDbConnection().CreateCommand();
+        cmd.CommandText =
+            "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = $name LIMIT 1";
+        var parameter = cmd.CreateParameter();
+        parameter.ParameterName = "$name";
+        parameter.Value = indexName;
+        cmd.Parameters.Add(parameter);
+        if (cmd.ExecuteScalar() is not null)
+            return;
+
+        var createIndex = "CREATE INDEX \"" + indexName + "\" ON \"" + table + "\" (" + columns + ")";
+        Database.ExecuteSqlRaw(createIndex);
     }
 }

@@ -138,6 +138,7 @@ public class RecommendationServiceTests
         var bookings = Bookings(iso);
         var request = new CreateBookingRequest(
             1, "A", "B", null, null, null, null, Start, End, 50, null, RentalModes.SelfDrive);
+        var withVehicle = request with { VehicleId = 2 };
 
         var plain = await bookings.CreateBookingAsync(3, request);
         Assert.NotNull(plain);
@@ -145,7 +146,7 @@ public class RecommendationServiceTests
         Assert.False(plainRow.SourceRecommended);
         var total = plainRow.TotalAmount;
 
-        var flagged = await bookings.CreateBookingAsync(3, request, fromRecommendation: true);
+        var flagged = await bookings.CreateBookingAsync(3, withVehicle, fromRecommendation: true);
         Assert.NotNull(flagged);
         var flaggedRow = iso.Db.Bookings.AsNoTracking().Single(b => b.BookingId == flagged!.BookingId);
         Assert.True(flaggedRow.SourceRecommended);

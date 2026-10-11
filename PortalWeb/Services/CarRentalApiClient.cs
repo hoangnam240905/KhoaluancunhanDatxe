@@ -274,6 +274,36 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<(List<CustomerDriverOptionResponse> Data, string? Error)> GetAvailableDriversAsync(
+        int? vehicleId, int? vehicleTypeId, DateTime startDate, DateTime endDate)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
+        if (vehicleId is int id)
+            query += $"&vehicleId={id}";
+        if (vehicleTypeId is int typeId)
+            query += $"&vehicleTypeId={typeId}";
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/drivers/available?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return ([], await GetErrorAsync(response) ?? "Không tải được danh sách tài xế.");
+        var data = await response.Content.ReadFromJsonAsync<List<CustomerDriverOptionResponse>>(JsonOptions);
+        return (data ?? [], null);
+    }
+
+    public async Task<(DriverScheduleResponse? Data, string? Error)> GetDriverScheduleAsync(
+        int driverId, DateTime startDate, DateTime endDate)
+    {
+        var query = $"startDate={Uri.EscapeDataString(startDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}" +
+                    $"&endDate={Uri.EscapeDataString(endDate.ToString("yyyy-MM-dd'T'HH:mm:ss"))}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/drivers/{driverId}/schedule?{query}");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không tải được lịch tài xế.");
+        return (await response.Content.ReadFromJsonAsync<DriverScheduleResponse>(JsonOptions), null);
+    }
+
     public async Task<BookingResponse?> GetBookingAsync(int id)
     {
         var (data, _) = await GetBookingWithStatusAsync(id);
@@ -597,6 +627,28 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<UserProfileResponse>(JsonOptions), code);
     }
 
+    public async Task<(CustomerProfileResponse? Data, string? Error, int StatusCode)> GetCustomerProfileAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/customers/me");
+        var response = await http.SendAsync(request);
+        var code = (int)response.StatusCode;
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể tải hồ sơ khách hàng.", code);
+        return (await response.Content.ReadFromJsonAsync<CustomerProfileResponse>(JsonOptions), null, code);
+    }
+
+    public async Task<(CustomerProfileResponse? Data, string? Error, int StatusCode)> UpdateCustomerProfileAsync(
+        UpdateCustomerProfileRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Put, "/api/customers/me");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        var code = (int)response.StatusCode;
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không thể cập nhật hồ sơ.", code);
+        return (await response.Content.ReadFromJsonAsync<CustomerProfileResponse>(JsonOptions), null, code);
+    }
+
     public async Task<(bool Success, string? Error)> ChangePasswordAsync(string oldPassword, string newPassword)
     {
         var (ok, error, _) = await ChangePasswordWithStatusAsync(oldPassword, newPassword);
@@ -729,5 +781,70 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<AdminCustomerResponse>(JsonOptions), null);
+    }
+
+    /// <summary>
+    /// Step 4.2: Customer JWT → GET /api/recommendations?topK=…
+    /// Does not send customerId (Backend reads it from JWT).
+    /// </summary>
+    public async Task<(RecommendationResponse? Data, string? Error, int StatusCode)> GetRecommendationsAsync(int topK = 5)
+    {
+        if (topK is < 1 or > 10)
+            topK = 5;
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/recommendations?topK={topK}");
+        HttpResponseMessage response;
+        try
+        {
+            response = await http.SendAsync(request);
+        }
+        catch (HttpRequestException)
+        {
+            return (null, "Không kết nối được Backend recommendation.", StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (TaskCanceledException)
+        {
+            return (null, "Hết thời gian chờ dịch vụ recommendation.", StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var code = (int)response.StatusCode;
+        if (code == StatusCodes.Status401Unauthorized || code == StatusCodes.Status403Forbidden)
+            return (null, await GetErrorAsync(response) ?? "Phiên đăng nhập hết hạn.", code);
+
+        if (code == StatusCodes.Status503ServiceUnavailable)
+            return (null, await GetErrorAsync(response) ?? "Dịch vụ Recommendation V7 tạm thời không khả dụng.", code);
+
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response) ?? "Không lấy được gợi ý xe.", code);
+
+        try
+        {
+            var data = await response.Content.ReadFromJsonAsync<RecommendationResponse>(JsonOptions);
+            if (data is null)
+                return (null, "Phản hồi recommendation trống.", StatusCodes.Status502BadGateway);
+            return (data, null, StatusCodes.Status200OK);
+        }
+        catch (JsonException)
+        {
+            return (null, "Phản hồi recommendation không hợp lệ.", StatusCodes.Status502BadGateway);
+        }
+    }
+
+    /// <summary>
+    /// Step 4.5: POST /api/customer-vehicle-interactions — CustomerId from JWT only.
+    /// History data; does not retrain V7 / Random Forest.
+    /// </summary>
+    public async Task<(CustomerVehicleInteractionResponse? Data, string? Error, int StatusCode)>
+        CreateCustomerVehicleInteractionAsync(int vehicleId, string interactionType)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/customer-vehicle-interactions");
+        request.Content = JsonContent.Create(new { vehicleId, interactionType });
+        var response = await http.SendAsync(request);
+        var code = (int)response.StatusCode;
+        if (!response.IsSuccessStatusCode)
+            return (null, await GetErrorAsync(response), code);
+
+        var data = await response.Content.ReadFromJsonAsync<CustomerVehicleInteractionResponse>(JsonOptions);
+        return (data, null, code);
     }
 }

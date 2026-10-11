@@ -78,8 +78,8 @@ public class PhaseDispatchFleetStatusTests
         var assignable = await dispatch.GetAssignableAsync(pending.BookingId);
         Assert.Null(assignable.Error);
         Assert.DoesNotContain(assignable.Data!.Vehicles, v => v.VehicleId == 2);
-        Assert.DoesNotContain(assignable.Data.Vehicles, v => v.VehicleId == 1);
-        Assert.DoesNotContain(assignable.Data.Vehicles, v => v.Status != VehicleStatuses.Available);
+        Assert.DoesNotContain(assignable.Data.Vehicles, v =>
+            v.Status is VehicleStatuses.Inactive or VehicleStatuses.Maintenance);
         Assert.All(assignable.Data.Vehicles, v => Assert.Equal(1, v.TypeId));
         var fromSchedule = await schedule.FindAssignableVehiclesAsync(1, Start, End, excludeBookingId: pending.BookingId);
         Assert.Equal(

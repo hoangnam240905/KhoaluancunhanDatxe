@@ -34,6 +34,9 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
         if (request.Cost is < 0)
             return (null, "Chi phí bảo trì không được âm.", 400);
 
+        if (request.ScheduledOdometer is < 0 || request.NextMaintenanceOdometer is < 0)
+            return (null, "Số km bảo trì không được âm.", 400);
+
         var hasOpen = await db.MaintenanceRecords.AnyAsync(m =>
             m.VehicleId == vehicleId && m.CompletedDate == null);
         if (hasOpen)
@@ -46,6 +49,9 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
             ScheduledDate = request.ScheduledDate,
             CompletedDate = null,
             OdometerAtMaintenance = null,
+            ScheduledOdometer = request.ScheduledOdometer,
+            NextMaintenanceDate = request.NextMaintenanceDate,
+            NextMaintenanceOdometer = request.NextMaintenanceOdometer,
             Cost = request.Cost,
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow
@@ -132,5 +138,8 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
         m.OdometerAtMaintenance,
         m.Cost,
         m.Notes,
-        m.CreatedAt);
+        m.CreatedAt,
+        m.ScheduledOdometer,
+        m.NextMaintenanceDate,
+        m.NextMaintenanceOdometer);
 }

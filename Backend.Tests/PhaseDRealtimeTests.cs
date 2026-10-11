@@ -184,12 +184,12 @@ public class PhaseDRealtimeTests
         Assert.Contains(capture.Events, e => e.EventType == RealtimeEventTypes.BookingStatusChanged);
 
         capture.Clear();
-        var vehicle = iso.Db.Vehicles.Find(2)!;
-        iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
         var due = await bookings.CreateBookingAsync(3, new CreateBookingRequest(
             1, "A", "B", null, null, null, null, Start.AddDays(3), End.AddDays(3), 20, null,
             RentalModes.SelfDrive, 2));
         await iso.ConfirmBookingAsync(due!.BookingId);
+        var vehicle = iso.Db.Vehicles.Find(2)!;
+        iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
         var failed = await payments.CreateAsync(
             3, new CreatePaymentRequest(due.BookingId, PaymentTypes.Deposit, PaymentMethods.Cash));
         Assert.Equal(400, failed.StatusCode);

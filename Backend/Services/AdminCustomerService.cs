@@ -67,6 +67,11 @@ public class AdminCustomerService(CarRentalDbContext db)
         if (await db.Users.AnyAsync(u => u.Phone == phone))
             return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
 
+        var profileError = ValidateProfileNumbers(
+            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax);
+        if (profileError is not null)
+            return Fail(profileError, StatusCodes.Status400BadRequest);
+
         var customerRole = await db.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleNames.Customer);
         if (customerRole is null)
             return Fail("Không thể tạo khách hàng.", StatusCodes.Status400BadRequest);
@@ -94,6 +99,7 @@ public class AdminCustomerService(CarRentalDbContext db)
             IdNumber = TrimOrNull(request.IdNumber),
             DateOfBirth = request.DateOfBirth
         };
+        ApplyProfile(customer, request, isCreate: true);
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
 
@@ -125,6 +131,11 @@ public class AdminCustomerService(CarRentalDbContext db)
         if (await db.Users.AnyAsync(u => u.UserId != customer.CustomerId && u.Phone == phone))
             return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
 
+        var profileError = ValidateProfileNumbers(
+            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax);
+        if (profileError is not null)
+            return Fail(profileError, StatusCodes.Status400BadRequest);
+
         customer.User.FullName = fullName;
         customer.User.Email = email;
         customer.User.Phone = phone;
@@ -132,6 +143,7 @@ public class AdminCustomerService(CarRentalDbContext db)
         customer.Address = TrimOrNull(request.Address);
         customer.IdNumber = TrimOrNull(request.IdNumber);
         customer.DateOfBirth = request.DateOfBirth;
+        ApplyProfile(customer, request, isCreate: false);
         await db.SaveChangesAsync();
         var names = await ActorNamesAsync([customer]);
         return (Map(customer, names), null, StatusCodes.Status200OK);
@@ -239,6 +251,138 @@ public class AdminCustomerService(CarRentalDbContext db)
             customer.User.InactiveReason,
             customer.User.InactivatedAt,
             customer.User.InactivatedByUserId,
-            ActorName(customer.User.InactivatedByUserId));
+            ActorName(customer.User.InactivatedByUserId),
+            customer.DriverLicenseNumber,
+            customer.DriverLicenseClass,
+            customer.DriverLicenseExpiry,
+            customer.VerificationStatus,
+            customer.MembershipTier,
+            customer.JoinedAt,
+            customer.Occupation,
+            customer.IncomeRange,
+            customer.FamilySize,
+            customer.NumberOfChildren,
+            customer.CityType,
+            customer.AnnualMileage,
+            customer.CommuteKmPerDay,
+            customer.RentalPurpose,
+            customer.PreferredVehicleType,
+            customer.PreferredFuelType,
+            customer.PreferredTransmission,
+            customer.PreferredSeats,
+            customer.BudgetMin,
+            customer.BudgetMax,
+            customer.PreferencesText,
+            customer.AvatarUrl);
+    }
+
+    private static string? ValidateProfileNumbers(
+        int? annualMileage, double? commuteKmPerDay, double? budgetMin, double? budgetMax)
+    {
+        if (annualMileage is < 0)
+            return "Số km mỗi năm không được âm.";
+        if (commuteKmPerDay is < 0)
+            return "Số km đi lại mỗi ngày không được âm.";
+        if (budgetMin is not null && budgetMax is not null && budgetMin > budgetMax)
+            return "Ngân sách tối thiểu không được lớn hơn ngân sách tối đa.";
+        return null;
+    }
+
+    private static void ApplyProfile(Customer customer, CreateAdminCustomerRequest request, bool isCreate)
+        => ApplyProfile(
+            customer, isCreate,
+            request.DriverLicenseNumber, request.DriverLicenseClass, request.DriverLicenseExpiry,
+            request.VerificationStatus, request.MembershipTier, request.JoinedAt,
+            request.Occupation, request.IncomeRange, request.FamilySize, request.NumberOfChildren,
+            request.CityType, request.AnnualMileage, request.CommuteKmPerDay, request.RentalPurpose,
+            request.PreferredVehicleType, request.PreferredFuelType, request.PreferredTransmission,
+            request.PreferredSeats, request.BudgetMin, request.BudgetMax,
+            request.PreferencesText, request.AvatarUrl);
+
+    private static void ApplyProfile(Customer customer, UpdateAdminCustomerRequest request, bool isCreate)
+        => ApplyProfile(
+            customer, isCreate,
+            request.DriverLicenseNumber, request.DriverLicenseClass, request.DriverLicenseExpiry,
+            request.VerificationStatus, request.MembershipTier, request.JoinedAt,
+            request.Occupation, request.IncomeRange, request.FamilySize, request.NumberOfChildren,
+            request.CityType, request.AnnualMileage, request.CommuteKmPerDay, request.RentalPurpose,
+            request.PreferredVehicleType, request.PreferredFuelType, request.PreferredTransmission,
+            request.PreferredSeats, request.BudgetMin, request.BudgetMax,
+            request.PreferencesText, request.AvatarUrl);
+
+    private static void ApplyProfile(
+        Customer customer,
+        bool isCreate,
+        string? driverLicenseNumber,
+        string? driverLicenseClass,
+        DateOnly? driverLicenseExpiry,
+        string? verificationStatus,
+        string? membershipTier,
+        DateTime? joinedAt,
+        string? occupation,
+        string? incomeRange,
+        int? familySize,
+        int? numberOfChildren,
+        string? cityType,
+        int? annualMileage,
+        double? commuteKmPerDay,
+        string? rentalPurpose,
+        string? preferredVehicleType,
+        string? preferredFuelType,
+        string? preferredTransmission,
+        int? preferredSeats,
+        double? budgetMin,
+        double? budgetMax,
+        string? preferencesText,
+        string? avatarUrl)
+    {
+        SetText(isCreate, driverLicenseNumber, value => customer.DriverLicenseNumber = value);
+        SetText(isCreate, driverLicenseClass, value => customer.DriverLicenseClass = value);
+        SetValue(isCreate, driverLicenseExpiry, value => customer.DriverLicenseExpiry = value);
+        SetText(isCreate, occupation, value => customer.Occupation = value);
+        SetText(isCreate, incomeRange, value => customer.IncomeRange = value);
+        SetValue(isCreate, familySize, value => customer.FamilySize = value);
+        SetValue(isCreate, numberOfChildren, value => customer.NumberOfChildren = value);
+        SetText(isCreate, cityType, value => customer.CityType = value);
+        SetValue(isCreate, annualMileage, value => customer.AnnualMileage = value);
+        SetValue(isCreate, commuteKmPerDay, value => customer.CommuteKmPerDay = value);
+        SetText(isCreate, rentalPurpose, value => customer.RentalPurpose = value);
+        SetText(isCreate, preferredVehicleType, value => customer.PreferredVehicleType = value);
+        SetText(isCreate, preferredFuelType, value => customer.PreferredFuelType = value);
+        SetText(isCreate, preferredTransmission, value => customer.PreferredTransmission = value);
+        SetValue(isCreate, preferredSeats, value => customer.PreferredSeats = value);
+        SetValue(isCreate, budgetMin, value => customer.BudgetMin = value);
+        SetValue(isCreate, budgetMax, value => customer.BudgetMax = value);
+        SetText(isCreate, preferencesText, value => customer.PreferencesText = value);
+        SetText(isCreate, avatarUrl, value => customer.AvatarUrl = value);
+
+        var status = TrimOrNull(verificationStatus);
+        if (isCreate)
+            customer.VerificationStatus = status ?? "Pending";
+        else if (status is not null)
+            customer.VerificationStatus = status;
+
+        var tier = TrimOrNull(membershipTier);
+        if (isCreate)
+            customer.MembershipTier = tier ?? "Standard";
+        else if (tier is not null)
+            customer.MembershipTier = tier;
+
+        if (isCreate || joinedAt is not null)
+            customer.JoinedAt = joinedAt;
+    }
+
+    private static void SetText(bool isCreate, string? incoming, Action<string?> assign)
+    {
+        if (!isCreate && incoming is null)
+            return;
+        assign(TrimOrNull(incoming));
+    }
+
+    private static void SetValue<T>(bool isCreate, T? incoming, Action<T?> assign) where T : struct
+    {
+        if (!isCreate && incoming is null)
+            return;
+        assign(incoming);
     }
 }

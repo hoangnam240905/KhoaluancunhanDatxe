@@ -107,37 +107,30 @@ public class PhaseP061ConcreteVehicleTests
     }
 
     [Fact]
-    public async Task E_Maintenance_blocked_vehicle_rejects_deposit()
+    public async Task E_Maintenance_blocked_vehicle_rejects_create()
     {
         using var iso = new IsolatedCarRentalDb();
         var vehicle = iso.Db.Vehicles.Find(2)!;
         iso.SetLastCompletedMaintenance(2, DateTime.UtcNow.AddDays(-10), vehicle.CurrentKm - 5000);
-        var created = await Bookings(iso.Db).CreateBookingAsync(3, Booking(1, 2));
-        Assert.Equal(2, created!.AssignedVehicle?.VehicleId);
-        await iso.ConfirmBookingAsync(created.BookingId);
-
-        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, Deposit(created.BookingId));
-        Assert.Equal(400, status);
-        Assert.Null(payment);
+        var (created, error) = await Bookings(iso.Db).TryCreateBookingAsync(3, Booking(1, 2));
+        Assert.Null(created);
         Assert.Equal(MaintenanceLock.BlockedForNewSchedule, error);
-        Assert.Equal(0, iso.Db.Payments.Count(p => p.BookingId == created.BookingId));
-        Assert.False(await Schedule(iso.Db).HasVehicleConflictAsync(2, Start, End, created.BookingId));
     }
 
     [Fact]
-    public async Task F_Overlapping_same_vehicle_only_one_deposit()
+    public async Task F_Overlapping_same_vehicle_rejects_second_create()
     {
         using var iso = new IsolatedCarRentalDb();
         var a = await Bookings(iso.Db).CreateBookingAsync(3, Booking(1, 2));
-        var b = await Bookings(iso.Db).CreateBookingAsync(3, Booking(1, 2));
         await iso.ConfirmBookingAsync(a!.BookingId);
         var first = await Payments(iso.Db).CreateAsync(3, Deposit(a.BookingId));
-        await iso.ConfirmBookingAsync(b!.BookingId);
-        var second = await Payments(iso.Db).CreateAsync(3, Deposit(b.BookingId));
-
         Assert.Equal(201, first.StatusCode);
-        Assert.Equal(400, second.StatusCode);
-        Assert.Equal("Xe đã có lịch thuê khác trong khoảng thời gian này.", second.Error);
+
+        var (b, error) = await Bookings(iso.Db).TryCreateBookingAsync(3, Booking(1, 2));
+        Assert.Null(b);
+        Assert.Equal(
+            "Xe không khả dụng trong khoảng thời gian bạn chọn. Vui lòng chọn thời gian khác hoặc xe khác.",
+            error);
         Assert.Equal(1, iso.Db.Payments.Count(p => p.PaymentType == PaymentTypes.Deposit));
     }
 
@@ -168,15 +161,13 @@ public class PhaseP061ConcreteVehicleTests
         var a = await Bookings(iso.Db).CreateBookingAsync(3, Booking(1, 2, occupyStart, occupyEnd));
         await iso.ConfirmBookingAsync(a!.BookingId);
         await Payments(iso.Db).CreateAsync(3, Deposit(a.BookingId));
-        var b = await Bookings(iso.Db).CreateBookingAsync(3, Booking(
+        var (b, error) = await Bookings(iso.Db).TryCreateBookingAsync(3, Booking(
             1, 2, occupyEnd.AddHours(1), occupyEnd.AddHours(4)));
-        await iso.ConfirmBookingAsync(b!.BookingId);
-        var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, Deposit(b.BookingId));
 
-        Assert.Equal(400, status);
-        Assert.Null(payment);
-        Assert.Equal("Xe đã có lịch thuê khác trong khoảng thời gian này.", error);
-        Assert.Equal(0, iso.Db.Payments.Count(p => p.BookingId == b.BookingId));
+        Assert.Null(b);
+        Assert.Equal(
+            "Xe không khả dụng trong khoảng thời gian bạn chọn. Vui lòng chọn thời gian khác hoặc xe khác.",
+            error);
     }
 
     [Fact]

@@ -7,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
 
-public class BookingService(CarRentalDbContext db, PricingService pricing, IRealtimePublisher? realtime = null)
+public class BookingService(
+    CarRentalDbContext db,
+    PricingService pricing,
+    IRealtimePublisher? realtime = null,
+    DriverEligibilityService? driverEligibility = null)
 {
     public async Task<BookingResponse?> CreateBookingAsync(
         int customerId, CreateBookingRequest request, bool fromRecommendation = false)
@@ -45,9 +49,36 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
                 return (null, "Không tìm thấy xe.");
             if (vehicle.TypeId != request.VehicleTypeId)
                 return (null, "Xe không thuộc loại xe được đặt.");
-            if (vehicle.Status == VehicleStatuses.Inactive)
+            if (vehicle.Status is VehicleStatuses.Inactive or VehicleStatuses.Maintenance)
                 return (null, "Xe không khả dụng.");
+
+            // Same interval + 2h buffer rule as Confirm/Search — do not reject solely on Status=Rented.
+            var schedule = new ScheduleConflictService(db);
+            if (await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicleId) is string maintBlock)
+                return (null, maintBlock);
+            if (await schedule.HasVehicleConflictAsync(vehicleId, request.StartDate, request.EndDate))
+            {
+                return (null,
+                    "Xe không khả dụng trong khoảng thời gian bạn chọn. Vui lòng chọn thời gian khác hoặc xe khác.");
+            }
+
             intentVehicleId = vehicle.VehicleId;
+        }
+
+        int? requestedDriverId = null;
+        if (rentalMode == RentalModes.SelfDrive)
+        {
+            if (request.DriverId is int)
+                return (null, DriverEligibilityService.SelfDriveDriverNotAllowed);
+        }
+        else if (request.DriverId is int driverId)
+        {
+            var drivers = driverEligibility ?? new DriverEligibilityService(db, new ScheduleConflictService(db));
+            var driverError = await drivers.ValidateSelectionAsync(
+                driverId, request.VehicleTypeId, request.StartDate, request.EndDate);
+            if (driverError is not null)
+                return (null, driverError);
+            requestedDriverId = driverId;
         }
 
         var booking = new Booking
@@ -74,7 +105,8 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             Status = BookingStatuses.Pending,
             RentalMode = rentalMode,
             AssignedVehicleId = intentVehicleId,
-            SourceRecommended = fromRecommendation,
+            RequestedDriverId = requestedDriverId,
+            SourceRecommended = fromRecommendation && intentVehicleId.HasValue,
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow
         };
@@ -130,6 +162,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
             .Include(b => b.AssignedVehicle)
+            .Include(b => b.RequestedDriver).ThenInclude(d => d!.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
@@ -154,6 +187,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
             .Include(b => b.AssignedVehicle)
+            .Include(b => b.RequestedDriver).ThenInclude(d => d!.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
             .Include(b => b.Fees)
@@ -242,6 +276,13 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
         if (commentError is not null)
             return (null, commentError);
 
+        var detailError = ReviewRules.ValidateOptionalScore(request.ComfortRating)
+            ?? ReviewRules.ValidateOptionalScore(request.CleanlinessRating)
+            ?? ReviewRules.ValidateOptionalScore(request.PerformanceRating)
+            ?? ReviewRules.ValidateOptionalScore(request.ValueRating);
+        if (detailError is not null)
+            return (null, detailError);
+
         var booking = await db.Bookings
             .Include(b => b.TripAssignment)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId);
@@ -258,6 +299,10 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             CustomerId = customerId,
             DriverId = booking.TripAssignment.DriverId,
             Rating = request.Rating,
+            ComfortRating = request.ComfortRating,
+            CleanlinessRating = request.CleanlinessRating,
+            PerformanceRating = request.PerformanceRating,
+            ValueRating = request.ValueRating,
             Comment = comment,
             CreatedAt = DateTime.UtcNow
         };
@@ -274,7 +319,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
 
         await db.SaveChangesAsync();
 
-        return (new ReviewResponse(review.ReviewId, review.BookingId, review.Rating, review.Comment, review.CreatedAt), null);
+        return (MapReview(review), null);
     }
 
     private async Task ReleaseHeldVehicleAsync(Booking booking)
@@ -357,14 +402,7 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             .OrderBy(i => i.InspectionId)
             .Select(VehicleInspectionService.ToResponse)
             .ToList();
-        var review = b.Review is null
-            ? null
-            : new ReviewResponse(
-                b.Review.ReviewId,
-                b.Review.BookingId,
-                b.Review.Rating,
-                b.Review.Comment,
-                b.Review.CreatedAt);
+        var review = b.Review is null ? null : MapReview(b.Review);
 
         return new BookingResponse(
             b.BookingId,
@@ -397,8 +435,24 @@ public class BookingService(CarRentalDbContext db, PricingService pricing, IReal
             totalFees,
             inspections,
             review,
-            HasActiveDeposit(b));
+            HasActiveDeposit(b),
+            b.CancellationReason,
+            b.RequestedDriverId,
+            b.RequestedDriver?.User.FullName);
     }
+
+    private static ReviewResponse MapReview(Review review) => new(
+        review.ReviewId,
+        review.BookingId,
+        review.Rating,
+        review.Comment,
+        review.CreatedAt,
+        review.ComfortRating,
+        review.CleanlinessRating,
+        review.PerformanceRating,
+        review.ValueRating,
+        review.CustomerId,
+        review.DriverId);
 
     private static bool HasActiveDeposit(Booking b)
         => (b.Payments ?? []).Any(p =>

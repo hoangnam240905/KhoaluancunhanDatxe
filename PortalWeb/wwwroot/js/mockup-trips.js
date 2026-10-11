@@ -158,14 +158,11 @@
 
     function cardActions(t) {
         const btns = [];
-        if (t.canHandoverApi || (t.mode === "SelfDrive" && t.status === "waitingHandover")) {
+        if (t.canHandoverApi || t.status === "waitingHandover") {
             btns.push(`<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🔑 Giao xe</button>`);
         }
-        if (t.canCompleteApi || (t.mode === "SelfDrive" && (t.status === "handedOver" || t.status === "inProgress" || t.status === "returning"))) {
+        if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
             btns.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Tiếp nhận trả xe</button>`);
-        }
-        if (t.canCompleteMockOnly) {
-            btns.push(`<button type="button" class="mk-btn mk-btn-ghost" data-return="${t.id}">↩ Kiểm tra trả xe</button>`);
         }
         if (t.incident) {
             btns.push(`<button type="button" class="mk-btn mk-btn-danger" data-incident="${t.id}">Xem sự cố</button>`);
@@ -293,10 +290,10 @@
             a.push(`<button type="button" class="mk-btn mk-btn-danger" data-report="${t.id}">⚠️ Báo sự cố</button>`);
         }
         a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-inspect="${t.id}">📋 Inspection</button>`);
-        if (t.canHandoverApi || (t.mode === "SelfDrive" && t.status === "waitingHandover")) {
+        if (t.canHandoverApi || t.status === "waitingHandover") {
             a.push(`<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🚗 Giao xe</button>`);
         }
-        if (t.canCompleteApi || t.canCompleteMockOnly || (t.mode === "SelfDrive" && (t.status === "handedOver" || t.status === "inProgress"))) {
+        if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
             a.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Trả xe</button>`);
         }
         if (t.settlement === "pending" || t.status === "completed") {

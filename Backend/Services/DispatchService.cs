@@ -228,19 +228,28 @@ public class DispatchService(
     public async Task<(BookingResponse? Booking, string? Error)> HandoverSelfDriveAsync(
         int bookingId, int dispatcherId, VehicleConditionRequest? request)
     {
-        var booking = await db.Bookings.FindAsync(bookingId);
+        var booking = await db.Bookings
+            .Include(b => b.TripAssignment)
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId);
         if (booking is null)
             return Fail("Không tìm thấy đơn.");
-        if (ResolveMode(booking.RentalMode) != RentalModes.SelfDrive)
-            return Fail("Chỉ đơn tự lái mới dùng giao xe.");
         if (!BookingStateTransitionRules.CanTransition(booking.Status, BookingStatuses.InProgress))
             return Fail("Chỉ giao xe khi đơn đã được gán xe.");
-        if (booking.AssignedVehicleId is null)
+
+        var vehicleId = booking.AssignedVehicleId ?? booking.TripAssignment?.VehicleId;
+        if (vehicleId is null or <= 0)
             return Fail("Đơn chưa được gán xe.");
+        booking.AssignedVehicleId ??= vehicleId;
 
         var readiness = await BookingDispatchReadinessRules.GetBlockReasonAsync(db, bookingId);
         if (readiness is not null)
             return Fail(readiness);
+
+        // Prefer request fuel; else reuse last known level from vehicle inspections.
+        // Do not invent 0 — if neither source has a valid level, inspection rules reject as before.
+        var fuelLevel = request?.FuelLevel;
+        if (fuelLevel is null)
+            fuelLevel = await inspections.GetLatestFuelLevelAsync(vehicleId.Value);
 
         var (inspection, inspectError) = await inspections.AddAsync(
             bookingId,
@@ -257,7 +266,14 @@ public class DispatchService(
         var oldStatus = booking.Status;
         booking.Status = BookingStatuses.InProgress;
         booking.UpdatedAt = DateTime.UtcNow;
-        AddHistory(bookingId, oldStatus, BookingStatuses.InProgress, dispatcherId, "Điều phối giao xe tự lái");
+        if (booking.TripAssignment is { } trip
+            && trip.Status is TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted)
+        {
+            trip.Status = TripAssignmentStatuses.InProgress;
+            trip.StartedAt ??= DateTime.UtcNow;
+        }
+
+        AddHistory(bookingId, oldStatus, BookingStatuses.InProgress, dispatcherId, "Điều phối giao xe");
 
         await db.SaveChangesAsync();
         var result = await bookingService.GetBookingByIdAsync(bookingId);
@@ -270,26 +286,40 @@ public class DispatchService(
     public async Task<(BookingResponse? Booking, string? Error)> CompleteSelfDriveAsync(
         int bookingId, int dispatcherId, VehicleConditionRequest? request)
     {
-        var booking = await db.Bookings.FindAsync(bookingId);
+        var booking = await db.Bookings
+            .Include(b => b.TripAssignment)
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId);
         if (booking is null)
             return Fail("Không tìm thấy đơn.");
-        if (ResolveMode(booking.RentalMode) != RentalModes.SelfDrive)
-            return Fail("Chỉ đơn tự lái mới hoàn thành trả xe tại điều phối.");
-        if (!BookingStateTransitionRules.CanTransition(booking.Status, BookingStatuses.Completed))
-            return Fail("Chỉ hoàn thành khi đơn đang trong quá trình thuê.");
-        if (booking.AssignedVehicleId is null)
-            return Fail("Đơn chưa được gán xe.");
 
-        var vehicle = await db.Vehicles.FindAsync(booking.AssignedVehicleId.Value);
+        // Dispatcher return: InProgress (normal) or Assigned (stuck/overdue trip never handed over).
+        var isInProgress = booking.Status == BookingStatuses.InProgress;
+        var isAssignedReturn = booking.Status == BookingStatuses.Assigned;
+        if (!isInProgress && !isAssignedReturn)
+            return Fail("Chỉ hoàn thành khi đơn đang trong quá trình thuê.");
+        if (isInProgress && !BookingStateTransitionRules.CanTransition(booking.Status, BookingStatuses.Completed))
+            return Fail("Chỉ hoàn thành khi đơn đang trong quá trình thuê.");
+
+        var vehicleId = booking.AssignedVehicleId ?? booking.TripAssignment?.VehicleId;
+        if (vehicleId is null or <= 0)
+            return Fail("Đơn chưa được gán xe.");
+        booking.AssignedVehicleId ??= vehicleId;
+
+        var vehicle = await db.Vehicles.FindAsync(vehicleId.Value);
         if (vehicle is null)
             return Fail("Không tìm thấy xe đã gán.");
 
         var handover = await inspections.GetHandoverAsync(bookingId);
-        if (handover is null)
+        // Normal SelfDrive path after dispatcher handover requires a handover record.
+        // Assigned stuck trips (and WithDriver started by driver) may complete with return only.
+        if (handover is null
+            && isInProgress
+            && ResolveMode(booking.RentalMode) == RentalModes.SelfDrive)
             return Fail(VehicleInspectionRules.HandoverRequired);
 
         var returnAt = DateTime.UtcNow;
-        var scheduleBlock = await schedule.GetLateReturnScheduleBlockAsync(booking, returnAt);
+        var scheduleBlock = await schedule.GetLateReturnScheduleBlockAsync(
+            booking, returnAt, vehicleId, booking.TripAssignment?.DriverId);
         if (scheduleBlock is not null)
             return Fail(scheduleBlock);
 
@@ -311,9 +341,38 @@ public class DispatchService(
         var oldStatus = booking.Status;
         booking.Status = BookingStatuses.Completed;
         booking.UpdatedAt = DateTime.UtcNow;
+
+        if (booking.TripAssignment is { } trip
+            && trip.Status != TripAssignmentStatuses.Completed
+            && trip.Status != TripAssignmentStatuses.Cancelled)
+        {
+            trip.Status = TripAssignmentStatuses.Completed;
+            trip.CompletedAt = DateTime.UtcNow;
+            var driver = await db.Drivers.FindAsync(trip.DriverId);
+            if (driver is not null)
+            {
+                driver.TotalTrips += 1;
+                if (driver.Status != DriverStatuses.Offline)
+                {
+                    var stillOpen = await driverService.HasOpenAssignmentAsync(
+                        driver.DriverId, trip.AssignmentId);
+                    driver.Status = stillOpen ? DriverStatuses.Busy : DriverStatuses.Available;
+                }
+            }
+        }
+
         if (vehicle.Status == VehicleStatuses.Rented)
-            vehicle.Status = VehicleStatuses.Available;
-        AddHistory(bookingId, oldStatus, BookingStatuses.Completed, dispatcherId, "Điều phối hoàn thành trả xe tự lái");
+        {
+            var stillRented = await db.Bookings.AnyAsync(b =>
+                b.BookingId != booking.BookingId
+                && (b.Status == BookingStatuses.Assigned || b.Status == BookingStatuses.InProgress)
+                && (b.AssignedVehicleId == vehicle.VehicleId
+                    || (b.TripAssignment != null && b.TripAssignment.VehicleId == vehicle.VehicleId)));
+            if (!stillRented)
+                vehicle.Status = VehicleStatuses.Available;
+        }
+
+        AddHistory(bookingId, oldStatus, BookingStatuses.Completed, dispatcherId, "Điều phối tiếp nhận trả xe");
 
         await db.SaveChangesAsync();
         var result = await bookingService.GetBookingByIdAsync(bookingId);
@@ -323,6 +382,11 @@ public class DispatchService(
                 realtime, result.CustomerId, result.BookingId, result.Status, result.AssignedVehicle?.VehicleId);
             await RealtimeNotify.VehicleStatusChanged(
                 realtime, vehicle.VehicleId, vehicle.Status, bookingId, result.CustomerId);
+            if (booking.TripAssignment is not null)
+                await RealtimeNotify.DriverStatusChanged(
+                    realtime, booking.TripAssignment.DriverId,
+                    (await db.Drivers.FindAsync(booking.TripAssignment.DriverId))?.Status
+                        ?? DriverStatuses.Available);
         }
         return result is null ? Fail("Không thể hoàn thành đơn.") : Ok(result);
     }
@@ -475,7 +539,8 @@ public class DispatchService(
         var block = await schedule.GetMaintenanceNewScheduleBlockReasonAsync(vehicle.VehicleId);
         if (block is not null)
             return (null, AssignTripResult.Fail(block));
-        if (vehicle.Status != VehicleStatuses.Available)
+        // Rented = currently on a trip; future bookings still use calendar + 2h buffer.
+        if (vehicle.Status is VehicleStatuses.Inactive or VehicleStatuses.Maintenance)
             return (null, AssignTripResult.Fail("Xe không khả dụng."));
         if (vehicle.TypeId != expectedTypeId)
             return (null, AssignTripResult.Fail("Xe không thuộc loại xe được đặt."));

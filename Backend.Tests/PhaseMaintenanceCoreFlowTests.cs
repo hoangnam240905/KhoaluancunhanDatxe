@@ -106,9 +106,9 @@ public class PhaseMaintenanceCoreFlowTests
     public async Task Open_maintenance_rejects_deposit_hold()
     {
         using var iso = new IsolatedCarRentalDb();
-        await CreateOpenOnVehicle2Async(iso);
         var created = await Bookings(iso.Db).CreateBookingAsync(3, BookingRequest());
         await iso.ConfirmBookingAsync(created!.BookingId);
+        await CreateOpenOnVehicle2Async(iso);
         var (payment, error, status) = await Payments(iso.Db).CreateAsync(3, DepositRequest(created.BookingId));
 
         Assert.Equal(400, status);

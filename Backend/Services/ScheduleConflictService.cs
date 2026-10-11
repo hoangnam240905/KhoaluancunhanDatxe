@@ -148,8 +148,9 @@ public class ScheduleConflictService(CarRentalDbContext db)
     }
 
     /// <summary>
-    /// Vehicles the current Assign flow can accept: Status=Available, same type, no calendar+buffer conflict.
-    /// Excludes Inactive/Maintenance/Rented.
+    /// Vehicles the current Assign/Confirm flow can accept for a rental window:
+    /// same type, not Inactive/Maintenance, no calendar+buffer conflict.
+    /// Rented is allowed when the requested interval is free (Status reflects now, not the future window).
     /// </summary>
     public async Task<List<Vehicle>> FindAssignableVehiclesAsync(
         int vehicleTypeId,
@@ -160,7 +161,9 @@ public class ScheduleConflictService(CarRentalDbContext db)
     {
         var query = db.Vehicles
             .Include(v => v.VehicleType)
-            .Where(v => v.TypeId == vehicleTypeId && v.Status == VehicleStatuses.Available);
+            .Where(v => v.TypeId == vehicleTypeId
+                && v.Status != VehicleStatuses.Inactive
+                && v.Status != VehicleStatuses.Maintenance);
         if (excludeVehicleId is int skipVehicle)
             query = query.Where(v => v.VehicleId != skipVehicle);
 
@@ -260,6 +263,22 @@ public class ScheduleConflictService(CarRentalDbContext db)
             .Select(b => new { b.StartDate, b.EndDate })
             .ToListAsync();
         return rows.Select(r => (r.StartDate, r.EndDate)).ToList();
+    }
+
+    public async Task<IReadOnlyList<(DateTime StartDate, DateTime EndDate, int BookingId, string Status)>> ListDriverBusyIntervalsAsync(
+        int driverId, DateTime from, DateTime to)
+    {
+        var rows = await OccupyingQuery(null)
+            .Where(b =>
+                b.TripAssignment != null
+                && b.TripAssignment.DriverId == driverId
+                && b.StartDate < to
+                && b.EndDate > from)
+            .OrderBy(b => b.StartDate)
+            .ThenBy(b => b.EndDate)
+            .Select(b => new { b.StartDate, b.EndDate, b.BookingId, b.Status })
+            .ToListAsync();
+        return rows.Select(r => (r.StartDate, r.EndDate, r.BookingId, r.Status)).ToList();
     }
 
     public Task<List<Booking>> ListOccupyingBookingsAsync()

@@ -95,7 +95,14 @@
                         <a class="dx-nav-link py-1" href="/#gioi-thieu">Giới thiệu</a>
                         <a class="dx-nav-link py-1" href="/#tuyen-di">Tuyến đi</a>
                         <a class="dx-nav-link py-1" href="/#bang-gia">Bảng giá</a>
-                        <a class="dx-nav-link py-1" href="/#goi-y">Gợi ý</a>
+                        @if (Auth.IsLoggedIn && role == "Customer")
+                        {
+                            <a class="@Nav("/Customer/Recommendations") py-1" asp-page="/Customer/Recommendations">Gợi ý</a>
+                        }
+                        else
+                        {
+                            <a class="dx-nav-link py-1" href="/#goi-y">Gợi ý</a>
+                        }
                     }
                     @if (Auth.IsLoggedIn && role == "Customer")
                     {
@@ -152,7 +159,14 @@
                         @if (role is "Customer" || !Auth.IsLoggedIn)
                         {
                             <a class="btn btn-sm btn-outline-secondary" href="/#gioi-thieu">Giới thiệu</a>
-                            <a class="btn btn-sm btn-outline-secondary" href="/#goi-y">Gợi ý</a>
+                            @if (Auth.IsLoggedIn && role == "Customer")
+                            {
+                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Customer/Recommendations">Gợi ý</a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-sm btn-outline-secondary" href="/#goi-y">Gợi ý</a>
+                            }
                         }
                         @if (Auth.IsLoggedIn && role == "Customer")
                         {

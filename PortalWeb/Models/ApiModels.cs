@@ -13,6 +13,47 @@ public record ResetPasswordRequest(string Email, string Otp, string NewPassword,
 public record GoogleLoginRequest(string IdToken);
 public record LoginOptionsResponse(bool GoogleEnabled, string? GoogleClientId);
 public record UserProfileResponse(int UserId, string Email, string FullName, string? Phone, string Role);
+
+/// <summary>Step 4.4: Customer self-profile including V7 recommendation fields.</summary>
+public record CustomerProfileResponse(
+    int CustomerId,
+    string Email,
+    string FullName,
+    string? Phone,
+    string? Address,
+    DateOnly? DateOfBirth,
+    int? NumberOfChildren,
+    int? FamilySize,
+    string? IncomeRange,
+    string? CityType,
+    double? CommuteKmPerDay,
+    int? AnnualMileage,
+    string? RentalPurpose,
+    double? BudgetMin,
+    double? BudgetMax,
+    string? PreferredVehicleType,
+    string? PreferredFuelType,
+    string? PreferredTransmission,
+    int? PreferredSeats,
+    string? PreferencesText);
+
+public record UpdateCustomerProfileRequest(
+    DateOnly? DateOfBirth,
+    int? NumberOfChildren,
+    int? FamilySize,
+    string? IncomeRange,
+    string? CityType,
+    double? CommuteKmPerDay,
+    int? AnnualMileage,
+    string? RentalPurpose,
+    double? BudgetMin,
+    double? BudgetMax,
+    string? PreferredVehicleType = null,
+    string? PreferredFuelType = null,
+    string? PreferredTransmission = null,
+    int? PreferredSeats = null,
+    string? PreferencesText = null,
+    string? Address = null);
 public record MessageResponse(string Message);
 public record ApiError(string Message);
 
@@ -88,7 +129,35 @@ public record UpdateVehicleRequest(
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
     DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null);
 
-public record CreateBookingRequest(int VehicleTypeId, string PickupAddress, string DropoffAddress, decimal? PickupLat, decimal? PickupLng, decimal? DropoffLat, decimal? DropoffLng, DateTime StartDate, DateTime EndDate, decimal? EstimatedDistance, string? Notes, string? RentalMode = null, int? VehicleId = null);
+public record CreateBookingRequest(int VehicleTypeId, string PickupAddress, string DropoffAddress, decimal? PickupLat, decimal? PickupLng, decimal? DropoffLat, decimal? DropoffLng, DateTime StartDate, DateTime EndDate, decimal? EstimatedDistance, string? Notes, string? RentalMode = null, int? VehicleId = null, int? DriverId = null);
+
+public record CustomerDriverOptionResponse(
+    int DriverId,
+    string FullName,
+    string? Phone,
+    decimal AverageRating,
+    int TotalTrips,
+    string LicenseNumber,
+    DateOnly LicenseExpiry,
+    string EligibilityStatus,
+    string AvailabilityStatus,
+    string Status = "",
+    double? ExperienceYears = null,
+    bool CanSelect = true);
+
+public record DriverBusyPeriodResponse(
+    DateTime StartDate,
+    DateTime EndDate,
+    string Label,
+    int? BookingId = null,
+    string? Status = null);
+
+public record DriverScheduleResponse(
+    int DriverId,
+    string FullName,
+    IReadOnlyList<DriverBusyPeriodResponse> Busy,
+    decimal AverageRating = 0,
+    int TotalTrips = 0);
 public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
 public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null);
@@ -161,7 +230,10 @@ public record BookingResponse(
     decimal? TotalFees = null,
     IReadOnlyList<VehicleInspectionResponse>? Inspections = null,
     ReviewResponse? Review = null,
-    bool HasActiveDeposit = false);
+    bool HasActiveDeposit = false,
+    string? CancellationReason = null,
+    int? RequestedDriverId = null,
+    string? RequestedDriverName = null);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record AssignTripRequest(int? DriverId, int VehicleId);
@@ -241,3 +313,25 @@ public record LockCustomerRequest(bool IsLocked, string? Reason = null);
 public record DeactivateCustomerRequest(string? Reason);
 public record CreateAdminCustomerRequest(string FullName, string Email, string Phone, string Password, string? Address, string? IdNumber, DateOnly? DateOfBirth);
 public record UpdateAdminCustomerRequest(string FullName, string Email, string Phone, string? Address, string? IdNumber, DateOnly? DateOfBirth);
+
+/// <summary>Step 4.2: V7 customer recommendation API (Backend GET /api/recommendations).</summary>
+public record RecommendationResponse(
+    string PredictedSegment,
+    IReadOnlyList<RecommendationItemResponse> Recommendations);
+
+public record RecommendationItemResponse(
+    int VehicleId,
+    string CarId,
+    string Brand,
+    string Model,
+    string Segment,
+    double FinalScore);
+
+/// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
+public record CustomerVehicleInteractionResponse(
+    int InteractionId,
+    int CustomerId,
+    int VehicleId,
+    string InteractionType,
+    DateTime CreatedAt);
+

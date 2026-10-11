@@ -265,7 +265,17 @@ public class DriverService(
             Status = DriverStatuses.Available,
             AverageRating = 0,
             TotalTrips = 0,
-            IsActive = true
+            IsActive = true,
+            LicenseClass = TrimOrNull(request.LicenseClass),
+            LicenseIssueDate = request.LicenseIssueDate,
+            IdNumber = TrimOrNull(request.IdNumber),
+            DateOfBirth = request.DateOfBirth,
+            Address = TrimOrNull(request.Address),
+            AvatarUrl = TrimOrNull(request.AvatarUrl),
+            ExperienceYears = request.ExperienceYears,
+            OnTimeRate = request.OnTimeRate,
+            TotalDistanceKm = request.TotalDistanceKm,
+            VerificationStatus = TrimOrNull(request.VerificationStatus) ?? "Pending"
         };
         db.Drivers.Add(driver);
         await db.SaveChangesAsync();
@@ -310,6 +320,7 @@ public class DriverService(
             driver.Status = request.Status;
         }
 
+        ApplyProfile(driver, request);
         driver.User.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         if (!string.IsNullOrWhiteSpace(request.Status))
@@ -335,5 +346,40 @@ public class DriverService(
     private static AdminDriverResponse MapAdmin(Driver driver) => new(
         driver.DriverId, driver.User.FullName, driver.User.Email, driver.User.Phone,
         driver.LicenseNumber, driver.LicenseExpiry, driver.Status, driver.AverageRating,
-        driver.TotalTrips, driver.IsActive);
+        driver.TotalTrips, driver.IsActive,
+        driver.LicenseClass, driver.LicenseIssueDate, driver.IdNumber, driver.DateOfBirth,
+        driver.Address, driver.AvatarUrl, driver.ExperienceYears, driver.OnTimeRate,
+        driver.TotalDistanceKm, driver.VerificationStatus);
+
+    private static void ApplyProfile(Driver driver, UpdateAdminDriverRequest request)
+    {
+        if (request.LicenseClass is not null)
+            driver.LicenseClass = TrimOrNull(request.LicenseClass);
+        if (request.LicenseIssueDate is not null)
+            driver.LicenseIssueDate = request.LicenseIssueDate;
+        if (request.IdNumber is not null)
+            driver.IdNumber = TrimOrNull(request.IdNumber);
+        if (request.DateOfBirth is not null)
+            driver.DateOfBirth = request.DateOfBirth;
+        if (request.Address is not null)
+            driver.Address = TrimOrNull(request.Address);
+        if (request.AvatarUrl is not null)
+            driver.AvatarUrl = TrimOrNull(request.AvatarUrl);
+        if (request.ExperienceYears is not null)
+            driver.ExperienceYears = request.ExperienceYears;
+        if (request.OnTimeRate is not null)
+            driver.OnTimeRate = request.OnTimeRate;
+        if (request.TotalDistanceKm is not null)
+            driver.TotalDistanceKm = request.TotalDistanceKm;
+
+        var status = TrimOrNull(request.VerificationStatus);
+        if (status is not null)
+            driver.VerificationStatus = status;
+    }
+
+    private static string? TrimOrNull(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
 }

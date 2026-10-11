@@ -22,10 +22,14 @@
     });
 
     const profileError = root.querySelector("[data-pf-profile-error]");
-    root.querySelector("[data-pf-edit]")?.addEventListener("click", () => {
-        if (!profileError) return;
-        profileError.textContent = profileError.getAttribute("data-pf-unsupported") || "";
-        profileError.classList.toggle("is-on", Boolean(profileError.textContent));
+    const profileForm = root.querySelector("[data-pf-profile-form]");
+    const profileSaveBtn = root.querySelector("[data-pf-profile-save]");
+    const profileSaveBusy = profileSaveBtn?.getAttribute("data-pf-busy-label") || "Đang lưu…";
+
+    profileForm?.addEventListener("submit", () => {
+        if (!profileSaveBtn) return;
+        profileSaveBtn.disabled = true;
+        profileSaveBtn.textContent = profileSaveBusy;
     });
 
     const passForm = root.querySelector("[data-pf-pass-form]");

@@ -112,6 +112,9 @@ public static class BookingDetailUi
         var hasNamedDriver = withDriver
             && driver is not null
             && !string.IsNullOrWhiteSpace(driver.DriverName);
+        var requestedName = string.IsNullOrWhiteSpace(booking.RequestedDriverName)
+            ? null
+            : booking.RequestedDriverName;
 
         return new BookingDetailView(
             Code(booking.BookingId),
@@ -135,9 +138,11 @@ public static class BookingDetailUi
             deposit,
             remaining,
             NextStep(booking.Status),
-            hasNamedDriver,
-            hasNamedDriver ? driver!.DriverName : DriverUnassigned,
-            hasNamedDriver && !string.IsNullOrWhiteSpace(driver!.DriverPhone) ? driver.DriverPhone : null);
+            hasNamedDriver || requestedName is not null,
+            hasNamedDriver ? driver!.DriverName : requestedName ?? DriverUnassigned,
+            hasNamedDriver && !string.IsNullOrWhiteSpace(driver!.DriverPhone)
+                ? driver.DriverPhone
+                : requestedName is not null ? "Chờ điều phối xác nhận" : null);
     }
 
     public static string NextStep(string? status) => status switch

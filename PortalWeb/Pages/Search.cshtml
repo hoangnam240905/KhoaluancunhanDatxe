@@ -18,6 +18,7 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/search.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/recommendations.css" asp-append-version="true" />
 }
 
 <div class="ch-page">
@@ -32,6 +33,7 @@
                 <a class="is-active" asp-page="/Search">Xe</a>
                 @if (Model.IsCustomer)
                 {
+                    <a asp-page="/Customer/Recommendations">Gợi ý</a>
                     <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 }
                 else
@@ -77,6 +79,7 @@
                 <a asp-page="/Search">Xe</a>
                 @if (Model.IsCustomer)
                 {
+                    <a asp-page="/Customer/Recommendations">Gợi ý</a>
                     <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
                 }
                 else
@@ -156,6 +159,17 @@
                 @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
                 {
                     <p class="bk-alert" role="alert">@Model.ErrorMessage</p>
+                }
+
+                @if (Model.IsCustomer)
+                {
+                    <aside class="cr-search-banner" aria-label="Gợi ý xe">
+                        <div>
+                            <strong>Gợi ý xe cho bạn</strong>
+                            <p>Xem tối đa 5 xe được đề xuất trước khi chọn xe bên dưới.</p>
+                        </div>
+                        <a class="btn btn-primary btn-sm" asp-page="/Customer/Recommendations">Xem gợi ý</a>
+                    </aside>
                 }
 
                 <div class="cs-toolbar">
