@@ -3,7 +3,6 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
-import 'customer_shell.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 
@@ -87,7 +86,7 @@ class _AccountScreenState extends State<AccountScreen> {
     await widget.api.authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => CustomerShell(api: widget.api)),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
   }

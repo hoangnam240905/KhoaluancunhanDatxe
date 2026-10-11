@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'navigation/role_router.dart';
-import 'screens/customer_shell.dart';
+import 'screens/login_screen.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const CarRentalApp());
 }
 
@@ -56,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => CustomerShell(api: _api)),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 

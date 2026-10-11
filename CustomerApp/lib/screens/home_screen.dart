@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 widget.isLoggedIn
                                     ? 'Xin chào, ${widget.userName}'
-                                    : 'DriveX Car Rental',
+                                    : 'DriveX',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -359,25 +359,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _pickStart() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime initial = DateTime(_start.year, _start.month, _start.day);
+    if (initial.isBefore(today)) {
+      initial = today;
+    }
+
     final date = await showDatePicker(
       context: context,
-      initialDate: _start,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: initial,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 365)),
     );
     if (date == null) return;
-    setState(() => _start = DateTime(date.year, date.month, date.day, 8));
+    setState(() {
+      _start = DateTime(date.year, date.month, date.day, 8);
+      if (!_end.isAfter(_start)) {
+        _end = DateTime(date.year, date.month, date.day + 1, 18);
+      }
+    });
   }
 
   Future<void> _pickEnd() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startDateOnly = DateTime(_start.year, _start.month, _start.day);
+    final minDate = startDateOnly.isBefore(today) ? today : startDateOnly;
+
+    DateTime initial = DateTime(_end.year, _end.month, _end.day);
+    if (initial.isBefore(minDate)) {
+      initial = minDate;
+    }
+
     final date = await showDatePicker(
       context: context,
-      initialDate: _end,
-      firstDate: _start,
-      lastDate: DateTime.now().add(const Duration(days: 400)),
+      initialDate: initial,
+      firstDate: minDate,
+      lastDate: today.add(const Duration(days: 400)),
     );
     if (date == null) return;
-    setState(() => _end = DateTime(date.year, date.month, date.day, 18));
+    setState(() {
+      _end = DateTime(date.year, date.month, date.day, 18);
+      if (!_end.isAfter(_start)) {
+        _end = _start.add(const Duration(hours: 10));
+      }
+    });
   }
 
   Future<void> _loadRecommended() async {
@@ -622,10 +649,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        type.description ?? 'Xe gia đình & du lịch hiện đại',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      Expanded(
+                        child: Text(
+                          type.description ?? 'Xe gia đình & du lịch hiện đại',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       const Text(
                         '/ ngày',
                         style: TextStyle(color: AppColors.muted, fontSize: 12),
@@ -633,12 +665,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
+                  const Row(
                     children: [
                       VehicleSpecChip(icon: Icons.airline_seat_recline_normal, label: 'Tiện nghi'),
+                      SizedBox(width: 6),
                       VehicleSpecChip(icon: Icons.ac_unit, label: 'Điều hòa'),
+                      SizedBox(width: 6),
                       VehicleSpecChip(icon: Icons.security, label: 'Bảo hiểm'),
                     ],
                   ),

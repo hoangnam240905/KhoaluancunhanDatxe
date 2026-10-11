@@ -154,13 +154,22 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   Future<void> _pickDateTime({required bool start}) async {
     final now = DateTime.now();
-    final initial =
-        (start ? _start : _end) ?? now.add(Duration(days: start ? 1 : 2));
+    final today = DateTime(now.year, now.month, now.day);
+
+    final firstDate = start
+        ? today
+        : (_start != null ? DateTime(_start!.year, _start!.month, _start!.day) : today);
+    DateTime initial = (start ? _start : _end) ??
+        (start ? today.add(const Duration(days: 1)) : today.add(const Duration(days: 2)));
+    if (initial.isBefore(firstDate)) {
+      initial = firstDate;
+    }
+
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      firstDate: firstDate,
+      lastDate: today.add(const Duration(days: 365)),
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
@@ -183,6 +192,14 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         }
       } else {
         _end = selected;
+        if (_start != null && !_end!.isAfter(_start!)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thời gian kết thúc phải sau thời gian bắt đầu.'),
+            ),
+          );
+          _end = _start!.add(const Duration(hours: 8));
+        }
       }
       _formError = null;
       _quote = null;

@@ -101,11 +101,18 @@ class ApiService {
   }
 
   Future<AuthResponse> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
-      headers: await _headers(),
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
+          headers: await _headers(),
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception(
+            'Không thể kết nối đến máy chủ (quá thời gian chờ). Vui lòng kiểm tra xem Backend đã bật chưa.',
+          ),
+        );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final auth = AuthResponse.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
