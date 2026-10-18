@@ -247,6 +247,16 @@
                             </div>
                         }
 
+                        @if (Model.Booking is { } rebookSource && RebookUi.CanRebook(rebookSource))
+                        {
+                            <div class="bd-actions">
+                                <a class="bd-btn bd-btn-primary"
+                                   data-rebook="@rebookSource.BookingId"
+                                   asp-page="Create"
+                                   asp-all-route-data="@RebookUi.RouteValues(rebookSource, DateTime.Now)">@RebookUi.Label</a>
+                            </div>
+                        }
+
                         @if (!d.IsCancelled)
                         {
                             <div class="bd-actions">
@@ -260,6 +270,10 @@
                                 }
                                 <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
                             </div>
+                            @if (Model.CancelClosedMessage is { } closed)
+                            {
+                                <p class="bd-note" data-cancel-closed>@closed</p>
+                            }
                         }
                         else
                         {
@@ -288,6 +302,14 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
                     </div>
                     <div class="modal-body">
+                        <ul class="small text-muted ps-3 mb-3" data-cancel-policy>
+                            @if (Model.CancelDeadlineNote is { } deadlineNote)
+                            {
+                                <li>@deadlineNote</li>
+                            }
+                            <li>Hủy đúng hạn được hoàn 100% tiền cọc đã thanh toán; việc hoàn tiền được xử lý thủ công.</li>
+                            <li>Khi đơn bị hủy, hợp đồng hết hiệu lực.</li>
+                        </ul>
                         <label class="form-label" for="CancellationReason">Lý do hủy đơn *</label>
                         <textarea class="form-control" id="CancellationReason" name="CancellationReason" rows="4" maxlength="500" required placeholder="Nhập lý do hủy đơn"></textarea>
                     </div>

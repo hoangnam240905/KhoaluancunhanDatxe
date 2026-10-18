@@ -361,16 +361,7 @@ public class DispatchService(
             }
         }
 
-        if (vehicle.Status == VehicleStatuses.Rented)
-        {
-            var stillRented = await db.Bookings.AnyAsync(b =>
-                b.BookingId != booking.BookingId
-                && (b.Status == BookingStatuses.Assigned || b.Status == BookingStatuses.InProgress)
-                && (b.AssignedVehicleId == vehicle.VehicleId
-                    || (b.TripAssignment != null && b.TripAssignment.VehicleId == vehicle.VehicleId)));
-            if (!stillRented)
-                vehicle.Status = VehicleStatuses.Available;
-        }
+        await VehicleOccupancy.ReleaseIfIdleAsync(db, vehicle.VehicleId, booking.BookingId);
 
         AddHistory(bookingId, oldStatus, BookingStatuses.Completed, dispatcherId, "Điều phối tiếp nhận trả xe");
 

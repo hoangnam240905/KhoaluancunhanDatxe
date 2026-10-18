@@ -2,8 +2,10 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.Entities;
+using Backend.Options;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Backend.Services;
 
@@ -11,8 +13,12 @@ public class BookingService(
     CarRentalDbContext db,
     PricingService pricing,
     IRealtimePublisher? realtime = null,
-    DriverEligibilityService? driverEligibility = null)
+    DriverEligibilityService? driverEligibility = null,
+    IOptions<CancelPolicyOptions>? cancelPolicy = null)
 {
+    private int CurrentCancelMinHours =>
+        cancelPolicy?.Value.MinHoursBeforeStart ?? CancelPolicy.DefaultMinHoursBeforeStart;
+
     public async Task<BookingResponse?> CreateBookingAsync(
         int customerId, CreateBookingRequest request, bool fromRecommendation = false)
     {
@@ -102,6 +108,7 @@ public class BookingService(
             QuotedSelfDriveIncludedKmPerDay = quote.QuotedSelfDriveIncludedKmPerDay,
             QuotedSelfDriveExtraKmPrice = quote.QuotedSelfDriveExtraKmPrice,
             QuotedDepositAmount = quote.DepositAmount,
+            QuotedCancelMinHours = CurrentCancelMinHours,
             Status = BookingStatuses.Pending,
             RentalMode = rentalMode,
             AssignedVehicleId = intentVehicleId,
@@ -169,6 +176,7 @@ public class BookingService(
             .Include(b => b.Inspections)
             .Include(b => b.Review)
             .Include(b => b.Payments)
+            .Include(b => b.Contract)
             .AsQueryable();
 
         if (customerId.HasValue)
@@ -194,6 +202,7 @@ public class BookingService(
             .Include(b => b.Inspections)
             .Include(b => b.Review)
             .Include(b => b.Payments)
+            .Include(b => b.Contract)
             .FirstOrDefaultAsync(b => b.BookingId == id);
 
         return booking is null ? null : MapToResponse(booking);
@@ -225,8 +234,22 @@ public class BookingService(
         if (!BookingStateTransitionRules.CanPatch(booking.Status, BookingStatuses.Cancelled))
             return (null, BookingStateTransitionRules.InvalidTransition, StatusCodes.Status400BadRequest);
 
+        var nowVn = VietnamTime.Now;
+        if (booking.Status == BookingStatuses.Assigned)
+        {
+            if (CancelPolicy.HasStarted(booking.StartDate, nowVn))
+                return (null, CancelPolicy.AlreadyStarted, StatusCodes.Status400BadRequest);
+
+            var contract = await db.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.BookingId == bookingId);
+            var minHours = CancelPolicy.ResolveMinHours(booking, contract, CurrentCancelMinHours);
+            if (!CancelPolicy.CanCustomerCancelAssigned(booking.StartDate, nowVn, minHours))
+                return (null,
+                    CancelPolicy.TooLateForCustomer(minHours, CancelPolicy.CustomerDeadline(booking.StartDate, minHours)),
+                    StatusCodes.Status400BadRequest);
+        }
+
         booking.CancellationReason = trimmed;
-        return await ChangeStatusAsync(bookingId, BookingStatuses.Cancelled, customerId, trimmed, patch: true);
+        return await ChangeStatusAsync(bookingId, BookingStatuses.Cancelled, customerId, trimmed, patch: true, nowVn);
     }
 
     public Task<(BookingResponse? Data, string? Error, int StatusCode)> UpdateStatusAsync(
@@ -240,7 +263,7 @@ public class BookingService(
             bookingId, BookingStatuses.Confirmed, dispatcherId, note, patch: false));
 
     private async Task<(BookingResponse? Data, string? Error, int StatusCode)> ChangeStatusAsync(
-        int bookingId, string newStatus, int changedBy, string? note, bool patch)
+        int bookingId, string newStatus, int changedBy, string? note, bool patch, DateTime? nowVn = null)
     {
         var booking = await db.Bookings.FindAsync(bookingId);
         if (booking is null)
@@ -254,16 +277,44 @@ public class BookingService(
         if (!allowed)
             return (null, BookingStateTransitionRules.InvalidTransition, StatusCodes.Status400BadRequest);
 
+        var cancelling = newStatus == BookingStatuses.Cancelled;
+        // An Assigned trip past its start time is effectively running/overdue: dispatcher must use return flow.
+        if (cancelling
+            && booking.Status == BookingStatuses.Assigned
+            && CancelPolicy.HasStarted(booking.StartDate, nowVn ?? VietnamTime.Now))
+            return (null, CancelPolicy.AlreadyStarted, StatusCodes.Status400BadRequest);
+
         var oldStatus = booking.Status;
-        var heldVehicleId = booking.AssignedVehicleId;
+        TripAssignment? trip = null;
+        int? releasedVehicleId = null;
+        Driver? releasedDriver = null;
         booking.Status = newStatus;
         booking.UpdatedAt = DateTime.UtcNow;
-        if (newStatus == BookingStatuses.Cancelled)
-            await ReleaseHeldVehicleAsync(booking);
+        if (cancelling)
+        {
+            trip = await db.TripAssignments.FirstOrDefaultAsync(t => t.BookingId == bookingId);
+            // With-driver bookings may hold the car only through TripAssignment.VehicleId.
+            releasedVehicleId = booking.AssignedVehicleId ?? trip?.VehicleId;
+            if (trip is not null && TripAssignmentStatuses.IsOpen(trip.Status))
+            {
+                trip.Status = TripAssignmentStatuses.Cancelled;
+                releasedDriver = await ReleaseDriverAsync(trip);
+            }
+
+            booking.AssignedVehicleId = null;
+            // Close the trip first so it no longer counts as "still using" the vehicle.
+            if (releasedVehicleId is int vid)
+                await VehicleOccupancy.ReleaseIfIdleAsync(db, vid, bookingId);
+
+            if (await HasPaidDepositAsync(bookingId))
+                note = string.IsNullOrWhiteSpace(note)
+                    ? CancelPolicy.ManualDepositRefundNote
+                    : $"{note} — {CancelPolicy.ManualDepositRefundNote}";
+        }
 
         await AddStatusHistoryAsync(bookingId, oldStatus, newStatus, changedBy, note);
         Contract? voided = null;
-        if (newStatus == BookingStatuses.Cancelled)
+        if (cancelling)
         {
             voided = await db.Contracts.FirstOrDefaultAsync(c =>
                 c.BookingId == bookingId && c.Status != ContractStatuses.Voided);
@@ -273,21 +324,28 @@ public class BookingService(
 
         await db.SaveChangesAsync();
 
-        var trip = await db.TripAssignments.AsNoTracking()
+        trip ??= await db.TripAssignments.AsNoTracking()
             .FirstOrDefaultAsync(t => t.BookingId == bookingId);
         await RealtimeNotify.BookingStatusChanged(
             realtime,
             booking.CustomerId,
             booking.BookingId,
             booking.Status,
-            booking.AssignedVehicleId ?? heldVehicleId,
+            booking.AssignedVehicleId ?? releasedVehicleId,
             trip?.DriverId);
-        if (newStatus == BookingStatuses.Cancelled && heldVehicleId is int releasedId)
+        if (cancelling && releasedVehicleId is int releasedId)
         {
             var released = await db.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.VehicleId == releasedId);
             if (released is not null)
                 await RealtimeNotify.VehicleStatusChanged(
                     realtime, released.VehicleId, released.Status, booking.BookingId, booking.CustomerId, trip?.DriverId);
+        }
+        if (trip is not null && trip.Status == TripAssignmentStatuses.Cancelled && releasedDriver is not null)
+        {
+            await RealtimeNotify.AssignmentChanged(
+                realtime, booking.CustomerId, booking.BookingId, trip.AssignmentId,
+                trip.VehicleId, trip.DriverId, booking.Status);
+            await RealtimeNotify.DriverStatusChanged(realtime, releasedDriver.DriverId, releasedDriver.Status);
         }
         if (voided is not null)
             await RealtimeNotify.ContractStatusChanged(
@@ -295,6 +353,31 @@ public class BookingService(
 
         return (await GetBookingByIdAsync(bookingId), null, StatusCodes.Status200OK);
     }
+
+    /// <summary>Driver goes back to Available unless Offline or still holding another open trip.</summary>
+    private async Task<Driver?> ReleaseDriverAsync(TripAssignment trip)
+    {
+        var driver = await db.Drivers.FindAsync(trip.DriverId);
+        if (driver is null)
+            return null;
+        if (driver.Status != DriverStatuses.Offline)
+        {
+            var stillOpen = await db.TripAssignments.AnyAsync(t =>
+                t.DriverId == trip.DriverId
+                && t.AssignmentId != trip.AssignmentId
+                && (t.Status == TripAssignmentStatuses.Assigned
+                    || t.Status == TripAssignmentStatuses.Accepted
+                    || t.Status == TripAssignmentStatuses.InProgress));
+            driver.Status = stillOpen ? DriverStatuses.Busy : DriverStatuses.Available;
+        }
+        return driver;
+    }
+
+    private Task<bool> HasPaidDepositAsync(int bookingId)
+        => db.Payments.AnyAsync(p =>
+            p.BookingId == bookingId
+            && p.PaymentType == PaymentTypes.Deposit
+            && p.Status == PaymentStatuses.Paid);
 
     public async Task<(ReviewResponse? Data, string? Error)> CreateReviewAsync(
         int bookingId, int customerId, CreateReviewRequest request)
@@ -352,26 +435,6 @@ public class BookingService(
         return (MapReview(review), null);
     }
 
-    private async Task ReleaseHeldVehicleAsync(Booking booking)
-    {
-        var vehicleId = booking.AssignedVehicleId;
-        booking.AssignedVehicleId = null;
-        if (vehicleId is not int vid)
-            return;
-
-        var vehicle = await db.Vehicles.FindAsync(vid);
-        if (vehicle is null || vehicle.Status != VehicleStatuses.Rented)
-            return;
-
-        var stillRented = await db.Bookings.AnyAsync(b =>
-            b.BookingId != booking.BookingId
-            && (b.Status == BookingStatuses.Assigned || b.Status == BookingStatuses.InProgress)
-            && (b.AssignedVehicleId == vid
-                || (b.TripAssignment != null && b.TripAssignment.VehicleId == vid)));
-        if (!stillRented)
-            vehicle.Status = VehicleStatuses.Available;
-    }
-
     private async Task AddStatusHistoryAsync(int bookingId, string? oldStatus, string newStatus, int? changedBy, string? note)
     {
         db.BookingStatusHistories.Add(new BookingStatusHistory
@@ -386,8 +449,9 @@ public class BookingService(
         await db.SaveChangesAsync();
     }
 
-    private static BookingResponse MapToResponse(Booking b)
+    private BookingResponse MapToResponse(Booking b)
     {
+        var (customerCanCancel, customerCancelDeadline) = CustomerCancelState(b, VietnamTime.Now);
         var rentalMode = RentalModes.TryResolve(b.RentalMode, out var resolved)
             ? resolved
             : RentalModes.WithDriver;
@@ -468,7 +532,25 @@ public class BookingService(
             HasActiveDeposit(b),
             b.CancellationReason,
             b.RequestedDriverId,
-            b.RequestedDriver?.User.FullName);
+            b.RequestedDriver?.User.FullName,
+            customerCanCancel,
+            customerCancelDeadline);
+    }
+
+    /// <summary>
+    /// Backend is the only place computing the customer cancel window (web servers may run in another time zone).
+    /// Pending/Confirmed keep the existing rule; Assigned uses the snapshotted window.
+    /// </summary>
+    private (bool CanCancel, DateTime? DeadlineVn) CustomerCancelState(Booking b, DateTime nowVn)
+    {
+        if (b.Status is BookingStatuses.Pending or BookingStatuses.Confirmed)
+            return (true, null);
+        if (b.Status != BookingStatuses.Assigned)
+            return (false, null);
+
+        var minHours = CancelPolicy.ResolveMinHours(b, b.Contract, CurrentCancelMinHours);
+        return (CancelPolicy.CanCustomerCancelAssigned(b.StartDate, nowVn, minHours),
+            CancelPolicy.CustomerDeadline(b.StartDate, minHours));
     }
 
     private static ReviewResponse MapReview(Review review) => new(

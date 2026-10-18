@@ -76,7 +76,9 @@ public record BookingResponse(
     bool HasActiveDeposit = false,
     string? CancellationReason = null,
     int? RequestedDriverId = null,
-    string? RequestedDriverName = null);
+    string? RequestedDriverName = null,
+    bool CustomerCanCancel = false,
+    DateTime? CustomerCancelDeadline = null);
 
 public record CancelBookingRequest(string? CancellationReason);
 

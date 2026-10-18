@@ -173,8 +173,8 @@ public class DriverService(
         assignment.Booking.Status = BookingStatuses.Completed;
         assignment.Booking.UpdatedAt = DateTime.UtcNow;
         assignment.Driver.TotalTrips += 1;
-        if (assignment.Vehicle.Status == VehicleStatuses.Rented)
-            assignment.Vehicle.Status = VehicleStatuses.Available;
+        // Another Assigned/InProgress booking may still hold this car; only release when idle.
+        await VehicleOccupancy.ReleaseIfIdleAsync(db, assignment.VehicleId, assignment.BookingId);
 
         if (assignment.Driver.Status != DriverStatuses.Offline)
         {

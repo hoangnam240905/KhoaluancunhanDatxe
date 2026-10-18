@@ -26,6 +26,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
+builder.Services.Configure<CancelPolicyOptions>(builder.Configuration.GetSection(CancelPolicyOptions.SectionName));
 builder.Services.AddScoped<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 var emailEnabled = builder.Configuration.GetValue("Email:Enabled", false);
 var smtpPassword = builder.Configuration["Email:SmtpPassword"];
@@ -152,6 +153,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteBookingRecommendationColumn();
     db.EnsureSqliteBookingCancellationReasonColumn();
     db.EnsureSqliteContractsTable();
+    db.EnsureSqliteCancelPolicyColumns();
     db.EnsureSqliteInspectionConditionColumns();
     db.EnsureSqliteIncidentReportsTable();
     db.EnsureSqliteVehicleLegalColumns();

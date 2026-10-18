@@ -1,14 +1,23 @@
+using System.Text.Json;
 using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Contracts;
 using Backend.Entities;
+using Backend.Options;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Backend.Services;
 
-public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime = null)
+public class ContractService(
+    CarRentalDbContext db,
+    IRealtimePublisher? realtime = null,
+    IOptions<CancelPolicyOptions>? cancelPolicy = null)
 {
+    private int CurrentCancelMinHours =>
+        cancelPolicy?.Value.MinHoursBeforeStart ?? CancelPolicy.DefaultMinHoursBeforeStart;
+
     public async Task<(ContractResponse? Contract, bool Created, string? Error, int StatusCode)> CreateAsync(
         int customerId, int bookingId)
     {
@@ -33,6 +42,8 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
         if (booking.Contract is not null)
             return (Map(booking.Contract), false, null, StatusCodes.Status200OK);
 
+        // Snapshot the exact wording + window the customer sees now; later policy changes never touch it.
+        var cancelMinHours = booking.QuotedCancelMinHours ?? CurrentCancelMinHours;
         var contract = new Contract
         {
             BookingId = booking.BookingId,
@@ -48,7 +59,9 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
             EndDate = booking.EndDate,
             TotalAmount = booking.TotalAmount,
             DepositAmount = booking.QuotedDepositAmount,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            CancelMinHoursSnapshot = cancelMinHours,
+            TermsSnapshot = JsonSerializer.Serialize(ContractTerms.Build(cancelMinHours))
         };
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
@@ -144,7 +157,24 @@ public class ContractService(CarRentalDbContext db, IRealtimePublisher? realtime
         c.TotalAmount,
         c.DepositAmount,
         c.CreatedAt,
-        c.SignedAt);
+        c.SignedAt,
+        ReadTerms(c.TermsSnapshot),
+        c.CancelMinHoursSnapshot);
+
+    /// <summary>Null for contracts issued before snapshots existed — clients show their legacy wording.</summary>
+    internal static IReadOnlyList<string>? ReadTerms(string? snapshot)
+    {
+        if (string.IsNullOrWhiteSpace(snapshot))
+            return null;
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(snapshot);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 
     private static (ContractResponse? Contract, bool Created, string? Error, int StatusCode) Fail(
         string error, int status) => (null, false, error, status);

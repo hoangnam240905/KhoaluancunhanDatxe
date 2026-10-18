@@ -208,7 +208,9 @@ public record ContractResponse(
     decimal TotalAmount,
     decimal? DepositAmount,
     DateTime CreatedAt,
-    DateTime? SignedAt);
+    DateTime? SignedAt,
+    IReadOnlyList<string>? Terms = null,
+    int? CancelMinHours = null);
 public record BookingResponse(
     int BookingId,
     int CustomerId,
@@ -243,7 +245,9 @@ public record BookingResponse(
     bool HasActiveDeposit = false,
     string? CancellationReason = null,
     int? RequestedDriverId = null,
-    string? RequestedDriverName = null);
+    string? RequestedDriverName = null,
+    bool CustomerCanCancel = false,
+    DateTime? CustomerCancelDeadline = null);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record CancelBookingRequest(string? CancellationReason);

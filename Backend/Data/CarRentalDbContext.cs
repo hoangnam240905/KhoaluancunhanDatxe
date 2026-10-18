@@ -855,6 +855,40 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     }
 
     /// <summary>
+    /// Adds cancel-policy snapshot columns (Bookings.QuotedCancelMinHours, Contracts.TermsSnapshot,
+    /// Contracts.CancelMinHoursSnapshot) to an existing SQLite DB. Idempotent; existing rows stay NULL.
+    /// Run after EnsureSqliteContractsTable.
+    /// </summary>
+    public void EnsureSqliteCancelPolicyColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var bookingColumns = ReadSqliteColumns("Bookings");
+        if (bookingColumns.Count > 0 && !bookingColumns.Contains("QuotedCancelMinHours"))
+            Database.ExecuteSqlRaw("ALTER TABLE Bookings ADD COLUMN QuotedCancelMinHours INTEGER NULL");
+
+        var contractColumns = ReadSqliteColumns("Contracts");
+        if (contractColumns.Count > 0 && !contractColumns.Contains("TermsSnapshot"))
+            Database.ExecuteSqlRaw("ALTER TABLE Contracts ADD COLUMN TermsSnapshot TEXT NULL");
+        if (contractColumns.Count > 0 && !contractColumns.Contains("CancelMinHoursSnapshot"))
+            Database.ExecuteSqlRaw("ALTER TABLE Contracts ADD COLUMN CancelMinHoursSnapshot INTEGER NULL");
+    }
+
+    private HashSet<string> ReadSqliteColumns(string table)
+    {
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var cmd = Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = $"PRAGMA table_info('{table}')";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            columns.Add(reader.GetString(1));
+        return columns;
+    }
+
+    /// <summary>
     /// Creates Contracts on an existing SQLite database. EnsureCreated does not add new tables to a live DB.
     /// No backfill and no seed overwrite.
     /// </summary>

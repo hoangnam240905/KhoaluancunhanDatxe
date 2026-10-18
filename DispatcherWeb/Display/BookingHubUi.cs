@@ -70,8 +70,9 @@ public static class BookingHubUi
 
     public static bool CanConfirm(BookingResponse booking) => booking.Status == "Pending";
 
+    /// <summary>Assigned may be cancelled before the start time; Backend enforces the time rule.</summary>
     public static bool CanCancel(BookingResponse booking)
-        => booking.Status is "Pending" or "Confirmed";
+        => booking.Status is "Pending" or "Confirmed" or "Assigned";
 
     public static bool CanAssign(BookingResponse booking) => booking.Status == "Confirmed";
 

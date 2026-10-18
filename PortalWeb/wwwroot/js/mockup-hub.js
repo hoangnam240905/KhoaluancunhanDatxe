@@ -121,6 +121,8 @@
         if (b.status === "Assigned") {
             bits.push(`<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
+            // Backend rejects once the start time has passed; the message is shown as a toast.
+            bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}" data-confirm="Hủy đơn #${b.id} đã phân công? Xe và tài xế sẽ được trả về, hợp đồng hết hiệu lực.">✕ Hủy đơn</button>`);
         }
         if (b.status === "InProgress") {
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
@@ -658,6 +660,7 @@
     document.body.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-act]");
         if (!btn) return;
+        if (btn.dataset.confirm && !window.confirm(btn.dataset.confirm)) return;
         applyAction(btn.dataset.act, Number(btn.dataset.id || selectedId));
     });
 

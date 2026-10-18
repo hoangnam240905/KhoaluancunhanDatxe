@@ -88,8 +88,17 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         _ => status
     };
 
-    public bool CanCancel =>
-        Booking?.Status is "Pending" or "Confirmed";
+    /// <summary>Backend decides the cancel window (Vietnam time); the page never recomputes it.</summary>
+    public bool CanCancel => Booking?.CustomerCanCancel == true;
+
+    public string? CancelDeadlineNote => Booking is { Status: "Assigned", CustomerCancelDeadline: DateTime deadline }
+        ? $"Đơn đã phân công xe/tài xế: bạn tự hủy được đến {deadline:dd/MM/yyyy HH:mm}."
+        : null;
+
+    public string? CancelClosedMessage =>
+        Booking is { Status: "Assigned", CustomerCanCancel: false, CustomerCancelDeadline: DateTime deadline }
+            ? $"Đã quá hạn tự hủy (hạn chót {deadline:dd/MM/yyyy HH:mm}). Vui lòng liên hệ điều phối để được hỗ trợ."
+            : null;
 
     public bool HasBlockingDeposit =>
         Payments.Any(p => p.PaymentType == "Deposit" && (p.Status is "Pending" or "Paid"));
