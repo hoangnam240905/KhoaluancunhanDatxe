@@ -15,10 +15,6 @@ public class ScheduleModel(CarRentalApiClient api, AuthSession auth) : RolePageM
 
     public string BootstrapJson { get; private set; } = "{}";
     public string? LoadError { get; private set; }
-    public int MetricTotalVehicles { get; private set; }
-    public int MetricAvailableVehicles { get; private set; }
-    public int MetricBusyVehicles { get; private set; }
-    public int MetricActiveDrivers { get; private set; }
     public bool HasBootstrap { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
@@ -28,28 +24,11 @@ public class ScheduleModel(CarRentalApiClient api, AuthSession auth) : RolePageM
 
         var (payload, error) = await LoadBootstrapAsync();
         LoadError = error;
-        ApplyPayloadMeta(payload);
         BootstrapJson = JsonSerializer.Serialize(payload, JsonOpts);
         HasBootstrap = error is null;
         return Page();
     }
 
-    private void ApplyPayloadMeta(object payload)
-    {
-        // Extract metrics from anonymous payload via JSON round-trip (stable, no dynamic).
-        try
-        {
-            var doc = JsonSerializer.SerializeToDocument(payload, JsonOpts);
-            if (doc.RootElement.TryGetProperty("metrics", out var m))
-            {
-                MetricTotalVehicles = m.TryGetProperty("totalVehicles", out var t) ? t.GetInt32() : 0;
-                MetricAvailableVehicles = m.TryGetProperty("availableVehicles", out var a) ? a.GetInt32() : 0;
-                MetricBusyVehicles = m.TryGetProperty("busyVehicles", out var b) ? b.GetInt32() : 0;
-                MetricActiveDrivers = m.TryGetProperty("activeDrivers", out var d) ? d.GetInt32() : 0;
-            }
-        }
-        catch { /* leave zeros */ }
-    }
 
     public async Task<IActionResult> OnGetReloadAsync()
     {
@@ -165,10 +144,9 @@ public class ScheduleModel(CarRentalApiClient api, AuthSession auth) : RolePageM
                 ganttDriverIds = fleet.Drivers.Select(d => ScheduleUi.DriverKey(d.DriverId)).ToList();
             }
 
+            // Keep unassigned bookings (vehicleId = null) — the page lists them as "chờ phân công".
             var bookingRows = bookings
-                .Select(ScheduleUi.ToBooking)
-                .Where(x => x is not null)
-                .Cast<object>()
+                .Select(ScheduleUi.ToScheduleBooking)
                 .ToList();
 
             var fleetRows = (fleet?.Vehicles ?? [])

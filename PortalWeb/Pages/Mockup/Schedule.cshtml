@@ -9,15 +9,11 @@
 {
     <div class="alert alert-warning">@Model.LoadError</div>
 }
-else
-{
-    <div class="mk-banner">Lịch điều phối — dữ liệu từ Backend (xe, tài xế, đơn, fleet-status). Xung đột/đệm 2 giờ tính trên client từ lịch đơn; chưa dùng SignalR.</div>
-}
 
 <section class="mk-hub-head">
     <div>
-        <h1>Lịch xe &amp; tài xế</h1>
-        <p>Theo dõi lịch sử dụng xe và phân bổ tài xế</p>
+        <h1>Trạng thái đội xe</h1>
+        <p>Xe và tài xế trống / có lịch theo ngày, theo tuần — gom theo số chỗ</p>
     </div>
     <div class="sch-head-actions">
         <button type="button" class="mk-btn mk-btn-ghost" id="schToday">📅 Hôm nay</button>
@@ -25,79 +21,57 @@ else
             <span>Ngày</span>
             <input type="date" id="schDate" />
         </label>
-        <div class="mk-pills sch-view-pills" id="schView">
-            <button type="button" class="mk-pill" data-view="day">Ngày</button>
-            <button type="button" class="mk-pill is-on" data-view="week">Tuần</button>
-            <button type="button" class="mk-pill" data-view="month">Tháng</button>
-        </div>
     </div>
 </section>
 
-<div class="mk-metrics" id="schMetrics" data-source="api">
-    <div class="mk-metric"><span>🚗 Tổng số xe</span><strong id="schMetricTotal">@Model.MetricTotalVehicles</strong></div>
-    <div class="mk-metric"><span>🟢 Xe khả dụng</span><strong id="schMetricAvail">@Model.MetricAvailableVehicles</strong></div>
-    <div class="mk-metric"><span>🔴 Xe đang bận</span><strong id="schMetricBusy">@Model.MetricBusyVehicles</strong></div>
-    <div class="mk-metric"><span>👨‍✈️ Tài xế đang hoạt động</span><strong id="schMetricDrivers">@Model.MetricActiveDrivers</strong></div>
-</div>
+<div class="dx-metrics" id="schMetrics"></div>
 
-<section class="mk-card mk-toolbar">
-    <div class="sch-nav">
-        <button type="button" class="mk-btn mk-btn-ghost" id="schPrev">‹ Trước</button>
-        <strong id="schRange">Đang tải…</strong>
-        <button type="button" class="mk-btn mk-btn-primary" id="schThis">Tuần này</button>
-        <button type="button" class="mk-btn mk-btn-ghost" id="schNext">Sau ›</button>
+<section class="mk-card dx-pending" id="schPending" hidden>
+    <div class="dx-pending-head">
+        <h2>⏳ Đơn chờ phân công <span class="mk-badge mk-badge-pending" id="schPendingCount">0</span></h2>
+        <p class="mk-muted">Bấm "Xem xe trống" để lọc nhóm xe phù hợp trong đúng khoảng thời gian của đơn.</p>
     </div>
-    <form id="schFilter" class="sch-filter-grid" autocomplete="off">
-        <label class="mk-field">
-            <span>Tìm kiếm</span>
-            <input type="search" name="q" placeholder="Xe, biển số, mã đơn, khách, tài xế" />
-        </label>
-        <label class="mk-field">
-            <span>Trạng thái xe</span>
-            <select name="vstatus">
-                <option value="">Tất cả</option>
-                <option value="Available">Khả dụng</option>
-                <option value="Busy">Đang thuê</option>
-                <option value="Maintenance">Bảo trì</option>
-            </select>
-        </label>
-        <label class="mk-field">
-            <span>Hình thức</span>
-            <select name="mode">
-                <option value="">Tất cả</option>
-                <option value="SelfDrive">Tự lái</option>
-                <option value="WithDriver">Có tài xế</option>
-            </select>
-        </label>
-        <label class="mk-field">
-            <span>Tài xế</span>
-            <select name="dstatus">
-                <option value="">Tất cả</option>
-                <option value="Available">Khả dụng</option>
-                <option value="Busy">Đang bận</option>
-            </select>
-        </label>
-        <label class="mk-field">
-            <span>Xung đột</span>
-            <select name="conflict">
-                <option value="">Tất cả</option>
-                <option value="yes">Có xung đột</option>
-                <option value="no">Không xung đột</option>
-            </select>
-        </label>
-        <div class="mk-toolbar-actions">
-            <button type="submit" class="mk-btn mk-btn-primary">🔍 Tìm kiếm</button>
-            <button type="reset" class="mk-btn mk-btn-ghost" id="schReset">↻ Đặt lại</button>
+    <div id="schPendingList"></div>
+</section>
+
+<section class="mk-card dx-toolbar">
+    <div class="dx-toolbar-top">
+        <div class="dx-tabs" id="schResource" role="tablist" aria-label="Loại lịch">
+            <button type="button" class="dx-tab is-on" data-res="vehicle">🚗 Xe</button>
+            <button type="button" class="dx-tab" data-res="driver">👨‍✈️ Tài xế</button>
         </div>
-    </form>
-    <div class="sch-legend">
-        <span><span class="sch-dot av"></span> Khả dụng</span>
-        <span><span class="sch-dot busy"></span> Đang thuê</span>
-        <span><span class="sch-dot prep"></span> Đang chuẩn bị</span>
-        <span><span class="sch-dot conf"></span> Xung đột</span>
-        <span><span class="sch-dot buf"></span> Khoảng đệm kỹ thuật 2 giờ</span>
-        <span><span class="sch-dot off"></span> Ngoại tuyến / Bảo trì</span>
+        <div class="dx-tabs" id="schView" role="tablist" aria-label="Chế độ xem">
+            <button type="button" class="dx-tab" data-view="day">Ngày</button>
+            <button type="button" class="dx-tab is-on" data-view="week">Tuần</button>
+            <button type="button" class="dx-tab" data-view="list">Danh sách</button>
+        </div>
+        <div class="sch-nav dx-nav">
+            <button type="button" class="mk-btn mk-btn-ghost" id="schPrev" aria-label="Trước">‹</button>
+            <strong id="schRange">Đang tải…</strong>
+            <button type="button" class="mk-btn mk-btn-ghost" id="schNext" aria-label="Sau">›</button>
+            <button type="button" class="mk-btn mk-btn-primary" id="schThis">Tuần này</button>
+        </div>
     </div>
+    <div class="dx-filter-row">
+        <label class="mk-field dx-filter-q">
+            <span>Tìm kiếm</span>
+            <input type="search" id="fltQ" placeholder="Biển số, tên xe, tài xế, mã đơn, khách" autocomplete="off" />
+        </label>
+        <label class="mk-field" data-only="vehicle">
+            <span>Số chỗ</span>
+            <select id="fltSeats"><option value="">Tất cả</option></select>
+        </label>
+        <label class="mk-field" data-only="vehicle">
+            <span>Loại xe</span>
+            <select id="fltModel"><option value="">Tất cả</option></select>
+        </label>
+        <label class="dx-check">
+            <input type="checkbox" id="fltFreeOnly" />
+            <span id="fltFreeLabel">Chỉ xe trống trong khoảng đang xem</span>
+        </label>
+        <button type="button" class="mk-btn mk-btn-ghost" id="fltReset">↻ Đặt lại</button>
+    </div>
+    <div class="dx-focus-note" id="schFocusNote" hidden></div>
 </section>
 
 <section class="mk-card sch-conflict-card" id="schConflictBox" hidden>
@@ -105,41 +79,18 @@ else
     <div id="schConflictList"></div>
 </section>
 
-<section class="mk-card sch-board-card">
-    <div class="sch-board-title">
-        <h2>Lịch xe</h2>
-        <p class="mk-muted">Khối màu đặc = đơn thuê (đã gán xe). Vùng kẻ = khoảng đệm kỹ thuật 2 giờ (hiển thị client).</p>
+<section class="mk-card dx-board">
+    <div class="dx-board-title" id="schBoardTitle"></div>
+    <div class="dx-legend" id="schLegend">
+        <span><i class="dx-swatch is-free"></i> Trống</span>
+        <span><i class="dx-swatch is-busy"></i> Có lịch</span>
+        <span><i class="dx-swatch is-partial"></i> Có lịch một phần</span>
+        <span><i class="dx-swatch is-buffer"></i> Đệm kỹ thuật 2 giờ</span>
+        <span><i class="dx-swatch is-conflict"></i> Xung đột</span>
+        <span><i class="dx-swatch is-off"></i> Bảo trì / Ngoại tuyến</span>
+        <span><i class="dx-swatch is-done"></i> Đã hoàn thành</span>
     </div>
-    <div class="sch-scroll" id="schVehicleBoard"></div>
-</section>
-
-<section class="mk-card sch-board-card">
-    <div class="sch-board-title">
-        <h2>👨‍✈️ Lịch tài xế</h2>
-        <p class="mk-muted">Lịch theo phân công tài xế từ đơn (TripAssignment). Không có API busy-periods cho tài xế.</p>
-    </div>
-    <div class="sch-scroll" id="schDriverBoard"></div>
-</section>
-
-<section class="mk-card sch-board-card">
-    <div class="sch-board-title">
-        <h2>Trạng thái đội xe</h2>
-    </div>
-    <div class="mk-table-wrap sch-fleet-wrap">
-        <table class="mk-table">
-            <thead>
-                <tr>
-                    <th>Xe</th>
-                    <th>Biển số</th>
-                    <th>Trạng thái</th>
-                    <th>Đơn hiện tại</th>
-                    <th>Đến</th>
-                    <th>Đi</th>
-                </tr>
-            </thead>
-            <tbody id="schFleetBody"></tbody>
-        </table>
-    </div>
+    <div class="dx-scroll" id="schGrid"></div>
 </section>
 
 <aside class="mk-drawer" id="schDrawer" aria-hidden="true"></aside>
