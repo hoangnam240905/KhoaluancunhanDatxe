@@ -40,7 +40,7 @@ public static class CustomerV7ProfileBuilder
                 : 0,
             AnnualKm: customer.AnnualMileage is >= 0 ? customer.AnnualMileage.Value : 0,
             UsagePrimary: NormalizeUsage(customer.RentalPurpose, "city"),
-            BudgetMonthly: ResolveBudget(customer, options.DefaultBudgetMonthly),
+            BudgetMonthly: NormalizeBudget(ResolveBudget(customer, options.DefaultBudgetMonthly), options),
             PreferencesText: ResolvePreferences(customer, options.DefaultPreferencesText));
     }
 
@@ -82,6 +82,21 @@ public static class CustomerV7ProfileBuilder
         if (customer.BudgetMin is double min && min >= 0)
             return min;
         return fallback >= 0 ? fallback : 2000;
+    }
+
+    /// <summary>
+    /// Brings a customer budget onto the V7 dataset scale: VND/month (≥ threshold) is divided by
+    /// VndPerBudgetUnit, then everything is clamped to the training range so one outlier
+    /// (e.g. 49,999,999) cannot dominate the structured vector.
+    /// </summary>
+    internal static double NormalizeBudget(double budget, RecommendationServiceOptions options)
+    {
+        var value = budget >= options.VndBudgetThreshold && options.VndPerBudgetUnit > 0
+            ? budget / options.VndPerBudgetUnit
+            : budget;
+        var min = Math.Min(options.MinBudgetMonthly, options.MaxBudgetMonthly);
+        var max = Math.Max(options.MinBudgetMonthly, options.MaxBudgetMonthly);
+        return Math.Clamp(value, min, max);
     }
 
     internal static string ResolvePreferences(Customer customer, string fallback)

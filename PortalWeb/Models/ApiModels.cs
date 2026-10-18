@@ -340,7 +340,8 @@ public record RecommendationItemResponse(
     string Brand,
     string Model,
     string Segment,
-    double FinalScore);
+    double FinalScore,
+    string? VehicleStatus = null);
 
 /// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
 public record CustomerVehicleInteractionResponse(

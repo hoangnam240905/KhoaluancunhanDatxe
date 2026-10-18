@@ -202,12 +202,12 @@
                                     </select>
                                 </label>
                                 <label class="pf-field" data-pf-field="BudgetMin">
-                                    <span>Ngân sách tối thiểu</span>
-                                    <input asp-for="ProfileInput.BudgetMin" type="number" min="0" step="1" />
+                                    <span>Ngân sách thuê xe tối thiểu (VND/tháng)</span>
+                                    <input asp-for="ProfileInput.BudgetMin" type="number" min="0" step="100000" placeholder="VD: 5000000" />
                                 </label>
                                 <label class="pf-field" data-pf-field="BudgetMax">
-                                    <span>Ngân sách tối đa</span>
-                                    <input asp-for="ProfileInput.BudgetMax" type="number" min="0" step="1" />
+                                    <span>Ngân sách thuê xe tối đa (VND/tháng)</span>
+                                    <input asp-for="ProfileInput.BudgetMax" type="number" min="0" step="100000" placeholder="VD: 15000000" />
                                 </label>
                             </div>
 

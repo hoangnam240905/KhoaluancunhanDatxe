@@ -75,7 +75,8 @@ builder.Services.AddHttpClient<Backend.Services.Recommendation.IRecommendationSe
     client.BaseAddress = new Uri(baseUrl + "/");
     client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds <= 0 ? 30 : opts.TimeoutSeconds);
 });
-// Step 3: Customer/Vehicle SQLite → V7 profile → Python → map car_id → Vehicle (no frontend API).
+// Step 3: Customer/Vehicle SQLite → V7 profile → Python → map car_id → Vehicle.
+// Served to customers by RecommendationsController (GET /api/recommendations) → PortalWeb /Customer/Recommendations.
 builder.Services.AddScoped<Backend.Services.Recommendation.IRecommendationMappingService,
     Backend.Services.Recommendation.RecommendationMappingService>();
 builder.Services.AddScoped<NotificationService>();

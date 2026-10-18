@@ -17,6 +17,23 @@ public class RecommendationServiceOptions
     /// <summary>Used when Customer.BudgetMax and BudgetMin are both null.</summary>
     public double DefaultBudgetMonthly { get; set; } = 2000;
 
+    /// <summary>
+    /// Customer budgets at or above this value are treated as VND/month (Profile asks VND/tháng);
+    /// smaller values are assumed to already be in the V7 dataset unit (older rows).
+    /// </summary>
+    public double VndBudgetThreshold { get; set; } = 100_000;
+
+    /// <summary>
+    /// ASSUMPTION (no real exchange rate exists for the synthetic dataset): 5,600 VND per dataset
+    /// budget unit maps a 5–30 million VND/month rental budget onto the dataset range 900–5,315.
+    /// </summary>
+    public double VndPerBudgetUnit { get; set; } = 5_600;
+
+    /// <summary>Range of budget_monthly in the V7 training users; values are clamped into it.</summary>
+    public double MinBudgetMonthly { get; set; } = 900;
+
+    public double MaxBudgetMonthly { get; set; } = 5_315;
+
     /// <summary>Used when Customer.DateOfBirth is null.</summary>
     public int DefaultAge { get; set; } = 30;
 

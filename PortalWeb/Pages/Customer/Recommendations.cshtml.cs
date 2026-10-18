@@ -93,7 +93,8 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
                     brand = r.Brand,
                     model = r.Model,
                     segment = r.Segment,
-                    finalScore = r.FinalScore
+                    finalScore = r.FinalScore,
+                    vehicleStatus = r.VehicleStatus
                 })
             });
         }

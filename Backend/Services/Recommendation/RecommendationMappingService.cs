@@ -138,7 +138,8 @@ public class RecommendationMappingService(
                 LicensePlate: m.Vehicle.LicensePlate,
                 VehicleType: m.Vehicle.VehicleType?.TypeName,
                 FuelType: m.Vehicle.FuelType,
-                Transmission: m.Vehicle.Transmission));
+                Transmission: m.Vehicle.Transmission,
+                VehicleStatus: m.Vehicle.Status));
         }
 
         string? reason = null;

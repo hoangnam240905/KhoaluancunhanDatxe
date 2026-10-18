@@ -11,4 +11,7 @@ public record CustomerRecommendationApiItem(
     string Brand,
     string Model,
     string Segment,
-    double FinalScore);
+    double FinalScore,
+    // Current vehicle status, shown as a hint only: recommendations are not filtered by
+    // availability; the booking flow still checks the requested dates.
+    string? VehicleStatus = null);

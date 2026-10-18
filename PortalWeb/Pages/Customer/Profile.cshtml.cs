@@ -75,11 +75,11 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         public string? RentalPurpose { get; set; }
 
         [Range(0, double.MaxValue, ErrorMessage = "Ngân sách tối thiểu không được âm.")]
-        [Display(Name = "Ngân sách tối thiểu")]
+        [Display(Name = "Ngân sách thuê xe tối thiểu (VND/tháng)")]
         public double? BudgetMin { get; set; }
 
         [Range(0, double.MaxValue, ErrorMessage = "Ngân sách tối đa không được âm.")]
-        [Display(Name = "Ngân sách tối đa")]
+        [Display(Name = "Ngân sách thuê xe tối đa (VND/tháng)")]
         public double? BudgetMax { get; set; }
 
         [Display(Name = "Loại xe ưa thích")]

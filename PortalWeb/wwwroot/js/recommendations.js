@@ -44,6 +44,18 @@
     return n.toFixed(4);
   }
 
+  // Current status only — recommendations are not filtered by schedule; booking still checks dates.
+  function statusBadge(status) {
+    const map = {
+      Available: ["cr-status-ok", "Đang trống"],
+      Rented: ["cr-status-busy", "Đang có khách thuê — kiểm tra lịch khi đặt"],
+      Maintenance: ["cr-status-off", "Đang bảo trì"],
+      Inactive: ["cr-status-off", "Ngừng cho thuê"]
+    };
+    const [cls, label] = map[status] || ["cr-status-off", status ? escapeHtml(status) : "Chưa rõ trạng thái"];
+    return `<span class="cr-status ${cls}" data-cr-status="${escapeHtml(status || "")}">${label}</span>`;
+  }
+
   function bookHref(vehicleId) {
     const url = new URL(bookBase, window.location.origin);
     url.searchParams.set("vehicleId", String(vehicleId));
@@ -73,6 +85,7 @@
               <span><i class="bi bi-tags"></i> ${segment}</span>
               <span class="cr-score">Điểm khớp <span>${scoreText(item.finalScore)}</span></span>
             </div>
+            <div class="cr-meta-row">${statusBadge(item.vehicleStatus)}</div>
             <div class="cr-debug">VehicleId ${vehicleId} · ${carId}</div>
             <div class="ch-price cr-card-actions">
               <a class="btn btn-primary btn-sm" href="${bookHref(vehicleId)}">Đặt xe này</a>
@@ -134,7 +147,8 @@
           brand: row.brand ?? row.Brand ?? "",
           model: row.model ?? row.Model ?? "",
           segment: row.segment ?? row.Segment ?? "",
-          finalScore: row.finalScore ?? row.FinalScore ?? 0
+          finalScore: row.finalScore ?? row.FinalScore ?? 0,
+          vehicleStatus: row.vehicleStatus ?? row.VehicleStatus ?? ""
         });
         if (items.length >= 5) break;
       }
