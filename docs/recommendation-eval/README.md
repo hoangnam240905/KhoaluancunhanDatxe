@@ -58,10 +58,27 @@ Nguyên nhân chênh lệch: Random Forest đúng 100% trên tập train (học 
 5. **Số chỗ ngồi gần như luôn đạt** ở mọi cấu hình (kể cả ngẫu nhiên 92,79%) vì 196/250 xe có ≥ 5 chỗ → SeatFit phân biệt kém, chỉ nên báo cáo kèm.
 6. **V7 không nhạy với ngân sách**: BudgetFit của V7 (52,04%) xấp xỉ ngẫu nhiên (50,95%). Lý do ở mục 5.
 
+## 4b. Thử nghiệm: so ngân sách với chi phí/tháng thay vì giá mua
+
+Chỉ chạy trong script đánh giá (lớp `MonthlyBudgetStructured`); **engine V7 đang phục vụ web không đổi**. Phần Structured giữ nguyên, chỉ thay cột "giá" của xe bằng chi phí/tháng (bảo dưỡng + bảo hiểm + khấu hao, 1.111–4.715) — cùng đơn vị với `budget_monthly` — và fit lại bộ chuẩn hóa.
+
+| Cấu hình (tập test) | HitRate@5 | Precision@5 | HitRate@10 | Precision@10 | BudgetFit@5 |
+|---|---:|---:|---:|---:|---:|
+| Chỉ Structured — hiện tại | 57,10% | 28,35% | 66,10% | 22,66% | 52,99% |
+| Chỉ Structured — chi phí/tháng | 54,40% | 25,63% | 63,60% | 21,82% | 49,43% |
+| V7 đầy đủ — hiện tại | **72,75%** | 45,49% | **91,95%** | 43,27% | 52,04% |
+| V7 đầy đủ — chi phí/tháng | 70,75% | **46,72%** | 88,90% | **44,55%** | 50,75% |
+
+Sau khi sửa, ngân sách người dùng đã thực sự khác nhau trên thang chuẩn hóa (z = −2,285 … 3,626 thay vì gần như hằng số), nhưng **V7 vẫn không nhạy với ngân sách** (BudgetFit ≈ ngẫu nhiên) và HitRate giảm nhẹ.
+
+Lý do: Structured dùng **cosine similarity** — thưởng cho xe có chi phí *gần* ngân sách, không phải *không vượt* ngân sách — nên khoảng một nửa xe được đẩy lên vẫn đắt hơn ngân sách. Ngoài ra vector người dùng có các giá trị cố định (cốp 400 L, an toàn 8, 15 km/L) chiếm nhiều chiều.
+
+**Kết luận:** sửa đơn vị là cần thiết cho đúng nghĩa, nhưng **không đủ**. Muốn gợi ý theo ngân sách cần một cơ chế riêng (ví dụ phạt điểm khi chi phí vượt ngân sách, hoặc lọc mềm), và phải đo lại bằng script này. Vì phương án sửa đơn vị không cải thiện chỉ số, **giữ V7 hiện tại làm kết quả chính**, ghi lỗi đơn vị vào phần giới hạn.
+
 ## 5. Giới hạn (phải ghi trong báo cáo)
 
 - **Dữ liệu tổng hợp, nhãn proxy**: `label_segment` không phải hành vi thuê thật.
 - **Thước đo có phần "tự chấm"**: thành phần ML (20%) được huấn luyện để dự đoán đúng `label_segment` — chính là tiêu chí chấm HitRate/Precision. Vì vậy cần đọc kèm bảng ablation và các thước đo độc lập với nhãn.
-- **Lệch đơn vị giá trong phần Structured**: engine đặt `budget_monthly` của người dùng (900–5.315/tháng) vào cùng thang chuẩn hóa với **giá mua xe** (74.580–479.657). Sau chuẩn hóa, giá trị "giá" của mọi người dùng nằm trong khoảng z = −2,31 … −2,265 (gần như hằng số) → chiều giá không giúp phân biệt người dùng, giải thích BudgetFit ≈ ngẫu nhiên. Chi phí/tháng của xe trong dataset (1.111–4.715) mới cùng đơn vị với ngân sách. Chưa sửa ở Giai đoạn 1 để giữ nguyên V7 đang chạy; đề xuất sửa ở giai đoạn sau và đo lại.
+- **Lệch đơn vị giá trong phần Structured**: engine đặt `budget_monthly` của người dùng (900–5.315/tháng) vào cùng thang chuẩn hóa với **giá mua xe** (74.580–479.657). Sau chuẩn hóa, giá trị "giá" của mọi người dùng nằm trong khoảng z = −2,31 … −2,265 (gần như hằng số) → chiều giá không giúp phân biệt người dùng, giải thích BudgetFit ≈ ngẫu nhiên. Chi phí/tháng của xe trong dataset (1.111–4.715) mới cùng đơn vị với ngân sách. Đã thử sửa đơn vị (mục 4b): không cải thiện chỉ số vì bản chất cosine similarity, nên V7 đang chạy được giữ nguyên.
 - **Trọng số 0.4/0.4/0.2 là thủ công**, chưa tối ưu (chưa grid search trên tập validation riêng).
 - Engine V7 phục vụ web dùng **cùng** dữ liệu và mô hình này; đội xe demo trong DB là xe mô phỏng lấy từ catalog dataset.

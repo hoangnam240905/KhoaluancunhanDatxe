@@ -32,9 +32,12 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "RecommendationService"))
 
+from sklearn.preprocessing import StandardScaler  # noqa: E402
+
 from recommender import (  # noqa: E402
     FEATURE_COLUMNS,
     NUMERIC_CAR_COLUMNS,
+    STRUCTURED_COLUMNS,
     TARGET_COLUMN,
     CarRecommendationEngine,
 )
@@ -99,6 +102,47 @@ def structured_matrix(engine: CarRecommendationEngine, users: pd.DataFrame) -> n
     return cosine_similarity(structured_user_frame(engine, users), engine.cars_structured)
 
 
+MONTHLY_COST_COLUMNS = ["maintenance_monthly_est", "insurance_monthly_est", "depreciation_monthly_est"]
+
+
+def car_monthly_cost(cars: pd.DataFrame) -> pd.Series:
+    return cars[MONTHLY_COST_COLUMNS].sum(axis=1)
+
+
+class MonthlyBudgetStructured:
+    """
+    EXPERIMENT ONLY (does not touch the served engine): same structured similarity, but the
+    "price" dimension is the car's monthly cost (maintenance + insurance + depreciation),
+    which is in the same unit as the user's budget_monthly. Scaler is refit on that column.
+    """
+
+    def __init__(self, engine: CarRecommendationEngine) -> None:
+        cars = engine.cars[STRUCTURED_COLUMNS].copy()
+        cars["price"] = car_monthly_cost(engine.cars)
+        cars = pd.get_dummies(cars, columns=["segment", "fuel_type"])
+        self.scaler = StandardScaler()
+        cars[NUMERIC_CAR_COLUMNS] = self.scaler.fit_transform(cars[NUMERIC_CAR_COLUMNS])
+        self.cars_structured = cars.astype(float)
+
+    def user_frame(self, users: pd.DataFrame) -> pd.DataFrame:
+        frame = pd.DataFrame({
+            "segment": rule_segment(users),
+            "fuel_type": "Petrol",
+            "seats": preferred_seats(users),
+            "price": users["budget_monthly"].to_numpy(),
+            "trunk_l": 400,
+            "safety_score": 8,
+            "km_per_l": 15,
+        })
+        frame = pd.get_dummies(frame, columns=["segment", "fuel_type"])
+        frame = frame.reindex(columns=self.cars_structured.columns, fill_value=0)
+        frame[NUMERIC_CAR_COLUMNS] = self.scaler.transform(frame[NUMERIC_CAR_COLUMNS])
+        return frame.astype(float)
+
+    def matrix(self, users: pd.DataFrame) -> np.ndarray:
+        return cosine_similarity(self.user_frame(users), self.cars_structured)
+
+
 def ml_matrix(engine: CarRecommendationEngine, users: pd.DataFrame) -> np.ndarray:
     proba = engine.ml_pipeline.predict_proba(users[FEATURE_COLUMNS])
     classes = list(engine.ml_pipeline.named_steps["classifier"].classes_)
@@ -123,8 +167,7 @@ def evaluate(scores: np.ndarray, users: pd.DataFrame, cars: pd.DataFrame) -> dic
     budget = users["budget_monthly"].to_numpy()
     car_segment = cars["segment"].to_numpy()
     car_seats = cars["seats"].to_numpy()
-    car_monthly = (cars["maintenance_monthly_est"] + cars["insurance_monthly_est"]
-                   + cars["depreciation_monthly_est"]).to_numpy()
+    car_monthly = car_monthly_cost(cars).to_numpy()
 
     row: dict[str, float] = {}
     for k in KS:
@@ -205,6 +248,14 @@ def main() -> None:
     for name, scores in baselines(test_users, cars, y_train).items():
         rows.append({"Cấu hình": name, "Tập": "test", **evaluate(scores, test_users, cars)})
 
+    # Experiment: budget compared with monthly cost instead of purchase price (engine untouched).
+    monthly = MonthlyBudgetStructured(engine)
+    comps_monthly = {**comps, "structured": monthly.matrix(test_users)}
+    for name, weights in (("Chỉ Structured", CONFIGS["Chỉ Structured"]),
+                          ("V7 đầy đủ 0.4/0.4/0.2", CONFIGS["V7 đầy đủ 0.4/0.4/0.2"])):
+        rows.append({"Cấu hình": f"[Thử nghiệm] {name} — ngân sách so với chi phí/tháng",
+                     "Tập": "test", **evaluate(combine(comps_monthly, weights), test_users, cars)})
+
     # Old (leaky) protocol: 500 users sampled from ALL users, as v6.py used to do.
     leaky_users = users.sample(n=LEAKY_SAMPLE, random_state=SEED)
     leaky_overlap = int(leaky_users.index.isin(X_train.index).sum())
@@ -221,8 +272,8 @@ def main() -> None:
 
     # Diagnostic: budget_monthly is fed into the car *purchase price* scaler.
     z_price = structured_user_frame(engine, test_users)["price"]
-    car_monthly = (cars["maintenance_monthly_est"] + cars["insurance_monthly_est"]
-                   + cars["depreciation_monthly_est"])
+    z_monthly = monthly.user_frame(test_users)["price"]
+    car_monthly = car_monthly_cost(cars)
     diagnostics = {
         "run_at": started.isoformat(timespec="seconds"),
         "python": platform.python_version(),
@@ -238,6 +289,7 @@ def main() -> None:
         "car_price_range": [float(cars["price"].min()), float(cars["price"].max())],
         "user_budget_monthly_range": [float(users["budget_monthly"].min()), float(users["budget_monthly"].max())],
         "budget_as_price_zscore_range": [round(float(z_price.min()), 3), round(float(z_price.max()), 3)],
+        "experiment_budget_vs_monthly_cost_zscore_range": [round(float(z_monthly.min()), 3), round(float(z_monthly.max()), 3)],
         "car_monthly_cost_range": [round(float(car_monthly.min()), 1), round(float(car_monthly.max()), 1)],
         "engine_consistency_check": "passed (25 test users, vectorised scores == engine.recommend)",
     }

@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-10-18T17:50:11",
+  "run_at": "2026-10-18T18:11:46",
   "python": "3.11.13",
   "sklearn": "1.8.0",
   "seed": 42,
@@ -21,6 +21,10 @@
   "budget_as_price_zscore_range": [
     -2.31,
     -2.265
+  ],
+  "experiment_budget_vs_monthly_cost_zscore_range": [
+    -2.285,
+    3.626
   ],
   "car_monthly_cost_range": [
     1111.0,
