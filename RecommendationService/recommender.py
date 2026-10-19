@@ -25,6 +25,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from history import blend, history_affinity
+
 
 FEATURE_COLUMNS = [
     "age",
@@ -149,6 +151,7 @@ class CarRecommendationEngine:
         self.ml_pipeline.fit(X_train, y_train)
         self._train_count += 1
 
+        self.segment_of_car_id = dict(zip(self.cars["car_id"].astype(str), self.cars["segment"]))
         self.cars["car_description"] = self.cars.apply(create_car_description, axis=1)
 
         self.tfidf_vectorizer = TfidfVectorizer(lowercase=True, ngram_range=(1, 2))
@@ -237,10 +240,17 @@ class CarRecommendationEngine:
 
         return cosine_similarity(user_df, self.cars_structured)[0]
 
-    def recommend(self, user: dict[str, Any], top_k: int = 5) -> dict[str, Any]:
+    def recommend(
+        self,
+        user: dict[str, Any],
+        top_k: int = 5,
+        history: list[dict[str, Any]] | None = None,
+        history_weight: float = 0.0,
+    ) -> dict[str, Any]:
         """
         Rank all cars with V7 final score; return JSON-serializable Top-K.
         Does not hard-filter by predicted_segment.
+        Optional rental history is blended AFTER the V7 score (history.py); weight 0 = pure V7.
         """
         if top_k < 1:
             raise ValueError("top_k must be >= 1")
@@ -286,7 +296,12 @@ class CarRecommendationEngine:
         result["text_similarity"] = text_scores
         result["structured_similarity"] = structured_scores
         result["ml_segment_probability"] = ml_segment_scores
-        result["final_score"] = final_scores
+
+        affinity = history_affinity(
+            self.cars["segment"], self.cars["seats"], history or [], self.segment_of_car_id)
+        result["v7_score"] = final_scores
+        result["history_affinity"] = affinity
+        result["final_score"] = blend(final_scores, affinity, history_weight)
 
         result = result.sort_values("final_score", ascending=False)
         result = result.head(top_k).reset_index(drop=True)
@@ -306,6 +321,8 @@ class CarRecommendationEngine:
                     "text_similarity": _to_python(row["text_similarity"]),
                     "structured_similarity": _to_python(row["structured_similarity"]),
                     "ml_segment_probability": _to_python(row["ml_segment_probability"]),
+                    "v7_score": _to_python(row["v7_score"]),
+                    "history_affinity": _to_python(row["history_affinity"]),
                     "final_score": _to_python(row["final_score"]),
                 }
             )

@@ -73,7 +73,15 @@ public class RecommendationMappingService(
         }
 
         var profile = BuildV7Profile(customer);
-        var pythonRequest = CustomerV7ProfileBuilder.ToPythonRequest(profile, topK);
+        var carIdMap = EffectiveCarIdMap();
+        var history = await RentalHistoryBuilder.BuildAsync(
+            db, customerId, RentalHistoryBuilder.Reverse(carIdMap), _options, DateTime.UtcNow, cancellationToken);
+        // Cold-start: no history -> weight 0 -> Python returns the original V7 ranking.
+        var pythonRequest = CustomerV7ProfileBuilder.ToPythonRequest(profile, topK) with
+        {
+            History = history.Count > 0 ? history : null,
+            HistoryWeight = history.Count > 0 ? Math.Clamp(_options.HistoryWeight, 0, 1) : 0
+        };
 
         var (pythonData, pythonError, pythonStatus) =
             await recommendationService.GetRecommendationsAsync(pythonRequest, cancellationToken);
@@ -106,11 +114,14 @@ public class RecommendationMappingService(
                 Segment: r.Segment,
                 Score: r.FinalScore))
             .ToList();
+        var affinityByCarId = pythonData.Recommendations
+            .GroupBy(r => r.CarId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().HistoryAffinity, StringComparer.OrdinalIgnoreCase);
 
         var map = VehicleCarIdMapper.MapRecommendations(
             pythonItems,
             vehicles,
-            EffectiveCarIdMap(),
+            carIdMap,
             logger);
 
         // Preserve Python ranking order; drop duplicate VehicleId (keep first / highest rank).
@@ -139,7 +150,8 @@ public class RecommendationMappingService(
                 VehicleType: m.Vehicle.VehicleType?.TypeName,
                 FuelType: m.Vehicle.FuelType,
                 Transmission: m.Vehicle.Transmission,
-                VehicleStatus: m.Vehicle.Status));
+                VehicleStatus: m.Vehicle.Status,
+                HistoryAffinity: affinityByCarId.GetValueOrDefault(m.CarId)));
         }
 
         string? reason = null;

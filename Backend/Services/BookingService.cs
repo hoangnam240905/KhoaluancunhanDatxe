@@ -122,6 +122,9 @@ public class BookingService(
         await db.SaveChangesAsync();
 
         await AddStatusHistoryAsync(booking.BookingId, null, BookingStatuses.Pending, customerId, "Khach tao don dat xe");
+        // Rental history for recommendations: only bookings tied to a concrete vehicle.
+        if (intentVehicleId is int bookedVehicle)
+            await InteractionLog.TryRecordAsync(db, customerId, bookedVehicle, InteractionLog.Book, booking.BookingId);
         await RealtimeNotify.BookingStatusChanged(
             realtime, customerId, booking.BookingId, booking.Status, booking.AssignedVehicleId);
         return (await GetBookingByIdAsync(booking.BookingId), null);
@@ -323,6 +326,9 @@ public class BookingService(
         }
 
         await db.SaveChangesAsync();
+
+        if (cancelling && releasedVehicleId is int cancelledVehicle)
+            await InteractionLog.TryRecordAsync(db, booking.CustomerId, cancelledVehicle, InteractionLog.Cancel, bookingId);
 
         trip ??= await db.TripAssignments.AsNoTracking()
             .FirstOrDefaultAsync(t => t.BookingId == bookingId);

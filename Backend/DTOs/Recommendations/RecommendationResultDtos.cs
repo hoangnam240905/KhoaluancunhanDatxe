@@ -26,7 +26,8 @@ public record RecommendationItemDto(
     string? VehicleType = null,
     string? FuelType = null,
     string? Transmission = null,
-    string? VehicleStatus = null);
+    string? VehicleStatus = null,
+    double? HistoryAffinity = null);
 
 /// <summary>
 /// Intermediate V7 profile built from a real Customer entity (no User PII).

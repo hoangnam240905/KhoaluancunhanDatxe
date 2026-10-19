@@ -229,7 +229,7 @@ public class Phase45RecommendationLoggingTests
     }
 
     [Fact]
-    public async Task BOOK_interaction_uses_JWT_customer_and_rejects_missing_vehicle()
+    public async Task CLICK_BOOK_interaction_uses_JWT_customer_and_rejects_missing_vehicle()
     {
         using var factory = new RecApiFactory();
         SeedV7Fleet(factory);
@@ -241,24 +241,32 @@ public class Phase45RecommendationLoggingTests
         var tokenB = await LoginAsync(client, "customer2@gmail.com"); // 4
 
         var book = await client.SendAsync(Authed(HttpMethod.Post, "/api/customer-vehicle-interactions", tokenA,
-            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(vehicleId, "BOOK"))));
+            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(vehicleId, "CLICK_BOOK"))));
         Assert.Equal(HttpStatusCode.Created, book.StatusCode);
         var row = await book.Content.ReadFromJsonAsync<CustomerVehicleInteractionResponse>(Json);
         Assert.NotNull(row);
         Assert.Equal(3, row!.CustomerId);
         Assert.Equal(vehicleId, row.VehicleId);
-        Assert.Equal("BOOK", row.InteractionType);
+        Assert.Equal("CLICK_BOOK", row.InteractionType);
 
         // Customer B cannot invent another customer's id — body has no CustomerId; JWT binds B.
         var bookB = await client.SendAsync(Authed(HttpMethod.Post, "/api/customer-vehicle-interactions", tokenB,
-            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(vehicleId, "BOOK"))));
+            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(vehicleId, "CLICK_BOOK"))));
         Assert.Equal(HttpStatusCode.Created, bookB.StatusCode);
         var rowB = await bookB.Content.ReadFromJsonAsync<CustomerVehicleInteractionResponse>(Json);
         Assert.Equal(4, rowB!.CustomerId);
 
         var missing = await client.SendAsync(Authed(HttpMethod.Post, "/api/customer-vehicle-interactions", tokenA,
-            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(999_999, "BOOK"))));
+            JsonContent.Create(new CreateCustomerVehicleInteractionRequest(999_999, "CLICK_BOOK"))));
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        // Rental history types are server-only: a client cannot forge BOOK/RENT/CANCEL.
+        foreach (var forged in new[] { "BOOK", "RENT", "CANCEL" })
+        {
+            var rejected = await client.SendAsync(Authed(HttpMethod.Post, "/api/customer-vehicle-interactions", tokenA,
+                JsonContent.Create(new CreateCustomerVehicleInteractionRequest(vehicleId, forged))));
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        }
 
         // Customer A cannot read B's interaction list (IDOR).
         var idor = await client.SendAsync(

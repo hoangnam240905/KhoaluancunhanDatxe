@@ -9,8 +9,11 @@ public class CustomerVehicleInteractionService(CarRentalDbContext db)
 {
     public static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "VIEW", "SEARCH", "FAVORITE", "COMPARE", "BOOK", "CANCEL", "RENT", "REVIEW"
+        "VIEW", "SEARCH", "FAVORITE", "COMPARE", "BOOK", "CANCEL", "RENT", "REVIEW", InteractionLog.ClickBook
     };
+
+    public const string ServerOnlyType =
+        "BOOK, RENT và CANCEL do hệ thống tự ghi khi đặt, nhận và hủy xe.";
 
     public async Task<(CustomerVehicleInteractionResponse? Data, string? Error, int Status)> CreateAsync(
         int customerId, CreateCustomerVehicleInteractionRequest request)
@@ -25,6 +28,9 @@ public class CustomerVehicleInteractionService(CarRentalDbContext db)
             return (null, "Vui lòng nhập loại tương tác.", StatusCodes.Status400BadRequest);
         if (!AllowedTypes.Contains(type))
             return (null, "Loại tương tác không hợp lệ.", StatusCodes.Status400BadRequest);
+        // Rental history drives recommendations; clients must not forge it.
+        if (InteractionLog.ServerOnlyTypes.Contains(type))
+            return (null, ServerOnlyType, StatusCodes.Status400BadRequest);
 
         var row = new CustomerVehicleInteraction
         {

@@ -34,6 +34,23 @@ public class RecommendationServiceOptions
 
     public double MaxBudgetMonthly { get; set; } = 5_315;
 
+    /// <summary>
+    /// Weight of the rental-history boost blended after the V7 score (0 = pure V7).
+    /// Extension only — not evaluated offline (the synthetic dataset has no rental history).
+    /// </summary>
+    public double HistoryWeight { get; set; } = 0.2;
+
+    /// <summary>A past rental counts half after this many days (recency decay).</summary>
+    public double HistoryHalfLifeDays { get; set; } = 90;
+
+    /// <summary>Weight of a booking the customer actually received (RENT) vs only booked (BOOK).</summary>
+    public double RentEventWeight { get; set; } = 1.0;
+
+    public double BookEventWeight { get; set; } = 0.5;
+
+    /// <summary>Only the most recent N bookings are sent to Python.</summary>
+    public int MaxHistoryBookings { get; set; } = 20;
+
     /// <summary>Used when Customer.DateOfBirth is null.</summary>
     public int DefaultAge { get; set; } = 30;
 

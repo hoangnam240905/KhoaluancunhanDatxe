@@ -30,6 +30,12 @@ app = FastAPI(
 )
 
 
+class HistoryItem(BaseModel):
+    car_id: str | None = None
+    seats: int | None = Field(default=None, ge=1)
+    weight: float = Field(..., ge=0)
+
+
 class RecommendRequest(BaseModel):
     age: int = Field(..., ge=16, le=100)
     kids: int = Field(..., ge=0)
@@ -43,6 +49,9 @@ class RecommendRequest(BaseModel):
     budget_monthly: float = Field(..., ge=0)
     preferences_text: str = Field(..., min_length=1)
     top_k: int = Field(default=5, ge=1, le=50)
+    # Optional rental history (extension). Omitted / weight 0 -> original V7 ranking.
+    history: list[HistoryItem] = Field(default_factory=list, max_length=100)
+    history_weight: float = Field(default=0.0, ge=0, le=1)
 
     @field_validator("income_bracket", "city_type", "usage_primary", "preferences_text")
     @classmethod
@@ -74,9 +83,11 @@ def recommend(body: RecommendRequest) -> RecommendResponse:
 
     user = body.model_dump()
     top_k = user.pop("top_k")
+    history = user.pop("history")
+    history_weight = user.pop("history_weight")
 
     try:
-        result = engine.recommend(user, top_k=top_k)
+        result = engine.recommend(user, top_k=top_k, history=history, history_weight=history_weight)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 — surface as 400, do not crash process

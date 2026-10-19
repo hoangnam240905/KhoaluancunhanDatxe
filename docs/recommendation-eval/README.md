@@ -75,6 +75,31 @@ Lý do: Structured dùng **cosine similarity** — thưởng cho xe có chi phí
 
 **Kết luận:** sửa đơn vị là cần thiết cho đúng nghĩa, nhưng **không đủ**. Muốn gợi ý theo ngân sách cần một cơ chế riêng (ví dụ phạt điểm khi chi phí vượt ngân sách, hoặc lọc mềm), và phải đo lại bằng script này. Vì phương án sửa đơn vị không cải thiện chỉ số, **giữ V7 hiện tại làm kết quả chính**, ghi lỗi đơn vị vào phần giới hạn.
 
+## 4c. Mở rộng: lịch sử thuê (Giai đoạn 3) — không có số liệu offline
+
+Công thức khi khách có lịch sử: `Final = (1 − w)·V7 + w·HistoryAffinity`, mặc định `w = 0,2` (`RecommendationService:HistoryWeight`). Random Forest **không** được train lại.
+
+- Lịch sử chỉ lấy từ sự kiện do server ghi:
+  - **BOOK**: khi tạo đơn có xe cụ thể.
+  - **RENT**: khi giao xe tự lái, hoặc khi tài xế bắt đầu chuyến.
+  - **CANCEL**: khi hủy đơn có xe.
+- Mỗi đơn tính một lần: RENT có trọng số 1,0; nếu chỉ có BOOK thì 0,5; đơn đã hủy mà chưa nhận xe thì bỏ. Trọng số giảm còn một nửa sau mỗi 90 ngày.
+- `HistoryAffinity` của một xe = tỉ lệ (có trọng số) các lần thuê trước cùng phân khúc catalog với xe đó. Xe không có `car_id` (7 xe gốc) thì so theo số chỗ.
+- **Khách chưa có lịch sử → kết quả giống hệt V7 gốc.** Chạy lại `evaluate_v7.py` sau khi thêm phần này vẫn ra đúng các số ở mục 2.
+
+**Vì sao không có số liệu:** dataset tổng hợp không có lịch sử thuê, nên không đo HitRate/Precision cho phần này được. Báo cáo chỉ minh họa bằng ca demo.
+
+**Ca demo (chạy trên bản sao DB, 2026-10-18), khách `customer1`:**
+
+| Thời điểm | Top gợi ý |
+|---|---|
+| Trước khi thuê (chưa có lịch sử) | Kia Picanto Premium, Fiat 500 Base, MINI Cooper 3-Door Plus, MINI Cooper 3-Door Base — phân khúc Mini, điểm lịch sử = 0 |
+| Sau khi thuê và nhận Hyundai Tucson Comfort (Crossover) | Nissan Qashqai Comfort, Hyundai Tucson Limited, Kia Sportage Base — phân khúc Crossover, điểm lịch sử = 1,00 |
+
+Nhận xét: với `w = 0,2`, chỉ **một** lần thuê đã đủ lật toàn bộ danh sách, vì điểm V7 của các xe khá sát nhau (khoảng 0,44–0,46). Có thể giảm `w` nếu muốn lịch sử chỉ "nhích" thứ hạng.
+
+**Phát hiện dữ liệu khi demo:** cả 19 xe 7 chỗ trong đội xe V7 đều **đã đến hạn bảo trì** (chưa từng có lịch sử bảo trì), nên hệ thống không nhận đặt lịch mới cho chúng. V7 vẫn có thể gợi ý các xe này (gợi ý không lọc theo tình trạng), nên trang Gợi ý hiện trạng thái xe để khách biết trước.
+
 ## 5. Giới hạn (phải ghi trong báo cáo)
 
 - **Dữ liệu tổng hợp, nhãn proxy**: `label_segment` không phải hành vi thuê thật.

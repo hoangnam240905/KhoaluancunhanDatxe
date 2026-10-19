@@ -276,6 +276,7 @@ public class DispatchService(
         AddHistory(bookingId, oldStatus, BookingStatuses.InProgress, dispatcherId, "Điều phối giao xe");
 
         await db.SaveChangesAsync();
+        await InteractionLog.TryRecordAsync(db, booking.CustomerId, vehicleId.Value, InteractionLog.Rent, bookingId);
         var result = await bookingService.GetBookingByIdAsync(bookingId);
         if (result is not null)
             await RealtimeNotify.BookingStatusChanged(

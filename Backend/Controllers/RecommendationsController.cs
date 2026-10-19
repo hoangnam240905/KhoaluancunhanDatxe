@@ -75,6 +75,7 @@ public class RecommendationsController(
                     Model: r.Model,
                     Segment: r.Segment,
                     FinalScore: r.Score,
-                    VehicleStatus: r.VehicleStatus))
+                    VehicleStatus: r.VehicleStatus,
+                    HistoryAffinity: r.HistoryAffinity))
                 .ToList());
 }

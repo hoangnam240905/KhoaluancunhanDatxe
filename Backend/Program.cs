@@ -160,6 +160,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteVehicleLegalColumns();
     db.EnsureSqliteLicensePlateUniqueIndex();
     db.EnsureSqlitePhase1FinalSchema();
+    db.EnsureSqliteInteractionBookingColumn();
     DbSeeder.Seed(db);
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);

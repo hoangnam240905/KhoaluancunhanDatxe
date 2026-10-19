@@ -877,6 +877,22 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             Database.ExecuteSqlRaw("ALTER TABLE Contracts ADD COLUMN CancelMinHoursSnapshot INTEGER NULL");
     }
 
+    /// <summary>
+    /// Adds CustomerVehicleInteractions.BookingId (nullable) to an existing SQLite DB. Idempotent, no backfill.
+    /// Run after EnsureSqlitePhase1FinalSchema (which creates the table on older DBs).
+    /// </summary>
+    public void EnsureSqliteInteractionBookingColumn()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = ReadSqliteColumns("CustomerVehicleInteractions");
+        if (columns.Count > 0 && !columns.Contains("BookingId"))
+            Database.ExecuteSqlRaw("ALTER TABLE CustomerVehicleInteractions ADD COLUMN BookingId INTEGER NULL");
+    }
+
     private HashSet<string> ReadSqliteColumns(string table)
     {
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

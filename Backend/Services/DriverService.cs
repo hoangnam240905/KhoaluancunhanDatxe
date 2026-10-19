@@ -114,6 +114,8 @@ public class DriverService(
         assignment.Booking.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
+        await InteractionLog.TryRecordAsync(
+            db, assignment.Booking.CustomerId, assignment.VehicleId, InteractionLog.Rent, assignment.BookingId);
         await RealtimeNotify.TripStatusChanged(
             realtime,
             assignment.Booking.CustomerId,

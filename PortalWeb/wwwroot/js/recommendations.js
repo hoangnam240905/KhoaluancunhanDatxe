@@ -56,6 +56,13 @@
     return `<span class="cr-status ${cls}" data-cr-status="${escapeHtml(status || "")}">${label}</span>`;
   }
 
+  // Shown when the car matches the customer's past rentals (history boost > 0).
+  function historyChip(affinity) {
+    const n = Number(affinity);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    return `<span class="cr-status cr-status-history" data-cr-history="${n.toFixed(2)}">Giống xe bạn từng thuê</span>`;
+  }
+
   function bookHref(vehicleId) {
     const url = new URL(bookBase, window.location.origin);
     url.searchParams.set("vehicleId", String(vehicleId));
@@ -85,7 +92,7 @@
               <span><i class="bi bi-tags"></i> ${segment}</span>
               <span class="cr-score">Điểm khớp <span>${scoreText(item.finalScore)}</span></span>
             </div>
-            <div class="cr-meta-row">${statusBadge(item.vehicleStatus)}</div>
+            <div class="cr-meta-row">${statusBadge(item.vehicleStatus)}${historyChip(item.historyAffinity)}</div>
             <div class="cr-debug">VehicleId ${vehicleId} · ${carId}</div>
             <div class="ch-price cr-card-actions">
               <a class="btn btn-primary btn-sm" href="${bookHref(vehicleId)}">Đặt xe này</a>
@@ -148,7 +155,8 @@
           model: row.model ?? row.Model ?? "",
           segment: row.segment ?? row.Segment ?? "",
           finalScore: row.finalScore ?? row.FinalScore ?? 0,
-          vehicleStatus: row.vehicleStatus ?? row.VehicleStatus ?? ""
+          vehicleStatus: row.vehicleStatus ?? row.VehicleStatus ?? "",
+          historyAffinity: row.historyAffinity ?? row.HistoryAffinity ?? 0
         });
         if (items.length >= 5) break;
       }

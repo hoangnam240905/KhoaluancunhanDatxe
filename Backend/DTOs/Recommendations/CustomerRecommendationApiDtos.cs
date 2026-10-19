@@ -14,4 +14,6 @@ public record CustomerRecommendationApiItem(
     double FinalScore,
     // Current vehicle status, shown as a hint only: recommendations are not filtered by
     // availability; the booking flow still checks the requested dates.
-    string? VehicleStatus = null);
+    string? VehicleStatus = null,
+    // Share of the customer's past rentals matching this car (0 when no history).
+    double? HistoryAffinity = null);
