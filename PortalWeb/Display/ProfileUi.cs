@@ -47,6 +47,26 @@ public static class ProfileUi
         ("family", "Gia đình")
     ];
 
+    /// <summary>Travel trip type ("Loại hành trình"); Backend maps it to the V7 usage value.</summary>
+    public static IReadOnlyList<(string Value, string Label)> TripTypeOptions { get; } =
+    [
+        ("", "— Chọn —"),
+        ("family_trip", "Du lịch gia đình"),
+        ("mountain_trip", "Đi xa / đường đèo / địa hình"),
+        ("business_trip", "Công tác"),
+        ("city_trip", "Đi lại trong thành phố / đưa đón sân bay")
+    ];
+
+    /// <summary>Older profiles stored the dataset usage value; show them as the matching trip type.</summary>
+    public static string? ToTripType(string? stored) => stored?.Trim().ToLowerInvariant() switch
+    {
+        "family" => "family_trip",
+        "trips" or "trip" or "travel" or "vacation" => "mountain_trip",
+        "work" or "business" => "business_trip",
+        "city" or "commute" or "commuting" => "city_trip",
+        var v => v
+    };
+
     public static IReadOnlyList<(string Value, string Label)> FuelOptions { get; } =
     [
         ("", "— Chọn —"),

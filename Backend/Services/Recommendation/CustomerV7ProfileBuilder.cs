@@ -41,7 +41,11 @@ public static class CustomerV7ProfileBuilder
                 : 0,
             AnnualKm: customer.AnnualMileage is >= 0 ? customer.AnnualMileage.Value : options.DefaultAnnualKm,
             UsagePrimary: usage,
-            BudgetMonthly: NormalizeBudget(ResolveBudget(customer, options.DefaultBudgetMonthly), options),
+            // A per-day travel budget is checked against real rental prices in Backend (OverBudget);
+            // V7 then gets the training median (its price signal is purchase price, not rental).
+            BudgetMonthly: customer.TripBudgetPerDay is not null
+                ? options.DefaultBudgetMonthly
+                : NormalizeBudget(ResolveBudget(customer, options.DefaultBudgetMonthly), options),
             PreferencesText: ResolvePreferences(customer, usage, familySize, options.DefaultPreferencesText));
     }
 

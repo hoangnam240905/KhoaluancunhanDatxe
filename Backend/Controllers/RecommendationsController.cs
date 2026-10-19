@@ -76,6 +76,8 @@ public class RecommendationsController(
                     Segment: r.Segment,
                     FinalScore: r.Score,
                     VehicleStatus: r.VehicleStatus,
-                    HistoryAffinity: r.HistoryAffinity))
+                    HistoryAffinity: r.HistoryAffinity,
+                    PricePerDay: r.PricePerDay,
+                    OverBudget: r.OverBudget))
                 .ToList());
 }

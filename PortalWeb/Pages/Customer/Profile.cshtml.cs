@@ -43,65 +43,35 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Travel-rental profile (plan1.md): personal info + 4 recommendation fields. The commuter questions of the
+    /// car-buying dataset (children, income, area, km/day, km/year, monthly budget, dropdown preferences) were
+    /// removed; saving sends null for them and the recommender uses training-median defaults.
+    /// </summary>
     public class ProfileInputModel
     {
         [DataType(DataType.Date)]
         [Display(Name = "Ngày sinh")]
         public DateOnly? DateOfBirth { get; set; }
 
-        [Range(0, 20, ErrorMessage = "Số con phải từ 0 đến 20.")]
-        [Display(Name = "Số con")]
-        public int? NumberOfChildren { get; set; }
+        [StringLength(300)]
+        [Display(Name = "Địa chỉ")]
+        public string? Address { get; set; }
 
-        [Range(1, 30, ErrorMessage = "Quy mô gia đình phải từ 1 đến 30.")]
-        [Display(Name = "Quy mô gia đình")]
+        [Range(1, 30, ErrorMessage = "Số người đi phải từ 1 đến 30.")]
+        [Display(Name = "Số người đi")]
         public int? FamilySize { get; set; }
 
-        [Display(Name = "Mức thu nhập")]
-        public string? IncomeRange { get; set; }
-
-        [Display(Name = "Loại khu vực sinh sống")]
-        public string? CityType { get; set; }
-
-        [Range(0, 500, ErrorMessage = "Quãng đường đi mỗi ngày không hợp lệ.")]
-        [Display(Name = "Quãng đường đi mỗi ngày (km)")]
-        public double? CommuteKmPerDay { get; set; }
-
-        [Range(0, 200000, ErrorMessage = "Số km mỗi năm không hợp lệ.")]
-        [Display(Name = "Số km di chuyển mỗi năm")]
-        public int? AnnualMileage { get; set; }
-
-        [Display(Name = "Mục đích thuê xe")]
+        [Display(Name = "Loại hành trình")]
         public string? RentalPurpose { get; set; }
 
-        [Range(0, double.MaxValue, ErrorMessage = "Ngân sách tối thiểu không được âm.")]
-        [Display(Name = "Ngân sách thuê xe tối thiểu (VND/tháng)")]
-        public double? BudgetMin { get; set; }
-
-        [Range(0, double.MaxValue, ErrorMessage = "Ngân sách tối đa không được âm.")]
-        [Display(Name = "Ngân sách thuê xe tối đa (VND/tháng)")]
-        public double? BudgetMax { get; set; }
-
-        [Display(Name = "Loại xe ưa thích")]
-        public string? PreferredVehicleType { get; set; }
-
-        [Display(Name = "Nhiên liệu ưa thích")]
-        public string? PreferredFuelType { get; set; }
-
-        [Display(Name = "Hộp số ưa thích")]
-        public string? PreferredTransmission { get; set; }
-
-        [Range(1, 50, ErrorMessage = "Số chỗ mong muốn không hợp lệ.")]
-        [Display(Name = "Số chỗ mong muốn")]
-        public int? PreferredSeats { get; set; }
+        [Range(0, 100_000_000, ErrorMessage = "Ngân sách thuê xe mỗi ngày không hợp lệ.")]
+        [Display(Name = "Ngân sách thuê xe mỗi ngày (VNĐ/ngày)")]
+        public double? TripBudgetPerDay { get; set; }
 
         [StringLength(1000, ErrorMessage = "Ghi chú sở thích tối đa 1000 ký tự.")]
         [Display(Name = "Ghi chú sở thích")]
         public string? PreferencesText { get; set; }
-
-        [StringLength(300)]
-        [Display(Name = "Địa chỉ")]
-        public string? Address { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -189,14 +159,6 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
                 ModelState.Remove(key);
         }
 
-        if (ProfileInput.BudgetMin is double min && ProfileInput.BudgetMax is double max && min > max)
-            ModelState.AddModelError($"{nameof(ProfileInput)}.{nameof(ProfileInput.BudgetMin)}",
-                "Ngân sách tối thiểu không được lớn hơn ngân sách tối đa.");
-
-        if (ProfileInput.NumberOfChildren is int kids && ProfileInput.FamilySize is int family && kids >= family)
-            ModelState.AddModelError($"{nameof(ProfileInput)}.{nameof(ProfileInput.FamilySize)}",
-                "Số thành viên gia đình phải lớn hơn số con.");
-
         if (ProfileInput.DateOfBirth is DateOnly dob)
         {
             var today = DateOnly.FromDateTime(DateTime.Today);
@@ -228,23 +190,25 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         return true;
     }
 
+    // Removed commuter fields are sent as null (the API replaces these columns) -> recommender defaults.
     private UpdateCustomerProfileRequest ToUpdateRequest() => new(
         DateOfBirth: ProfileInput.DateOfBirth,
-        NumberOfChildren: ProfileInput.NumberOfChildren,
+        NumberOfChildren: null,
         FamilySize: ProfileInput.FamilySize,
-        IncomeRange: ProfileUi.NormalizeSelect(ProfileInput.IncomeRange),
-        CityType: ProfileUi.NormalizeSelect(ProfileInput.CityType),
-        CommuteKmPerDay: ProfileInput.CommuteKmPerDay,
-        AnnualMileage: ProfileInput.AnnualMileage,
+        IncomeRange: null,
+        CityType: null,
+        CommuteKmPerDay: null,
+        AnnualMileage: null,
         RentalPurpose: ProfileUi.NormalizeSelect(ProfileInput.RentalPurpose),
-        BudgetMin: ProfileInput.BudgetMin,
-        BudgetMax: ProfileInput.BudgetMax,
-        PreferredVehicleType: ProfileUi.NormalizeSelect(ProfileInput.PreferredVehicleType),
-        PreferredFuelType: ProfileUi.NormalizeSelect(ProfileInput.PreferredFuelType),
-        PreferredTransmission: ProfileUi.NormalizeSelect(ProfileInput.PreferredTransmission),
-        PreferredSeats: ProfileInput.PreferredSeats,
+        BudgetMin: null,
+        BudgetMax: null,
+        PreferredVehicleType: null,
+        PreferredFuelType: null,
+        PreferredTransmission: null,
+        PreferredSeats: null,
         PreferencesText: ProfileUi.NormalizeSelect(ProfileInput.PreferencesText),
-        Address: ProfileInput.Address);
+        Address: ProfileInput.Address,
+        TripBudgetPerDay: ProfileInput.TripBudgetPerDay);
 
     private async Task<IActionResult?> LoadProfileAsync()
     {
@@ -302,21 +266,11 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         ProfileInput = new ProfileInputModel
         {
             DateOfBirth = data.DateOfBirth,
-            NumberOfChildren = data.NumberOfChildren,
+            Address = data.Address,
             FamilySize = data.FamilySize,
-            IncomeRange = data.IncomeRange,
-            CityType = data.CityType,
-            CommuteKmPerDay = data.CommuteKmPerDay,
-            AnnualMileage = data.AnnualMileage,
-            RentalPurpose = data.RentalPurpose,
-            BudgetMin = data.BudgetMin,
-            BudgetMax = data.BudgetMax,
-            PreferredVehicleType = data.PreferredVehicleType,
-            PreferredFuelType = data.PreferredFuelType,
-            PreferredTransmission = data.PreferredTransmission,
-            PreferredSeats = data.PreferredSeats,
-            PreferencesText = data.PreferencesText,
-            Address = data.Address
+            RentalPurpose = ProfileUi.ToTripType(data.RentalPurpose),
+            TripBudgetPerDay = data.TripBudgetPerDay,
+            PreferencesText = data.PreferencesText
         };
     }
 }

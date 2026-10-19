@@ -134,17 +134,17 @@
 
                     <article class="pf-card pf-panel is-on" data-pf-panel="info" data-pf-v7-profile>
                         <div class="pf-card-head">
-                            <h2>Hồ sơ gợi ý xe (V7)</h2>
+                            <h2>Hồ sơ gợi ý xe du lịch</h2>
                         </div>
                         <p class="pf-help">
-                            Nhập thông tin bên dưới để hệ thống gợi ý xe phù hợp hơn.
-                            Không nhập tuổi — hệ thống tự tính từ <strong>Ngày sinh</strong>.
+                            Cho chúng tôi biết về chuyến đi để gợi ý xe phù hợp.
+                            <strong>Số người đi</strong> và <strong>Loại hành trình</strong> ảnh hưởng nhiều nhất đến gợi ý.
                         </p>
 
                         <form method="post" asp-page-handler="SaveProfile" class="pf-edit-form is-on" data-pf-profile-form>
                             <p class="pf-error @(string.IsNullOrEmpty(Model.ProfileError) ? "" : "is-on")" data-pf-profile-error>@Model.ProfileError</p>
 
-                            <div class="pf-section-title">1. Gia đình &amp; khu vực</div>
+                            <div class="pf-section-title">1. Thông tin cá nhân</div>
                             <div class="pf-fields pf-grid-2">
                                 <label class="pf-field" data-pf-field="DateOfBirth">
                                     <span>Ngày sinh</span>
@@ -154,100 +154,31 @@
                                     <span>Địa chỉ</span>
                                     <input asp-for="ProfileInput.Address" maxlength="300" />
                                 </label>
-                                <label class="pf-field" data-pf-field="NumberOfChildren">
-                                    <span>Số con</span>
-                                    <input asp-for="ProfileInput.NumberOfChildren" type="number" min="0" max="20" />
-                                </label>
-                                <label class="pf-field" data-pf-field="FamilySize">
-                                    <span>Số thành viên gia đình</span>
-                                    <input asp-for="ProfileInput.FamilySize" type="number" min="1" max="30" />
-                                </label>
-                                <label class="pf-field" data-pf-field="IncomeRange">
-                                    <span>Mức thu nhập</span>
-                                    <select asp-for="ProfileInput.IncomeRange">
-                                        @foreach (var opt in ProfileUi.IncomeOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </label>
-                                <label class="pf-field" data-pf-field="CityType">
-                                    <span>Khu vực sinh sống</span>
-                                    <select asp-for="ProfileInput.CityType">
-                                        @foreach (var opt in ProfileUi.CityOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </label>
                             </div>
 
-                            <div class="pf-section-title">2. Di chuyển &amp; ngân sách thuê</div>
+                            <div class="pf-section-title">2. Chuyến đi của bạn</div>
                             <div class="pf-fields pf-grid-2">
-                                <label class="pf-field" data-pf-field="CommuteKmPerDay">
-                                    <span>Quãng đường đi mỗi ngày (km)</span>
-                                    <input asp-for="ProfileInput.CommuteKmPerDay" type="number" min="0" max="500" step="0.1" />
-                                </label>
-                                <label class="pf-field" data-pf-field="AnnualMileage">
-                                    <span>Số km di chuyển mỗi năm</span>
-                                    <input asp-for="ProfileInput.AnnualMileage" type="number" min="0" max="200000" />
+                                <label class="pf-field" data-pf-field="FamilySize">
+                                    <span>Số người đi</span>
+                                    <input asp-for="ProfileInput.FamilySize" type="number" min="1" max="30" placeholder="VD: 4" />
                                 </label>
                                 <label class="pf-field" data-pf-field="RentalPurpose">
-                                    <span>Mục đích thuê xe</span>
+                                    <span>Loại hành trình</span>
                                     <select asp-for="ProfileInput.RentalPurpose">
-                                        @foreach (var opt in ProfileUi.PurposeOptions)
+                                        @foreach (var opt in ProfileUi.TripTypeOptions)
                                         {
                                             <option value="@opt.Value">@opt.Label</option>
                                         }
                                     </select>
                                 </label>
-                                <label class="pf-field" data-pf-field="BudgetMin">
-                                    <span>Ngân sách thuê xe tối thiểu (VND/tháng)</span>
-                                    <input asp-for="ProfileInput.BudgetMin" type="number" min="0" step="100000" placeholder="VD: 5000000" />
-                                </label>
-                                <label class="pf-field" data-pf-field="BudgetMax">
-                                    <span>Ngân sách thuê xe tối đa (VND/tháng)</span>
-                                    <input asp-for="ProfileInput.BudgetMax" type="number" min="0" step="100000" placeholder="VD: 15000000" />
-                                </label>
-                            </div>
-
-                            <div class="pf-section-title">3. Sở thích xe</div>
-                            <div class="pf-fields pf-grid-2">
-                                <label class="pf-field" data-pf-field="PreferredVehicleType">
-                                    <span>Loại xe ưa thích</span>
-                                    <select asp-for="ProfileInput.PreferredVehicleType">
-                                        @foreach (var opt in ProfileUi.VehicleTypeOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </label>
-                                <label class="pf-field" data-pf-field="PreferredFuelType">
-                                    <span>Nhiên liệu ưa thích</span>
-                                    <select asp-for="ProfileInput.PreferredFuelType">
-                                        @foreach (var opt in ProfileUi.FuelOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </label>
-                                <label class="pf-field" data-pf-field="PreferredTransmission">
-                                    <span>Hộp số ưa thích</span>
-                                    <select asp-for="ProfileInput.PreferredTransmission">
-                                        @foreach (var opt in ProfileUi.TransmissionOptions)
-                                        {
-                                            <option value="@opt.Value">@opt.Label</option>
-                                        }
-                                    </select>
-                                </label>
-                                <label class="pf-field" data-pf-field="PreferredSeats">
-                                    <span>Số chỗ mong muốn</span>
-                                    <input asp-for="ProfileInput.PreferredSeats" type="number" min="1" max="50" />
+                                <label class="pf-field" data-pf-field="TripBudgetPerDay">
+                                    <span>Ngân sách thuê xe mỗi ngày (VNĐ/ngày)</span>
+                                    <input asp-for="ProfileInput.TripBudgetPerDay" type="number" min="0" step="50000" placeholder="VD: 1200000" />
                                 </label>
                                 <label class="pf-field pf-field-full" data-pf-field="PreferencesText">
                                     <span>Ghi chú sở thích</span>
                                     <textarea asp-for="ProfileInput.PreferencesText" rows="3" maxlength="1000"
-                                              placeholder="Ví dụ: Xe tiết kiệm nhiên liệu, an toàn, phù hợp gia đình"></textarea>
+                                              placeholder="Ví dụ: Xe 7 chỗ rộng rãi, tiết kiệm xăng, an toàn, cốp rộng"></textarea>
                                 </label>
                             </div>
 

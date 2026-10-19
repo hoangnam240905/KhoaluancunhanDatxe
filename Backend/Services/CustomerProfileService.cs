@@ -20,8 +20,12 @@ public class CustomerProfileService(CarRentalDbContext db)
     private static readonly HashSet<string> PurposeValues =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "city", "trips", "work", "family", "commute", "commuting", "trip", "travel", "vacation", "business"
+            "city", "trips", "work", "family", "commute", "commuting", "trip", "travel", "vacation", "business",
+            // Travel trip types (Profile form "Loại hành trình")
+            "family_trip", "mountain_trip", "business_trip", "city_trip"
         };
+
+    public const double MaxTripBudgetPerDay = 100_000_000;
 
     public async Task<(CustomerProfileResponse? Data, string? Error, int StatusCode)> GetOwnAsync(int customerId)
     {
@@ -66,6 +70,7 @@ public class CustomerProfileService(CarRentalDbContext db)
         customer.PreferredTransmission = NormalizeOptional(request.PreferredTransmission);
         customer.PreferredSeats = request.PreferredSeats;
         customer.PreferencesText = NormalizeOptional(request.PreferencesText);
+        customer.TripBudgetPerDay = request.TripBudgetPerDay;
 
         if (request.Address is not null)
             customer.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
@@ -95,7 +100,8 @@ public class CustomerProfileService(CarRentalDbContext db)
         PreferredFuelType: customer.PreferredFuelType,
         PreferredTransmission: customer.PreferredTransmission,
         PreferredSeats: customer.PreferredSeats,
-        PreferencesText: customer.PreferencesText);
+        PreferencesText: customer.PreferencesText,
+        TripBudgetPerDay: customer.TripBudgetPerDay);
 
     internal static string? Validate(UpdateCustomerProfileRequest request)
     {
@@ -146,6 +152,9 @@ public class CustomerProfileService(CarRentalDbContext db)
             return "Ngân sách thuê xe không được âm.";
         if (request.BudgetMin is double min && request.BudgetMax is double max && min > max)
             return "Ngân sách tối thiểu không được lớn hơn ngân sách tối đa.";
+
+        if (request.TripBudgetPerDay is < 0 or > MaxTripBudgetPerDay)
+            return "Ngân sách thuê xe mỗi ngày không hợp lệ.";
 
         if (request.PreferredSeats is int seats && seats is < 1 or > 50)
             return "Số chỗ mong muốn không hợp lệ.";

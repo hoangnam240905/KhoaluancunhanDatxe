@@ -56,6 +56,18 @@
     return `<span class="cr-status ${cls}" data-cr-status="${escapeHtml(status || "")}">${label}</span>`;
   }
 
+  // Real rental price per day; "Vượt ngân sách" compares it with the per-day budget in the profile (hint, not a filter).
+  function priceChips(pricePerDay, overBudget) {
+    const n = Number(pricePerDay);
+    const price = Number.isFinite(n) && n > 0
+      ? `<span class="cr-price">${n.toLocaleString("vi-VN")}đ/ngày</span>`
+      : "";
+    const over = overBudget === true
+      ? `<span class="cr-status cr-status-busy" data-cr-over-budget>Vượt ngân sách</span>`
+      : "";
+    return price + over;
+  }
+
   // Shown when the car matches the customer's past rentals (history boost > 0).
   function historyChip(affinity) {
     const n = Number(affinity);
@@ -93,6 +105,7 @@
               <span class="cr-score">Điểm khớp <span>${scoreText(item.finalScore)}</span></span>
             </div>
             <div class="cr-meta-row">${statusBadge(item.vehicleStatus)}${historyChip(item.historyAffinity)}</div>
+            <div class="cr-meta-row">${priceChips(item.pricePerDay, item.overBudget)}</div>
             <div class="cr-debug">VehicleId ${vehicleId} · ${carId}</div>
             <div class="ch-price cr-card-actions">
               <a class="btn btn-primary btn-sm" href="${bookHref(vehicleId)}">Đặt xe này</a>
@@ -156,7 +169,9 @@
           segment: row.segment ?? row.Segment ?? "",
           finalScore: row.finalScore ?? row.FinalScore ?? 0,
           vehicleStatus: row.vehicleStatus ?? row.VehicleStatus ?? "",
-          historyAffinity: row.historyAffinity ?? row.HistoryAffinity ?? 0
+          historyAffinity: row.historyAffinity ?? row.HistoryAffinity ?? 0,
+          pricePerDay: row.pricePerDay ?? row.PricePerDay ?? null,
+          overBudget: row.overBudget ?? row.OverBudget ?? null
         });
         if (items.length >= 5) break;
       }

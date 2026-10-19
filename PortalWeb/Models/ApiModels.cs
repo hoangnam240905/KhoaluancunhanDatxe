@@ -35,7 +35,8 @@ public record CustomerProfileResponse(
     string? PreferredFuelType,
     string? PreferredTransmission,
     int? PreferredSeats,
-    string? PreferencesText);
+    string? PreferencesText,
+    double? TripBudgetPerDay = null);
 
 public record UpdateCustomerProfileRequest(
     DateOnly? DateOfBirth,
@@ -53,7 +54,8 @@ public record UpdateCustomerProfileRequest(
     string? PreferredTransmission = null,
     int? PreferredSeats = null,
     string? PreferencesText = null,
-    string? Address = null);
+    string? Address = null,
+    double? TripBudgetPerDay = null);
 public record MessageResponse(string Message);
 public record ApiError(string Message);
 
@@ -342,7 +344,9 @@ public record RecommendationItemResponse(
     string Segment,
     double FinalScore,
     string? VehicleStatus = null,
-    double? HistoryAffinity = null);
+    double? HistoryAffinity = null,
+    decimal? PricePerDay = null,
+    bool? OverBudget = null);
 
 /// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
 public record CustomerVehicleInteractionResponse(

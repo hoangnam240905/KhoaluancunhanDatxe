@@ -893,6 +893,19 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             Database.ExecuteSqlRaw("ALTER TABLE CustomerVehicleInteractions ADD COLUMN BookingId INTEGER NULL");
     }
 
+    /// <summary>Adds Customers.TripBudgetPerDay (REAL, nullable). Idempotent, no backfill.</summary>
+    public void EnsureSqliteTravelProfileColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = ReadSqliteColumns("Customers");
+        if (columns.Count > 0 && !columns.Contains("TripBudgetPerDay"))
+            Database.ExecuteSqlRaw("ALTER TABLE Customers ADD COLUMN TripBudgetPerDay REAL NULL");
+    }
+
     private HashSet<string> ReadSqliteColumns(string table)
     {
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

@@ -14,8 +14,11 @@ public class RecommendationServiceOptions
     /// </summary>
     public int DefaultChargingAccess { get; set; } = 0;
 
-    /// <summary>Used when Customer.BudgetMax and BudgetMin are both null.</summary>
-    public double DefaultBudgetMonthly { get; set; } = 2000;
+    /// <summary>
+    /// Used when the customer has no monthly budget, or has a per-day travel budget (checked separately).
+    /// Median budget_monthly of the V7 training users.
+    /// </summary>
+    public double DefaultBudgetMonthly { get; set; } = 2276;
 
     /// <summary>
     /// Customer budgets at or above this value are treated as VND/month (Profile asks VND/tháng);

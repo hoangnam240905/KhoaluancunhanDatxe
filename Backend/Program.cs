@@ -161,6 +161,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteLicensePlateUniqueIndex();
     db.EnsureSqlitePhase1FinalSchema();
     db.EnsureSqliteInteractionBookingColumn();
+    db.EnsureSqliteTravelProfileColumns();
     DbSeeder.Seed(db);
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);

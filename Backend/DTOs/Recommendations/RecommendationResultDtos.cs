@@ -27,7 +27,9 @@ public record RecommendationItemDto(
     string? FuelType = null,
     string? Transmission = null,
     string? VehicleStatus = null,
-    double? HistoryAffinity = null);
+    double? HistoryAffinity = null,
+    decimal? PricePerDay = null,
+    bool? OverBudget = null);
 
 /// <summary>
 /// Intermediate V7 profile built from a real Customer entity (no User PII).

@@ -151,7 +151,12 @@ public class RecommendationMappingService(
                 FuelType: m.Vehicle.FuelType,
                 Transmission: m.Vehicle.Transmission,
                 VehicleStatus: m.Vehicle.Status,
-                HistoryAffinity: affinityByCarId.GetValueOrDefault(m.CarId)));
+                HistoryAffinity: affinityByCarId.GetValueOrDefault(m.CarId),
+                PricePerDay: m.Vehicle.VehicleType?.PricePerDay,
+                // Hint only (not a filter): real rental price vs the customer's per-day travel budget.
+                OverBudget: customer.TripBudgetPerDay is double budget && m.Vehicle.VehicleType is { } type
+                    ? type.PricePerDay > (decimal)budget
+                    : null));
         }
 
         string? reason = null;

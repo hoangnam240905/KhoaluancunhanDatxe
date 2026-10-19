@@ -96,7 +96,9 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
                     segment = r.Segment,
                     finalScore = r.FinalScore,
                     vehicleStatus = r.VehicleStatus,
-                    historyAffinity = r.HistoryAffinity
+                    historyAffinity = r.HistoryAffinity,
+                    pricePerDay = r.PricePerDay,
+                    overBudget = r.OverBudget
                 })
             });
         }
