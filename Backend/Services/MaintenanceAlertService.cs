@@ -72,7 +72,7 @@ public class MaintenanceAlertService(CarRentalDbContext db)
         out string reason)
     {
         kmSince = KmSince(vehicle.CurrentKm, lastCompleted);
-        daysSince = DaysSince(lastCompleted, utcNow);
+        daysSince = DaysSince(vehicle, lastCompleted, utcNow);
         var kmAlert = kmSince is int km && km >= MaintenanceAlertThresholds.KmThreshold;
         var dayAlert = daysSince >= MaintenanceAlertThresholds.DaysThreshold;
         if (!kmAlert && !dayAlert)
@@ -85,21 +85,28 @@ public class MaintenanceAlertService(CarRentalDbContext db)
         return true;
     }
 
+    /// <summary>
+    /// Km since the last completed maintenance. A vehicle never serviced starts its clock at 0 km,
+    /// so a used car added with high mileage is still due, while a new car is not.
+    /// A completed record without odometer stays unknown (null).
+    /// </summary>
     public static int? KmSince(int currentKm, MaintenanceRecord? lastCompleted)
     {
         if (lastCompleted is null)
-            return null;
+            return currentKm;
         if (lastCompleted.OdometerAtMaintenance is not int odometer)
             return null;
         return currentKm - odometer;
     }
 
-    public static int DaysSince(MaintenanceRecord? lastCompleted, DateTime utcNow)
+    /// <summary>
+    /// Days since the last completed maintenance; a vehicle never serviced counts from the day it
+    /// joined the fleet (Vehicle.CreatedAt) instead of being treated as overdue forever.
+    /// </summary>
+    public static int DaysSince(Vehicle vehicle, MaintenanceRecord? lastCompleted, DateTime utcNow)
     {
-        if (lastCompleted?.CompletedDate is null)
-            return int.MaxValue;
-
-        return (utcNow - lastCompleted.CompletedDate.Value).Days;
+        var since = lastCompleted?.CompletedDate ?? vehicle.CreatedAt;
+        return Math.Max(0, (utcNow - since).Days);
     }
 
     public static string BuildReason(MaintenanceRecord? lastCompleted, bool kmAlert, bool dayAlert)
