@@ -7,7 +7,10 @@ public record NotificationResponse(
     string Message,
     string? Type,
     bool IsRead,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? BookingId = null);
+
+public record MarkAllReadResponse(int Updated);
 
 public record CreateNotificationRequest(
     int UserId,

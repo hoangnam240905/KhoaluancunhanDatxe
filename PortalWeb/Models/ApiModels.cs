@@ -361,3 +361,6 @@ public record CustomerVehicleInteractionResponse(
     string InteractionType,
     DateTime CreatedAt);
 
+public record NotificationResponse(
+    int NotificationId, int UserId, string Title, string Message, string? Type, bool IsRead, DateTime CreatedAt, int? BookingId = null);
+public record MarkAllReadResponse(int Updated);

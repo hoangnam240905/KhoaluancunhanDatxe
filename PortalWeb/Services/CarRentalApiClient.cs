@@ -528,6 +528,31 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    public async Task<(List<NotificationResponse> Data, string? Error)> GetNotificationsAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/notifications");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return ([], await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<List<NotificationResponse>>(JsonOptions) ?? [], null);
+    }
+
+    public async Task<(NotificationResponse? Data, string? Error)> MarkNotificationReadAsync(int id)
+    {
+        using var request = CreateRequest(HttpMethod.Patch, $"/api/notifications/{id}/read");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<NotificationResponse>(JsonOptions), null);
+    }
+
+    public async Task<(int Updated, string? Error)> MarkAllNotificationsReadAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Patch, "/api/notifications/read-all");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (0, await GetErrorAsync(response));
+        var body = await response.Content.ReadFromJsonAsync<MarkAllReadResponse>(JsonOptions);
+        return (body?.Updated ?? 0, null);
+    }
+
     public async Task<(List<IncidentResponse> Data, string? Error)> GetDispatchIncidentsAsync(
         int? bookingId = null, string? status = null)
     {

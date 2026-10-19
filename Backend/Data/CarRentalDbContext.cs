@@ -906,6 +906,19 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             Database.ExecuteSqlRaw("ALTER TABLE Customers ADD COLUMN TripBudgetPerDay REAL NULL");
     }
 
+    /// <summary>Adds Notifications.BookingId (INTEGER, nullable). Idempotent, no backfill.</summary>
+    public void EnsureSqliteNotificationColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = ReadSqliteColumns("Notifications");
+        if (columns.Count > 0 && !columns.Contains("BookingId"))
+            Database.ExecuteSqlRaw("ALTER TABLE Notifications ADD COLUMN BookingId INTEGER NULL");
+    }
+
     private HashSet<string> ReadSqliteColumns(string table)
     {
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

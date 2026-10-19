@@ -3,6 +3,7 @@ using Backend.Data;
 using Backend.Hubs;
 using Backend.Options;
 using Backend.Services;
+using Backend.Services.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -85,7 +86,12 @@ builder.Services.AddScoped<RecommendationLogService>();
 builder.Services.AddScoped<VehicleImageService>();
 builder.Services.AddScoped<CustomerVehicleInteractionService>();
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
+builder.Services.AddSingleton<SignalRRealtimePublisher>();
+builder.Services.AddSingleton<NotificationQueue>();
+// Every realtime event also feeds the notification inbox (written in the background, after commit).
+builder.Services.AddSingleton<IRealtimePublisher>(sp => new NotifyingRealtimePublisher(
+    sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>()));
+builder.Services.AddHostedService<NotificationWriter>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -162,6 +168,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqlitePhase1FinalSchema();
     db.EnsureSqliteInteractionBookingColumn();
     db.EnsureSqliteTravelProfileColumns();
+    db.EnsureSqliteNotificationColumns();
     DbSeeder.Seed(db);
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);

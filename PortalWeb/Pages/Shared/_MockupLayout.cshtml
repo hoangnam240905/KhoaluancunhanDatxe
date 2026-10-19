@@ -1,4 +1,5 @@
 @inject PortalWeb.Services.AuthSession Auth
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 @{
     var nav = ViewData["Nav"] as string ?? "";
     var dashMeta = ViewData["DashMeta"] as bool? == true;
@@ -63,12 +64,12 @@
                 <div class="nt-bell-wrap">
                     <button type="button" class="mk-icon-btn" id="mkNotifyBtn" title="Thông báo" aria-expanded="false">
                         <i class="bi bi-bell"></i>
-                        <span class="mk-dot" id="mkNotifyDot">8</span>
+                        <span class="mk-dot" id="mkNotifyDot" hidden></span>
                     </button>
                     <div class="nt-drop" id="mkNotifyDrop" hidden>
                         <div class="nt-drop-head">
                             <strong>Thông báo</strong>
-                            <span class="mk-muted" id="mkNotifyDropMeta">8 thông báo chưa đọc</span>
+                            <span class="mk-muted" id="mkNotifyDropMeta">Đang tải...</span>
                         </div>
                         <div id="mkNotifyDropList"></div>
                         <a class="nt-drop-all" asp-page="/Mockup/Notifications">Xem tất cả thông báo</a>
@@ -101,6 +102,25 @@
     </script>
     @await RenderSectionAsync("Scripts", required: false)
     <div class="mk-toast" id="mkGlobalToast"></div>
+    <form id="mkAntiForgery" class="d-none">@Html.AntiForgeryToken()</form>
+    <script>
+        window.__NOTIFY_HANDLERS__ = {
+            list: '@Url.Page("/Mockup/Notifications", "List")',
+            read: '@Url.Page("/Mockup/Notifications", "Read")',
+            readAll: '@Url.Page("/Mockup/Notifications", "ReadAll")'
+        };
+    </script>
+    @if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+    {
+        @* Realtime for dispatcher pages: events become DOM events ("carrental:realtime"), never a page reload. *@
+        <script>
+            window.carRentalRealtime = {
+                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+            };
+        </script>
+        <script src="~/js/realtime.js" asp-append-version="true"></script>
+    }
     <script src="~/js/mockup-notifications.js" asp-append-version="true"></script>
 </body>
 </html>

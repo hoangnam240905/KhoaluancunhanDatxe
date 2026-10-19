@@ -30,6 +30,10 @@ public class NotificationsController(NotificationService notifications) : Contro
         return Status(data, error, status);
     }
 
+    [HttpPatch("read-all")]
+    public async Task<ActionResult<MarkAllReadResponse>> MarkAllRead()
+        => Ok(new MarkAllReadResponse(await notifications.MarkAllReadAsync(CurrentUserId())));
+
     [Authorize(Roles = RoleNames.Admin)]
     [HttpPost]
     public async Task<ActionResult<NotificationResponse>> Create(CreateNotificationRequest request)

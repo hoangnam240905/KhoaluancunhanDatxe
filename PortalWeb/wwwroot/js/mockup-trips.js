@@ -983,4 +983,18 @@
     render();
     // Keep "còn / quá X phút" moving without touching an open drawer or modal.
     setInterval(renderBoardViews, 60 * 1000);
+
+    // Realtime (realtime.js): a booking changed somewhere -> refetch and redraw the board views only.
+    // The drawer / an open handover or return form are left untouched.
+    let realtimeTimer = null;
+    function onRealtime(e) {
+        if (e.type === "carrental:realtime" && (!e.detail || e.detail.bookingId == null)) return;
+        clearTimeout(realtimeTimer);
+        realtimeTimer = setTimeout(async () => {
+            await reloadFromServer();
+            renderBoardViews();
+        }, 800);
+    }
+    window.addEventListener("carrental:realtime", onRealtime);
+    window.addEventListener("carrental:realtime-reconnected", onRealtime);
 })();
