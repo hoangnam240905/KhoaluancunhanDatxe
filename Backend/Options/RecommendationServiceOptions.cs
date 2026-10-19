@@ -51,6 +51,12 @@ public class RecommendationServiceOptions
 
     public double BookEventWeight { get; set; } = 0.5;
 
+    /// <summary>
+    /// When the party size is known, how many V7 candidates to fetch before ranking cars with enough
+    /// seats first and cutting to Top-K (Python accepts up to 50).
+    /// </summary>
+    public int SeatCandidatePool { get; set; } = 50;
+
     /// <summary>Only the most recent N bookings are sent to Python.</summary>
     public int MaxHistoryBookings { get; set; } = 20;
 

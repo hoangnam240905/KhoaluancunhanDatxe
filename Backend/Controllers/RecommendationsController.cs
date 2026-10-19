@@ -32,15 +32,17 @@ public class RecommendationsController(
         var result = await mapping.GetRecommendationsForCustomerAsync(
             customerId, topK, cancellationToken);
 
+        // Only V7-ranked cars are logged as recommendations (large-party rule additions have no V7 score).
+        var v7Ranked = result.Recommendations.Where(r => !r.FromBusinessRule).ToList();
         if (result.StatusCode == StatusCodes.Status200OK
             && result.Success
-            && result.Recommendations.Count > 0)
+            && v7Ranked.Count > 0)
         {
             // CustomerId from JWT path only; scores are V7 finalScore; does not change ranking.
             await recommendationLogs.LogSuccessfulRecommendationsAsync(
                 customerId,
                 result.PredictedSegment,
-                result.Recommendations.Select(r => (r.VehicleId, r.Score)).ToList(),
+                v7Ranked.Select(r => (r.VehicleId, r.Score)).ToList(),
                 createdAt: DateTime.UtcNow,
                 alsoLogViewWithDedupe: true,
                 cancellationToken: cancellationToken);
@@ -78,6 +80,11 @@ public class RecommendationsController(
                     VehicleStatus: r.VehicleStatus,
                     HistoryAffinity: r.HistoryAffinity,
                     PricePerDay: r.PricePerDay,
-                    OverBudget: r.OverBudget))
-                .ToList());
+                    OverBudget: r.OverBudget,
+                    Seats: r.Seats,
+                    SeatsOk: r.SeatsOk,
+                    MaintenanceDue: r.MaintenanceDue,
+                    FromBusinessRule: r.FromBusinessRule))
+                .ToList(),
+            PartySize: result.PartySize);
 }

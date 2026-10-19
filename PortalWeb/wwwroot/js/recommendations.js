@@ -14,6 +14,7 @@
   const elSegment = root.querySelector("[data-cr-segment]");
   const elSegmentValue = root.querySelector("[data-cr-segment-value]");
   const btnRetry = root.querySelector("[data-cr-retry]");
+  const elNotice = root.querySelector("[data-cr-notice]");
 
   function show(which) {
     if (elLoading) elLoading.hidden = which !== "loading";
@@ -68,6 +69,20 @@
     return price + over;
   }
 
+  // Seats vs party size, and maintenance lock — hints only, booking still checks availability.
+  function fitChips(item, partySize) {
+    const bits = [];
+    if (item.seatsOk === false && partySize) {
+      bits.push(`<span class="cr-status cr-status-busy" data-cr-seats-short>Không đủ chỗ cho ${Number(partySize)} người</span>`);
+    } else if (item.seatsOk === true && item.seats) {
+      bits.push(`<span class="cr-status cr-status-ok" data-cr-seats-ok>${Number(item.seats)} chỗ – đủ cho ${Number(partySize)} người</span>`);
+    }
+    if (item.maintenanceDue === true) {
+      bits.push(`<span class="cr-status cr-status-off" data-cr-maintenance-due>Đến hạn bảo trì – chưa nhận đặt</span>`);
+    }
+    return bits.join("");
+  }
+
   // Shown when the car matches the customer's past rentals (history boost > 0).
   function historyChip(affinity) {
     const n = Number(affinity);
@@ -81,7 +96,7 @@
     return url.pathname + url.search;
   }
 
-  function renderItems(items) {
+  function renderItems(items, partySize) {
     if (!elList) return;
     elList.innerHTML = items.map((item, index) => {
       const brand = escapeHtml(item.brand);
@@ -90,8 +105,9 @@
       const carId = escapeHtml(item.carId);
       const vehicleId = Number(item.vehicleId) || 0;
       const img = imageForSegment(item.segment);
-      const badge = index === 0 ? "Đề xuất hàng đầu" : "Gợi ý";
-      const badgeClass = index === 0 ? "" : "ch-badge-alt";
+      // Large-party rule additions are not ranked by V7: own badge, no "Điểm khớp".
+      const badge = item.fromBusinessRule ? "Đủ chỗ cho nhóm lớn" : index === 0 ? "Đề xuất hàng đầu" : "Gợi ý";
+      const badgeClass = index === 0 || item.fromBusinessRule ? "" : "ch-badge-alt";
       return `
         <article class="ch-card">
           <div class="ch-card-media">
@@ -102,8 +118,9 @@
             <h3>${brand} ${model}</h3>
             <div class="cr-meta-row">
               <span><i class="bi bi-tags"></i> ${segment}</span>
-              <span class="cr-score">Điểm khớp <span>${scoreText(item.finalScore)}</span></span>
+              ${item.fromBusinessRule ? "" : `<span class="cr-score">Điểm khớp <span>${scoreText(item.finalScore)}</span></span>`}
             </div>
+            <div class="cr-meta-row">${fitChips(item, partySize)}</div>
             <div class="cr-meta-row">${statusBadge(item.vehicleStatus)}${historyChip(item.historyAffinity)}</div>
             <div class="cr-meta-row">${priceChips(item.pricePerDay, item.overBudget)}</div>
             <div class="cr-debug">VehicleId ${vehicleId} · ${carId}</div>
@@ -171,7 +188,11 @@
           vehicleStatus: row.vehicleStatus ?? row.VehicleStatus ?? "",
           historyAffinity: row.historyAffinity ?? row.HistoryAffinity ?? 0,
           pricePerDay: row.pricePerDay ?? row.PricePerDay ?? null,
-          overBudget: row.overBudget ?? row.OverBudget ?? null
+          overBudget: row.overBudget ?? row.OverBudget ?? null,
+          seats: row.seats ?? row.Seats ?? null,
+          seatsOk: row.seatsOk ?? row.SeatsOk ?? null,
+          maintenanceDue: row.maintenanceDue ?? row.MaintenanceDue ?? null,
+          fromBusinessRule: row.fromBusinessRule ?? row.FromBusinessRule ?? false
         });
         if (items.length >= 5) break;
       }
@@ -190,7 +211,18 @@
         return;
       }
 
-      renderItems(items);
+      const partySize = Number(payload && (payload.partySize ?? payload.PartySize)) || 0;
+      if (elNotice) {
+        // No car fits the party (V7 catalog stops at 7 seats and the fleet has nothing bigger free).
+        const noneFits = partySize > 0 && !items.some((i) => i.seatsOk === true);
+        elNotice.hidden = !noneFits;
+        if (noneFits) {
+          elNotice.textContent =
+            `Chưa có xe nào đủ chỗ cho ${partySize} người. Vui lòng liên hệ điều phối để được hỗ trợ thuê xe lớn hoặc nhiều xe.`;
+        }
+      }
+
+      renderItems(items, partySize);
       show("list");
     } catch {
       show("error");

@@ -210,13 +210,16 @@ public class RecommendationMappingTests
         Assert.True(result.Success, result.Reason);
         Assert.Equal(200, result.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(result.PredictedSegment));
-        // Mapped + dropped must account for Python topK (unmapped / ambiguous / VehicleId dedupe).
+        // Mapped + dropped must account for every Python candidate (unmapped / ambiguous / VehicleId dedupe).
+        // FamilySize is set, so Backend asks for a larger pool and cuts to topK after seats-first ordering.
+        Assert.Equal(RecommendationMappingService.MaxPythonTopK, result.CandidateCount);
         Assert.Equal(
-            5,
-            result.Recommendations.Count
+            result.CandidateCount,
+            result.MappedCount
             + result.UnmappedCount
             + result.AmbiguousCount
             + result.DuplicateVehicleCount);
+        Assert.InRange(result.Recommendations.Count, 1, 5);
         Assert.Equal(
             result.Recommendations.Count,
             result.Recommendations.Select(r => r.VehicleId).Distinct().Count());

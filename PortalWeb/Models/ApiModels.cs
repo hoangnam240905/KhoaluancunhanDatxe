@@ -334,7 +334,8 @@ public record UpdateAdminCustomerRequest(string FullName, string Email, string P
 /// <summary>Step 4.2: V7 customer recommendation API (Backend GET /api/recommendations).</summary>
 public record RecommendationResponse(
     string PredictedSegment,
-    IReadOnlyList<RecommendationItemResponse> Recommendations);
+    IReadOnlyList<RecommendationItemResponse> Recommendations,
+    int? PartySize = null);
 
 public record RecommendationItemResponse(
     int VehicleId,
@@ -346,7 +347,11 @@ public record RecommendationItemResponse(
     string? VehicleStatus = null,
     double? HistoryAffinity = null,
     decimal? PricePerDay = null,
-    bool? OverBudget = null);
+    bool? OverBudget = null,
+    int? Seats = null,
+    bool? SeatsOk = null,
+    bool? MaintenanceDue = null,
+    bool FromBusinessRule = false);
 
 /// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
 public record CustomerVehicleInteractionResponse(

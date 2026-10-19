@@ -98,8 +98,13 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
                     vehicleStatus = r.VehicleStatus,
                     historyAffinity = r.HistoryAffinity,
                     pricePerDay = r.PricePerDay,
-                    overBudget = r.OverBudget
-                })
+                    overBudget = r.OverBudget,
+                    seats = r.Seats,
+                    seatsOk = r.SeatsOk,
+                    maintenanceDue = r.MaintenanceDue,
+                    fromBusinessRule = r.FromBusinessRule
+                }),
+                partySize = data.PartySize
             });
         }
         catch (Exception ex)

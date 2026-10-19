@@ -1,3 +1,4 @@
+using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Recommendations;
 using Backend.Entities;
@@ -76,8 +77,14 @@ public class RecommendationMappingService(
         var carIdMap = EffectiveCarIdMap();
         var history = await RentalHistoryBuilder.BuildAsync(
             db, customerId, RentalHistoryBuilder.Reverse(carIdMap), _options, DateTime.UtcNow, cancellationToken);
+        // Party size known -> ask V7 for a larger candidate pool so cars with enough seats can be
+        // ranked first even when V7's own Top-K is full of smaller cars.
+        int? partySize = customer.FamilySize is > 0 ? customer.FamilySize : null;
+        var poolSize = partySize is null
+            ? topK
+            : Math.Clamp(_options.SeatCandidatePool, topK, MaxPythonTopK);
         // Cold-start: no history -> weight 0 -> Python returns the original V7 ranking.
-        var pythonRequest = CustomerV7ProfileBuilder.ToPythonRequest(profile, topK) with
+        var pythonRequest = CustomerV7ProfileBuilder.ToPythonRequest(profile, poolSize) with
         {
             History = history.Count > 0 ? history : null,
             HistoryWeight = history.Count > 0 ? Math.Clamp(_options.HistoryWeight, 0, 1) : 0
@@ -114,9 +121,20 @@ public class RecommendationMappingService(
                 Segment: r.Segment,
                 Score: r.FinalScore))
             .ToList();
-        var affinityByCarId = pythonData.Recommendations
+        var byCarId = pythonData.Recommendations
             .GroupBy(r => r.CarId, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().HistoryAffinity, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var lastMaintenance = await new MaintenanceAlertService(db).GetLastCompletedByVehicleAsync();
+        var utcNow = DateTime.UtcNow;
+        bool MaintenanceDue(Vehicle v)
+        {
+            lastMaintenance.TryGetValue(v.VehicleId, out var last);
+            return MaintenanceAlertService.IsBlockedForNewSchedule(v, last, utcNow);
+        }
+        bool? OverBudget(Vehicle v) => customer.TripBudgetPerDay is double budget && v.VehicleType is { } type
+            ? type.PricePerDay > (decimal)budget
+            : null;
 
         var map = VehicleCarIdMapper.MapRecommendations(
             pythonItems,
@@ -139,6 +157,10 @@ public class RecommendationMappingService(
                 continue;
             }
 
+            var python = byCarId.GetValueOrDefault(m.CarId);
+            // Physical seats from the V7 catalog; the DB type is coarser (V7VehicleSeeder files every
+            // SUV/Crossover under "7 chỗ"). Cars outside the catalog fall back to the type's capacity.
+            var seats = python?.Seats ?? m.Vehicle.VehicleType?.SeatCapacity;
             items.Add(new RecommendationItemDto(
                 VehicleId: m.VehicleId,
                 CarId: m.CarId,
@@ -151,16 +173,66 @@ public class RecommendationMappingService(
                 FuelType: m.Vehicle.FuelType,
                 Transmission: m.Vehicle.Transmission,
                 VehicleStatus: m.Vehicle.Status,
-                HistoryAffinity: affinityByCarId.GetValueOrDefault(m.CarId),
+                HistoryAffinity: python?.HistoryAffinity,
                 PricePerDay: m.Vehicle.VehicleType?.PricePerDay,
-                // Hint only (not a filter): real rental price vs the customer's per-day travel budget.
-                OverBudget: customer.TripBudgetPerDay is double budget && m.Vehicle.VehicleType is { } type
-                    ? type.PricePerDay > (decimal)budget
-                    : null));
+                // Hints only (nothing is filtered): budget, seats for the party, maintenance lock.
+                OverBudget: OverBudget(m.Vehicle),
+                Seats: seats,
+                SeatsOk: partySize is int people ? seats >= people : null,
+                MaintenanceDue: MaintenanceDue(m.Vehicle)));
         }
 
+        var v7Count = items.Count;
+        if (partySize is int party)
+        {
+            // Seats first: every car that fits the party ranks above every car that does not
+            // (stable — V7 order is kept inside each group). Cars that do not fit stay, at the bottom.
+            items = items
+                .Select((item, index) => (item, index))
+                .OrderByDescending(x => x.item.SeatsOk == true)
+                .ThenBy(x => x.index)
+                .Select(x => x.item)
+                .ToList();
+
+            // V7's catalog stops at 7 seats: for bigger parties add real fleet vehicles that fit
+            // (business rule, not V7 — flagged FromBusinessRule, no V7 score).
+            if (!items.Any(i => i.SeatsOk == true))
+            {
+                var fitting = vehicles
+                    .Where(v => v.VehicleType is not null
+                        && v.VehicleType.SeatCapacity >= party
+                        && v.Status is not (VehicleStatuses.Inactive or VehicleStatuses.Maintenance)
+                        && !seenVehicleIds.Contains(v.VehicleId)
+                        && !MaintenanceDue(v))
+                    .OrderBy(v => v.VehicleType.SeatCapacity)
+                    .ThenBy(v => v.VehicleType.PricePerDay)
+                    .ThenBy(v => v.VehicleId)
+                    .Select(v => new RecommendationItemDto(
+                        VehicleId: v.VehicleId,
+                        CarId: string.Empty,
+                        Brand: v.Brand,
+                        Model: v.Model,
+                        Segment: v.VehicleType.TypeName,
+                        Score: 0,
+                        LicensePlate: v.LicensePlate,
+                        VehicleType: v.VehicleType.TypeName,
+                        FuelType: v.FuelType,
+                        Transmission: v.Transmission,
+                        VehicleStatus: v.Status,
+                        PricePerDay: v.VehicleType.PricePerDay,
+                        OverBudget: OverBudget(v),
+                        Seats: v.VehicleType.SeatCapacity,
+                        SeatsOk: true,
+                        MaintenanceDue: false,
+                        FromBusinessRule: true))
+                    .ToList();
+                items = fitting.Concat(items).ToList();
+            }
+        }
+        items = items.Take(topK).ToList();
+
         string? reason = null;
-        if (items.Count == 0)
+        if (v7Count == 0)
         {
             reason =
                 $"Không map được car_id nào sang Vehicle SQLite (unmapped={map.UnmappedCount}, ambiguous={map.AmbiguousCount}). " +
@@ -179,6 +251,12 @@ public class RecommendationMappingService(
             StatusCode: StatusCodes.Status200OK,
             UnmappedCount: map.UnmappedCount,
             AmbiguousCount: map.AmbiguousCount,
-            DuplicateVehicleCount: duplicateVehicleCount);
+            DuplicateVehicleCount: duplicateVehicleCount,
+            PartySize: partySize,
+            CandidateCount: pythonData.Recommendations.Count,
+            MappedCount: v7Count);
     }
+
+    /// <summary>V7 Python accepts top_k up to 50.</summary>
+    public const int MaxPythonTopK = 50;
 }
