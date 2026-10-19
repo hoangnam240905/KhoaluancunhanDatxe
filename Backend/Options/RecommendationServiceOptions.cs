@@ -57,6 +57,12 @@ public class RecommendationServiceOptions
     /// </summary>
     public int SeatCandidatePool { get; set; } = 50;
 
+    /// <summary>
+    /// Target-segment rules for V7's Structured part: "travel" (party size, then trip type) or "v7"
+    /// (original car-buyer rules). Empty = not sent = "v7".
+    /// </summary>
+    public string? SegmentRules { get; set; } = "travel";
+
     /// <summary>Only the most recent N bookings are sent to Python.</summary>
     public int MaxHistoryBookings { get; set; } = 20;
 

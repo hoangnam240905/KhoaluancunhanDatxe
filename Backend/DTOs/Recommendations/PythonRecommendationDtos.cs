@@ -15,7 +15,9 @@ public record PythonRecommendationRequest(
     string PreferencesText,
     int TopK = 5,
     IReadOnlyList<PythonHistoryItem>? History = null,
-    double HistoryWeight = 0);
+    double HistoryWeight = 0,
+    // "v7" (original) or "travel" target-segment rules; null = omitted = "v7".
+    string? SegmentRules = null);
 
 /// <summary>One past rental for the history boost: catalog car_id when known, else seats only.</summary>
 public record PythonHistoryItem(string? CarId, int? Seats, double Weight);

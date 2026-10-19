@@ -114,6 +114,27 @@ TF-IDF của V7 được fit **chỉ trên mô tả xe tiếng Anh** ("make … 
 
 Cùng bước này: các ô bỏ trống dùng **median** của dữ liệu huấn luyện (tuổi 34, 22 km/ngày, 14.237,5 km/năm) thay vì 0 (0 km/năm nằm ngoài dải 3.000–35.000). Mục đích bỏ trống mặc định là "family" (du lịch gia đình) thay vì "city".
 
+## 4e. Luật phân khúc cho du lịch (`segment_rules=travel` — plan form du lịch, bước 4)
+
+Phần Structured (40% điểm) so mỗi xe với một "xe mục tiêu" có phân khúc lấy từ luật. Luật gốc V7 là luật người mua xe (`kids > 0 …`). Luật du lịch (`RecommendationService/segment_rules.py`) xét theo thứ tự:
+
+1. Số người ≥ 5 → 7-Seater
+2. Hành trình `trips` (đường đèo/địa hình) → SUV
+3. `work` → Sedan
+4. `city` → Supermini
+5. Còn lại → Crossover
+
+Luật mới chỉ bật khi request gửi `segment_rules: "travel"` (Backend gửi mặc định, cấu hình `RecommendationService:SegmentRules`). Không gửi thì vẫn là V7 gốc. Cách làm giống `history_weight`.
+
+| Cấu hình (tập test 2.000 user) | HitRate@5 | Precision@5 | SeatFit@5 | HitRate@10 |
+|---|---|---|---|---|
+| V7 đầy đủ (luật gốc) | 72,75% | 45,49% | 99,66% | 91,95% |
+| V7 – luật du lịch | 73,50% | 45,31% | 99,66% | 93,10% |
+
+Số của V7 gốc giữ nguyên. Script kiểm tra 25 user test cho cả hai luật: điểm tính vector hóa phải khớp `engine.recommend`. Kết quả chạy lại: `results_2026-10-19.csv`.
+
+**Hạn chế:** user đánh giá vẫn là user tổng hợp của bài toán mua xe (có số con, hành trình `trips` không hẳn là đường đèo). Vì vậy con số này chỉ cho thấy luật du lịch **không làm giảm** chất lượng theo nhãn proxy (+0,75 điểm HitRate@5). Nó không chứng minh luật hợp với khách thuê du lịch thật.
+
 ## 5. Giới hạn (phải ghi trong báo cáo)
 
 - **Dữ liệu tổng hợp, nhãn proxy**: `label_segment` không phải hành vi thuê thật.

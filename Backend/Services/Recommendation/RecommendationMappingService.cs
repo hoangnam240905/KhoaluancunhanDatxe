@@ -87,7 +87,8 @@ public class RecommendationMappingService(
         var pythonRequest = CustomerV7ProfileBuilder.ToPythonRequest(profile, poolSize) with
         {
             History = history.Count > 0 ? history : null,
-            HistoryWeight = history.Count > 0 ? Math.Clamp(_options.HistoryWeight, 0, 1) : 0
+            HistoryWeight = history.Count > 0 ? Math.Clamp(_options.HistoryWeight, 0, 1) : 0,
+            SegmentRules = string.IsNullOrWhiteSpace(_options.SegmentRules) ? null : _options.SegmentRules
         };
 
         var (pythonData, pythonError, pythonStatus) =

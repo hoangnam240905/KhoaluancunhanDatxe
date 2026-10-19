@@ -41,6 +41,7 @@ from recommender import (  # noqa: E402
     TARGET_COLUMN,
     CarRecommendationEngine,
 )
+from segment_rules import rule_segments  # noqa: E402
 
 SEED = 42
 KS = (5, 10)
@@ -66,15 +67,8 @@ def preferred_seats(users: pd.DataFrame) -> np.ndarray:
     return np.where(kids > 0, np.maximum(family + 1, 4), np.maximum(family, 2))
 
 
-def rule_segment(users: pd.DataFrame) -> np.ndarray:
-    kids = users["kids"].astype(int).to_numpy()
-    family = users["family_size"].astype(int).to_numpy()
-    usage = users["usage_primary"].astype(str).str.lower().to_numpy()
-    return np.select(
-        [(kids > 0) & (family >= 5), kids > 0, usage == "work", usage == "city"],
-        ["7-Seater", "Crossover", "Sedan", "Supermini"],
-        default="Crossover",
-    )
+def rule_segment(users: pd.DataFrame, rules: str = "v7") -> np.ndarray:
+    return rule_segments(users["kids"], users["family_size"], users["usage_primary"].astype(str), rules)
 
 
 def text_matrix(engine: CarRecommendationEngine, users: pd.DataFrame) -> np.ndarray:
@@ -82,9 +76,10 @@ def text_matrix(engine: CarRecommendationEngine, users: pd.DataFrame) -> np.ndar
     return cosine_similarity(user_tfidf, engine.car_tfidf)
 
 
-def structured_user_frame(engine: CarRecommendationEngine, users: pd.DataFrame) -> pd.DataFrame:
+def structured_user_frame(engine: CarRecommendationEngine, users: pd.DataFrame,
+                          rules: str = "v7") -> pd.DataFrame:
     frame = pd.DataFrame({
-        "segment": rule_segment(users),
+        "segment": rule_segment(users, rules),
         "fuel_type": "Petrol",
         "seats": preferred_seats(users),
         "price": users["budget_monthly"].to_numpy(),
@@ -98,8 +93,8 @@ def structured_user_frame(engine: CarRecommendationEngine, users: pd.DataFrame) 
     return frame.astype(float)
 
 
-def structured_matrix(engine: CarRecommendationEngine, users: pd.DataFrame) -> np.ndarray:
-    return cosine_similarity(structured_user_frame(engine, users), engine.cars_structured)
+def structured_matrix(engine: CarRecommendationEngine, users: pd.DataFrame, rules: str = "v7") -> np.ndarray:
+    return cosine_similarity(structured_user_frame(engine, users, rules), engine.cars_structured)
 
 
 MONTHLY_COST_COLUMNS = ["maintenance_monthly_est", "insurance_monthly_est", "depreciation_monthly_est"]
@@ -203,11 +198,11 @@ def baselines(users: pd.DataFrame, cars: pd.DataFrame, y_train: pd.Series) -> di
 # ---------------------------------------------------------------------------
 
 def check_against_engine(engine: CarRecommendationEngine, users: pd.DataFrame,
-                         components: dict[str, np.ndarray], n: int = 25) -> None:
+                         components: dict[str, np.ndarray], n: int = 25, rules: str = "v7") -> None:
     full = combine(components, CONFIGS["V7 đầy đủ 0.4/0.4/0.2"])
     for i in range(min(n, len(users))):
         user = users.iloc[i]
-        expected = engine.recommend(user.to_dict(), top_k=5)["recommendations"]
+        expected = engine.recommend(user.to_dict(), top_k=5, segment_rules=rules)["recommendations"]
         expected_scores = np.array([r["final_score"] for r in expected])
         got_scores = np.sort(full[i])[::-1][:5]
         assert np.allclose(expected_scores, got_scores, atol=1e-9), f"score mismatch at test user {i}"
@@ -247,6 +242,12 @@ def main() -> None:
         rows.append({"Cấu hình": name, "Tập": "test", **evaluate(combine(comps, weights), test_users, cars)})
     for name, scores in baselines(test_users, cars, y_train).items():
         rows.append({"Cấu hình": name, "Tập": "test", **evaluate(scores, test_users, cars)})
+
+    # Extension (plan1.md 4.3): travel segment rules in the Structured part; V7 row above is untouched.
+    comps_travel = {**comps, "structured": structured_matrix(engine, test_users, "travel")}
+    check_against_engine(engine, test_users, comps_travel, rules="travel")
+    rows.append({"Cấu hình": "V7 – luật du lịch (segment_rules=travel)", "Tập": "test",
+                 **evaluate(combine(comps_travel, CONFIGS["V7 đầy đủ 0.4/0.4/0.2"]), test_users, cars)})
 
     # Experiment: budget compared with monthly cost instead of purchase price (engine untouched).
     monthly = MonthlyBudgetStructured(engine)
@@ -291,7 +292,7 @@ def main() -> None:
         "budget_as_price_zscore_range": [round(float(z_price.min()), 3), round(float(z_price.max()), 3)],
         "experiment_budget_vs_monthly_cost_zscore_range": [round(float(z_monthly.min()), 3), round(float(z_monthly.max()), 3)],
         "car_monthly_cost_range": [round(float(car_monthly.min()), 1), round(float(car_monthly.max()), 1)],
-        "engine_consistency_check": "passed (25 test users, vectorised scores == engine.recommend)",
+        "engine_consistency_check": "passed (25 test users x segment_rules v7/travel, vectorised scores == engine.recommend)",
     }
 
     stamp = started.strftime("%Y-%m-%d")
