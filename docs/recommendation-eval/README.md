@@ -100,6 +100,20 @@ Nhận xét: với `w = 0,2`, chỉ **một** lần thuê đã đủ lật toàn
 
 **Phát hiện dữ liệu khi demo:** cả 19 xe 7 chỗ trong đội xe V7 đều **đã đến hạn bảo trì** (chưa từng có lịch sử bảo trì), nên hệ thống không nhận đặt lịch mới cho chúng. V7 vẫn có thể gợi ý các xe này (gợi ý không lọc theo tình trạng), nên trang Gợi ý hiện trạng thái xe để khách biết trước.
 
+## 4d. Ghi chú tiếng Việt và kênh Text (plan form du lịch — bước 1)
+
+TF-IDF của V7 được fit **chỉ trên mô tả xe tiếng Anh** ("make … segment SUV fuel hybrid seats 7 … trunk … safety … fuel economy"). Ghi chú tiếng Việt không trùng từ nào, nên kênh Text (40% điểm) bằng 0. Backend giờ giữ nguyên câu gốc và nối thêm token map từ cụm tiếng Việt (`PreferenceKeywords`, tra cụm đơn giản, không phải dịch máy).
+
+Đo bằng engine V7 thật (cosine với 250 mô tả xe):
+
+| Ghi chú của khách | Điểm Text cao nhất (trước → sau) | Top-3 theo Text sau khi map |
+|---|---|---|
+| "Xe tiết kiệm xăng, an toàn, cốp rộng" | 0,000 → 0,150 | Sedan, Sedan, 7-Seater |
+| "Cần xe 7 chỗ rộng rãi cho gia đình" | 0,000 → 0,138 | 7-Seater, 7-Seater, 7-Seater |
+| "Đi đường đèo, cần xe gầm cao" | 0,000 → 0,136 | SUV, SUV, SUV |
+
+Cùng bước này: các ô bỏ trống dùng **median** của dữ liệu huấn luyện (tuổi 34, 22 km/ngày, 14.237,5 km/năm) thay vì 0 (0 km/năm nằm ngoài dải 3.000–35.000). Mục đích bỏ trống mặc định là "family" (du lịch gia đình) thay vì "city".
+
 ## 5. Giới hạn (phải ghi trong báo cáo)
 
 - **Dữ liệu tổng hợp, nhãn proxy**: `label_segment` không phải hành vi thuê thật.

@@ -51,8 +51,20 @@ public class RecommendationServiceOptions
     /// <summary>Only the most recent N bookings are sent to Python.</summary>
     public int MaxHistoryBookings { get; set; } = 20;
 
-    /// <summary>Used when Customer.DateOfBirth is null.</summary>
-    public int DefaultAge { get; set; } = 30;
+    /// <summary>Used when Customer.DateOfBirth is null. Median age of the V7 training users.</summary>
+    public int DefaultAge { get; set; } = 34;
+
+    /// <summary>
+    /// Used when the Profile has no value. Medians of the V7 training users — 0 would sit outside
+    /// the training range (annual_km is 3,000–35,000) and skew the Random Forest.
+    /// Rental-for-travel customers are not asked these commuter questions.
+    /// </summary>
+    public double DefaultCommuteKmDay { get; set; } = 22;
+
+    public double DefaultAnnualKm { get; set; } = 14_237.5;
+
+    /// <summary>usage_primary when the trip type is empty (travel rental: family trip).</summary>
+    public string DefaultUsagePrimary { get; set; } = "family";
 
     /// <summary>Used when Customer.FamilySize is null (after kids known).</summary>
     public int DefaultFamilySize { get; set; } = 2;

@@ -26,6 +26,7 @@ public static class CustomerV7ProfileBuilder
             ?? Math.Max(options.DefaultFamilySize, kids + 1);
         if (familySize < 1)
             familySize = Math.Max(1, kids + 1);
+        var usage = NormalizeUsage(customer.RentalPurpose, options.DefaultUsagePrimary);
 
         return new CustomerV7Profile(
             Age: ComputeAge(customer.DateOfBirth, asOf, options.DefaultAge),
@@ -33,15 +34,15 @@ public static class CustomerV7ProfileBuilder
             FamilySize: familySize,
             IncomeBracket: NormalizeBracket(customer.IncomeRange, "med"),
             CityType: NormalizeCity(customer.CityType, "med"),
-            CommuteKmDay: customer.CommuteKmPerDay is >= 0 ? customer.CommuteKmPerDay.Value : 0,
+            CommuteKmDay: customer.CommuteKmPerDay is >= 0 ? customer.CommuteKmPerDay.Value : options.DefaultCommuteKmDay,
             // Customer schema has no ChargingAccess — fixed fallback (see RecommendationServiceOptions).
             ChargingAccess: options.DefaultChargingAccess is 0 or 1
                 ? options.DefaultChargingAccess
                 : 0,
-            AnnualKm: customer.AnnualMileage is >= 0 ? customer.AnnualMileage.Value : 0,
-            UsagePrimary: NormalizeUsage(customer.RentalPurpose, "city"),
+            AnnualKm: customer.AnnualMileage is >= 0 ? customer.AnnualMileage.Value : options.DefaultAnnualKm,
+            UsagePrimary: usage,
             BudgetMonthly: NormalizeBudget(ResolveBudget(customer, options.DefaultBudgetMonthly), options),
-            PreferencesText: ResolvePreferences(customer, options.DefaultPreferencesText));
+            PreferencesText: ResolvePreferences(customer, usage, familySize, options.DefaultPreferencesText));
     }
 
     public static PythonRecommendationRequest ToPythonRequest(CustomerV7Profile profile, int topK)
@@ -99,26 +100,47 @@ public static class CustomerV7ProfileBuilder
         return Math.Clamp(value, min, max);
     }
 
-    internal static string ResolvePreferences(Customer customer, string fallback)
+    /// <summary>
+    /// Text sent to V7's TF-IDF channel: the customer's own note (kept verbatim) followed by tokens
+    /// from the car-description vocabulary — mapped from Vietnamese phrases in the note, from the
+    /// preference dropdowns and from party size. With no note and no preferences, the trip type
+    /// decides. Previously the dropdowns were dropped whenever a note existed, and Vietnamese notes
+    /// matched nothing.
+    /// </summary>
+    internal static string ResolvePreferences(Customer customer, string usage, int partySize, string fallback)
     {
-        if (!string.IsNullOrWhiteSpace(customer.PreferencesText))
-            return customer.PreferencesText.Trim();
+        var note = customer.PreferencesText?.Trim();
+        var tokens = new List<string>(PreferenceKeywords.FromNote(note));
+        void Add(string? t)
+        {
+            if (!string.IsNullOrWhiteSpace(t) && !tokens.Contains(t))
+                tokens.Add(t);
+        }
 
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(customer.PreferredVehicleType))
-            parts.Add($"preferred vehicle type {customer.PreferredVehicleType.Trim()}");
-        if (!string.IsNullOrWhiteSpace(customer.PreferredFuelType))
-            parts.Add($"preferred fuel {customer.PreferredFuelType.Trim()}");
-        if (!string.IsNullOrWhiteSpace(customer.PreferredTransmission))
-            parts.Add($"preferred transmission {customer.PreferredTransmission.Trim()}");
-        if (customer.PreferredSeats is int seats and > 0)
-            parts.Add($"preferred seats {seats}");
+        Add(PreferenceKeywords.VehicleTypeTokens(customer.PreferredVehicleType));
+        Add(PreferenceKeywords.FuelTokens(customer.PreferredFuelType));
+        Add(PreferenceKeywords.SeatTokens(customer.PreferredSeats is > 0 ? customer.PreferredSeats : partySize));
+        // Transmission is not part of the car descriptions -> it cannot influence V7, so it is not sent.
 
-        if (parts.Count > 0)
-            return string.Join(", ", parts);
+        if (string.IsNullOrWhiteSpace(note) && tokens.Count <= 1)
+            Add(TripTypeTokens(usage));
 
+        var extra = string.Join(" ", tokens);
+        if (!string.IsNullOrWhiteSpace(note))
+            return extra.Length == 0 ? note : $"{note} | {extra}";
+        if (extra.Length > 0)
+            return extra;
         return string.IsNullOrWhiteSpace(fallback) ? "general car rental preferences" : fallback.Trim();
     }
+
+    private static string? TripTypeTokens(string usage) => usage switch
+    {
+        "trips" => "suv",
+        "work" => "sedan",
+        "city" => "supermini mini",
+        "family" => "crossover safety",
+        _ => null
+    };
 
     private static int ClampAge(int age) => Math.Clamp(age, 16, 100);
 
@@ -154,6 +176,11 @@ public static class CustomerV7ProfileBuilder
         if (string.IsNullOrEmpty(v)) return fallback;
         return v switch
         {
+            // Travel trip types from the Profile form (plan1.md 4.2)
+            "family_trip" => "family",
+            "mountain_trip" => "trips",
+            "business_trip" => "work",
+            "city_trip" => "city",
             "commute" or "commuting" => "city",
             "trip" or "travel" or "vacation" => "trips",
             "work" or "business" => "work",
