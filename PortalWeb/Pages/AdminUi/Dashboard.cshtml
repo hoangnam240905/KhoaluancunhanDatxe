@@ -17,6 +17,7 @@
         "Cancelled" => "red",
         _ => "slate"
     };
+    const string DashboardOutlierText = "3 lần";
     string ChangeHtml(decimal? pct)
     {
         if (pct is null)
@@ -78,47 +79,65 @@
     }
     else
     {
+            var rev = d.Revenue;
+            var reviews = d.Reviews;
+            var cancelRate = d.Summary.TotalBookings == 0 ? (decimal?)null
+                : Math.Round(d.Summary.CancelledBookings * 100m / d.Summary.TotalBookings, 1);
+            var viN = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+        @* Trip revenue (completed trips in range) — not the deposit. *@
         <div class="aui-kpi-grid">
             <div class="aui-card aui-kpi">
                 <div class="aui-kpi-icon blue"><i class="bi bi-cash-stack"></i></div>
                 <div>
                     <div class="aui-kpi-label">Tổng doanh thu</div>
-                    <div class="aui-kpi-value">@BookingDetailUi.Money(d.Summary.DepositPaidAmount)</div>
-                    @Html.Raw(ChangeHtml(d.Summary.DepositPaidChangePercent))
+                    <div class="aui-kpi-value">@BookingDetailUi.Money(rev?.TotalAmount ?? 0)</div>
+                    <div class="aui-kpi-sub">Giá thuê @BookingDetailUi.Money(rev?.RentalAmount ?? 0) · Phát sinh @BookingDetailUi.Money(rev?.AdjustmentAmount ?? 0)</div>
+                    @if ((rev?.OutlierTrips ?? 0) > 0)
+                    {
+                        <a class="aui-kpi-warn" href="#auiRanking"><i class="bi bi-exclamation-triangle"></i> @rev!.OutlierTrips chuyến có phụ phí bất thường — cần kiểm tra</a>
+                    }
+                    @Html.Raw(ChangeHtml(rev?.RentalChangePercent))
                 </div>
             </div>
             <div class="aui-card aui-kpi">
-                <div class="aui-kpi-icon green"><i class="bi bi-calendar2-check"></i></div>
+                <div class="aui-kpi-icon green"><i class="bi bi-flag"></i></div>
                 <div>
-                    <div class="aui-kpi-label">Tổng đơn thuê</div>
-                    <div class="aui-kpi-value">@d.Summary.TotalBookings.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))</div>
-                    @Html.Raw(ChangeHtml(d.Summary.BookingsChangePercent))
+                    <div class="aui-kpi-label">Chuyến hoàn thành</div>
+                    <div class="aui-kpi-value">@((rev?.CompletedTrips ?? 0).ToString("N0", viN))</div>
+                    <div class="aui-kpi-change"><span>theo ngày hoàn thành trong kỳ</span></div>
                 </div>
             </div>
             <div class="aui-card aui-kpi">
-                <div class="aui-kpi-icon purple"><i class="bi bi-truck-front"></i></div>
+                <div class="aui-kpi-icon amber"><i class="bi bi-star-fill"></i></div>
                 <div>
-                    <div class="aui-kpi-label">Đội xe đang hoạt động</div>
-                    <div class="aui-kpi-value">@d.ActiveFleet.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))</div>
-                    <div class="aui-kpi-change"><span>snapshot hiện tại</span></div>
+                    <div class="aui-kpi-label">Đánh giá trung bình</div>
+                    <div class="aui-kpi-value">@(reviews?.AverageRating is decimal avg ? avg.ToString("0.0#", viN) + " ★" : "—")</div>
+                    <div class="aui-kpi-change"><span>@(reviews?.Count ?? 0) đánh giá trong kỳ</span></div>
                 </div>
             </div>
             <div class="aui-card aui-kpi">
-                <div class="aui-kpi-icon amber"><i class="bi bi-people"></i></div>
+                <div class="aui-kpi-icon purple"><i class="bi bi-x-circle"></i></div>
                 <div>
-                    <div class="aui-kpi-label">Tổng khách hàng</div>
-                    <div class="aui-kpi-value">@d.TotalCustomers.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))</div>
-                    <div class="aui-kpi-change"><span>snapshot hiện tại</span></div>
+                    <div class="aui-kpi-label">Tỷ lệ hủy</div>
+                    <div class="aui-kpi-value">@(cancelRate is decimal cr ? cr.ToString("0.#", viN) + "%" : "—")</div>
+                    <div class="aui-kpi-change"><span>@d.Summary.CancelledBookings/@d.Summary.TotalBookings đơn tạo trong kỳ</span></div>
                 </div>
             </div>
         </div>
+        <p class="aui-note">@(rev?.Note ?? "")</p>
 
+        <div class="aui-stat-strip">
+            <div><span>Tổng đơn thuê</span><strong>@d.Summary.TotalBookings.ToString("N0", viN)</strong></div>
+            <div><span>Cọc đã thu (mô phỏng)</span><strong>@BookingDetailUi.Money(d.Summary.DepositPaidAmount)</strong></div>
+            <div><span>Đội xe đang hoạt động</span><strong>@d.ActiveFleet.ToString("N0", viN)</strong></div>
+            <div><span>Tổng khách hàng</span><strong>@d.TotalCustomers.ToString("N0", viN)</strong></div>
+        </div>
         <div class="aui-grid-2">
             <div class="aui-card aui-card-pad">
                 <div class="aui-card-head">
                     <div>
-                        <h3 class="aui-card-title">Tổng quan doanh thu</h3>
-                        <p class="aui-card-sub">Doanh thu theo tháng trong 12 tháng gần nhất</p>
+                        <h3 class="aui-card-title">Cọc đã thu theo tháng</h3>
+                        <p class="aui-card-sub">Tiền cọc đã thanh toán (mô phỏng) trong 12 tháng gần nhất — không phải doanh thu chuyến</p>
                     </div>
                 </div>
                 @{
@@ -152,6 +171,144 @@
             </div>
         </div>
 
+        <div class="aui-card" id="auiRanking" data-ranking>
+            <div class="aui-card-pad aui-card-head" style="padding-bottom:.35rem">
+                <div>
+                    <h3 class="aui-card-title">Xếp hạng xe</h3>
+                    <p class="aui-card-sub">Mọi xe có chuyến hoàn thành trong kỳ · bấm tiêu đề cột để sắp xếp</p>
+                </div>
+                <div class="aui-seg" role="group" aria-label="Sắp xếp nhanh">
+                    <button type="button" class="aui-btn aui-btn-sm aui-btn-ghost is-on" data-rank-sort="trips">Theo chuyến</button>
+                    <button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-rank-sort="total">Theo doanh thu</button>
+                    <button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-rank-sort="rating">Theo đánh giá</button>
+                </div>
+            </div>
+            @if (d.TopVehicles.Count == 0)
+            {
+                <div class="aui-empty"><p>Chưa có chuyến hoàn thành trong kỳ.</p></div>
+            }
+            else
+            {
+                <div class="aui-table-wrap">
+                    <table class="aui-table aui-rank-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Xe</th>
+                                <th>Biển số</th>
+                                <th class="num"><button type="button" data-rank-sort="trips">Số chuyến</button></th>
+                                <th class="num">Giá thuê</th>
+                                <th class="num">Phát sinh</th>
+                                <th class="num"><button type="button" data-rank-sort="total">Doanh thu</button></th>
+                                <th class="num"><button type="button" data-rank-sort="rating">Đánh giá</button></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var v in d.TopVehicles)
+                        {
+                            <tr data-trips="@v.CompletedCount" data-total="@v.TotalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-rating="@(v.AverageRating?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-1")" data-id="@v.VehicleId">
+                                <td class="rank-no"></td>
+                                <td><strong>@($"{v.Brand} {v.Model}".Trim())</strong></td>
+                                <td>@v.LicensePlate</td>
+                                <td class="num">@v.CompletedCount</td>
+                                <td class="num">@BookingDetailUi.Money(v.RentalAmount)</td>
+                                <td class="num">@BookingDetailUi.Money(v.AdjustmentAmount)
+                                    @if (v.OutlierTrips > 0)
+                                    {
+                                        <span class="aui-badge red" title="Phụ phí lớn hơn @DashboardOutlierText giá thuê">cần kiểm tra</span>
+                                    }
+                                </td>
+                                <td class="num"><strong>@BookingDetailUi.Money(v.TotalAmount)</strong></td>
+                                <td class="num">@(v.AverageRating is decimal r ? $"{r.ToString("0.0#", viN)} ★ ({v.ReviewCount})" : "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                @if (d.TopVehicles.Count > 10)
+                {
+                    <div class="aui-card-pad" style="padding-top:.5rem">
+                        <button type="button" class="aui-btn aui-btn-sm aui-btn-ghost" data-rank-more>Xem tất cả @d.TopVehicles.Count xe</button>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="aui-grid-2 equal">
+            <div class="aui-card aui-card-pad">
+                <div class="aui-card-head">
+                    <div>
+                        <h3 class="aui-card-title">Khung giờ nhận xe cao điểm</h3>
+                        <p class="aui-card-sub">@(d.RentalHeatmap?.Note ?? "")</p>
+                    </div>
+                </div>
+                @{
+                    var heat = d.RentalHeatmap;
+                    string[] days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+                    string[] dayNames = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+                }
+                @if (heat is null || heat.Total == 0)
+                {
+                    <div class="aui-empty"><p>Không có đơn nhận xe trong kỳ.</p></div>
+                }
+                else
+                {
+                    var byCell = heat.Cells.ToDictionary(c => (c.DayOfWeek, c.Hour), c => c.Count);
+                    var peak = heat.Cells.OrderByDescending(c => c.Count).ThenBy(c => c.DayOfWeek).ThenBy(c => c.Hour).First();
+                    <p class="aui-heat-peak">Đông nhất: <strong>@dayNames[peak.DayOfWeek - 1] @peak.Hour.ToString("00"):00–@(((peak.Hour + 1) % 24).ToString("00")):00</strong> — @peak.Count đơn (trên @heat.Total đơn)</p>
+                    <div class="aui-heat" role="table" aria-label="Số đơn theo thứ và giờ nhận xe">
+                        <div class="aui-heat-row aui-heat-hours" role="row">
+                            <span></span>
+                            @for (var h = 0; h < 24; h++)
+                            {
+                                <span role="columnheader">@(h % 3 == 0 ? h.ToString() : "")</span>
+                            }
+                        </div>
+                        @for (var day = 1; day <= 7; day++)
+                        {
+                            <div class="aui-heat-row" role="row">
+                                <span class="aui-heat-day" role="rowheader">@days[day - 1]</span>
+                                @for (var h = 0; h < 24; h++)
+                                {
+                                    var n = byCell.GetValueOrDefault((day, h));
+                                    var level = n == 0 ? 0 : (int)Math.Ceiling(n * 4.0 / heat.Max);
+                                    <span class="aui-heat-cell l@(level)" role="cell" title="@dayNames[day - 1] @h.ToString("00"):00 — @n đơn"></span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="aui-card aui-card-pad">
+                <div class="aui-card-head">
+                    <div>
+                        <h3 class="aui-card-title">Đánh giá mới nhất</h3>
+                        <p class="aui-card-sub">Khách đánh giá sau chuyến có tài xế</p>
+                    </div>
+                </div>
+                @if ((reviews?.Latest.Count ?? 0) == 0)
+                {
+                    <div class="aui-empty"><p>Chưa có đánh giá trong kỳ.</p></div>
+                }
+                else
+                {
+                    <div class="aui-review-list">
+                        @foreach (var r in reviews!.Latest)
+                        {
+                            <div class="aui-review">
+                                <div class="aui-review-head">
+                                    <span class="aui-stars" aria-label="@r.Rating trên 5 sao">@(new string('★', r.Rating))<span>@(new string('★', Math.Max(0, 5 - r.Rating)))</span></span>
+                                    <small>@BookingDetailUi.Day(r.CreatedAt)</small>
+                                </div>
+                                <p>@(string.IsNullOrWhiteSpace(r.Comment) ? "(Không có nhận xét)" : r.Comment)</p>
+                                <small>@r.VehicleLabel · KH @r.CustomerName · TX @r.DriverName · đơn #@r.BookingId</small>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
         <div class="aui-grid-2 equal">
             <div class="aui-card aui-card-pad">
                 <div class="aui-card-head">

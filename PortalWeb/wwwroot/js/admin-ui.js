@@ -425,6 +425,44 @@
           </div>
         </div>`).join("");
     }
+
+    initRanking(root);
+  }
+
+  /* Dashboard: vehicle ranking — client-side sort over every row (server sends all vehicles). */
+  function initRanking(root) {
+    const card = root.querySelector("[data-ranking]");
+    const body = card?.querySelector("tbody");
+    if (!body) return;
+    const LIMIT = 10;
+    let key = "trips";
+    let expanded = false;
+    const num = (tr, k) => Number(tr.dataset[k] || 0);
+
+    function apply() {
+      const rows = [...body.querySelectorAll("tr")];
+      rows.sort((a, b) => num(b, key) - num(a, key)
+        || num(b, "trips") - num(a, "trips")
+        || num(a, "id") - num(b, "id"));
+      rows.forEach((tr, i) => {
+        body.appendChild(tr);
+        tr.querySelector(".rank-no").textContent = String(i + 1);
+        tr.hidden = !expanded && i >= LIMIT;
+      });
+      card.querySelectorAll("[data-rank-sort]").forEach((b) => b.classList.toggle("is-on", b.dataset.rankSort === key));
+    }
+
+    card.addEventListener("click", (e) => {
+      const sort = e.target.closest("[data-rank-sort]");
+      if (sort) { key = sort.dataset.rankSort; apply(); return; }
+      const more = e.target.closest("[data-rank-more]");
+      if (more) {
+        expanded = !expanded;
+        more.textContent = expanded ? "Thu gọn" : `Xem tất cả ${body.children.length} xe`;
+        apply();
+      }
+    });
+    apply();
   }
 
   /* Page: Bookings */

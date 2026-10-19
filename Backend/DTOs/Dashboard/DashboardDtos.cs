@@ -16,7 +16,49 @@ public record DashboardResponse(
     int ActiveFleet,
     IReadOnlyList<DashboardRevenuePoint> RevenueOverview,
     IReadOnlyList<DashboardRecentBooking> RecentBookings,
-    IReadOnlyList<DashboardUpcomingPickup> UpcomingPickups);
+    IReadOnlyList<DashboardUpcomingPickup> UpcomingPickups,
+    // Added later (defaults keep older clients/tests compiling):
+    DashboardRevenueSummary? Revenue = null,
+    DashboardHeatmap? RentalHeatmap = null,
+    DashboardReviews? Reviews = null);
+
+/// <summary>
+/// Trip revenue for trips COMPLETED in the range (not deposits). Rental = quoted TotalAmount;
+/// Adjustment = (FinalAmount ?? TotalAmount) − TotalAmount (extra km, late, fuel; can be negative).
+/// </summary>
+public record DashboardRevenueSummary(
+    int CompletedTrips,
+    decimal RentalAmount,
+    decimal AdjustmentAmount,
+    decimal TotalAmount,
+    decimal DepositPaidAmount,
+    int OutlierTrips,
+    decimal? RentalChangePercent,
+    string Note);
+
+/// <summary>Pickup time heat: DayOfWeek 1 = Monday … 7 = Sunday, Hour 0–23 (Vietnam wall clock of StartDate).</summary>
+public record DashboardHeatmap(
+    IReadOnlyList<DashboardHeatCell> Cells,
+    int Max,
+    int Total,
+    string Note);
+
+public record DashboardHeatCell(int DayOfWeek, int Hour, int Count);
+
+public record DashboardReviews(
+    decimal? AverageRating,
+    int Count,
+    IReadOnlyList<DashboardLatestReview> Latest);
+
+public record DashboardLatestReview(
+    int ReviewId,
+    int BookingId,
+    int Rating,
+    string? Comment,
+    string VehicleLabel,
+    string CustomerName,
+    string DriverName,
+    DateTime CreatedAt);
 
 public record DashboardRange(
     DateTime From,
@@ -89,7 +131,13 @@ public record DashboardTopVehicle(
     string LicensePlate,
     string Brand,
     string Model,
-    int CompletedCount);
+    int CompletedCount,
+    decimal RentalAmount = 0,
+    decimal AdjustmentAmount = 0,
+    decimal TotalAmount = 0,
+    decimal? AverageRating = null,
+    int ReviewCount = 0,
+    int OutlierTrips = 0);
 
 public record DashboardMaintenance(
     int AlertCount,

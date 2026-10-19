@@ -117,7 +117,15 @@ public record DashboardPayments(int PaidDepositCount, int PendingDepositCount, i
 public record DashboardVehicles(int Total, int Available, int Rented, int Maintenance, int Inactive, string SnapshotNote);
 public record DashboardDriverRow(int DriverId, string FullName, int CompletedAssignments, int CancelledAssignments, int IncidentCount, decimal? AverageReviewRating, decimal? AssignmentCompletionRate);
 public record DashboardDrivers(int Total, int Available, int Busy, int Offline, string SnapshotNote, IReadOnlyList<DashboardDriverRow> Performance);
-public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount);
+public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount,
+    decimal RentalAmount = 0, decimal AdjustmentAmount = 0, decimal TotalAmount = 0, decimal? AverageRating = null, int ReviewCount = 0, int OutlierTrips = 0);
+public record DashboardRevenueSummary(int CompletedTrips, decimal RentalAmount, decimal AdjustmentAmount, decimal TotalAmount,
+    decimal DepositPaidAmount, int OutlierTrips, decimal? RentalChangePercent, string Note);
+public record DashboardHeatCell(int DayOfWeek, int Hour, int Count);
+public record DashboardHeatmap(IReadOnlyList<DashboardHeatCell> Cells, int Max, int Total, string Note);
+public record DashboardLatestReview(int ReviewId, int BookingId, int Rating, string? Comment, string VehicleLabel,
+    string CustomerName, string DriverName, DateTime CreatedAt);
+public record DashboardReviews(decimal? AverageRating, int Count, IReadOnlyList<DashboardLatestReview> Latest);
 public record DashboardMaintenance(int AlertCount, IReadOnlyList<MaintenanceAlertResponse> Alerts);
 public record DashboardRecommendation(int TotalBookings, int RecommendedBookings, decimal? AttributionShare, int RecommendedCompletedBookings, decimal? AverageRatingRecommendedReviewed, string MetricNote);
 public record DashboardRevenuePoint(string Label, int Year, int Month, decimal Amount);
@@ -131,7 +139,10 @@ public record DashboardResponse(
     int ActiveFleet = 0,
     IReadOnlyList<DashboardRevenuePoint>? RevenueOverview = null,
     IReadOnlyList<DashboardRecentBooking>? RecentBookings = null,
-    IReadOnlyList<DashboardUpcomingPickup>? UpcomingPickups = null);
+    IReadOnlyList<DashboardUpcomingPickup>? UpcomingPickups = null,
+    DashboardRevenueSummary? Revenue = null,
+    DashboardHeatmap? RentalHeatmap = null,
+    DashboardReviews? Reviews = null);
 public record CreateVehicleRequest(
     int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
