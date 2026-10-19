@@ -98,7 +98,7 @@ Công thức khi khách có lịch sử: `Final = (1 − w)·V7 + w·HistoryAffi
 
 Nhận xét: với `w = 0,2`, chỉ **một** lần thuê đã đủ lật toàn bộ danh sách, vì điểm V7 của các xe khá sát nhau (khoảng 0,44–0,46). Có thể giảm `w` nếu muốn lịch sử chỉ "nhích" thứ hạng.
 
-**Phát hiện dữ liệu khi demo:** cả 19 xe 7 chỗ trong đội xe V7 đều **đã đến hạn bảo trì** (chưa từng có lịch sử bảo trì), nên hệ thống không nhận đặt lịch mới cho chúng. V7 vẫn có thể gợi ý các xe này (gợi ý không lọc theo tình trạng), nên trang Gợi ý hiện trạng thái xe để khách biết trước.
+**Phát hiện dữ liệu khi demo:** cả 40 xe trong đội xe V7 từng bị coi là **đến hạn bảo trì**, vì chưa có lịch sử bảo trì nên mốc được tính từ 0. Hệ thống vì vậy không nhận đặt lịch mới cho các xe này. Đã sửa luật (commit `174dfe1`): xe chưa bảo trì tính mốc từ ngày vào đội xe và 0 km. Xe **thật sự** đến hạn vẫn có thể được V7 gợi ý (gợi ý không lọc theo tình trạng), nên trang Gợi ý hiện nhãn "Đến hạn bảo trì – chưa nhận đặt".
 
 ## 4d. Ghi chú tiếng Việt và kênh Text (plan form du lịch — bước 1)
 
@@ -134,6 +134,35 @@ Luật mới chỉ bật khi request gửi `segment_rules: "travel"` (Backend g�
 Số của V7 gốc giữ nguyên. Script kiểm tra 25 user test cho cả hai luật: điểm tính vector hóa phải khớp `engine.recommend`. Kết quả chạy lại: `results_2026-10-19.csv`.
 
 **Hạn chế:** user đánh giá vẫn là user tổng hợp của bài toán mua xe (có số con, hành trình `trips` không hẳn là đường đèo). Vì vậy con số này chỉ cho thấy luật du lịch **không làm giảm** chất lượng theo nhãn proxy (+0,75 điểm HitRate@5). Nó không chứng minh luật hợp với khách thuê du lịch thật.
+
+## 4f. Dữ liệu thật từ web (Giai đoạn 4) — chỉ mô tả, không đánh giá
+
+"Dữ liệu thật" là dữ liệu do chính hệ thống ghi lại khi khách dùng web. Không lấy từ trang khác.
+
+| Nguồn | Ý nghĩa |
+|---|---|
+| `RecommendationLogs` | mỗi lần trang Gợi ý hiển thị, mỗi xe được gợi ý là 1 dòng (kèm điểm, phân khúc dự đoán) |
+| `CustomerVehicleInteractions` | VIEW / BOOK / RENT / CANCEL; từ Giai đoạn 3, BOOK/RENT/CANCEL ghi phía server kèm `BookingId` |
+| `Bookings.SourceRecommended` | đơn được đặt từ trang Gợi ý |
+
+Script `real_data_stats.py` đọc DB ở chế độ read-only và lưu `real_data_<ngày>.json`. Số liệu ngày 19/10/2026:
+
+| Chỉ số | Giá trị |
+|---|---|
+| Khách hàng trong DB | 4 (đều là tài khoản demo) |
+| Số lần gợi ý / số dòng log | 26 lần / 81 dòng, 3 khách, trung bình 3,1 xe mỗi lần |
+| Ngày có gợi ý | 06/10 (24 lần, chủ yếu khi chạy thử), 18/10 (2 lần) |
+| Tương tác | 18 VIEW, 4 BOOK, 0 RENT, 0 CANCEL |
+| BOOK trên xe đã được gợi ý (trong 7 ngày trước) | 4/4 |
+| Đơn thuê | 27 đơn (13 hủy, 5 hoàn thành, …); 1 đơn đặt từ trang Gợi ý |
+
+**Đọc số liệu:**
+
+- Log đã ghi **đúng nghĩa**: mỗi lần gợi ý có danh sách xe và điểm, BOOK khớp với xe vừa được gợi ý.
+- 0 RENT / 0 CANCEL và 0 BOOK có `BookingId` vì toàn bộ 27 đơn được tạo **trước** khi bật log phía server (commit `dd150cb`, 19/10/2026). Đơn mới từ nay sẽ có đủ.
+- Số liệu quá ít (4 khách demo, 26 lần gợi ý) và do người làm đồ án tự bấm. Vì vậy **không** tính tỉ lệ chuyển đổi (xem → đặt) hay HitRate online. Mọi con số chất lượng của V7 trong báo cáo đều lấy từ tập test tổng hợp (mục 2, 4e).
+
+**Hướng phát triển (đưa vào báo cáo):** khi có khách thật, dùng chính các bảng trên để đánh giá online. Các chỉ số: tỉ lệ đặt sau gợi ý, vị trí của xe được đặt trong danh sách gợi ý, A/B giữa `segment_rules=v7` và `travel`, và so sánh có/không có history boost.
 
 ## 5. Giới hạn (phải ghi trong báo cáo)
 
