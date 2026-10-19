@@ -95,8 +95,12 @@
                     <div class="bd-cancelled-banner">
                         <i class="bi bi-x-circle"></i>
                         <div>
-                            Đơn thuê đã được hủy
-                            <p>Đơn này đang ở trạng thái Đã hủy.</p>
+                            <strong>Trạng thái: Đã hủy</strong>
+                            <p>Đơn thuê đã được hủy.</p>
+                            @if (!string.IsNullOrWhiteSpace(Model.Booking?.CancellationReason))
+                            {
+                                <p>Lý do hủy: @Model.Booking.CancellationReason</p>
+                            }
                         </div>
                     </div>
                 }
@@ -214,6 +218,10 @@
                                 <p>@BookingDetailUi.WaitingBody</p>
                             </div>
                             <div class="bd-actions">
+                                @if (Model.CanCancel)
+                                {
+                                    <button type="button" class="bd-btn bd-btn-danger" data-bs-toggle="modal" data-bs-target="#cancelBookingModal">Hủy đơn</button>
+                                }
                                 <a class="bd-btn bd-btn-ghost" asp-page="Index">Quay lại danh sách đơn</a>
                                 <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
                             </div>
@@ -239,6 +247,16 @@
                             </div>
                         }
 
+                        @if (Model.Booking is { } rebookSource && RebookUi.CanRebook(rebookSource))
+                        {
+                            <div class="bd-actions">
+                                <a class="bd-btn bd-btn-primary"
+                                   data-rebook="@rebookSource.BookingId"
+                                   asp-page="Create"
+                                   asp-all-route-data="@RebookUi.RouteValues(rebookSource, DateTime.Now)">@RebookUi.Label</a>
+                            </div>
+                        }
+
                         @if (!d.IsCancelled)
                         {
                             <div class="bd-actions">
@@ -246,9 +264,16 @@
                                 {
                                     <a class="bd-btn bd-btn-primary" asp-page="Pay" asp-route-id="@d.BookingId">Thanh toán tiền cọc</a>
                                 }
-                                <button type="button" class="bd-btn bd-btn-danger" data-bd-ui="Hủy đơn sẽ được kết nối sau. Trạng thái đơn thật không đổi.">Hủy đơn</button>
+                                @if (Model.CanCancel)
+                                {
+                                    <button type="button" class="bd-btn bd-btn-danger" data-bs-toggle="modal" data-bs-target="#cancelBookingModal">Hủy đơn</button>
+                                }
                                 <button type="button" class="bd-btn bd-btn-ghost" data-bd-ui="Liên hệ hỗ trợ là minh họa giao diện — chưa tạo phiếu hỗ trợ.">Liên hệ hỗ trợ</button>
                             </div>
+                            @if (Model.CancelClosedMessage is { } closed)
+                            {
+                                <p class="bd-note" data-cancel-closed>@closed</p>
+                            }
                         }
                         else
                         {
@@ -266,6 +291,60 @@
     </section>
 </div>
 
+@if (Model.CanCancel && d is not null)
+{
+    <div class="modal fade" id="cancelBookingModal" tabindex="-1" aria-labelledby="cancelBookingTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@d.BookingId" id="cancel-booking-form">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="cancelBookingTitle">Hủy đơn thuê</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="small text-muted ps-3 mb-3" data-cancel-policy>
+                            @if (Model.CancelDeadlineNote is { } deadlineNote)
+                            {
+                                <li>@deadlineNote</li>
+                            }
+                            <li>Hủy đúng hạn được hoàn 100% tiền cọc đã thanh toán; việc hoàn tiền được xử lý thủ công.</li>
+                            <li>Khi đơn bị hủy, hợp đồng hết hiệu lực.</li>
+                        </ul>
+                        <label class="form-label" for="CancellationReason">Lý do hủy đơn *</label>
+                        <textarea class="form-control" id="CancellationReason" name="CancellationReason" rows="4" maxlength="500" required placeholder="Nhập lý do hủy đơn"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại</button>
+                        <button type="submit" class="btn btn-danger" id="confirm-cancel-booking">Xác nhận hủy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script src="~/js/booking-detail.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            const form = document.getElementById("cancel-booking-form");
+            const field = document.getElementById("CancellationReason");
+            const button = document.getElementById("confirm-cancel-booking");
+            if (!form || !field || !button) return;
+            const sync = () => { button.disabled = !field.value.trim(); };
+            field.addEventListener("input", sync);
+            form.addEventListener("submit", function (event) {
+                field.value = field.value.trim();
+                if (!field.value) {
+                    event.preventDefault();
+                    field.setCustomValidity("Vui lòng nhập lý do hủy đơn.");
+                    field.reportValidity();
+                    sync();
+                    return;
+                }
+                field.setCustomValidity("");
+            });
+            sync();
+        })();
+    </script>
 }

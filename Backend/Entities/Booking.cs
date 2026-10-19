@@ -22,6 +22,8 @@ public class Booking
     public decimal? QuotedSelfDriveIncludedKmPerDay { get; set; }
     public decimal? QuotedSelfDriveExtraKmPrice { get; set; }
     public decimal? QuotedDepositAmount { get; set; }
+    /// <summary>Cancel-window policy (hours) in force when the booking was created. Null for older rows.</summary>
+    public int? QuotedCancelMinHours { get; set; }
     public decimal? FinalAmount { get; set; }
     public string Status { get; set; } = "Pending";
     public string RentalMode { get; set; } = "WithDriver";

@@ -23,6 +23,20 @@ public static class ContractUi
         "Khách hàng có trách nhiệm kiểm tra tình trạng xe khi nhận và trả xe."
     ];
 
+    /// <summary>
+    /// Terms come from the contract snapshot frozen at issue time. Before issue, and for contracts issued
+    /// before snapshots existed, the original wording above is shown unchanged.
+    /// </summary>
+    public static IReadOnlyList<string> TermsFor(ContractResponse? contract)
+        => contract?.Terms is { Count: > 0 } snapshot ? snapshot : Terms;
+
+    public static string TermsNote(ContractResponse? contract) => contract switch
+    {
+        null => "Điều khoản đầy đủ (gồm chính sách hủy đơn) được ghi cố định vào hợp đồng khi phát hành.",
+        { Terms: { Count: > 0 } } => "Điều khoản được ghi cố định lúc phát hành hợp đồng; thay đổi chính sách sau đó không áp dụng cho hợp đồng này.",
+        _ => "Hợp đồng phát hành trước khi áp dụng chính sách hủy đơn; điều khoản giữ nguyên như lúc phát hành."
+    };
+
     public static string ViewState(string? status) => status switch
     {
         "Signed" => "signed",

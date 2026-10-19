@@ -127,16 +127,18 @@ public class VehicleInspectionReadTests
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        Assert.Equal("RequestedDriverName", names[^1]);
-        Assert.Equal("RequestedDriverId", names[^2]);
-        Assert.Equal("CancellationReason", names[^3]);
-        Assert.Equal("HasActiveDeposit", names[^4]);
-        Assert.Equal("Review", names[^5]);
-        Assert.Equal("Inspections", names[^6]);
-        Assert.Equal("TotalFees", names[^7]);
-        Assert.Equal("FinalBaseAmount", names[^8]);
-        Assert.Equal("Fees", names[^9]);
-        Assert.Equal("FinalAmount", names[^10]);
+        Assert.Equal("CustomerCancelDeadline", names[^1]);
+        Assert.Equal("CustomerCanCancel", names[^2]);
+        Assert.Equal("RequestedDriverName", names[^3]);
+        Assert.Equal("RequestedDriverId", names[^4]);
+        Assert.Equal("CancellationReason", names[^5]);
+        Assert.Equal("HasActiveDeposit", names[^6]);
+        Assert.Equal("Review", names[^7]);
+        Assert.Equal("Inspections", names[^8]);
+        Assert.Equal("TotalFees", names[^9]);
+        Assert.Equal("FinalBaseAmount", names[^10]);
+        Assert.Equal("Fees", names[^11]);
+        Assert.Equal("FinalAmount", names[^12]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

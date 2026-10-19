@@ -1,0 +1,46 @@
+{
+  "khoang_thoi_gian": [
+    "2026-10-06 15:51:13.2127345",
+    "2026-10-18 13:17:25.8096748"
+  ],
+  "so_khach_hang": 4,
+  "goi_y": {
+    "so_dong_log": 81,
+    "so_lan_goi_y": 26,
+    "so_khach_duoc_goi_y": 3,
+    "trung_binh_xe_moi_lan": 3.12,
+    "so_lan_theo_ngay": {
+      "2026-10-06": 24,
+      "2026-10-18": 2
+    },
+    "theo_phan_khuc_du_doan": {
+      "V7; predictedSegment=Supermini": 39,
+      "V7; predictedSegment=Mini": 26,
+      "V7; predictedSegment=Crossover": 12,
+      "V7; predictedSegment=Sedan": 4
+    }
+  },
+  "tuong_tac": {
+    "theo_loai": {
+      "BOOK": 4,
+      "VIEW": 18
+    },
+    "so_khach_co_tuong_tac": 3,
+    "book_sau_goi_y_7_ngay": 4,
+    "book_co_booking_id": 0
+  },
+  "don_thue": {
+    "tong": 27,
+    "so_khach_dat": 4,
+    "dat_tu_trang_goi_y": 1,
+    "theo_trang_thai": {
+      "Cancelled": 13,
+      "Completed": 5,
+      "Pending": 4,
+      "Assigned": 3,
+      "Confirmed": 1,
+      "InProgress": 1
+    }
+  },
+  "chay_luc": "2026-10-19T09:09:23"
+}

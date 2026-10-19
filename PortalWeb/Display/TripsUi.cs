@@ -35,6 +35,8 @@ public static class TripsUi
             driver,
             driverBusy = fleetDriver is not null
                 && string.Equals(fleetDriver.DriverStatus, "Busy", StringComparison.OrdinalIgnoreCase),
+            // null = no fleet-status data for this driver (do not show "Rảnh" by default).
+            driverStatus = fleetDriver?.DriverStatus,
             mode,
             route = $"{b.PickupAddress} → {b.DropoffAddress}",
             pickup = b.PickupAddress,

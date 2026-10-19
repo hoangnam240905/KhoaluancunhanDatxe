@@ -13,7 +13,12 @@ public record RecommendationResultDto(
     int StatusCode = 200,
     int UnmappedCount = 0,
     int AmbiguousCount = 0,
-    int DuplicateVehicleCount = 0);
+    int DuplicateVehicleCount = 0,
+    int? PartySize = null,
+    // Python candidates received and how many mapped to fleet vehicles before the Top-K cut
+    // (they differ from Top-K when the party size enlarges the candidate pool).
+    int CandidateCount = 0,
+    int MappedCount = 0);
 
 public record RecommendationItemDto(
     int VehicleId,
@@ -25,7 +30,15 @@ public record RecommendationItemDto(
     string? LicensePlate = null,
     string? VehicleType = null,
     string? FuelType = null,
-    string? Transmission = null);
+    string? Transmission = null,
+    string? VehicleStatus = null,
+    double? HistoryAffinity = null,
+    decimal? PricePerDay = null,
+    bool? OverBudget = null,
+    int? Seats = null,
+    bool? SeatsOk = null,
+    bool? MaintenanceDue = null,
+    bool FromBusinessRule = false);
 
 /// <summary>
 /// Intermediate V7 profile built from a real Customer entity (no User PII).

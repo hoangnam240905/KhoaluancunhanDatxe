@@ -29,7 +29,7 @@
             <td>@b.TotalAmount.ToString("N0")</td>
             <td><span class="badge bg-secondary">@UiDisplay.BookingStatus(b.Status)</span></td>
             <td>
-                @if (b.Status is "Pending" or "Confirmed")
+                @if (b.Status is "Pending" or "Confirmed" or "Assigned")
                 {
                     <form method="post" asp-page-handler="Cancel" asp-route-id="@b.BookingId" class="d-inline">
                         <button type="submit" class="btn btn-sm btn-outline-danger">Huy</button>

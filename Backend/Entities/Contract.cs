@@ -18,6 +18,10 @@ public class Contract
     public decimal? DepositAmount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? SignedAt { get; set; }
+    /// <summary>JSON array of the exact term sentences shown at issue time. Never re-rendered. Null for older rows.</summary>
+    public string? TermsSnapshot { get; set; }
+    /// <summary>Cancel-window policy (hours) written into this contract at issue time.</summary>
+    public int? CancelMinHoursSnapshot { get; set; }
 
     public Booking Booking { get; set; } = null!;
 }

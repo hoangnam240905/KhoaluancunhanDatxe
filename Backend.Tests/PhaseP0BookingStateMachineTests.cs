@@ -37,7 +37,7 @@ public class PhaseP0BookingStateMachineTests
     [InlineData(BookingStatuses.Confirmed, BookingStatuses.InProgress, false)]
     [InlineData(BookingStatuses.Confirmed, BookingStatuses.Completed, false)]
     [InlineData(BookingStatuses.Assigned, BookingStatuses.Completed, false)]
-    [InlineData(BookingStatuses.Assigned, BookingStatuses.Cancelled, false)]
+    [InlineData(BookingStatuses.Assigned, BookingStatuses.Cancelled, true)]
     [InlineData(BookingStatuses.InProgress, BookingStatuses.Assigned, false)]
     [InlineData(BookingStatuses.InProgress, BookingStatuses.Cancelled, false)]
     [InlineData(BookingStatuses.Completed, BookingStatuses.Cancelled, false)]
@@ -55,11 +55,12 @@ public class PhaseP0BookingStateMachineTests
     [InlineData(BookingStatuses.Pending, BookingStatuses.Confirmed, false)]
     [InlineData(BookingStatuses.Pending, BookingStatuses.Assigned, false)]
     [InlineData(BookingStatuses.Confirmed, BookingStatuses.Assigned, false)]
-    [InlineData(BookingStatuses.Assigned, BookingStatuses.Cancelled, false)]
+    [InlineData(BookingStatuses.Assigned, BookingStatuses.Cancelled, true)]
     [InlineData(BookingStatuses.Assigned, BookingStatuses.InProgress, false)]
     [InlineData(BookingStatuses.InProgress, BookingStatuses.Completed, false)]
+    [InlineData(BookingStatuses.InProgress, BookingStatuses.Cancelled, false)]
     [InlineData(BookingStatuses.Completed, BookingStatuses.Cancelled, false)]
-    public void Patch_only_cancels_before_assignment(string from, string to, bool allowed)
+    public void Patch_only_cancels_before_trip_starts(string from, string to, bool allowed)
         => Assert.Equal(allowed, BookingStateTransitionRules.CanPatch(from, to));
 
     [Fact]

@@ -38,6 +38,13 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import accuracy_score, classification_report
 
 
+# Trọng số V7 (thử nghiệm, không do ML tự học). Đổi ở đây để chạy ablation;
+# script đánh giá đầy đủ: docs/recommendation-eval/evaluate_v7.py
+W_TEXT = 0.4
+W_STRUCTURED = 0.4
+W_ML = 0.2
+
+
 # ============================================================
 # 2. LOAD DATASET
 # ============================================================
@@ -697,11 +704,11 @@ def recommend_v7(
 
     final_scores = (
 
-        0.4 * text_scores
+        W_TEXT * text_scores
 
-        + 0.4 * structured_scores
+        + W_STRUCTURED * structured_scores
 
-        + 0.2 * ml_segment_scores
+        + W_ML * ml_segment_scores
     )
 
 
@@ -890,11 +897,15 @@ print("EVALUATION V7")
 print("=" * 70)
 
 
-# Lấy 500 user để đánh giá
-evaluation_users = users.sample(
-    n=500,
-    random_state=42
-)
+# Chỉ đánh giá trên user thuộc TẬP TEST (Random Forest chưa thấy).
+# Bản cũ bốc 500 user từ toàn bộ `users` nên ~80% đã nằm trong tập train
+# (rò rỉ dữ liệu) — số liệu cũ không dùng cho báo cáo.
+evaluation_users = users.loc[X_test.index]
+
+assert evaluation_users.index.intersection(X_train.index).empty, \
+    "Tập đánh giá không được giao với tập train"
+
+print("Số user đánh giá (tập test):", len(evaluation_users))
 
 
 hit_5 = 0

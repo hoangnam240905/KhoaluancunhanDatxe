@@ -26,6 +26,8 @@ public class Customer
     public int? PreferredSeats { get; set; }
     public double? BudgetMin { get; set; }
     public double? BudgetMax { get; set; }
+    /// <summary>Travel rental budget per day (VND/ngày); compared with real VehicleType.PricePerDay, not sent to V7.</summary>
+    public double? TripBudgetPerDay { get; set; }
     public string? PreferencesText { get; set; }
     public string? AvatarUrl { get; set; }
 

@@ -1,7 +1,8 @@
+// Minimal SignalR (JSON protocol over WebSocket) client.
+// Server events are re-emitted as DOM events so each page decides what to do; the page is never reloaded:
+//   window "carrental:realtime"             detail = RealtimeEventDto { eventType, entityType, entityId, bookingId, timestamp, payload }
+//   window "carrental:realtime-reconnected" after the connection comes back (pages may refetch).
 (function () {
-    // DEMO TEMP: SignalR client off. Next week: delete this return to restore.
-    return;
-
     var cfg = window.carRentalRealtime;
     if (!cfg || !cfg.hubUrl || !cfg.accessToken)
         return;
@@ -10,7 +11,7 @@
     var retry = 0;
     var socket = null;
     var closedByUs = false;
-    var reloadOnOpen = false;
+    var notifyReconnect = false;
 
     function hubHttp() {
         return String(cfg.hubUrl).replace(/\/$/, "");
@@ -23,12 +24,10 @@
             + "&access_token=" + encodeURIComponent(cfg.accessToken);
     }
 
-    function refreshFromApi() {
-        if (typeof cfg.onEvent === "function") {
-            cfg.onEvent();
-            return;
-        }
-        window.location.reload();
+    function emit(name, detail) {
+        try {
+            window.dispatchEvent(new CustomEvent(name, { detail: detail }));
+        } catch (_) { /* old browsers: ignore */ }
     }
 
     function handleRecord(raw) {
@@ -39,15 +38,15 @@
             socket.send(JSON.stringify({ type: 7 }) + RS);
             return;
         }
-        if (msg.type === 1 && msg.target === "ReceiveEvent")
-            refreshFromApi();
+        if (msg.type === 1 && msg.target === "ReceiveEvent" && msg.arguments && msg.arguments[0])
+            emit("carrental:realtime", msg.arguments[0]);
     }
 
-    function scheduleReconnect(reload) {
+    function scheduleReconnect(wasOpen) {
         retry += 1;
         if (retry > 8) return;
-        if (reload)
-            reloadOnOpen = true;
+        if (wasOpen)
+            notifyReconnect = true;
         setTimeout(connect, Math.min(1000 * retry, 5000));
     }
 
@@ -66,9 +65,9 @@
             socket.onopen = function () {
                 retry = 0;
                 socket.send(JSON.stringify({ protocol: "json", version: 1 }) + RS);
-                if (reloadOnOpen) {
-                    reloadOnOpen = false;
-                    refreshFromApi();
+                if (notifyReconnect) {
+                    notifyReconnect = false;
+                    emit("carrental:realtime-reconnected", null);
                 }
             };
             var buffer = "";
@@ -91,6 +90,11 @@
             scheduleReconnect(false);
         });
     }
+
+    window.addEventListener("beforeunload", function () {
+        closedByUs = true;
+        try { if (socket) socket.close(); } catch (_) { /* ignore */ }
+    });
 
     connect();
 })();

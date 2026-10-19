@@ -106,6 +106,7 @@
                 </div>
                 <div class="cr-state-actions">
                     <button type="button" class="btn btn-outline-primary btn-sm" data-cr-retry>Thử lại</button>
+                    <a class="btn btn-outline-primary btn-sm" asp-page="/Index" asp-fragment="recommended" data-cr-fallback>Xem gợi ý theo loại xe</a>
                     <a class="btn btn-primary btn-sm" asp-page="/Search">Tìm xe</a>
                 </div>
             </div>
@@ -119,6 +120,7 @@
                 <a class="btn btn-primary btn-sm" asp-page="/Search">Tìm xe</a>
             </div>
 
+            <p data-cr-notice class="cr-notice" role="status" hidden></p>
             <div data-cr-list class="ch-grid cr-grid" hidden></div>
         </div>
     </section>

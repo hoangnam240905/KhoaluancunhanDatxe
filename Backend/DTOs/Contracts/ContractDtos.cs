@@ -16,4 +16,6 @@ public record ContractResponse(
     decimal TotalAmount,
     decimal? DepositAmount,
     DateTime CreatedAt,
-    DateTime? SignedAt);
+    DateTime? SignedAt,
+    IReadOnlyList<string>? Terms = null,
+    int? CancelMinHours = null);

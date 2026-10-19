@@ -11,24 +11,36 @@
 }
 else
 {
-    <div class="mk-banner">Vận hành chuyến — dữ liệu từ Backend (bookings, inspections, incidents, fleet-status). Giao/trả xe SelfDrive gọi API thật. Bản đồ GPS, quyết toán chốt, cập nhật sự cố dispatcher vẫn presentation-only (thiếu API).</div>
+    <div class="mk-banner">Vận hành chuyến — theo dõi và xử lý các chuyến thuê xe đang vận hành. Dữ liệu cập nhật từ Backend (bookings, inspections, incidents, fleet-status).</div>
 }
 
-<section class="mk-hub-head">
-    <div>
-        <h1>Vận hành chuyến</h1>
-        <p>Theo dõi và xử lý các chuyến thuê xe đang vận hành</p>
-    </div>
-</section>
-
 <div class="mk-metrics op-metrics" id="opMetrics" data-source="api">
-    <div class="mk-metric"><span>🚗 Chuyến hôm nay</span><strong id="opMetricToday">@Model.MetricToday</strong></div>
-    <div class="mk-metric"><span>🟡 Chờ nhận xe</span><strong id="opMetricWaiting">@Model.MetricWaiting</strong></div>
-    <div class="mk-metric"><span>🔵 Đang thực hiện</span><strong id="opMetricInProgress">@Model.MetricInProgress</strong></div>
-    <div class="mk-metric"><span>🔴 Có sự cố</span><strong id="opMetricIncidents">@Model.MetricIncidents</strong></div>
-    <div class="mk-metric"><span>💰 Chờ quyết toán</span><strong id="opMetricSettlement">@Model.MetricSettlement</strong></div>
+    <button type="button" class="mk-metric is-clickable" data-metric="today">
+        <i class="op-metric-icon is-blue bi bi-calendar3"></i>
+        <span class="op-metric-text"><span>Chuyến hôm nay</span><strong id="opMetricToday">@Model.MetricToday</strong></span>
+        <i class="op-metric-chevron bi bi-chevron-right"></i>
+    </button>
+    <button type="button" class="mk-metric is-clickable" data-metric="waiting">
+        <i class="op-metric-icon is-amber bi bi-clock"></i>
+        <span class="op-metric-text"><span>Chờ nhận xe</span><strong id="opMetricWaiting">@Model.MetricWaiting</strong></span>
+        <i class="op-metric-chevron bi bi-chevron-right"></i>
+    </button>
+    <button type="button" class="mk-metric is-clickable" data-metric="running">
+        <i class="op-metric-icon is-green bi bi-play-fill"></i>
+        <span class="op-metric-text"><span>Đang thực hiện</span><strong id="opMetricInProgress">@Model.MetricInProgress</strong></span>
+        <i class="op-metric-chevron bi bi-chevron-right"></i>
+    </button>
+    <button type="button" class="mk-metric is-clickable" data-metric="incident">
+        <i class="op-metric-icon is-red bi bi-exclamation-triangle-fill"></i>
+        <span class="op-metric-text"><span>Có sự cố</span><strong id="opMetricIncidents">@Model.MetricIncidents</strong></span>
+        <i class="op-metric-chevron bi bi-chevron-right"></i>
+    </button>
+    <button type="button" class="mk-metric is-clickable" data-metric="settle">
+        <i class="op-metric-icon is-amber bi bi-receipt"></i>
+        <span class="op-metric-text"><span>Chờ quyết toán</span><strong id="opMetricSettlement">@Model.MetricSettlement</strong></span>
+        <i class="op-metric-chevron bi bi-chevron-right"></i>
+    </button>
 </div>
-
 <section class="mk-card mk-toolbar">
     <h2>Tìm kiếm &amp; bộ lọc</h2>
     <form id="opFilter" class="op-filter-grid" autocomplete="off">
@@ -78,53 +90,42 @@ else
     </form>
 </section>
 
-<div class="op-top-grid">
-    <section class="mk-card op-alert-card">
-        <h2>⚠️ Cần chú ý</h2>
-        <div id="opAlerts"></div>
-    </section>
-    <section class="mk-card op-driver-card">
-        <h2>Trạng thái tài xế</h2>
-        <div id="opDriverPanel"></div>
-    </section>
-    <section class="mk-card op-map-card">
-        <div class="op-map-head">
-            <h2>Vị trí mô phỏng</h2>
-            <span class="mk-badge mk-badge-gray">Chế độ trình diễn</span>
+<div class="op-ops-grid">
+    <section class="mk-card op-queue-card">
+        <div class="op-card-head">
+            <h2><i class="bi bi-clipboard-check"></i> Hàng đợi hành động <span class="op-count" id="opQueueCount" hidden></span></h2>
+            <a href="#opTableCard" class="op-link" data-scroll-table>Xem tất cả trong bảng <i class="bi bi-arrow-down"></i></a>
         </div>
-        <div class="op-map" id="opMap" aria-hidden="true">
-            <span class="op-map-label">Vị trí mô phỏng — không phải GPS thật (thiếu API)</span>
+        <div id="opQueue"></div>
+    </section>
+    <section class="mk-card op-timeline-card">
+        <div class="op-card-head">
+            <h2><i class="bi bi-clock-history"></i> Timeline ca hôm nay</h2>
+            <span class="mk-muted" id="opTimelineDate"></span>
         </div>
+        <div id="opTimeline"></div>
     </section>
 </div>
-
-<section class="mk-card sch-board-card">
+<section class="mk-card sch-board-card" id="opTableCard">
     <div class="sch-board-title">
-        <h2>Bảng chuyến đang chạy</h2>
-        <p class="mk-muted">Thẻ chuyến vận hành từ Backend. Nhấn để mở chi tiết.</p>
-    </div>
-    <div class="op-board" id="opBoard"></div>
-</section>
-
-<section class="mk-card sch-board-card">
-    <div class="sch-board-title">
-        <h2>Bảng vận hành</h2>
+        <h2><i class="bi bi-list-ul"></i> Danh sách chuyến</h2>
         <p class="mk-muted" id="opTableMeta"></p>
     </div>
     <div class="mk-table-wrap op-table-wrap">
         <table class="mk-table">
             <thead>
                 <tr>
-                    <th>Mã đơn</th>
+                    <th>#</th>
                     <th>Khách hàng</th>
                     <th>Xe</th>
                     <th>Tài xế</th>
-                    <th>Hình thức</th>
+                    <th>Điểm đón</th>
+                    <th>Điểm trả</th>
                     <th>Bắt đầu</th>
-                    <th>Trả xe</th>
+                    <th>Kết thúc</th>
                     <th>Trạng thái</th>
-                    <th>Sự cố</th>
                     <th>Quyết toán</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody id="opTableBody"></tbody>

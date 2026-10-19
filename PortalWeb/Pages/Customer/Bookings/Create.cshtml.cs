@@ -25,6 +25,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     public string? UserName => auth.FullName;
     public CatalogVehicle SelectedVehicle { get; private set; } = CreateBookingUi.Unspecified();
     public bool SameReturnPlace { get; private set; } = true;
+    public int? RebookFrom { get; private set; }
+    public List<string> RebookNotices { get; } = [];
 
     public class InputModel
     {
@@ -76,18 +78,54 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
 
     public async Task<IActionResult> OnGetAsync(
         int? typeId, string? pickup, string? dropoff, decimal? distance,
-        DateTime? start, DateTime? end, bool fromRecommendation = false, int? vehicleId = null)
+        DateTime? start, DateTime? end, bool fromRecommendation = false, int? vehicleId = null,
+        string? rentalMode = null, int? rebookFrom = null, int? driverId = null)
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
         await LoadLookupsAsync();
+        // Rebook: drop an unavailable old vehicle/driver BEFORE selection, so nothing unavailable gets preselected.
+        if (rebookFrom is > 0)
+            (typeId, vehicleId, driverId) = await PrepareRebookAsync(
+                rebookFrom.Value, typeId, vehicleId, driverId, start, end, rentalMode);
+        else
+            driverId = null;
         if (vehicleId is > 0)
             Input.VehicleId = vehicleId;
+        if (!string.IsNullOrWhiteSpace(rentalMode))
+            Input.RentalMode = rentalMode;
         await EnsureSelectedVehicleLoadedAsync();
         ApplyIncoming(typeId, start, end, distance, fromRecommendation, pickup, dropoff, vehicleId, rentalMode);
+        if (driverId is > 0 && !IsSelfDrive(Input.RentalMode))
+            Input.DriverId = driverId;
         await ValidateRecommendationVehicleAsync(vehicleId);
         await LoadQuoteIfReadyAsync();
+        await EnsureVehicleAvailabilityAsync();
         return Page();
+    }
+
+    public async Task<IActionResult> OnGetAvailabilityJsonAsync(
+        int vehicleId,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        if (auth.Role != "Customer") return Forbid();
+
+        if (vehicleId <= 0)
+            return BadRequest(new { available = false, message = BookingSubmitUi.VehicleUnavailable });
+        if (endDate <= startDate)
+            return BadRequest(new { available = false, message = "Thời gian kết thúc phải sau thời gian bắt đầu." });
+
+        var (available, error) = await CheckVehicleAvailableAsync(vehicleId, startDate, endDate);
+        if (error is not null && available is null)
+            return BadRequest(new { available = false, message = error });
+
+        return new JsonResult(new
+        {
+            available = available == true,
+            message = available == true ? null : (error ?? BookingSubmitUi.VehicleUnavailable)
+        });
     }
 
     public async Task<IActionResult> OnGetQuoteJsonAsync(
@@ -173,6 +211,7 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         }
 
         await LoadQuoteAsync();
+        await EnsureVehicleAvailabilityAsync();
         return Page();
     }
 
@@ -191,6 +230,9 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
             ApplyFirstModelError();
             return Page();
         }
+
+        if (!await EnsureVehicleAvailabilityAsync())
+            return Page();
 
         if (!QuoteConfirmed || QuotedFingerprint != CurrentFingerprint)
         {
@@ -235,9 +277,13 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
 
     private void ApplyIncoming(
         int? typeId, DateTime? start, DateTime? end, decimal? distance,
-        bool fromRecommendation, string? pickup, string? dropoff, int? vehicleId)
+        bool fromRecommendation, string? pickup, string? dropoff, int? vehicleId,
+        string? rentalMode = null)
     {
-        if (string.IsNullOrWhiteSpace(Input.RentalMode))
+        if (!string.IsNullOrWhiteSpace(rentalMode)
+            && rentalMode is "WithDriver" or "SelfDrive")
+            Input.RentalMode = rentalMode;
+        else if (string.IsNullOrWhiteSpace(Input.RentalMode))
             Input.RentalMode = "WithDriver";
 
         if (vehicleId is > 0)
@@ -276,6 +322,62 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
             Input.PickupAddress.Trim(),
             Input.DropoffAddress.Trim(),
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Keeps the requested vehicle type, but never carries over a vehicle or driver that is not free in the
+    /// new window, and never carries a driver into a self-drive booking.
+    /// </summary>
+    private async Task<(int? TypeId, int? VehicleId, int? DriverId)> PrepareRebookAsync(
+        int sourceBookingId, int? typeId, int? vehicleId, int? driverId,
+        DateTime? start, DateTime? end, string? rentalMode)
+    {
+        RebookFrom = sourceBookingId;
+        if (string.IsNullOrWhiteSpace(Input.Notes))
+            Input.Notes = RebookUi.NoteFor(sourceBookingId);
+
+        if (typeId is int requestedType && VehicleTypes.All(t => t.TypeId != requestedType))
+        {
+            RebookNotices.Add(RebookUi.TypeUnavailable);
+            typeId = null;
+            vehicleId = null;
+        }
+
+        var hasWindow = start is DateTime s && end is DateTime e && e > s;
+        if (vehicleId is int oldVehicle and > 0)
+        {
+            bool? available = false;
+            if (hasWindow)
+                (available, _) = await CheckVehicleAvailableAsync(oldVehicle, start!.Value, end!.Value);
+            if (available != true)
+            {
+                RebookNotices.Add(RebookUi.VehicleUnavailable);
+                vehicleId = null;
+            }
+        }
+
+        if (IsSelfDrive(rentalMode))
+            return (typeId, vehicleId, null);
+
+        if (driverId is int oldDriver and > 0)
+        {
+            var free = false;
+            if (hasWindow)
+            {
+                var (drivers, error) = await api.GetAvailableDriversAsync(vehicleId, typeId, start!.Value, end!.Value);
+                free = error is null && drivers.Any(d =>
+                    d.DriverId == oldDriver
+                    && d.CanSelect
+                    && !d.AvailabilityStatus.Contains("Không", StringComparison.Ordinal));
+            }
+            if (!free)
+            {
+                RebookNotices.Add(RebookUi.DriverUnavailable);
+                driverId = null;
+            }
+        }
+
+        return (typeId, vehicleId, driverId);
     }
 
     private void EnsureDatesNotPast()

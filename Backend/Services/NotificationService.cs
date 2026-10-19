@@ -69,8 +69,18 @@ public class NotificationService(CarRentalDbContext db)
         return (Map(row), null, StatusCodes.Status201Created);
     }
 
+    /// <summary>Marks every unread notification of this user as read. Returns how many changed.</summary>
+    public async Task<int> MarkAllReadAsync(int userId)
+    {
+        var rows = await db.Notifications.Where(n => n.UserId == userId && !n.IsRead).ToListAsync();
+        foreach (var row in rows)
+            row.IsRead = true;
+        await db.SaveChangesAsync();
+        return rows.Count;
+    }
+
     private static NotificationResponse Map(Notification n) => new(
-        n.NotificationId, n.UserId, n.Title, n.Message, n.Type, n.IsRead, n.CreatedAt);
+        n.NotificationId, n.UserId, n.Title, n.Message, n.Type, n.IsRead, n.CreatedAt, n.BookingId);
 
     private static string? TrimOrNull(string? value)
     {

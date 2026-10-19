@@ -4,9 +4,9 @@
     const ready = window.__TRIPS_READY__ === true;
 
     if (!boot || typeof boot !== "object" || !Array.isArray(boot.trips) || !ready) {
-        const board = document.getElementById("opBoard");
-        if (board) {
-            board.innerHTML = `<p class="mk-empty">Trips chưa nhận bootstrap API. Rebuild/restart PortalWeb (tránh DLL cũ + wwwroot mới).</p>`;
+        const queue = document.getElementById("opQueue");
+        if (queue) {
+            queue.innerHTML = `<p class="mk-empty">Trips chưa nhận bootstrap API. Rebuild/restart PortalWeb (tránh DLL cũ + wwwroot mới).</p>`;
         }
         console.error("[Trips] Missing __TRIPS_BOOTSTRAP__ — aborting.");
         return;
@@ -35,19 +35,20 @@
     const PAGE = 5;
 
     let trips = boot.trips.slice();
-    let driverRows = Array.isArray(boot.drivers) ? boot.drivers.slice() : [];
 
-    const state = { q: "", status: "", mode: "", dstatus: "", vehicle: "", selectedId: null, page: 1, modal: null };
+    // metric: active metric-card filter (AND with the toolbar filters), "" = none.
+    const state = { q: "", status: "", mode: "", dstatus: "", vehicle: "", metric: "", selectedId: null, page: 1, modal: null };
     const els = {
         form: document.getElementById("opFilter"),
         vehicle: document.getElementById("opVehicleFilter"),
-        board: document.getElementById("opBoard"),
         table: document.getElementById("opTableBody"),
         pager: document.getElementById("opPager"),
         meta: document.getElementById("opTableMeta"),
-        alerts: document.getElementById("opAlerts"),
-        driver: document.getElementById("opDriverPanel"),
-        map: document.getElementById("opMap"),
+        queue: document.getElementById("opQueue"),
+        queueCount: document.getElementById("opQueueCount"),
+        timeline: document.getElementById("opTimeline"),
+        timelineDate: document.getElementById("opTimelineDate"),
+        metrics: document.getElementById("opMetrics"),
         drawer: document.getElementById("opDrawer"),
         modal: document.getElementById("opModal"),
         modalBody: document.getElementById("opModalBody"),
@@ -67,6 +68,88 @@
         : s === "pending"
             ? `<span class="mk-badge mk-badge-pending">Chờ quyết toán</span>`
             : `<span class="mk-badge mk-badge-gray">—</span>`;
+    // ---------- Quy ước dùng chung (plan1.md mục 1b) ----------
+    // Trips still running: an open incident does not end the trip, it still has a return time.
+    const RUNNING = ["handedOver", "accepted", "inProgress", "incident"];
+    const hasIncident = (t) => t.incident != null;
+    const MIN = 60000;
+    const SOON_MIN = 120;          // "sắp tới" window
+    const HANDOVER_GRACE_MIN = 30; // handover counts as late after start + 30'
+    const QUEUE_MAX = 8;
+    const WEEKDAYS = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+    const pad = (n) => String(n).padStart(2, "0");
+
+    // startIso/endIso are Vietnam wall-clock without offset (Booking.StartDate). Both they and
+    // nowVn() live in the same "UTC fields = Vietnam wall clock" frame, so the browser time zone never matters.
+    const VN_CLOCK = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh", hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+    function nowVn() {
+        const p = Object.fromEntries(VN_CLOCK.formatToParts(new Date()).map((x) => [x.type, x.value]));
+        return new Date(Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second));
+    }
+    function parseNaive(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(iso || "");
+        return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0))) : null;
+    }
+    const sameDay = (a, b) => !!a && !!b && a.getUTCFullYear() === b.getUTCFullYear()
+        && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate();
+    const hhmm = (d) => d ? `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` : "—";
+    function fmtDur(min) {
+        if (min < 60) return `${min} phút`;
+        const h = Math.floor(min / 60), m = min % 60;
+        return m ? `${h} giờ ${m} phút` : `${h} giờ`;
+    }
+    const soonText = (min) => min > 0 ? `còn ${fmtDur(min)}` : "đã đến giờ";
+    function dayText(d, now) {
+        if (!d) return "—";
+        if (sameDay(d, now)) return hhmm(d);
+        const yesterday = new Date(now.getTime() - 24 * 60 * MIN);
+        return sameDay(d, yesterday) ? "Hôm qua" : `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+    }
+    // Incident time comes pre-formatted "dd/MM/yyyy HH:mm": keep only HH:mm when it is today.
+    function incidentTime(text, now) {
+        const m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}:\d{2})/.exec(text || "");
+        if (!m) return text || "";
+        return +m[1] === now.getUTCDate() && +m[2] === now.getUTCMonth() + 1 && +m[3] === now.getUTCFullYear()
+            ? m[4] : `${m[1]}/${m[2]} ${m[4]}`;
+    }
+    function tableTime(iso, now) {
+        const d = parseNaive(iso);
+        if (!d) return "—";
+        return sameDay(d, now) ? hhmm(d) : `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)} ${hhmm(d)}`;
+    }
+
+    /** One time state per trip, shared by the queue, the timeline and the table badge. */
+    function timeState(t, now) {
+        if (t.status === "waitingHandover") {
+            const at = parseNaive(t.startIso);
+            if (!at) return null;
+            const after = (now - at) / MIN;
+            if (after > HANDOVER_GRACE_MIN) return { kind: "handoverLate", at, minutes: Math.round(after) };
+            if (after >= -SOON_MIN) return { kind: "handoverSoon", at, minutes: Math.max(0, Math.round(-after)) };
+            return null;
+        }
+        if (RUNNING.includes(t.status)) {
+            const at = parseNaive(t.endIso);
+            if (!at) return null;
+            const after = (now - at) / MIN;
+            if (after > 0) return { kind: "returnLate", at, minutes: Math.max(1, Math.round(after)) };
+            if (after >= -SOON_MIN) return { kind: "returnSoon", at, minutes: Math.round(-after) };
+        }
+        return null;
+    }
+
+    // Metric card = one predicate, used for both its count and its filter (count == rows when clicked).
+    const METRIC_FILTER = {
+        today: (t, now) => sameDay(parseNaive(t.startIso), now),
+        waiting: (t) => t.status === "waitingHandover",
+        running: (t) => RUNNING.includes(t.status),
+        incident: (t) => hasIncident(t),
+        settle: (t) => t.settlement === "pending"
+    };
+
 
     function antiforgery() {
         const input = document.querySelector("#opAntiForgery input[name='__RequestVerificationToken']");
@@ -100,15 +183,20 @@
         return { ok: res.ok && data && data.ok !== false, data };
     }
 
-    function applyMetrics(m) {
-        if (!m) return;
-        if (els.metricToday) els.metricToday.textContent = m.today ?? "—";
-        if (els.metricWaiting) els.metricWaiting.textContent = m.waiting ?? "—";
-        if (els.metricInProgress) els.metricInProgress.textContent = m.inProgress ?? "—";
-        if (els.metricIncidents) els.metricIncidents.textContent = m.incidents ?? "—";
-        if (els.metricSettlement) els.metricSettlement.textContent = m.settlement ?? "—";
+    // Server metrics only seed the first paint; counts are recomputed here with METRIC_FILTER.
+    function renderMetrics(now) {
+        const count = (key) => trips.filter((t) => METRIC_FILTER[key](t, now)).length;
+        els.metricToday.textContent = count("today");
+        els.metricWaiting.textContent = count("waiting");
+        els.metricInProgress.textContent = count("running");
+        els.metricIncidents.textContent = count("incident");
+        els.metricSettlement.textContent = count("settle");
+        els.metrics.querySelectorAll("[data-metric]").forEach((b) => {
+            const on = b.dataset.metric === state.metric;
+            b.classList.toggle("is-active", on);
+            b.setAttribute("aria-pressed", on ? "true" : "false");
+        });
     }
-    applyMetrics(boot.metrics);
 
     function upsertTrip(row) {
         if (!row || !row.id) return;
@@ -122,8 +210,6 @@
         const { ok, data } = await getJson(handlers.reload);
         if (!ok || !data || !data.data) return;
         trips = Array.isArray(data.data.trips) ? data.data.trips : trips;
-        driverRows = Array.isArray(data.data.drivers) ? data.data.drivers : driverRows;
-        applyMetrics(data.data.metrics);
         fillVehicles();
     }
 
@@ -134,8 +220,9 @@
         toast._t = setTimeout(() => els.toast.classList.remove("is-on"), 2800);
     }
 
-    function visible() {
+    function visible(now) {
         return trips.filter((t) => {
+            if (state.metric && !METRIC_FILTER[state.metric](t, now)) return false;
             if (state.status && t.status !== state.status) return false;
             if (state.mode && t.mode !== state.mode) return false;
             if (state.vehicle && t.vehicle !== state.vehicle) return false;
@@ -156,119 +243,193 @@
         els.vehicle.innerHTML = `<option value="">Tất cả</option>` + names.map((n) => `<option>${n}</option>`).join("");
     }
 
-    function cardActions(t) {
-        const btns = [];
-        if (t.canHandoverApi || t.status === "waitingHandover") {
-            btns.push(`<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🔑 Giao xe</button>`);
+    // ---------- Ca trực: hàng đợi hành động + timeline (plan1.md) ----------
+
+    function itemHead(t) {
+        return `<span>#${t.id} · ${t.vehicle}${t.plate && t.plate !== "—" ? ` (${t.plate})` : ""}</span>`;
+    }
+
+    // One item per trip: rules are tried in a fixed priority order, the first match wins.
+    function queueItem(t, now) {
+        const ts = timeState(t, now);
+        const self = t.mode === "SelfDrive";
+        const where = `<span class="mk-muted">KH: ${t.customer} · Điểm hẹn: ${t.pickup || "—"}</span>`;
+        const btn = (cls, attr, label) => `<button type="button" class="mk-btn ${cls}" ${attr}="${t.id}">${label}</button>`;
+
+        if (hasIncident(t)) {
+            return {
+                sev: 0, rank: 1, at: parseNaive(t.startIso), icon: "bi-exclamation-triangle-fill",
+                title: `Sự cố chuyến #${t.id}`,
+                sub: `<span>${t.incident.summary || t.incident.type || "Có sự cố đang mở"}</span><span class="mk-muted">KH: ${t.customer} · ${STATUS[t.status] || t.status}</span>`,
+                time: incidentTime(t.incident.time, now), note: "",
+                action: btn("mk-btn-primary", "data-incident", "Xem chi tiết")
+            };
         }
-        if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
-            btns.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Tiếp nhận trả xe</button>`);
+        if (ts && ts.kind === "handoverLate") {
+            return {
+                sev: 0, rank: 2, at: ts.at, icon: "bi-exclamation-triangle-fill",
+                title: self ? `Chờ giao xe quá ${fmtDur(ts.minutes)}` : `Tài xế chưa nhận chuyến, quá ${fmtDur(ts.minutes)}`,
+                sub: itemHead(t) + where, time: hhmm(ts.at), note: `quá ${fmtDur(ts.minutes)}`,
+                action: self
+                    ? btn("mk-btn-primary", "data-handover", `<i class="bi bi-key"></i> Giao xe ngay`)
+                    : btn("mk-btn-outline", "data-contact", "Liên hệ tài xế")
+            };
         }
-        if (t.incident) {
-            btns.push(`<button type="button" class="mk-btn mk-btn-danger" data-incident="${t.id}">Xem sự cố</button>`);
+        if (ts && ts.kind === "returnLate") {
+            return {
+                sev: 0, rank: 2, at: ts.at, icon: "bi-exclamation-triangle-fill",
+                title: self ? `Quá hạn trả xe ${fmtDur(ts.minutes)}` : `Quá giờ kết thúc chuyến ${fmtDur(ts.minutes)}`,
+                sub: itemHead(t) + `<span class="mk-muted">KH: ${t.customer} · Điểm hẹn: ${t.dropoff || "—"}</span>`,
+                time: hhmm(ts.at), note: `quá ${fmtDur(ts.minutes)}`,
+                action: self
+                    ? btn("mk-btn-primary", "data-return", `<i class="bi bi-arrow-counterclockwise"></i> Tiếp nhận trả xe`)
+                    : btn("mk-btn-outline", "data-contact", "Liên hệ tài xế")
+            };
+        }
+        if (ts && ts.kind === "handoverSoon") {
+            return {
+                sev: 1, rank: 3, at: ts.at, icon: "bi-clock",
+                title: self ? "Sắp đến giờ giao xe" : "Sắp đến giờ đón khách",
+                sub: itemHead(t) + where, time: hhmm(ts.at), note: soonText(ts.minutes),
+                action: btn("mk-btn-outline", "data-open", "Chi tiết")
+            };
+        }
+        if (ts && ts.kind === "returnSoon") {
+            return {
+                sev: 1, rank: 3, at: ts.at, icon: "bi-clock",
+                title: "Sắp đến hạn trả xe",
+                sub: itemHead(t) + `<span class="mk-muted">KH: ${t.customer} · Điểm hẹn: ${t.dropoff || "—"}</span>`,
+                time: hhmm(ts.at), note: soonText(ts.minutes),
+                action: btn("mk-btn-outline", "data-open", "Chuẩn bị")
+            };
         }
         if (t.settlement === "pending") {
-            btns.push(`<button type="button" class="mk-btn mk-btn-ghost" data-settle="${t.id}">💰 Quyết toán</button>`);
+            const end = parseNaive(t.endIso);
+            return {
+                sev: 1, rank: 4, at: end, icon: "bi-receipt",
+                title: "Chờ quyết toán",
+                sub: itemHead(t) + `<span class="mk-muted">KH: ${t.customer}</span>`,
+                time: dayText(end, now), note: "",
+                action: btn("mk-btn-outline", "data-open", "Xem chi tiết")
+            };
         }
-        return btns.join("");
+        return null;
     }
 
-    function renderBoard() {
-        const list = visible();
-        els.board.innerHTML = list.map((t) => `
-            <article class="op-trip ${t.status === "incident" ? "is-alert" : ""}" data-open="${t.id}">
-                <div class="op-trip-head">
-                    <strong>Đơn #${t.id}</strong>
-                    ${badge(t.status)}
+    function renderQueue(now) {
+        const items = trips
+            .map((t) => ({ t, q: queueItem(t, now) }))
+            .filter((x) => x.q)
+            .sort((a, b) => a.q.sev - b.q.sev || a.q.rank - b.q.rank || (a.q.at?.getTime() ?? 0) - (b.q.at?.getTime() ?? 0));
+        els.queueCount.hidden = items.length === 0;
+        els.queueCount.textContent = String(items.length);
+        if (!items.length) {
+            els.queue.innerHTML = `<p class="op-empty">Không có việc cần xử lý ngay.</p>`;
+            return;
+        }
+        els.queue.innerHTML = items.slice(0, QUEUE_MAX).map(({ t, q }) => `
+            <div class="op-queue-item ${q.sev === 0 ? "is-red" : "is-amber"}" data-open="${t.id}">
+                <i class="op-queue-icon bi ${q.icon}"></i>
+                <div class="op-queue-main"><strong>${q.title}</strong>${q.sub}</div>
+                <div class="op-queue-time"><strong>${q.time}</strong>${q.note ? `<span>${q.note}</span>` : ""}</div>
+                <div class="op-queue-action">${q.action}</div>
+            </div>`).join("")
+            + (items.length > QUEUE_MAX ? `<p class="mk-muted op-queue-more">+${items.length - QUEUE_MAX} việc khác — xem trong bảng.</p>` : "");
+    }
+
+    // Timeline ignores the table filters: it is the whole shift.
+    function renderTimeline(now) {
+        els.timelineDate.textContent = `${WEEKDAYS[now.getUTCDay()]}, ${pad(now.getUTCDate())}/${pad(now.getUTCMonth() + 1)}/${now.getUTCFullYear()}`;
+        const events = [];
+        trips.forEach((t) => {
+            const ts = timeState(t, now);
+            const self = t.mode === "SelfDrive";
+            if (t.status === "waitingHandover") {
+                const at = parseNaive(t.startIso);
+                if (at && (sameDay(at, now) || ts?.kind === "handoverLate")) {
+                    events.push({ t, at, ts, kind: "handover", title: self ? `Giao xe #${t.id}` : `Tài xế nhận chuyến #${t.id}`, place: t.pickup });
+                }
+            } else if (RUNNING.includes(t.status)) {
+                const at = parseNaive(t.endIso);
+                if (at && (sameDay(at, now) || ts?.kind === "returnLate")) {
+                    events.push({ t, at, ts, kind: "return", title: self ? `Nhận trả xe #${t.id}` : `Kết thúc chuyến #${t.id}`, place: t.dropoff });
+                }
+            }
+        });
+        events.sort((a, b) => a.at - b.at);
+        if (!events.length) {
+            els.timeline.innerHTML = `<p class="op-empty">Hôm nay không có lịch giao/nhận xe.</p>`;
+            return;
+        }
+        els.timeline.innerHTML = events.map((e) => {
+            const late = e.ts && (e.ts.kind === "handoverLate" || e.ts.kind === "returnLate");
+            const soon = e.ts && (e.ts.kind === "handoverSoon" || e.ts.kind === "returnSoon");
+            const badgeHtml = late
+                ? `<span class="op-tl-badge is-red">Quá hạn ${fmtDur(e.ts.minutes)}</span>`
+                : soon
+                    ? `<span class="op-tl-badge is-blue">${e.kind === "handover" ? "Sắp đến giờ" : "Sắp đến hạn"}</span><small>${soonText(e.ts.minutes)}</small>`
+                    : "";
+            return `
+            <div class="op-tl-item ${late ? "is-overdue" : soon ? "is-soon" : ""}" data-open="${e.t.id}">
+                <span class="op-tl-time">${sameDay(e.at, now) ? hhmm(e.at) : `${pad(e.at.getUTCDate())}/${pad(e.at.getUTCMonth() + 1)}<br>${hhmm(e.at)}`}</span>
+                <span class="op-tl-dot"></span>
+                <span class="op-tl-icon"><i class="bi ${e.kind === "handover" ? "bi-car-front-fill" : "bi-arrow-counterclockwise"}"></i></span>
+                <div class="op-tl-body">
+                    <strong>${e.title}</strong>
+                    <span>${e.t.vehicle}${e.t.plate && e.t.plate !== "—" ? ` (${e.t.plate})` : ""}</span>
+                    <span>KH: ${e.t.customer}</span>
+                    <span>Điểm hẹn: ${e.place || "—"}</span>
                 </div>
-                <dl>
-                    <div><dt>Khách hàng</dt><dd>${t.customer}</dd></div>
-                    <div><dt>Xe</dt><dd>${t.vehicle}<br><span class="mk-muted">${t.plate}</span></dd></div>
-                    <div><dt>Tài xế</dt><dd>${t.driver || "Tự lái — không gắn tài xế"}</dd></div>
-                    <div><dt>Hình thức</dt><dd>${MODE_LABEL[t.mode] || t.mode}</dd></div>
-                    <div><dt>Lộ trình</dt><dd>${t.route}</dd></div>
-                    <div><dt>Bắt đầu</dt><dd>${t.start}</dd></div>
-                    <div><dt>Dự kiến trả</dt><dd>${t.expectedReturn}</dd></div>
-                    ${t.driver && t.status === "inProgress" ? `<div><dt>Trạng thái tài xế</dt><dd>🟢 Đang chạy</dd></div>` : ""}
-                </dl>
-                <div class="op-progress" aria-hidden="true"><i style="width:${t.progress || 0}%"></i></div>
-                <div class="mk-muted">${t.progress || 0}% · ${t.location || ""}</div>
-                ${t.incident ? `<p class="mk-note" style="margin-top:.55rem">⚠️ ${t.incident.summary}<br>${t.incident.time} · ${t.incident.status}</p>` : ""}
-                <div class="op-trip-actions">${cardActions(t)}</div>
-            </article>`).join("") || `<p class="mk-empty">Không có chuyến khớp bộ lọc.</p>`;
+                <div class="op-tl-state">${badgeHtml}</div>
+                <i class="bi bi-chevron-right op-tl-chev"></i>
+            </div>`;
+        }).join("");
     }
 
-    function renderTable() {
-        const list = visible();
+    function driverCell(t) {
+        if (t.mode === "SelfDrive") return `<span class="mk-muted">Tự lái</span>`;
+        if (!t.driver) return "—";
+        const st = String(t.driverStatus || "").toLowerCase();
+        const chip = st === "busy"
+            ? `<span class="op-chip op-chip-busy">Bận</span>`
+            : st === "available"
+                ? `<span class="op-chip op-chip-free">Rảnh</span>`
+                : ""; // no fleet data -> no chip
+        return `${t.driver} ${chip}`;
+    }
+
+    function statusCell(t, now) {
+        if (hasIncident(t)) return `<span class="mk-badge mk-badge-incident">Có sự cố</span>`;
+        const ts = timeState(t, now);
+        if (ts?.kind === "returnLate") return `<span class="mk-badge mk-badge-incident">Quá hạn trả xe</span>`;
+        if (ts?.kind === "handoverLate") return `<span class="mk-badge mk-badge-incident">Quá hạn giao xe</span>`;
+        if (ts?.kind === "handoverSoon") return `<span class="mk-badge mk-badge-handedover">Sắp giao xe</span>`;
+        return badge(t.status);
+    }
+
+    function renderTable(now) {
+        const list = visible(now);
         const pages = Math.max(1, Math.ceil(list.length / PAGE));
         if (state.page > pages) state.page = pages;
         const slice = list.slice((state.page - 1) * PAGE, state.page * PAGE);
         els.meta.textContent = `${list.length} chuyến từ Backend · trang ${state.page}/${pages}`;
         els.table.innerHTML = slice.map((t) => `
             <tr data-open="${t.id}">
-                <td><button type="button" class="mk-btn mk-btn-ghost" data-open="${t.id}">#${t.id}</button></td>
+                <td><strong>#${t.id}</strong></td>
                 <td>${t.customer}</td>
                 <td>${t.vehicle}<br><span class="mk-muted">${t.plate}</span></td>
-                <td>${t.driver || "—"}</td>
-                <td>${MODE_LABEL[t.mode] || t.mode}</td>
-                <td>${t.start}</td>
-                <td>${t.expectedReturn}</td>
-                <td>${badge(t.status)}</td>
-                <td>${t.incident ? "⚠️ " + (t.incident.type || t.incident.summary) : "—"}</td>
+                <td>${driverCell(t)}</td>
+                <td>${t.pickup || "—"}</td>
+                <td>${t.dropoff || "—"}</td>
+                <td>${tableTime(t.startIso, now)}</td>
+                <td>${tableTime(t.endIso, now)}</td>
+                <td>${statusCell(t, now)}</td>
                 <td>${settleBadge(t.settlement)}</td>
-            </tr>`).join("") || `<tr><td colspan="10">Không có chuyến khớp bộ lọc.</td></tr>`;
+                <td><button type="button" class="mk-btn mk-btn-outline" data-open="${t.id}">Xem</button></td>
+            </tr>`).join("") || `<tr><td colspan="11">Không có chuyến khớp bộ lọc.</td></tr>`;
         els.pager.innerHTML = Array.from({ length: pages }, (_, i) =>
             `<button type="button" class="mk-btn mk-btn-ghost ${state.page === i + 1 ? "is-on" : ""}" data-page="${i + 1}">${i + 1}</button>`
         ).join("");
-    }
-
-    function renderAlerts() {
-        const priority = visible().filter((t) =>
-            t.incident || t.settlement === "pending" || t.status === "waitingHandover" || t.status === "incident"
-        ).slice(0, 6);
-        if (!priority.length) {
-            els.alerts.innerHTML = `<p class="mk-muted">Không có cảnh báo từ dữ liệu hiện tại.</p>`;
-            return;
-        }
-        els.alerts.innerHTML = priority.map((t) => {
-            let tone = "🟢";
-            let text = STATUS[t.status] || t.status;
-            if (t.incident) { tone = "🔴"; text = "Có sự cố xe"; }
-            else if (t.settlement === "pending") { tone = "🟡"; text = "Đang chờ quyết toán"; }
-            else if (t.status === "waitingHandover") { tone = "🟡"; text = "Chờ giao xe"; }
-            return `<button type="button" class="op-alert" data-open="${t.id}"><span><strong>${tone} Đơn #${t.id}</strong>${text}</span><span class="mk-muted">${STATUS[t.status] || t.status}</span></button>`;
-        }).join("");
-    }
-
-    function renderDriver() {
-        if (!driverRows.length) {
-            els.driver.innerHTML = `<p class="mk-muted">Không có dữ liệu tài xế từ fleet-status / drivers.</p>`;
-            return;
-        }
-        const d = driverRows.find((x) => String(x.status).toLowerCase() === "busy") || driverRows[0];
-        const tripLink = d.bookingId
-            ? `<button type="button" class="mk-btn mk-btn-primary" data-open="${d.bookingId}">Xem chuyến</button>`
-            : "";
-        const incTrip = trips.find((t) => t.incident);
-        els.driver.innerHTML = `
-            <div class="op-driver-block">
-                <strong>${d.name}</strong>
-                <p>${d.status === "Busy" || d.status === "busy" ? "🟡" : "🟢"} ${d.status}<br>
-                ${d.bookingId ? `Chuyến: #${d.bookingId}` : "Không gắn chuyến"}<br>
-                ${d.plate ? `Xe: ${d.plate}` : ""}</p>
-                <div class="mk-actions">
-                    ${tripLink}
-                    <button type="button" class="mk-btn mk-btn-ghost" data-contact="${d.bookingId || ""}">Liên hệ tài xế</button>
-                    ${incTrip ? `<button type="button" class="mk-btn mk-btn-danger" data-incident="${incTrip.id}">Xem sự cố</button>` : ""}
-                </div>
-            </div>`;
-    }
-
-    function renderMap() {
-        els.map.querySelectorAll(".op-pin").forEach((n) => n.remove());
-        // No GPS API — keep empty demo map (do not invent pins as real).
-        const label = els.map.querySelector(".op-map-label");
-        if (label) label.textContent = "Vị trí mô phỏng — không phải GPS thật (thiếu API)";
     }
 
     function condBlock(ret, handover, mode) {
@@ -486,12 +647,17 @@
         state.modal = "settle";
     }
 
+    // Order = page order: metrics → queue → timeline → table.
+    function renderBoardViews() {
+        const now = nowVn();
+        renderMetrics(now);
+        renderQueue(now);
+        renderTimeline(now);
+        renderTable(now);
+    }
+
     function render() {
-        renderAlerts();
-        renderDriver();
-        renderMap();
-        renderBoard();
-        renderTable();
+        renderBoardViews();
         if (state.selectedId) {
             const t = trip(state.selectedId);
             if (t) renderDrawer(t);
@@ -514,7 +680,7 @@
     document.getElementById("opReset").addEventListener("click", (e) => {
         e.preventDefault();
         els.form.reset();
-        state.q = state.status = state.mode = state.dstatus = state.vehicle = "";
+        state.q = state.status = state.mode = state.dstatus = state.vehicle = state.metric = "";
         state.page = 1;
         render();
     });
@@ -527,6 +693,20 @@
         }
         if (e.target.closest("[data-close-modal]") || e.target === els.modal) {
             closeModal();
+            return;
+        }
+        const metric = e.target.closest("[data-metric]");
+        if (metric) {
+            // Second click on the active card clears the metric filter.
+            state.metric = state.metric === metric.dataset.metric ? "" : metric.dataset.metric;
+            state.page = 1;
+            renderBoardViews();
+            return;
+        }
+        const scrollTable = e.target.closest("[data-scroll-table]");
+        if (scrollTable) {
+            e.preventDefault();
+            document.getElementById("opTableCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
             return;
         }
         const page = e.target.closest("[data-page]");
@@ -644,4 +824,20 @@
     });
 
     render();
+    // Keep "còn / quá X phút" moving without touching an open drawer or modal.
+    setInterval(renderBoardViews, 60 * 1000);
+
+    // Realtime (realtime.js): a booking changed somewhere -> refetch and redraw the board views only.
+    // The drawer / an open handover or return form are left untouched.
+    let realtimeTimer = null;
+    function onRealtime(e) {
+        if (e.type === "carrental:realtime" && (!e.detail || e.detail.bookingId == null)) return;
+        clearTimeout(realtimeTimer);
+        realtimeTimer = setTimeout(async () => {
+            await reloadFromServer();
+            renderBoardViews();
+        }, 800);
+    }
+    window.addEventListener("carrental:realtime", onRealtime);
+    window.addEventListener("carrental:realtime-reconnected", onRealtime);
 })();

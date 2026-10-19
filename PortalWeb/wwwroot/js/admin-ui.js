@@ -473,7 +473,7 @@
       return b.vehicleTypeName || "—";
     };
     const plateOf = (b) => b.assignedVehicle?.licensePlate || b.assignment?.licensePlate || "—";
-    const canCancel = (st) => st === "Pending" || st === "Confirmed";
+    const canCancel = (st) => st === "Pending" || st === "Confirmed" || st === "Assigned";
     const antiforgery = () =>
       document.querySelector("#auiBookingsAntiForgery input[name='__RequestVerificationToken']")?.value || "";
 
@@ -705,14 +705,14 @@
           footerHtml: `
             ${cancelOk
               ? `<button type="button" class="aui-btn aui-btn-outline-danger" data-cancel="${esc(b.bookingId)}">Hủy đơn</button>`
-              : `<button type="button" class="aui-btn aui-btn-outline-danger" disabled title="Chỉ hủy được khi Chờ xác nhận hoặc Đã xác nhận">Hủy đơn</button>`}
+              : `<button type="button" class="aui-btn aui-btn-outline-danger" disabled title="Chỉ hủy được khi đơn chưa bắt đầu (Chờ xác nhận, Đã xác nhận, Đã phân công)">Hủy đơn</button>`}
             <button type="button" class="aui-btn aui-btn-ghost" data-aui-toast="Gửi tin nhắn chưa được hỗ trợ.">Gửi tin nhắn</button>`
         });
 
         drawerFoot.querySelector("[data-cancel]")?.addEventListener("click", () => {
           openModal({
             title: "Hủy đơn",
-            body: `Hủy đơn #${b.bookingId}? Chỉ áp dụng khi đơn đang Chờ xác nhận hoặc Đã xác nhận. Không hoàn tiền tự động.`,
+            body: `Hủy đơn #${b.bookingId}? Chỉ áp dụng khi đơn chưa bắt đầu; đơn đã phân công sẽ trả xe và tài xế. Không hoàn tiền tự động.`,
             okLabel: "Hủy đơn",
             onOk: () => {
               (async () => {

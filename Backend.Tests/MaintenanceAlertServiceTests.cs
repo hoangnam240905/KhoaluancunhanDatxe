@@ -103,14 +103,43 @@ public class MaintenanceAlertServiceTests
     }
 
     [Fact]
-    public async Task No_completed_maintenance_alerts()
+    public async Task No_completed_maintenance_counts_from_zero_km_and_fleet_entry()
     {
         using var iso = new IsolatedCarRentalDb();
         iso.ClearMaintenanceRecords();
+        // Seed fleet is used (12,000+ km) -> due by km even without history.
         var alerts = await Alerts(iso).GetAlertsAsync();
         Assert.Equal(iso.Db.Vehicles.Count(), alerts.Count);
-        Assert.All(alerts, a => Assert.Equal(int.MaxValue, a.DaysSinceLastMaintenance));
-        Assert.All(alerts, a => Assert.Null(a.KmSinceLastMaintenance));
+        Assert.All(alerts, a =>
+            Assert.Equal(iso.Db.Vehicles.Find(a.VehicleId)!.CurrentKm, a.KmSinceLastMaintenance));
+        Assert.All(alerts, a => Assert.Equal("Chưa có lịch sử bảo trì hoàn thành.", a.Reason));
+    }
+
+    [Fact]
+    public void New_vehicle_without_history_is_not_due()
+    {
+        var now = DateTime.UtcNow;
+        var fresh = new Vehicle { CurrentKm = 0, CreatedAt = now.AddDays(-3) };
+        Assert.False(MaintenanceAlertService.IsBlockedForNewSchedule(fresh, null, now));
+        Assert.Equal(3, MaintenanceAlertService.DaysSince(fresh, null, now));
+        Assert.Equal(0, MaintenanceAlertService.KmSince(fresh.CurrentKm, null));
+    }
+
+    [Fact]
+    public void Vehicle_without_history_becomes_due_by_km_or_by_days_in_fleet()
+    {
+        var now = DateTime.UtcNow;
+        var byKm = new Vehicle { CurrentKm = MaintenanceAlertThresholds.KmThreshold, CreatedAt = now.AddDays(-3) };
+        var byDays = new Vehicle { CurrentKm = 0, CreatedAt = now.AddDays(-MaintenanceAlertThresholds.DaysThreshold) };
+        var almost = new Vehicle
+        {
+            CurrentKm = MaintenanceAlertThresholds.KmThreshold - 1,
+            CreatedAt = now.AddDays(-(MaintenanceAlertThresholds.DaysThreshold - 1))
+        };
+
+        Assert.True(MaintenanceAlertService.IsBlockedForNewSchedule(byKm, null, now));
+        Assert.True(MaintenanceAlertService.IsBlockedForNewSchedule(byDays, null, now));
+        Assert.False(MaintenanceAlertService.IsBlockedForNewSchedule(almost, null, now));
     }
 
     [Fact]

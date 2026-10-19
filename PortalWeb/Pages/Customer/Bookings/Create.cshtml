@@ -113,10 +113,21 @@
             }
             else
             {
+                @if (Model.RebookFrom is int rebookSource)
+                {
+                    <div class="cb-card" data-rebook-banner="@rebookSource" style="margin-bottom:1rem">
+                        <strong>@RebookUi.Banner(rebookSource)</strong>
+                        @foreach (var notice in Model.RebookNotices)
+                        {
+                            <p class="cb-note" data-rebook-notice style="color:#b45309;margin:.35rem 0 0">@notice</p>
+                        }
+                    </div>
+                }
                 <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
                 <input type="hidden" asp-for="Input.VehicleTypeId" />
                 <input type="hidden" asp-for="Input.VehicleId" />
                 <input type="hidden" asp-for="Input.DriverId" data-cb-driver-id />
+                <input type="hidden" asp-for="Input.Notes" data-cb-notes />
                 <input type="hidden" asp-for="Input.RentalMode" data-cb-rental-mode />
                 <input type="hidden" asp-for="Input.EstimatedDistance" data-cb-distance-input />
                 <input type="hidden" asp-for="QuoteConfirmed" data-cb-quote-confirmed />

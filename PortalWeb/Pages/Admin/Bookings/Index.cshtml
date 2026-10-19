@@ -35,7 +35,7 @@ else
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-secondary badge-status">@UiDisplay.BookingStatus(b.Status)</span>
-                            @if (b.Status is "Pending" or "Confirmed")
+                            @if (b.Status is "Pending" or "Confirmed" or "Assigned")
                             {
                                 <form method="post" asp-page-handler="Cancel" asp-route-id="@b.BookingId" class="d-inline">
                                     <button class="btn btn-sm btn-outline-danger">Hủy đơn</button>

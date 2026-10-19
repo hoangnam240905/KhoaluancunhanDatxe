@@ -7,6 +7,8 @@ public class Notification
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string? Type { get; set; }
+    /// <summary>Booking the notification is about (null for general notifications).</summary>
+    public int? BookingId { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; }
 

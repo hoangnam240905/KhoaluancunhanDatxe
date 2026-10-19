@@ -32,7 +32,8 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
         if (vehicleId <= 0)
             return RedirectToPage("/Customer/Bookings/Create", new { fromRecommendation = true });
 
-        var (data, error, status) = await api.CreateCustomerVehicleInteractionAsync(vehicleId, "BOOK");
+        // Intent only: the real BOOK is recorded by Backend when a booking with this vehicle is created.
+        var (data, error, status) = await api.CreateCustomerVehicleInteractionAsync(vehicleId, "CLICK_BOOK");
         if (data is null)
             logger.LogWarning(
                 "BOOK interaction failed for VehicleId {VehicleId}: {Status} {Error}",
@@ -93,8 +94,17 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
                     brand = r.Brand,
                     model = r.Model,
                     segment = r.Segment,
-                    finalScore = r.FinalScore
-                })
+                    finalScore = r.FinalScore,
+                    vehicleStatus = r.VehicleStatus,
+                    historyAffinity = r.HistoryAffinity,
+                    pricePerDay = r.PricePerDay,
+                    overBudget = r.OverBudget,
+                    seats = r.Seats,
+                    seatsOk = r.SeatsOk,
+                    maintenanceDue = r.MaintenanceDue,
+                    fromBusinessRule = r.FromBusinessRule
+                }),
+                partySize = data.PartySize
             });
         }
         catch (Exception ex)

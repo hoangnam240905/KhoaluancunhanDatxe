@@ -8,7 +8,6 @@ public static class BookingCalendarUi
 {
     public const string LoadFailure = "Không thể tải danh sách đơn thuê. Vui lòng thử lại.";
     public const string ActionLabel = "Xem chi tiết";
-
     public static string NormalizeView(string? view) =>
         string.Equals(view, "calendar", StringComparison.OrdinalIgnoreCase) ? "calendar" : "list";
 

@@ -21,7 +21,8 @@ public record CustomerProfileResponse(
     string? PreferredFuelType,
     string? PreferredTransmission,
     int? PreferredSeats,
-    string? PreferencesText);
+    string? PreferencesText,
+    double? TripBudgetPerDay = null);
 
 /// <summary>Update V7-related Customer fields. Null clears optional fields (full replace of these columns).</summary>
 public record UpdateCustomerProfileRequest(
@@ -40,4 +41,5 @@ public record UpdateCustomerProfileRequest(
     string? PreferredTransmission = null,
     int? PreferredSeats = null,
     string? PreferencesText = null,
-    string? Address = null);
+    string? Address = null,
+    double? TripBudgetPerDay = null);

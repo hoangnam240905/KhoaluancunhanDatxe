@@ -228,12 +228,12 @@
                         <section class="ct-sec">
                             <h3>7. Quy định thuê xe</h3>
                             <ul class="ct-terms">
-                                @foreach (var term in ContractUi.Terms)
+                                @foreach (var term in ContractUi.TermsFor(Model.Contract))
                                 {
                                     <li>@term</li>
                                 }
                             </ul>
-                            <p class="ct-note">Các điều khoản trên là minh họa giao diện, chưa phải điều khoản pháp lý cuối cùng.</p>
+                            <p class="ct-note">@ContractUi.TermsNote(Model.Contract)</p>
                         </section>
 
                         <section class="ct-sec">
@@ -295,12 +295,12 @@
                     <article class="ct-card">
                         <h2>Điều khoản thuê xe</h2>
                         <ul class="ct-terms">
-                            @foreach (var term in ContractUi.Terms)
+                            @foreach (var term in ContractUi.TermsFor(Model.Contract))
                             {
                                 <li>@term</li>
                             }
                         </ul>
-                        <p class="ct-note">Nội dung điều khoản là minh họa giao diện.</p>
+                        <p class="ct-note">@ContractUi.TermsNote(Model.Contract)</p>
                     </article>
 
                     @if (Model.CanSign)

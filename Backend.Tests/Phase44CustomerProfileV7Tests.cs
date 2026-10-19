@@ -167,7 +167,7 @@ public class Phase44CustomerProfileV7Tests
         Assert.Equal(8000, req.AnnualKm);
         Assert.Equal("trips", req.UsagePrimary);
         Assert.Equal(1800, req.BudgetMonthly);
-        Assert.Equal("family road trips", req.PreferencesText);
+        Assert.Equal("family road trips | suv seats 5", req.PreferencesText); // SUV dropdown + 4 people appended
         Assert.InRange(req.Age, 16, 100);
         // Age from 1988-01-15 relative to UtcNow
         var expectedAge = DateOnly.FromDateTime(DateTime.UtcNow).Year - 1988;

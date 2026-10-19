@@ -14,7 +14,9 @@ public class RecommendationService(HttpClient http) : IRecommendationService
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        // Optional fields (history, car_id, seats) are omitted rather than sent as null (Pydantic rejects null lists).
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
     public async Task<(PythonRecommendationResponse? Data, string? Error, int StatusCode)> GetRecommendationsAsync(

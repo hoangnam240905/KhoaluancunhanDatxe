@@ -1,0 +1,34 @@
+{
+  "run_at": "2026-10-18T18:11:46",
+  "python": "3.11.13",
+  "sklearn": "1.8.0",
+  "seed": 42,
+  "n_cars": 250,
+  "n_users": 10000,
+  "n_train": 8000,
+  "n_test": 2000,
+  "rf_accuracy_test": 0.4815,
+  "rf_accuracy_train": 1.0,
+  "leaky_sample_in_train": 406,
+  "car_price_range": [
+    74580.0,
+    479657.0
+  ],
+  "user_budget_monthly_range": [
+    900.0,
+    5315.0
+  ],
+  "budget_as_price_zscore_range": [
+    -2.31,
+    -2.265
+  ],
+  "experiment_budget_vs_monthly_cost_zscore_range": [
+    -2.285,
+    3.626
+  ],
+  "car_monthly_cost_range": [
+    1111.0,
+    4715.0
+  ],
+  "engine_consistency_check": "passed (25 test users, vectorised scores == engine.recommend)"
+}

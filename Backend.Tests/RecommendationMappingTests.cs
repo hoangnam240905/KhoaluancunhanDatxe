@@ -107,7 +107,7 @@ public class RecommendationMappingTests
         Assert.Equal(15000, profile.AnnualKm);
         Assert.Equal("family", profile.UsagePrimary);
         Assert.Equal(900, profile.BudgetMonthly);
-        Assert.Equal("spacious family SUV with high safety", profile.PreferencesText);
+        Assert.StartsWith("spacious family SUV with high safety | ", profile.PreferencesText); // note kept, dropdown tokens appended
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class RecommendationMappingTests
         Assert.Equal((double)customer.AnnualMileage!.Value, profile.AnnualKm);
         Assert.Equal("family", profile.UsagePrimary);
         Assert.Equal(customer.BudgetMax!.Value, profile.BudgetMonthly);
-        Assert.Equal(customer.PreferencesText, profile.PreferencesText);
+        Assert.StartsWith(customer.PreferencesText!, profile.PreferencesText);
     }
 
     [Fact]
@@ -160,12 +160,12 @@ public class RecommendationMappingTests
         Assert.Equal(opts.DefaultFamilySize, profile.FamilySize);
         Assert.Equal("med", profile.IncomeBracket);
         Assert.Equal("med", profile.CityType);
-        Assert.Equal(0, profile.CommuteKmDay);
+        Assert.Equal(opts.DefaultCommuteKmDay, profile.CommuteKmDay);
         Assert.Equal(0, profile.ChargingAccess);
-        Assert.Equal(0, profile.AnnualKm);
-        Assert.Equal("city", profile.UsagePrimary);
+        Assert.Equal(opts.DefaultAnnualKm, profile.AnnualKm);
+        Assert.Equal(opts.DefaultUsagePrimary, profile.UsagePrimary);
         Assert.Equal(opts.DefaultBudgetMonthly, profile.BudgetMonthly);
-        Assert.Equal(opts.DefaultPreferencesText, profile.PreferencesText);
+        Assert.Equal("crossover safety", profile.PreferencesText); // no note/preferences -> trip type decides
     }
 
     [Fact]
@@ -210,13 +210,16 @@ public class RecommendationMappingTests
         Assert.True(result.Success, result.Reason);
         Assert.Equal(200, result.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(result.PredictedSegment));
-        // Mapped + dropped must account for Python topK (unmapped / ambiguous / VehicleId dedupe).
+        // Mapped + dropped must account for every Python candidate (unmapped / ambiguous / VehicleId dedupe).
+        // FamilySize is set, so Backend asks for a larger pool and cuts to topK after seats-first ordering.
+        Assert.Equal(RecommendationMappingService.MaxPythonTopK, result.CandidateCount);
         Assert.Equal(
-            5,
-            result.Recommendations.Count
+            result.CandidateCount,
+            result.MappedCount
             + result.UnmappedCount
             + result.AmbiguousCount
             + result.DuplicateVehicleCount);
+        Assert.InRange(result.Recommendations.Count, 1, 5);
         Assert.Equal(
             result.Recommendations.Count,
             result.Recommendations.Select(r => r.VehicleId).Distinct().Count());

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using PortalWeb.Models;
 
 namespace PortalWeb.Display;
@@ -30,7 +31,11 @@ public static class ScheduleUi
         id = VehicleKey(v.VehicleId),
         name = $"{v.Brand} {v.Model}".Trim(),
         plate = v.LicensePlate,
-        status = MapVehicleStatus(v.Status)
+        status = MapVehicleStatus(v.Status),
+        seats = v.SeatCapacity > 0 ? v.SeatCapacity : SeatsFromTypeName(v.TypeName),
+        typeId = v.TypeId,
+        typeName = v.TypeName ?? "",
+        model = $"{v.Brand} {v.Model}".Trim()
     };
 
     public static object ToVehicleFromFleet(DispatchVehicleStatusResponse v) => new
@@ -38,7 +43,12 @@ public static class ScheduleUi
         id = VehicleKey(v.VehicleId),
         name = string.IsNullOrWhiteSpace(v.TypeName) ? v.LicensePlate : v.TypeName,
         plate = v.LicensePlate,
-        status = MapVehicleStatus(v.VehicleStatus)
+        status = MapVehicleStatus(v.VehicleStatus),
+        // Fleet DTO has no seat count — derive it from the type name ("7 chỗ - SUV").
+        seats = SeatsFromTypeName(v.TypeName),
+        typeId = 0,
+        typeName = v.TypeName ?? "",
+        model = ""
     };
 
     public static object ToDriver(DriverResponse d) => new
@@ -73,7 +83,9 @@ public static class ScheduleUi
             end = b.EndDate.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
             status = b.Status,
             pickup = b.PickupAddress,
-            dropoff = b.DropoffAddress
+            dropoff = b.DropoffAddress,
+            requestedTypeId = b.VehicleTypeId,
+            requestedTypeName = b.VehicleTypeName
         };
     }
 
@@ -83,6 +95,8 @@ public static class ScheduleUi
         name = string.IsNullOrWhiteSpace(v.TypeName) ? v.LicensePlate : v.TypeName,
         plate = v.LicensePlate,
         status = MapVehicleStatus(v.VehicleStatus),
+        typeName = v.TypeName ?? "",
+        seats = SeatsFromTypeName(v.TypeName),
         bookingId = v.BookingId,
         start = v.StartDate?.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
         end = v.EndDate?.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
@@ -90,13 +104,7 @@ public static class ScheduleUi
         rentalMode = v.RentalMode
     };
 
-    public static object ToAssignableVehicle(VehicleResponse v) => new
-    {
-        id = VehicleKey(v.VehicleId),
-        name = $"{v.Brand} {v.Model}".Trim(),
-        plate = v.LicensePlate,
-        status = MapVehicleStatus(v.Status)
-    };
+    public static object ToAssignableVehicle(VehicleResponse v) => ToVehicle(v);
 
     public static object ToAssignableDriver(DriverResponse d) => new
     {
@@ -117,8 +125,19 @@ public static class ScheduleUi
             end = b.EndDate.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
             status = b.Status,
             pickup = b.PickupAddress,
-            dropoff = b.DropoffAddress
+            dropoff = b.DropoffAddress,
+            requestedTypeId = b.VehicleTypeId,
+            requestedTypeName = b.VehicleTypeName
         };
+
+    private static readonly Regex SeatsPattern = new(@"(\d+)\s*chỗ", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static int SeatsFromTypeName(string? typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName)) return 0;
+        var m = SeatsPattern.Match(typeName);
+        return m.Success && int.TryParse(m.Groups[1].Value, out var n) ? n : 0;
+    }
 
     private static string MapVehicleStatus(string? status) => status?.Trim() switch
     {
