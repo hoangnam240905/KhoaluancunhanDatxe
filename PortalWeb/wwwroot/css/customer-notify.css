@@ -1,0 +1,27 @@
+/* Customer header bell (real notifications). Base .ch-notify-* styles live in home.css / search.css. */
+#cnBell .ch-icon-btn { position: relative; }
+.cn-count {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    background: #ef4444; color: #fff; font-size: 0.68rem; font-weight: 700;
+    display: grid; place-items: center; line-height: 1;
+}
+.cn-count[hidden] { display: none; }
+.cn-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.cn-link { border: 0; background: none; padding: 0; color: #2563eb; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+.cn-link[hidden] { display: none; }
+#cnBell .ch-notify-menu { max-height: 420px; overflow-y: auto; }
+#cnBell .ch-notify-item { width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer; }
+#cnBell .ch-notify-item.is-unread { background: #eff6ff; }
+#cnBell .ch-notify-item.is-unread strong::after {
+    content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 0.35rem;
+    border-radius: 50%; background: #2563eb; vertical-align: middle;
+}
+.cn-empty { margin: 0; padding: 1rem; color: #64748b; font-size: 0.85rem; text-align: center; }
+.cn-toast {
+    position: fixed; right: 1rem; bottom: 1rem; z-index: 1080; max-width: min(360px, calc(100vw - 2rem));
+    background: #0f1f3d; color: #fff; border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.88rem;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25);
+    opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s, transform .2s;
+}
+.cn-toast.is-on { opacity: 1; transform: none; }

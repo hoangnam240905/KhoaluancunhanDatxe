@@ -1,20 +1,42 @@
-<div class="dropdown">
-    <button type="button" class="ch-icon-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Thông báo" aria-label="Thông báo">
-        <i class="bi bi-bell"></i>
-        <span class="ch-notify-dot" aria-hidden="true"></span>
-    </button>
-    <div class="dropdown-menu dropdown-menu-end ch-notify-menu">
-        <div class="ch-notify-head">Thông báo</div>
-        @foreach (var n in SearchUi.Notices)
-        {
-            <div class="ch-notify-item @(n.Unread ? "is-unread" : "")">
-                <span class="ch-notify-ico"><i class="bi @n.Icon"></i></span>
-                <span>
-                    <strong>@n.Title</strong>
-                    <span class="ch-notify-desc">@n.Description</span>
-                    <time>@n.Time</time>
-                </span>
+@inject PortalWeb.Services.AuthSession Auth
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@* Customer header bell: real notifications (GET /api/notifications via page handlers) + realtime toasts. *@
+@if (Auth.IsLoggedIn && Auth.Role == "Customer")
+{
+    <link rel="stylesheet" href="~/css/customer-notify.css" asp-append-version="true" />
+    <div class="dropdown" id="cnBell">
+        <button type="button" class="ch-icon-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                title="Thông báo" aria-label="Thông báo" data-cn-toggle>
+            <i class="bi bi-bell"></i>
+            <span class="cn-count" data-cn-count hidden></span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end ch-notify-menu">
+            <div class="ch-notify-head cn-head">
+                <span>Thông báo</span>
+                <button type="button" class="cn-link" data-cn-read-all hidden>Đánh dấu đã đọc</button>
             </div>
-        }
+            <div data-cn-list><p class="cn-empty">Đang tải...</p></div>
+        </div>
     </div>
-</div>
+    <div class="cn-toast" data-cn-toast role="status" aria-live="polite"></div>
+    <form id="cnAntiForgery" class="d-none">@Html.AntiForgeryToken()</form>
+    <script>
+        window.__CUSTOMER_NOTIFY__ = {
+            list: '@Url.Page("/Customer/Notifications", "List")',
+            read: '@Url.Page("/Customer/Notifications", "Read")',
+            readAll: '@Url.Page("/Customer/Notifications", "ReadAll")',
+            bookingUrl: '@Url.Page("/Customer/Bookings/Details", new { id = 0 })'
+        };
+    </script>
+    @if (!string.IsNullOrEmpty(Auth.Token))
+    {
+        <script>
+            window.carRentalRealtime = window.carRentalRealtime || {
+                hubUrl: @Html.Raw(System.Text.Json.JsonSerializer.Serialize((Config["ApiBaseUrl"] ?? "http://localhost:5199").TrimEnd('/') + "/hubs/realtime")),
+                accessToken: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Auth.Token))
+            };
+        </script>
+        <script src="~/js/realtime.js" asp-append-version="true"></script>
+    }
+    <script src="~/js/customer-notify.js" asp-append-version="true"></script>
+}

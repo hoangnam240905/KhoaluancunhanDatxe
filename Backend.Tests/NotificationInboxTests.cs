@@ -25,6 +25,7 @@ public class NotificationInboxTests
 
     [Theory]
     [InlineData(BookingStatuses.Pending, new[] { NotificationRecipient.Dispatchers })]
+    [InlineData(BookingStatuses.Confirmed, new[] { NotificationRecipient.BookingCustomer })]
     [InlineData(BookingStatuses.Cancelled, new[] { NotificationRecipient.Dispatchers, NotificationRecipient.BookingCustomer })]
     [InlineData(BookingStatuses.Assigned, new[] { NotificationRecipient.BookingCustomer })]
     [InlineData(BookingStatuses.InProgress, new[] { NotificationRecipient.Dispatchers, NotificationRecipient.BookingCustomer })]
@@ -39,7 +40,6 @@ public class NotificationInboxTests
     }
 
     [Theory]
-    [InlineData(BookingStatuses.Confirmed)]
     [InlineData("Unknown")]
     public void Other_booking_statuses_are_ignored(string status)
         => Assert.False(NotificationRules.IsRelevant(BookingEvent(status)));

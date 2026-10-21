@@ -19,16 +19,6 @@ public static class SearchUi
         Card("Mercedes-Benz S-Class", "Limousine", 4, "Tự động", "Xăng", 5.0m, 22, 6_800_000m, "/images/home/hero.jpg", "Gợi ý"),
     ];
 
-    public static IReadOnlyList<CustomerNotice> Notices { get; } =
-    [
-        new("bi-check-circle", "Đơn đã xác nhận", "Đơn thuê của bạn đã được xác nhận", "2 giờ trước", true),
-        new("bi-person-check", "Đã điều phối", "Xe và tài xế đã được điều phối cho chuyến thuê", "Hôm nay", true),
-        new("bi-pen", "Hợp đồng sẵn sàng", "Hợp đồng điện tử đã sẵn sàng để ký", "Hôm qua", true),
-        new("bi-credit-card", "Cọc đã cập nhật", "Thanh toán tiền cọc đã được cập nhật", "2 ngày trước", false),
-        new("bi-play-circle", "Chuyến đi bắt đầu", "Chuyến thuê của bạn đã bắt đầu", "3 ngày trước", false),
-        new("bi-star", "Hoàn thành chuyến", "Chuyến thuê đã hoàn thành. Hãy đánh giá chuyến đi", "Tuần trước", false),
-    ];
-
     private static SearchVehicleCard Card(
         string name, string category, int seats, string transmission, string fuel,
         decimal rating, int reviews, decimal price, string image, string? badge)
@@ -54,9 +44,3 @@ public sealed record SearchVehicleCard(
     DateTime? ConflictEnd = null,
     DateTime? AvailableFrom = null);
 
-public sealed record CustomerNotice(
-    string Icon,
-    string Title,
-    string Description,
-    string Time,
-    bool Unread);

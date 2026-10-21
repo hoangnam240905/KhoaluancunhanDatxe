@@ -38,7 +38,7 @@ public static class NotificationRules
         return evt.EventType switch
         {
             RealtimeEventTypes.BookingStatusChanged => Payload(evt, "status") is
-                BookingStatuses.Pending or BookingStatuses.Cancelled or BookingStatuses.Assigned
+                BookingStatuses.Pending or BookingStatuses.Confirmed or BookingStatuses.Cancelled or BookingStatuses.Assigned
                 or BookingStatuses.InProgress or BookingStatuses.Completed,
             RealtimeEventTypes.TripStatusChanged => Payload(evt, "tripStatus") == TripAssignmentStatuses.Accepted,
             RealtimeEventTypes.IncidentReported => true,
@@ -76,6 +76,12 @@ public static class NotificationRules
             [
                 new(NotificationRecipient.Dispatchers, $"Đơn #{id} mới cần xác nhận",
                     $"{who} vừa tạo đơn thuê, nhận xe lúc {when}{where}.", TypeBooking, id)
+            ],
+            // The dispatcher confirmed it -> only the customer is told.
+            BookingStatuses.Confirmed =>
+            [
+                new(NotificationRecipient.BookingCustomer, $"Đơn #{id} đã được xác nhận",
+                    $"Điều phối viên đã xác nhận đơn thuê #{id} (nhận xe {when}). Bạn có thể ký hợp đồng và đặt cọc.", TypeBooking, id)
             ],
             BookingStatuses.Cancelled =>
             [
