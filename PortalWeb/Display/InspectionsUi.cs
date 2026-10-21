@@ -66,8 +66,9 @@ public static class InspectionsUi
             kmOut,
             fuelOut,
             condition = conditionKey,
-            datetime = Fmt(i.ActualAt),
-            dateIso = i.ActualAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            // ActualAt is UTC (server clock) — show Vietnam time.
+            datetime = Fmt(UiDisplay.ToVietnam(i.ActualAt)),
+            dateIso = UiDisplay.ToVietnam(i.ActualAt).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             inspector = "—", // not in VehicleInspectionResponse
             customer = booking?.CustomerName ?? "—",
             driver,
