@@ -5,7 +5,7 @@
     ViewData["Title"] = "Đặt thuê & Xác nhận";
     ViewData["Nav"] = "hub";
 }
-<div class="mk-banner">Đơn thuê lấy từ hệ thống. Tìm kiếm/lọc trên trang (API list chỉ hỗ trợ lọc trạng thái). Phân công dùng xe/tài xế khả dụng đầu tiên từ API. Giao xe / trả xe gọi API SelfDrive. Số điện thoại &amp; email khách chưa có trên BookingResponse.</div>
+<div class="mk-banner">Đơn thuê lấy từ hệ thống. Tìm kiếm/lọc trên trang (API list chỉ hỗ trợ lọc trạng thái). Phân công dùng xe/tài xế khả dụng đầu tiên từ API. Giao xe gọi API dispatcher cho cả tự lái (giao cho khách) và có tài xế (giao cho tài xế); trả xe tại điều phối chỉ cho tự lái. Số điện thoại &amp; email khách chưa có trên BookingResponse.</div>
 @if (!string.IsNullOrEmpty(Model.LoadError))
 {
     <div class="alert alert-warning">@Model.LoadError</div>

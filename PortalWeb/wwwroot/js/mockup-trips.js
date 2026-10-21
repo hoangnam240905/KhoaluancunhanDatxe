@@ -270,9 +270,9 @@
                 sev: 0, rank: 2, at: ts.at, icon: "bi-exclamation-triangle-fill",
                 title: self ? `Chờ giao xe quá ${fmtDur(ts.minutes)}` : `Tài xế chưa nhận chuyến, quá ${fmtDur(ts.minutes)}`,
                 sub: itemHead(t) + where, time: hhmm(ts.at), note: `quá ${fmtDur(ts.minutes)}`,
-                action: self
-                    ? btn("mk-btn-primary", "data-handover", `<i class="bi bi-key"></i> Giao xe ngay`)
-                    : btn("mk-btn-outline", "data-contact", "Liên hệ tài xế")
+                action: btn("mk-btn-primary", "data-handover", self
+                    ? `<i class="bi bi-key"></i> Giao xe ngay`
+                    : `<i class="bi bi-key"></i> Giao xe cho tài xế`)
             };
         }
         if (ts && ts.kind === "returnLate") {
@@ -557,8 +557,8 @@
     }
 
     async function handoverForm(t) {
-        if (!t.canHandoverApi && t.mode !== "SelfDrive") {
-            toast("Chỉ SelfDrive dùng API handover dispatcher.");
+        if (!t.canHandoverApi) {
+            toast("Chỉ giao xe khi đơn đã được gán xe.");
             return;
         }
         openModal(`

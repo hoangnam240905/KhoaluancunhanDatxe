@@ -414,11 +414,10 @@
     }
 
     async function beginHandover(id) {
+        // Both modes: self-drive → the customer receives the car; with driver → the driver does.
         const booking = bookings.find((b) => b.id === id);
-        if (booking && booking.mode && booking.mode !== "SelfDrive") {
-            toast("Chỉ đơn tự lái mới dùng giao xe tại điều phối.");
-            return;
-        }
+        const title = document.getElementById("mkHandoverTitle");
+        if (title) title.textContent = booking && booking.mode === "WithDriver" ? "Xác nhận giao xe cho tài xế" : "Xác nhận giao xe";
         openHandoverModalLoading();
         try {
             const data = await apiGetHandoverInfo(id);
