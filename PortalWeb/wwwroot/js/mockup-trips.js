@@ -549,10 +549,7 @@
     function syncTripsHandoverConfirm() {
         const btn = document.querySelector("[data-handover-submit]");
         if (!btn || !state.handoverPayload) return;
-        if (!state.handoverPayload.requiresFuelInput) {
-            btn.disabled = !(isValidKm(state.handoverPayload.odometerKm) && isValidFuelPercent(state.handoverPayload.fuelLevel));
-            return;
-        }
+        // Fuel is always typed (pre-filled with the last known level); KM stays from the vehicle record.
         const input = document.querySelector("[data-handover-fuel-input]");
         const fuel = parseHandoverFuel(input?.value);
         state.handoverPayload.fuelLevel = fuel;
@@ -603,13 +600,11 @@
             let fuelBlock;
             if (!kmOk) {
                 fuelBlock = `<div><dt>Mức nhiên liệu</dt><dd>—</dd></div>`;
-            } else if (requiresFuelInput) {
+            } else {
                 fuelBlock = `<div><dt>Mức nhiên liệu khi giao xe (%)</dt><dd>
-                    <input type="number" min="0" max="100" step="1" placeholder="Nhập %"
+                    <input type="number" min="0" max="100" step="1" placeholder="Nhập %" value="${knownFuelOk ? Number(data.fuelLevel) : ""}"
                            inputmode="numeric" data-handover-fuel-input class="mk-input" style="max-width:8rem" />
                 </dd></div>`;
-            } else {
-                fuelBlock = `<div><dt>Mức nhiên liệu</dt><dd><strong>${Number(data.fuelLevel).toLocaleString("vi-VN")}% 🔒</strong></dd></div>`;
             }
 
             const canConfirmNow = kmOk && knownFuelOk;
@@ -622,15 +617,15 @@
                     ${fuelBlock}
                 </dl>
                 ${!kmOk ? `<p class="mk-note" style="color:#b91c1c">${data.blockReason || "Xe chưa có số KM hiện tại trong hệ thống."}</p>` : ""}
-                ${kmOk && requiresFuelInput ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
-                ${kmOk && !requiresFuelInput ? `<p class="mk-note">KM và mức nhiên liệu lấy từ hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
-                ${kmOk && requiresFuelInput ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+                ${kmOk && !knownFuelOk ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
+                ${kmOk && knownFuelOk ? `<p class="mk-note">Nhiên liệu điền sẵn từ lần kiểm xe gần nhất (${Number(data.fuelLevel).toLocaleString("vi-VN")}%) — sửa lại nếu thực tế khác.</p>` : ""}
+                ${kmOk ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
                 <div class="mk-actions">
                     <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
                     <button type="button" class="mk-btn mk-btn-success" data-handover-submit ${canConfirmNow ? "" : "disabled"}>Xác nhận giao xe</button>
                 </div>`);
             state.modal = "handover";
-            if (kmOk && requiresFuelInput) {
+            if (kmOk) {
                 const input = document.querySelector("[data-handover-fuel-input]");
                 input?.addEventListener("input", syncTripsHandoverConfirm);
                 input?.addEventListener("change", syncTripsHandoverConfirm);

@@ -46,9 +46,8 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : RolePageM
             return Page();
         }
 
-        // Only accept client fuel when backend has none for THIS vehicle.
-        var clientFuel = snap.RequiresFuelInput ? Input.FuelLevel : null;
-        var (odo, fuel, err) = HandoverVehicleState.ResolveHandoverCondition(snap, clientFuel);
+        // Fuel is editable (pre-filled with the last known level); KM always comes from the vehicle record.
+        var (odo, fuel, err) = HandoverVehicleState.ResolveHandoverCondition(snap, Input.FuelLevel);
         if (err is not null)
         {
             ErrorMessage = err;
@@ -90,7 +89,8 @@ public class HandoverModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         RequiresFuelInput = snap.RequiresFuelInput;
         if (snap.CurrentKm is int km)
             Input.OdometerKm = km;
-        if (!RequiresFuelInput)
+        // Pre-fill only; on POST keep what the dispatcher typed (LoadAsync runs before the handover).
+        if (!RequiresFuelInput && Input.FuelLevel is null)
             Input.FuelLevel = snap.FuelLevel;
 
         if (snap.BlockReason is not null || snap.CurrentKm is null)
