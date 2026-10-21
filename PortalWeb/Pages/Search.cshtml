@@ -112,9 +112,9 @@
     <div class="cs-search-wrap" id="search">
         <div class="ch-container">
             <form id="customer-search" method="get" asp-page="/Search" class="ch-search">
-                <div class="ch-mode" data-cs-mode aria-hidden="true">
-                    <span>Tự lái</span>
-                    <span class="is-on">Có tài xế</span>
+                <div class="ch-mode" role="radiogroup" aria-label="Hình thức thuê">
+                    <label><input type="radio" name="RentalMode" value="SelfDrive" checked="@(Model.IsSelfDrive ? "checked" : null)" /><span>Tự lái</span></label>
+                    <label><input type="radio" name="RentalMode" value="WithDriver" checked="@(Model.IsSelfDrive ? null : "checked")" /><span>Có tài xế</span></label>
                 </div>
                 <div class="cs-search-grid">
                     <div class="ch-field">
@@ -247,6 +247,7 @@
                                                asp-route-vehicleId="@vehicleId"
                                                asp-route-start="@Model.StartDate"
                                                asp-route-end="@Model.EndDate"
+                                               asp-route-rentalMode="@Model.RentalMode"
                                                class="btn btn-primary btn-sm">Đặt xe</a>
                                         }
                                         else

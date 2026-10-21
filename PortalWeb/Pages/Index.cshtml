@@ -110,9 +110,9 @@
     <div class="ch-search-wrap" id="search">
         <div class="ch-container">
             <form method="get" asp-page="/Search" class="ch-search">
-                <div class="ch-mode" aria-hidden="true">
-                    <span>Tự lái</span>
-                    <span class="is-on">Có tài xế</span>
+                <div class="ch-mode" role="radiogroup" aria-label="Hình thức thuê">
+                    <label><input type="radio" name="RentalMode" value="SelfDrive" /><span>Tự lái</span></label>
+                    <label><input type="radio" name="RentalMode" value="WithDriver" checked /><span>Có tài xế</span></label>
                 </div>
                 <div class="ch-search-grid">
                     <div class="ch-field">
