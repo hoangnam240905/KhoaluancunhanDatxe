@@ -1,0 +1,27 @@
+@* Floating chat (plan1.md Giai đoạn 1): vehicle search + FAQ. Shown on customer / public pages only. *@
+<link rel="stylesheet" href="~/css/chat-widget.css" asp-append-version="true" />
+<div class="cw" id="dxChat" data-ask-url="@Url.Page("/Chatbot", "Ask")">
+    <button type="button" class="cw-fab" data-cw-toggle aria-expanded="false" aria-controls="dxChatPanel" title="Hỏi DriveX">
+        <i class="bi bi-chat-dots-fill"></i><span>Hỏi DriveX</span>
+    </button>
+    <section class="cw-panel" id="dxChatPanel" hidden aria-label="Trợ lý DriveX">
+        <header class="cw-head">
+            <div><strong>Trợ lý DriveX</strong><small>Tìm xe trống, hỏi cách đặt xe</small></div>
+            <button type="button" class="cw-close" data-cw-toggle aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div class="cw-log" data-cw-log aria-live="polite">
+            <div class="cw-msg is-bot">Chào bạn! Bạn có thể hỏi: "Từ ngày 22 đến 25 còn xe 7 chỗ nào dưới 6 triệu?" hoặc "Hủy đơn như thế nào?"</div>
+            <div class="cw-chips">
+                <button type="button" data-cw-sample="Còn xe 4 chỗ hoặc 7 chỗ nào trống từ ngày 22 đến 25?">Xe trống 22→25</button>
+                <button type="button" data-cw-sample="Đặt xe như thế nào?">Cách đặt xe</button>
+                <button type="button" data-cw-sample="Đặt cọc bao nhiêu?">Tiền cọc</button>
+                <button type="button" data-cw-sample="Hủy đơn như thế nào?">Hủy đơn</button>
+            </div>
+        </div>
+        <form class="cw-form" data-cw-form autocomplete="off">
+            <input type="text" name="message" maxlength="500" placeholder="Nhập câu hỏi..." aria-label="Câu hỏi" required />
+            <button type="submit" aria-label="Gửi"><i class="bi bi-send-fill"></i></button>
+        </form>
+    </section>
+</div>
+<script src="~/js/chat-widget.js" asp-append-version="true"></script>

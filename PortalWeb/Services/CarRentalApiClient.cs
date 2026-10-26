@@ -528,6 +528,16 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    /// <summary>Public chatbot (anonymous allowed): vehicle search via real availability + written FAQ.</summary>
+    public async Task<(ChatbotAskResponse? Data, string? Error)> AskChatbotAsync(string message)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/chatbot/ask");
+        request.Content = JsonContent.Create(new { message });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<ChatbotAskResponse>(JsonOptions), null);
+    }
+
     public async Task<(List<NotificationResponse> Data, string? Error)> GetNotificationsAsync()
     {
         using var request = CreateRequest(HttpMethod.Get, "/api/notifications");

@@ -375,3 +375,8 @@ public record CustomerVehicleInteractionResponse(
 public record NotificationResponse(
     int NotificationId, int UserId, string Title, string Message, string? Type, bool IsRead, DateTime CreatedAt, int? BookingId = null);
 public record MarkAllReadResponse(int Updated);
+
+public record ChatbotVehicle(int VehicleId, string Name, string TypeName, int Seats, string LicensePlate, int Days, decimal TotalAmount);
+public record ChatbotLink(string Text, string Url);
+public record ChatbotSearchEcho(DateTime Start, DateTime End, string RentalMode, IReadOnlyList<int> Seats, decimal? MaxPrice);
+public record ChatbotAskResponse(string Kind, string Reply, IReadOnlyList<ChatbotVehicle> Vehicles, IReadOnlyList<ChatbotLink> Links, ChatbotSearchEcho? Search = null);

@@ -41,6 +41,8 @@ builder.Services.AddScoped<VehicleOperationalProfileService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<ScheduleConflictService>();
+builder.Services.AddSingleton(Backend.Services.Chatbot.FaqKnowledgeBase.LoadDefault());
+builder.Services.AddScoped<Backend.Services.Chatbot.ChatbotService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<DriverEligibilityService>();
 builder.Services.AddScoped<DriverService>();
