@@ -1,5 +1,5 @@
 (function () {
-  const M = window.DriveRentMock || {};
+  const M = window.DriveXMock || {};
 
   const statusTone = {
     Pending: "amber", Confirmed: "green", Assigned: "blue",

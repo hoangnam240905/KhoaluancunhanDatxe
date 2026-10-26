@@ -10,7 +10,7 @@ public class EmailOptions
     public string SmtpUsername { get; set; } = string.Empty;
     public string SmtpPassword { get; set; } = string.Empty;
     public string FromEmail { get; set; } = string.Empty;
-    public string FromName { get; set; } = "Car Rental";
+    public string FromName { get; set; } = "DriveX";
     public string? OtpPepper { get; set; }
     public int OtpExpiryMinutes { get; set; } = 5;
     public int MaxAttempts { get; set; } = 5;

@@ -63,11 +63,11 @@ public class EmailOtpService(
 
         var isReset = purpose == OtpPurposes.PasswordReset;
         var subject = isReset
-            ? "Mã đặt lại mật khẩu Car Rental"
-            : "Mã xác minh email Car Rental";
+            ? "Mã đặt lại mật khẩu DriveX"
+            : "Mã xác minh email DriveX";
         var purposeLabel = isReset ? "đặt lại mật khẩu" : "xác minh email";
         var html = $"""
-            <p>Đây là email từ hệ thống <strong>Car Rental</strong>.</p>
+            <p>Đây là email từ hệ thống <strong>DriveX</strong>.</p>
             <p>Mục đích: {purposeLabel}.</p>
             <p>Mã OTP của bạn là <strong>{code}</strong>.</p>
             <p>Mã hết hạn sau {expiryMinutes} phút. Không chia sẻ mã này cho bất kỳ ai.</p>

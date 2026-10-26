@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         widget.isLoggedIn
                             ? 'Xin chào, ${widget.userName}'
-                            : 'Car Rental',
+                            : 'DriveX',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
