@@ -380,3 +380,6 @@ public record ChatbotVehicle(int VehicleId, string Name, string TypeName, int Se
 public record ChatbotLink(string Text, string Url);
 public record ChatbotSearchEcho(DateTime Start, DateTime End, string RentalMode, IReadOnlyList<int> Seats, decimal? MaxPrice);
 public record ChatbotAskResponse(string Kind, string Reply, IReadOnlyList<ChatbotVehicle> Vehicles, IReadOnlyList<ChatbotLink> Links, ChatbotSearchEcho? Search = null);
+
+public record InvoiceDocumentResponse(string Kind, string Number, string Title, DateTime IssuedAt, string Html);
+public record InvoiceSendResponse(bool Sent, string Message);

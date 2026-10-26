@@ -528,6 +528,25 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    /// <summary>Deposit receipts + trip invoice of a booking (owner / admin / dispatcher).</summary>
+    public async Task<List<InvoiceDocumentResponse>> GetBookingInvoicesAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/invoices");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<InvoiceDocumentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    /// <summary>Admin: email the deposit receipt of a paid payment again.</summary>
+    public async Task<(InvoiceSendResponse? Data, string? Error)> ResendDepositReceiptAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/admin/invoices/deposit/{paymentId}/send");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<InvoiceSendResponse>(JsonOptions), null);
+    }
+
     /// <summary>Public chatbot (anonymous allowed): vehicle search via real availability + written FAQ.</summary>
     public async Task<(ChatbotAskResponse? Data, string? Error)> AskChatbotAsync(string message)
     {

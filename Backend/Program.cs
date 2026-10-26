@@ -91,9 +91,14 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<SignalRRealtimePublisher>();
 builder.Services.AddSingleton<NotificationQueue>();
 // Every realtime event also feeds the notification inbox (written in the background, after commit).
+builder.Services.AddSingleton<Backend.Services.Invoices.InvoiceMailQueue>();
 builder.Services.AddSingleton<IRealtimePublisher>(sp => new NotifyingRealtimePublisher(
-    sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>()));
+    sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>(),
+    sp.GetRequiredService<Backend.Services.Invoices.InvoiceMailQueue>()));
 builder.Services.AddHostedService<NotificationWriter>();
+builder.Services.AddScoped<Backend.Services.Invoices.InvoiceService>();
+builder.Services.AddScoped<Backend.Services.Invoices.InvoiceMailService>();
+builder.Services.AddHostedService<Backend.Services.Invoices.InvoiceMailWriter>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

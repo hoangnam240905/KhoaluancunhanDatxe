@@ -2408,9 +2408,32 @@
           </dl>`,
         footerHtml: `
           <button type="button" class="aui-btn aui-btn-ghost" data-aui-drawer-close>Đóng</button>
+          ${p.status === "Paid" ? `<button type="button" class="aui-btn aui-btn-primary" data-resend-receipt="${esc(p.paymentId)}"><i class="bi bi-envelope"></i> Gửi lại biên nhận</button>` : ""}
           <button type="button" class="aui-btn aui-btn-ghost" data-aui-toast="Hoàn tiền chưa được hỗ trợ.">Hoàn tiền</button>`
       });
     }
+
+    // Admin resend of the deposit receipt email (Backend: POST /api/admin/invoices/deposit/{id}/send).
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-resend-receipt]");
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      try {
+        const token = document.querySelector("#auiPaymentsAntiForgery input[name='__RequestVerificationToken']")?.value || "";
+        const res = await fetch(`/Admin/Payments?handler=ResendReceipt&id=${encodeURIComponent(btn.getAttribute("data-resend-receipt"))}`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", RequestVerificationToken: token },
+          body: "__RequestVerificationToken=" + encodeURIComponent(token)
+        });
+        const data = await res.json().catch(() => null);
+        toast((data && (data.message || data.error)) || "Không gửi được biên nhận.");
+      } catch (_) {
+        toast("Không gửi được biên nhận.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     function paint() {
       const list = filtered();
