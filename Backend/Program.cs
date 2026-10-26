@@ -56,6 +56,8 @@ builder.Services.AddScoped<CustomerProfileService>();
 builder.Services.AddScoped<VehicleMaintenanceService>();
 builder.Services.AddScoped<MaintenanceAlertService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<Backend.Services.Csv.AdminCsvService>();
+builder.Services.AddScoped<Backend.Services.Csv.AdminReportService>();
 builder.Services.Configure<RecommenderOptions>(builder.Configuration.GetSection(RecommenderOptions.SectionName));
 builder.Services.AddHttpClient<IRecommenderClient, FastApiRecommenderClient>((sp, client) =>
 {

@@ -969,4 +969,30 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         var data = await response.Content.ReadFromJsonAsync<CustomerVehicleInteractionResponse>(JsonOptions);
         return (data, null, code);
     }
+
+    // ---------- Admin CSV + reports (plan1.md Giai đoạn 3) ----------
+
+    /// <summary>Admin: a CSV file from the Backend (template, export or report) with its file name.</summary>
+    public async Task<(byte[]? Bytes, string? FileName, string? Error)> DownloadAdminCsvAsync(string path)
+    {
+        using var request = CreateRequest(HttpMethod.Get, path);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, null, await GetErrorAsync(response));
+        var name = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "du-lieu.csv";
+        return (await response.Content.ReadAsByteArrayAsync(), name, null);
+    }
+
+    /// <summary>Admin: import a CSV of vehicles / customers / drivers; valid rows are created, the others reported.</summary>
+    public async Task<(CsvImportResult? Data, string? Error)> ImportAdminCsvAsync(string entity, Stream file, string fileName)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/admin/csv/{entity}/import");
+        var content = new StreamContent(file);
+        content.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+        request.Content = new MultipartFormDataContent { { content, "file", fileName } };
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<CsvImportResult>(JsonOptions), null);
+    }
 }

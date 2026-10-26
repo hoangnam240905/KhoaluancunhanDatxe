@@ -41,6 +41,7 @@
             <a class="@NavClass("drivers")" asp-page="/AdminUi/Drivers"><i class="bi bi-person-badge"></i> Tài xế</a>
             <a class="@NavClass("payments")" asp-page="/AdminUi/Payments"><i class="bi bi-credit-card"></i> Thanh toán &amp; Hợp đồng</a>
             <a class="@NavClass("maintenance")" asp-page="/AdminUi/Maintenance"><i class="bi bi-tools"></i> Bảo trì &amp; Sự cố</a>
+                <a class="@NavClass("reports")" asp-page="/AdminUi/Reports"><i class="bi bi-file-earmark-bar-graph"></i> Báo cáo</a>
         </nav>
 
         <a class="aui-logout" asp-page="/Account/Logout"><i class="bi bi-box-arrow-left"></i> Đăng xuất</a>
@@ -110,6 +111,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="~/js/admin-ui-data.js" asp-append-version="true"></script>
 <script src="~/js/admin-ui.js" asp-append-version="true"></script>
+    <script src="~/js/admin-csv.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

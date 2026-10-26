@@ -383,3 +383,7 @@ public record ChatbotAskResponse(string Kind, string Reply, IReadOnlyList<Chatbo
 
 public record InvoiceDocumentResponse(string Kind, string Number, string Title, DateTime IssuedAt, string Html);
 public record InvoiceSendResponse(bool Sent, string Message);
+
+public record CsvRowError(int Row, string Reason);
+public record CsvCreatedAccount(int Row, string Email, string TemporaryPassword);
+public record CsvImportResult(int Imported, List<CsvRowError> Errors, List<CsvCreatedAccount> Accounts);

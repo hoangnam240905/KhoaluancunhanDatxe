@@ -485,3 +485,17 @@ body.aui-body {
 @media (max-width: 640px) {
   .aui-stat-strip { grid-template-columns: 1fr; }
 }
+/* ---------- CSV import/export + reports (plan1.md Giai đoạn 3) ---------- */
+.aui-csv { display: contents; }
+.aui-csv-card { width: min(640px, 100%); }
+.aui-csv-card .aui-modal-body { max-height: 60vh; overflow: auto; color: var(--aui-text); }
+.aui-csv-sum { margin: 0 0 .75rem; }
+.aui-csv-bad { color: var(--aui-danger); }
+.aui-csv-note { margin: 0 0 .5rem; padding: .5rem .7rem; border-radius: 8px; background: #FEF9C3; font-size: .85rem; }
+.aui-csv-table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-bottom: .9rem; }
+.aui-csv-table th, .aui-csv-table td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--aui-border); vertical-align: top; }
+.aui-csv-table th { color: var(--aui-muted); font-weight: 600; font-size: .74rem; text-transform: uppercase; }
+.aui-csv-table td:first-child { width: 3.5rem; font-variant-numeric: tabular-nums; }
+.aui-report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+.aui-report-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0 .5rem; }
+.aui-report-note { color: var(--aui-muted); font-size: .82rem; margin: 0 0 1rem; }

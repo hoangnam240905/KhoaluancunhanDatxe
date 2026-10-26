@@ -177,7 +177,7 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
 
     // ---------- trip revenue (plan1.md: one source for KPI, ranking and per-vehicle revenue) ----------
 
-    private sealed record CompletedTrip(int BookingId, int VehicleId, decimal QuotedAmount, decimal? FinalAmount)
+    internal sealed record CompletedTrip(int BookingId, int VehicleId, decimal QuotedAmount, decimal? FinalAmount)
     {
         public decimal Total => FinalAmount ?? QuotedAmount;
         public decimal Adjustment => Total - QuotedAmount;
@@ -188,7 +188,7 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
     /// Trips completed in the range, dated by completion: with driver → TripAssignment.CompletedAt and its VehicleId;
     /// self-drive (no assignment) → Booking.UpdatedAt and AssignedVehicleId. Same rule the vehicle ranking always used.
     /// </summary>
-    private async Task<List<CompletedTrip>> GetCompletedTripsAsync(DateTime fromUtc, DateTime toUtc)
+    internal async Task<List<CompletedTrip>> GetCompletedTripsAsync(DateTime fromUtc, DateTime toUtc)
     {
         var withDriver = await db.TripAssignments.AsNoTracking()
             .Where(t => t.Status == TripAssignmentStatuses.Completed
@@ -228,11 +228,11 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
 
     // ---------- reviews (only trips with a driver have reviews: Review.DriverId is required) ----------
 
-    private sealed record ReviewRow(
+    internal sealed record ReviewRow(
         int ReviewId, int BookingId, int Rating, string? Comment, DateTime CreatedAt,
         int? VehicleId, string? VehicleLabel, string CustomerName, string DriverName);
 
-    private async Task<List<ReviewRow>> GetReviewRowsAsync(DateTime fromUtc, DateTime toUtc)
+    internal async Task<List<ReviewRow>> GetReviewRowsAsync(DateTime fromUtc, DateTime toUtc)
     {
         var rows = await db.Reviews.AsNoTracking()
             .Where(r => r.CreatedAt >= fromUtc && r.CreatedAt <= toUtc)
