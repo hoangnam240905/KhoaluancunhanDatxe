@@ -16,6 +16,7 @@
             <p>Quản lý khách hàng, theo dõi hoạt động và kiểm soát quyền truy cập tài khoản.</p>
         </div>
         <div class="aui-head-actions">
+            <partial name="_AdminCsvTools" model="@("customers")" />
             <button type="button" class="aui-btn aui-btn-primary" data-add-customer><i class="bi bi-plus-lg"></i> Thêm khách hàng</button>
         </div>
     </div>
@@ -67,9 +68,7 @@
                 <option value="">Tất cả hạng</option>
             </select>
         </div>
-        <div class="aui-field" style="align-self:end">
-            <button type="button" class="aui-btn aui-btn-ghost" data-export><i class="bi bi-download"></i> Xuất dữ liệu</button>
-        </div>
+
     </div>
 
     <div class="aui-card" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>

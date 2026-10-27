@@ -196,5 +196,10 @@
     <script src="~/js/realtime.js" asp-append-version="true"></script>
 }
 @await RenderSectionAsync("Scripts", required: false)
+@* Chat widget on public / customer pages only (not dispatcher, driver or admin). *@
+@if (role is null or "Customer")
+{
+    <partial name="_ChatWidget" />
+}
 </body>
 </html>

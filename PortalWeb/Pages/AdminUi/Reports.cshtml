@@ -1,0 +1,76 @@
+@page "/Admin/Reports"
+@model PortalWeb.Pages.AdminUi.ReportsModel
+@{
+    Layout = "_AdminUiLayout";
+    ViewData["Title"] = "Báo cáo";
+    ViewData["Nav"] = "reports";
+    var firstOfMonth = new DateOnly(Model.Today.Year, Model.Today.Month, 1);
+}
+<div class="aui-page-head">
+    <div>
+        <h1>Báo cáo</h1>
+        <p>Tải báo cáo dạng CSV (mở bằng Excel). Số liệu tính cùng cách với trang Tổng quan.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="aui-empty" role="alert"><i class="bi bi-exclamation-triangle"></i><p>@Model.ErrorMessage</p></div>
+}
+
+<div class="aui-report-grid">
+    <form class="aui-card aui-card-pad" method="get">
+        <input type="hidden" name="handler" value="Monthly" />
+        <div class="aui-card-head">
+            <div>
+                <h3 class="aui-card-title">Báo cáo theo tháng</h3>
+                <p class="aui-card-sub">Số đơn tạo, hoàn thành, hủy; doanh thu chuyến (giá thuê + phát sinh); cọc đã thu tách riêng.</p>
+            </div>
+        </div>
+        <div class="aui-report-fields">
+            <div class="aui-field">
+                <label for="rptYear">Năm</label>
+                <select class="aui-select" id="rptYear" name="year">
+                    @for (var y = Model.Today.Year; y >= Model.Today.Year - 4; y--)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="aui-field">
+                <label for="rptMonth">Tháng</label>
+                <select class="aui-select" id="rptMonth" name="month">
+                    <option value="">Cả năm (từng tháng)</option>
+                    @for (var m = 1; m <= 12; m++)
+                    {
+                        <option value="@m" selected="@(m == Model.Today.Month)">Tháng @m</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <p class="aui-report-note">Doanh thu tính theo ngày hoàn thành chuyến. Cọc đã thu là tiền cọc mô phỏng, không phải doanh thu.</p>
+        <button type="submit" class="aui-btn aui-btn-primary"><i class="bi bi-download"></i> Tải báo cáo tháng</button>
+    </form>
+
+    <form class="aui-card aui-card-pad" method="get">
+        <input type="hidden" name="handler" value="PerVehicle" />
+        <div class="aui-card-head">
+            <div>
+                <h3 class="aui-card-title">Báo cáo theo xe</h3>
+                <p class="aui-card-sub">Mỗi xe một dòng, kể cả xe không có chuyến: số chuyến, giá thuê, phát sinh, doanh thu, đánh giá.</p>
+            </div>
+        </div>
+        <div class="aui-report-fields">
+            <div class="aui-field">
+                <label for="rptFrom">Từ ngày</label>
+                <input class="aui-input" type="date" id="rptFrom" name="from" value="@firstOfMonth.ToString("yyyy-MM-dd")" required />
+            </div>
+            <div class="aui-field">
+                <label for="rptTo">Đến ngày</label>
+                <input class="aui-input" type="date" id="rptTo" name="to" value="@Model.Today.ToString("yyyy-MM-dd")" required />
+            </div>
+        </div>
+        <p class="aui-report-note">Cột "Cần kiểm tra" đánh dấu xe có chuyến tổng tiền &gt; 3 × giá thuê (phụ phí bất thường).</p>
+        <button type="submit" class="aui-btn aui-btn-primary"><i class="bi bi-download"></i> Tải báo cáo theo xe</button>
+    </form>
+</div>

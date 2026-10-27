@@ -57,13 +57,24 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
                 return (null, dateError, StatusCodes.Status400BadRequest);
         }
 
-        var query = db.Vehicles.Include(v => v.VehicleType).AsQueryable();
-        var effectiveStatus = status;
-        if (hasStart && string.IsNullOrWhiteSpace(effectiveStatus))
-            effectiveStatus = VehicleStatuses.Available;
+        var query = db.Vehicles.Include(v => v.VehicleType).Include(v => v.Images).AsQueryable();
+        // A rental window asks "free in this interval", not "Status column is Available".
+        // Rented only means a trip is open; occupancy is the booking interval (+ 2h buffer).
+        var periodSearch = hasStart && hasEnd;
+        var rentableWindow = periodSearch
+            && (string.IsNullOrWhiteSpace(status)
+                || string.Equals(status, VehicleStatuses.Available, StringComparison.OrdinalIgnoreCase));
 
-        if (!string.IsNullOrWhiteSpace(effectiveStatus))
-            query = query.Where(v => v.Status == effectiveStatus);
+        if (rentableWindow)
+        {
+            query = query.Where(v =>
+                v.Status != VehicleStatuses.Inactive
+                && v.Status != VehicleStatuses.Maintenance);
+        }
+        else if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(v => v.Status == status);
+        }
         if (typeIds.Length > 0)
             query = query.Where(v => typeIds.Contains(v.TypeId));
         if (seatMin is int minSeats)
@@ -137,6 +148,7 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
     {
         var vehicle = await db.Vehicles
             .Include(v => v.VehicleType)
+            .Include(v => v.Images)
             .FirstOrDefaultAsync(v => v.VehicleId == id);
         return vehicle is null ? null : MapVehicle(vehicle);
     }
@@ -151,7 +163,12 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         v.FuelConsumption, v.SafetyScore, v.ConditionStatus, v.FuelLevel, v.Notes,
         v.LastMaintenanceDate, v.LastMaintenanceOdometer,
         v.MaintenanceIntervalKm, v.MaintenanceIntervalDays,
-        v.NextMaintenanceDate, v.NextMaintenanceOdometer);
+        v.NextMaintenanceDate, v.NextMaintenanceOdometer,
+        PrimaryImage(v));
+
+    /// <summary>The vehicle's own primary photo (needs Images included); null → the web shows "Chưa có ảnh".</summary>
+    internal static string? PrimaryImage(Entities.Vehicle? v)
+        => v?.Images.Where(i => i.IsPrimary).OrderBy(i => i.DisplayOrder).ThenByDescending(i => i.VehicleImageId).Select(i => i.ImageUrl).FirstOrDefault();
 
     public Task<(VehicleResponse? Data, string? Error, int StatusCode)> CreateVehicleAsync(
         CreateVehicleRequest request)

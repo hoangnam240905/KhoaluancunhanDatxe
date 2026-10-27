@@ -41,6 +41,8 @@ builder.Services.AddScoped<VehicleOperationalProfileService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddScoped<ScheduleConflictService>();
+builder.Services.AddSingleton(Backend.Services.Chatbot.FaqKnowledgeBase.LoadDefault());
+builder.Services.AddScoped<Backend.Services.Chatbot.ChatbotService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<DriverEligibilityService>();
 builder.Services.AddScoped<DriverService>();
@@ -54,6 +56,8 @@ builder.Services.AddScoped<CustomerProfileService>();
 builder.Services.AddScoped<VehicleMaintenanceService>();
 builder.Services.AddScoped<MaintenanceAlertService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<Backend.Services.Csv.AdminCsvService>();
+builder.Services.AddScoped<Backend.Services.Csv.AdminReportService>();
 builder.Services.Configure<RecommenderOptions>(builder.Configuration.GetSection(RecommenderOptions.SectionName));
 builder.Services.AddHttpClient<IRecommenderClient, FastApiRecommenderClient>((sp, client) =>
 {
@@ -89,9 +93,14 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<SignalRRealtimePublisher>();
 builder.Services.AddSingleton<NotificationQueue>();
 // Every realtime event also feeds the notification inbox (written in the background, after commit).
+builder.Services.AddSingleton<Backend.Services.Invoices.InvoiceMailQueue>();
 builder.Services.AddSingleton<IRealtimePublisher>(sp => new NotifyingRealtimePublisher(
-    sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>()));
+    sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>(),
+    sp.GetRequiredService<Backend.Services.Invoices.InvoiceMailQueue>()));
 builder.Services.AddHostedService<NotificationWriter>();
+builder.Services.AddScoped<Backend.Services.Invoices.InvoiceService>();
+builder.Services.AddScoped<Backend.Services.Invoices.InvoiceMailService>();
+builder.Services.AddHostedService<Backend.Services.Invoices.InvoiceMailWriter>();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -169,6 +178,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteTravelProfileColumns();
     db.EnsureSqliteNotificationColumns();
     DbSeeder.Seed(db);
+    VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);
     db.FillVehicleTypePricingDefaults();

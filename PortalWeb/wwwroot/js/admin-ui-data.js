@@ -1,4 +1,4 @@
-window.DriveRentMock = (function () {
+window.DriveXMock = (function () {
   const months = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
   const revenueByMonth = [28500,31200,29800,34100,36500,39200,41000,43800,45600,48320,47100,50200];
 
@@ -83,49 +83,49 @@ window.DriveRentMock = (function () {
   ];
 
   const mockDrivers = [
-    { id: "DRV-201", name: "Nguyễn Hữu Phước", phone: "0906 111 222", email: "phuoc.driver@driverent.vn", status: "Available", rating: 4.9, trips: 312, city: "HCMC", location: "District 1", license: "B2-889912", joined: "Jan 10, 2023", vehicle: "Toyota Fortuner · 51K-901.23", distance: "48,200 km", completion: "98%", activity: [
+    { id: "DRV-201", name: "Nguyễn Hữu Phước", phone: "0906 111 222", email: "phuoc.driver@drivex.vn", status: "Available", rating: 4.9, trips: 312, city: "HCMC", location: "District 1", license: "B2-889912", joined: "Jan 10, 2023", vehicle: "Toyota Fortuner · 51K-901.23", distance: "48,200 km", completion: "98%", activity: [
       { title: "Hoàn thành chuyến", time: "Hôm nay, 08:40" },
       { title: "Khách hàng đánh giá 5 sao", time: "Hôm qua, 19:12" },
       { title: "Hoàn thành chuyến", time: "Hôm qua, 14:05" },
       { title: "Báo cáo sự cố nhỏ", time: "Sep 12, 11:20" }
     ]},
-    { id: "DRV-202", name: "Trần Văn Khoa", phone: "0907 222 333", email: "khoa.driver@driverent.vn", status: "Busy", rating: 4.7, trips: 278, city: "HCMC", location: "Thu Duc", license: "B2-778801", joined: "Mar 04, 2023", vehicle: "Kia Carnival · 51F-678.90", distance: "41,050 km", completion: "96%", activity: [
+    { id: "DRV-202", name: "Trần Văn Khoa", phone: "0907 222 333", email: "khoa.driver@drivex.vn", status: "Busy", rating: 4.7, trips: 278, city: "HCMC", location: "Thu Duc", license: "B2-778801", joined: "Mar 04, 2023", vehicle: "Kia Carnival · 51F-678.90", distance: "41,050 km", completion: "96%", activity: [
       { title: "Hoàn thành chuyến", time: "Hôm nay, 07:15" },
       { title: "Bắt đầu chuyến", time: "Hôm nay, 09:00" },
       { title: "Khách hàng đánh giá 5 sao", time: "Sep 13, 18:40" },
       { title: "Hoàn thành chuyến", time: "Sep 13, 12:10" }
     ]},
-    { id: "DRV-203", name: "Lê Minh Đức", phone: "0908 333 444", email: "duc.driver@driverent.vn", status: "Offline", rating: 4.5, trips: 190, city: "HCMC", location: "Binh Thanh", license: "B2-667700", joined: "Jun 18, 2023", vehicle: "—", distance: "29,800 km", completion: "94%", activity: [
+    { id: "DRV-203", name: "Lê Minh Đức", phone: "0908 333 444", email: "duc.driver@drivex.vn", status: "Offline", rating: 4.5, trips: 190, city: "HCMC", location: "Binh Thanh", license: "B2-667700", joined: "Jun 18, 2023", vehicle: "—", distance: "29,800 km", completion: "94%", activity: [
       { title: "Chuyển ngoại tuyến", time: "Hôm nay, 06:00" },
       { title: "Hoàn thành chuyến", time: "Sep 13, 21:05" },
       { title: "Khách hàng đánh giá 4 sao", time: "Sep 13, 20:50" },
       { title: "Hoàn thành chuyến", time: "Sep 12, 16:30" }
     ]},
-    { id: "DRV-204", name: "Phạm Quốc Việt", phone: "0909 444 555", email: "viet.driver@driverent.vn", status: "Available", rating: 4.8, trips: 255, city: "HCMC", location: "Tan Binh", license: "B2-556611", joined: "Aug 22, 2023", vehicle: "Ford Everest · 51E-567.89", distance: "36,400 km", completion: "97%", activity: [
+    { id: "DRV-204", name: "Phạm Quốc Việt", phone: "0909 444 555", email: "viet.driver@drivex.vn", status: "Available", rating: 4.8, trips: 255, city: "HCMC", location: "Tan Binh", license: "B2-556611", joined: "Aug 22, 2023", vehicle: "Ford Everest · 51E-567.89", distance: "36,400 km", completion: "97%", activity: [
       { title: "Hoàn thành chuyến", time: "Hôm nay, 10:20" },
       { title: "Khách hàng đánh giá 5 sao", time: "Hôm nay, 10:05" },
       { title: "Hoàn thành chuyến", time: "Sep 13, 15:40" },
       { title: "Báo cáo sự cố nhỏ", time: "Sep 10, 09:15" }
     ]},
-    { id: "DRV-205", name: "Hoàng Anh Dũng", phone: "0910 555 666", email: "dung.driver@driverent.vn", status: "Busy", rating: 4.6, trips: 221, city: "HCMC", location: "District 7", license: "B2-445522", joined: "Oct 01, 2023", vehicle: "Honda City · 51B-234.56", distance: "33,100 km", completion: "95%", activity: [
+    { id: "DRV-205", name: "Hoàng Anh Dũng", phone: "0910 555 666", email: "dung.driver@drivex.vn", status: "Busy", rating: 4.6, trips: 221, city: "HCMC", location: "District 7", license: "B2-445522", joined: "Oct 01, 2023", vehicle: "Honda City · 51B-234.56", distance: "33,100 km", completion: "95%", activity: [
       { title: "Bắt đầu chuyến", time: "Hôm nay, 08:10" },
       { title: "Hoàn thành chuyến", time: "Hôm qua, 22:00" },
       { title: "Khách hàng đánh giá 5 sao", time: "Hôm qua, 21:45" },
       { title: "Hoàn thành chuyến", time: "Sep 12, 13:25" }
     ]},
-    { id: "DRV-206", name: "Đặng Thành Long", phone: "0911 666 777", email: "long.driver@driverent.vn", status: "Available", rating: 4.9, trips: 340, city: "Hanoi", location: "Cau Giay", license: "B2-334433", joined: "Dec 12, 2022", vehicle: "Toyota Camry · 51C-345.67", distance: "52,700 km", completion: "99%", activity: [
+    { id: "DRV-206", name: "Đặng Thành Long", phone: "0911 666 777", email: "long.driver@drivex.vn", status: "Available", rating: 4.9, trips: 340, city: "Hanoi", location: "Cau Giay", license: "B2-334433", joined: "Dec 12, 2022", vehicle: "Toyota Camry · 51C-345.67", distance: "52,700 km", completion: "99%", activity: [
       { title: "Hoàn thành chuyến", time: "Hôm nay, 11:30" },
       { title: "Khách hàng đánh giá 5 sao", time: "Hôm nay, 11:20" },
       { title: "Hoàn thành chuyến", time: "Sep 13, 17:00" },
       { title: "Hoàn thành chuyến", time: "Sep 12, 09:45" }
     ]},
-    { id: "DRV-207", name: "Võ Nhật Hào", phone: "0912 777 888", email: "hao.driver@driverent.vn", status: "Offline", rating: 4.4, trips: 145, city: "Da Nang", location: "Hai Chau", license: "B2-223344", joined: "Feb 14, 2024", vehicle: "—", distance: "18,900 km", completion: "93%", activity: [
+    { id: "DRV-207", name: "Võ Nhật Hào", phone: "0912 777 888", email: "hao.driver@drivex.vn", status: "Offline", rating: 4.4, trips: 145, city: "Da Nang", location: "Hai Chau", license: "B2-223344", joined: "Feb 14, 2024", vehicle: "—", distance: "18,900 km", completion: "93%", activity: [
       { title: "Chuyển ngoại tuyến", time: "Sep 13, 20:00" },
       { title: "Hoàn thành chuyến", time: "Sep 13, 18:15" },
       { title: "Khách hàng đánh giá 4 sao", time: "Sep 13, 18:00" },
       { title: "Hoàn thành chuyến", time: "Sep 11, 14:40" }
     ]},
-    { id: "DRV-208", name: "Bùi Khánh Duy", phone: "0913 888 999", email: "duy.driver@driverent.vn", status: "Busy", rating: 4.7, trips: 198, city: "HCMC", location: "District 5", license: "B2-112255", joined: "Apr 09, 2024", vehicle: "Mitsubishi Xpander · 51D-456.78", distance: "24,600 km", completion: "96%", activity: [
+    { id: "DRV-208", name: "Bùi Khánh Duy", phone: "0913 888 999", email: "duy.driver@drivex.vn", status: "Busy", rating: 4.7, trips: 198, city: "HCMC", location: "District 5", license: "B2-112255", joined: "Apr 09, 2024", vehicle: "Mitsubishi Xpander · 51D-456.78", distance: "24,600 km", completion: "96%", activity: [
       { title: "Bắt đầu chuyến", time: "Hôm nay, 09:45" },
       { title: "Hoàn thành chuyến", time: "Hôm qua, 16:20" },
       { title: "Khách hàng đánh giá 5 sao", time: "Hôm qua, 16:05" },

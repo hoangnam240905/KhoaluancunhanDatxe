@@ -1,0 +1,39 @@
+@page "/Customer/Bookings/Invoice/{id:int}"
+@model PortalWeb.Pages.Customer.Bookings.InvoiceModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(Model.Document?.Title ?? "Hóa đơn") — DriveX</title>
+    <style>
+        body { margin: 0; padding: 24px 16px; background: #f1f5f9; font-family: "Segoe UI", Arial, sans-serif; }
+        .inv-bar { max-width: 640px; margin: 0 auto 12px; display: flex; justify-content: space-between; gap: 8px; }
+        .inv-bar a, .inv-bar button { border: 1px solid #cbd5e1; background: #fff; color: #0f172a; border-radius: 8px; padding: 6px 12px; font-size: 14px; text-decoration: none; cursor: pointer; }
+        .inv-paper { max-width: 640px; margin: 0 auto; background: #fff; border-radius: 12px; }
+        .inv-empty { max-width: 640px; margin: 40px auto; text-align: center; color: #64748b; }
+        @@media print { body { background: #fff; padding: 0; } .inv-bar { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="inv-bar">
+        <a href="/Customer/Bookings/Details/@Model.BookingId">← Quay lại đơn #@Model.BookingId</a>
+        @if (Model.Document is not null)
+        {
+            <button type="button" onclick="window.print()">In / Lưu PDF</button>
+        }
+    </div>
+    @if (Model.Document is null)
+    {
+        <p class="inv-empty">Chưa có biên nhận hoặc hóa đơn cho đơn này.</p>
+    }
+    else
+    {
+        @* HTML is built by the Backend InvoiceService with every value HTML-encoded. *@
+        <div class="inv-paper">@Html.Raw(Model.Document.Html)</div>
+    }
+</body>
+</html>

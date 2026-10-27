@@ -1,0 +1,125 @@
+{
+  "_note": "Kho hỏi đáp của chatbot DriveX (plan1.md 1.5). Chỉ ghi điều có trong hệ thống. Từ khóa viết KHÔNG DẤU, chữ thường. Mục có answer rỗng thì chatbot không trả lời mục đó — điền từ quy định thực tế của nhà xe.",
+  "contactFallback": "lien-he",
+  "items": [
+    {
+      "id": "dat-xe",
+      "category": "Đặt xe",
+      "keywords": ["dat xe", "cach dat", "thue xe nhu the nao", "quy trinh", "cac buoc", "lam sao de thue", "dat nhu the nao", "huong dan dat"],
+      "answer": "Các bước: Tìm xe → xem chi tiết → tạo đơn → chờ điều phối xác nhận → ký hợp đồng và đặt cọc (cần xong cả hai thì điều phối mới phân công xe) → nhận xe → trả xe → đánh giá chuyến.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }, { "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "thanh-toan",
+      "category": "Thanh toán",
+      "keywords": ["thanh toan", "tra tien", "momo", "vnpay", "chuyen khoan", "tien mat", "phuong thuc", "the ngan hang"],
+      "answer": "Hiện hệ thống chỉ nhận thanh toán tiền cọc, với 4 phương thức: tiền mặt, chuyển khoản, MoMo, VNPay. Thanh toán trực tuyến đang ở chế độ mô phỏng.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "tien-coc",
+      "category": "Tiền cọc",
+      "keywords": ["coc", "dat coc", "tien coc", "dat truoc"],
+      "answer": "Tiền cọc bằng 50% tổng tiền đơn theo báo giá lúc đặt. Bạn đặt cọc trên trang chi tiết đơn; cần đặt cọc và ký hợp đồng thì điều phối mới phân công xe.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "hinh-thuc",
+      "category": "Tự lái và có tài xế",
+      "keywords": ["tu lai", "co tai xe", "khac nhau", "tai xe rieng", "thue kem tai xe", "lai rieng"],
+      "answer": "Tự lái: tính giá tự lái theo ngày, mỗi ngày có số km miễn phí theo loại xe (mặc định 200 km/ngày), vượt thì tính thêm theo km. Có tài xế: giá thuê theo ngày + phí tài xế theo ngày + cước km theo quãng đường.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }]
+    },
+    {
+      "id": "cach-tinh-gia",
+      "category": "Cách tính giá",
+      "keywords": ["tinh gia", "gia thue", "bang gia", "tinh tien", "tinh theo ngay", "may ngay", "bao nhieu tien", "chi phi"],
+      "answer": "Số ngày thuê tính theo thời gian nhận–trả, làm tròn lên, tối thiểu 1 ngày (ví dụ 26 giờ tính 2 ngày). Giá theo ngày khác nhau giữa tự lái và có tài xế; xem báo giá chính xác khi tạo đơn.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }]
+    },
+    {
+      "id": "diem-don",
+      "category": "Điểm đón / trả",
+      "keywords": ["diem don", "diem tra", "noi nhan", "nhan xe o dau", "tra xe o dau", "dia diem nhan", "giao xe tan noi"],
+      "answer": "Bạn nhập điểm nhận và điểm trả xe khi tạo đơn.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }]
+    },
+    {
+      "id": "huy-don",
+      "category": "Hủy đơn",
+      "keywords": ["huy don", "huy dat", "huy xe", "huy chuyen", "hoan tien", "hoan coc", "khong thue nua", "doi y"],
+      "answer": "Bạn tự hủy được đơn đang chờ xác nhận, đã xác nhận hoặc đã phân công xe; đơn đã phân công chỉ hủy được khi còn ít nhất 24 giờ trước giờ nhận xe (theo hợp đồng đã ký). Khi hủy cần ghi lý do. Đã tới giờ nhận xe thì liên hệ điều phối. Tiền cọc được hoàn thủ công, chưa có hoàn tiền tự động.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "hop-dong",
+      "category": "Hợp đồng",
+      "keywords": ["hop dong", "ky hop dong", "ky ten", "dieu khoan"],
+      "answer": "Sau khi đơn được xác nhận, bạn ký hợp đồng điện tử trên trang chi tiết đơn. Hợp đồng lưu lại điều khoản tại thời điểm ký.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "dang-ky",
+      "category": "Tài khoản",
+      "keywords": ["dang ky", "tao tai khoan", "xac minh", "otp", "ma xac nhan", "kich hoat"],
+      "answer": "Bạn đăng ký bằng email; hệ thống gửi mã OTP qua email để xác minh tài khoản.",
+      "links": [{ "text": "Đăng ký", "url": "/Account/Register" }]
+    },
+    {
+      "id": "mat-khau",
+      "category": "Mật khẩu",
+      "keywords": ["quen mat khau", "doi mat khau", "dat lai mat khau", "mat khau", "khong dang nhap duoc"],
+      "answer": "Quên mật khẩu: dùng mục Quên mật khẩu, hệ thống gửi mã qua email để đặt lại. Đổi mật khẩu: vào Đổi mật khẩu sau khi đăng nhập.",
+      "links": [{ "text": "Quên mật khẩu", "url": "/Account/ForgotPassword" }, { "text": "Đổi mật khẩu", "url": "/Account/ChangePassword" }]
+    },
+    {
+      "id": "danh-gia",
+      "category": "Đánh giá",
+      "keywords": ["danh gia", "review", "cham diem", "nhan xet", "danh gia sao"],
+      "answer": "Sau khi chuyến có tài xế hoàn thành, bạn đánh giá chuyến đi trên trang chi tiết đơn.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "goi-y",
+      "category": "Gợi ý xe",
+      "keywords": ["goi y", "de xuat", "xe phu hop", "nen thue xe nao", "tu van"],
+      "answer": "Điền hồ sơ chuyến đi (số người, loại hành trình, ngân sách mỗi ngày, ghi chú) để nhận gợi ý xe phù hợp.",
+      "links": [{ "text": "Hồ sơ chuyến đi", "url": "/Customer/Profile" }, { "text": "Gợi ý xe", "url": "/Customer/Recommendations" }]
+    },
+    {
+      "id": "thue-lai",
+      "category": "Thuê lại",
+      "keywords": ["thue lai", "dat lai", "giong lan truoc"],
+      "answer": "Trong danh sách đơn đặt, bấm Thuê lại ở đơn cũ để tạo đơn mới với cùng loại xe và hình thức; bạn chọn lại ngày thuê.",
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+    },
+    {
+      "id": "lien-he",
+      "category": "Liên hệ",
+      "keywords": ["lien he", "hotline", "so dien thoai", "goi dien", "tong dai", "ho tro"],
+      "answer": "",
+      "links": []
+    },
+    {
+      "id": "gio-lam-viec",
+      "category": "Giờ làm việc",
+      "keywords": ["gio lam viec", "mo cua", "may gio", "lam viec luc"],
+      "answer": "",
+      "links": []
+    },
+    {
+      "id": "dia-chi",
+      "category": "Địa chỉ",
+      "keywords": ["dia chi", "van phong", "cua hang", "o dau"],
+      "answer": "",
+      "links": []
+    },
+    {
+      "id": "giay-to",
+      "category": "Giấy tờ",
+      "keywords": ["giay to", "bang lai", "cccd", "can mang", "thu tuc"],
+      "answer": "",
+      "links": []
+    }
+  ]
+}

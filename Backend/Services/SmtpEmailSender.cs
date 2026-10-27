@@ -19,7 +19,7 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
 
         using var message = new MailMessage
         {
-            From = new MailAddress(from, string.IsNullOrWhiteSpace(settings.FromName) ? "Car Rental" : settings.FromName),
+            From = new MailAddress(from, string.IsNullOrWhiteSpace(settings.FromName) ? "DriveX" : settings.FromName),
             Subject = subject,
             Body = htmlBody,
             IsBodyHtml = true

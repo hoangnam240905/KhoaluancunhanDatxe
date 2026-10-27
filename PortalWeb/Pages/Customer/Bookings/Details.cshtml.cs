@@ -11,6 +11,8 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public List<PaymentResponse> Payments { get; set; } = [];
     public ContractResponse? Contract { get; set; }
     public IReadOnlyList<VehicleInspectionResponse> Inspections { get; set; } = [];
+    /// <summary>Deposit receipts / trip invoice (same HTML as the emails).</summary>
+    public IReadOnlyList<InvoiceDocumentResponse> Invoices { get; private set; } = [];
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
     public bool IsLoggedIn => auth.IsLoggedIn;
@@ -285,6 +287,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
             Presentation = BookingDetailUi.FromBooking(data);
             Payments = await api.GetBookingPaymentsAsync(id);
             Contract = await api.GetContractAsync(id);
+            Invoices = await LoadInvoicesAsync(id);
         }
         catch
         {
@@ -298,10 +301,17 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         if (Booking is null) return false;
         Payments = await api.GetBookingPaymentsAsync(id);
         Contract = await api.GetContractAsync(id);
+        Invoices = await LoadInvoicesAsync(id);
         Inspections = Booking.Inspections is { Count: > 0 }
             ? Booking.Inspections
             : await api.GetBookingInspectionsAsync(id);
         Presentation = BookingDetailUi.FromBooking(Booking);
         return true;
     }
+
+    // Only ask when a document can exist: a paid deposit or a completed trip.
+    private async Task<IReadOnlyList<InvoiceDocumentResponse>> LoadInvoicesAsync(int id)
+        => Payments.Any(p => p.Status == "Paid") || Booking?.Status == "Completed"
+            ? await api.GetBookingInvoicesAsync(id)
+            : [];
 }

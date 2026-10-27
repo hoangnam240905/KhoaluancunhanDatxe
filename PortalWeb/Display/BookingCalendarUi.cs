@@ -33,7 +33,7 @@ public static class BookingCalendarUi
     public static string When(DateTime value) => BookingDetailUi.When(value);
 
     public static string ImageOf(BookingResponse booking) =>
-        HomeUi.VehicleImage(null, booking.VehicleTypeName, null);
+        HomeUi.BookingImage(booking);
 
     public static string TitleOf(BookingResponse booking)
     {

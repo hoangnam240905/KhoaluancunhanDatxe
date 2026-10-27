@@ -1,11 +1,5 @@
 (() => {
-    const mode = document.querySelector("[data-cs-mode]");
-    mode?.querySelectorAll("span").forEach((item) => {
-        item.addEventListener("click", () => {
-            mode.querySelectorAll("span").forEach((el) => el.classList.remove("is-on"));
-            item.classList.add("is-on");
-        });
-    });
+    // Rental mode is a real radio group now (name="RentalMode"); styling follows :checked in CSS.
 
     const grid = document.querySelector("[data-cs-grid]");
     document.querySelectorAll("[data-cs-view]").forEach((btn) => {

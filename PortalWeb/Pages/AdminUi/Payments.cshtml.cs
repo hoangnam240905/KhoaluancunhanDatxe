@@ -53,6 +53,14 @@ public class PaymentsModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         });
     }
 
+    public async Task<IActionResult> OnPostResendReceiptAsync(int id)
+    {
+        if (RequireRole(auth, "Admin") is not null) return Unauthorized();
+        var (data, error) = await api.ResendDepositReceiptAsync(id);
+        if (data is null) return new JsonResult(new { ok = false, error = error ?? "Không gửi được biên nhận." }) { StatusCode = 400 };
+        return new JsonResult(new { ok = true, data.Sent, data.Message });
+    }
+
     public async Task<IActionResult> OnGetDetailAsync(int id)
     {
         if (!IsAdmin())

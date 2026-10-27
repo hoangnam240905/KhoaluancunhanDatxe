@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
 using Backend.Services;
+using Backend.Services.Invoices;
 using Backend.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,8 @@ namespace Backend.Controllers;
 [Route("api/bookings")]
 public class BookingsController(
     BookingService bookingService,
-    VehicleInspectionService inspections) : ControllerBase
+    VehicleInspectionService inspections,
+    InvoiceService invoices) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<BookingResponse>>> GetAll([FromQuery] string? status)
@@ -101,6 +103,24 @@ public class BookingsController(
             return Forbid();
 
         return Ok(await inspections.GetByBookingAsync(id));
+    }
+
+    /// <summary>Deposit receipts + trip invoice of a booking (same HTML as the emails). Owner, admin or dispatcher.</summary>
+    [HttpGet("{id:int}/invoices")]
+    public async Task<ActionResult<IReadOnlyList<InvoiceDocumentResponse>>> GetInvoices(int id)
+    {
+        var booking = await bookingService.GetBookingByIdAsync(id);
+        if (booking is null) return NotFound();
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (role == RoleNames.Customer && booking.CustomerId != userId)
+            return Forbid();
+        if (role is not (RoleNames.Customer or RoleNames.Admin or RoleNames.Dispatcher))
+            return Forbid();
+
+        var docs = await invoices.GetForBookingAsync(id);
+        return Ok(docs.Select(InvoiceDocumentResponse.From).ToList());
     }
 
     [Authorize(Roles = RoleNames.Customer)]

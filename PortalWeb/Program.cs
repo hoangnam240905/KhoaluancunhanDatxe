@@ -19,6 +19,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// Vehicle photos uploaded by admins at runtime are not in the build-time static asset manifest.
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Directory.CreateDirectory(Path.Combine(app.Environment.WebRootPath, "images", "vehicles", "uploads")).FullName),
+    RequestPath = "/images/vehicles/uploads"
+});
 app.UseRouting();
 app.UseAuthorization();
 app.MapStaticAssets();

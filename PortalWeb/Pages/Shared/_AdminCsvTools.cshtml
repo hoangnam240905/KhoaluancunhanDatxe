@@ -1,0 +1,27 @@
+@model string
+@* CSV buttons for one admin list (plan1.md Giai đoạn 3). Model = "vehicles" | "customers" | "drivers". *@
+@{
+    var label = Model switch { "vehicles" => "xe", "customers" => "khách hàng", _ => "tài xế" };
+}
+<div class="aui-csv" data-aui-csv="@Model">
+    <a class="aui-btn aui-btn-ghost" href="/Admin/Csv?handler=Template&amp;entity=@Model" title="File mẫu có sẵn tên cột và 1 dòng ví dụ"><i class="bi bi-file-earmark-arrow-down"></i> Tải mẫu</a>
+    <a class="aui-btn aui-btn-ghost" href="/Admin/Csv?handler=Export&amp;entity=@Model"><i class="bi bi-download"></i> Xuất CSV</a>
+    <button type="button" class="aui-btn aui-btn-ghost" data-csv-pick><i class="bi bi-upload"></i> Nhập CSV</button>
+    <form method="post" action="/Admin/Csv?handler=Import&amp;entity=@Model" enctype="multipart/form-data" hidden data-csv-form>
+        @Html.AntiForgeryToken()
+        <input type="file" name="file" accept=".csv,text/csv" data-csv-file />
+    </form>
+
+    <div class="aui-modal" hidden data-csv-modal role="dialog" aria-modal="true" aria-labelledby="csvTitle-@Model">
+        <div class="aui-modal-card aui-csv-card">
+            <div class="aui-modal-head">
+                <h3 id="csvTitle-@Model">Kết quả nhập @label</h3>
+                <button type="button" class="aui-btn aui-btn-ghost aui-btn-sm" data-csv-close aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="aui-modal-body" data-csv-body></div>
+            <div class="aui-modal-foot">
+                <button type="button" class="aui-btn aui-btn-primary" data-csv-close>Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>

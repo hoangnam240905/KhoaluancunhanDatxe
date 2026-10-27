@@ -188,7 +188,7 @@ public static class TripsUi
             exterior = string.IsNullOrWhiteSpace(i.ExteriorCondition) ? (i.Condition ?? "—") : i.ExteriorCondition,
             tech = string.IsNullOrWhiteSpace(i.TechnicalCondition) ? "—" : i.TechnicalCondition,
             note = i.Notes ?? "",
-            at = Fmt(i.ActualAt)
+            at = FmtUtc(i.ActualAt)
         };
     }
 
@@ -196,7 +196,7 @@ public static class TripsUi
     {
         id = i.IncidentId,
         reporter = i.DriverName,
-        time = Fmt(i.OccurredAt),
+        time = FmtUtc(i.OccurredAt),
         type = i.IncidentType,
         severity = "—", // not in API
         status = MapIncidentStatus(i.Status),
@@ -242,18 +242,18 @@ public static class TripsUi
         var ops = new List<object>();
         if (string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase)
             || b.Assignment is not null)
-            ops.Add(new { t = Fmt(b.Assignment?.AssignedAt ?? b.CreatedAt), text = "✓ Đã phân công", cls = "done" });
+            ops.Add(new { t = FmtUtc(b.Assignment?.AssignedAt ?? b.CreatedAt), text = "✓ Đã phân công", cls = "done" });
         if (handover is not null)
-            ops.Add(new { t = Fmt(handover.ActualAt), text = "✓ Giao xe (biên bản)", cls = "done" });
+            ops.Add(new { t = FmtUtc(handover.ActualAt), text = "✓ Giao xe (biên bản)", cls = "done" });
         if (b.Assignment is not null
             && string.Equals(b.Assignment.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
-            ops.Add(new { t = Fmt(b.Assignment.AssignedAt), text = "✓ Tài xế nhận chuyến", cls = "done" });
+            ops.Add(new { t = FmtUtc(b.Assignment.AssignedAt), text = "✓ Tài xế nhận chuyến", cls = "done" });
         if (string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase))
             ops.Add(new { t = "—", text = "✓ Đang thực hiện", cls = "now" });
         if (incident is not null)
-            ops.Add(new { t = Fmt(incident.OccurredAt), text = "⚠️ Báo sự cố", cls = "warn" });
+            ops.Add(new { t = FmtUtc(incident.OccurredAt), text = "⚠️ Báo sự cố", cls = "warn" });
         if (ret is not null)
-            ops.Add(new { t = Fmt(ret.ActualAt), text = "✓ Trả xe (biên bản)", cls = "done" });
+            ops.Add(new { t = FmtUtc(ret.ActualAt), text = "✓ Trả xe (biên bản)", cls = "done" });
         if (string.Equals(b.Status, "Completed", StringComparison.OrdinalIgnoreCase))
             ops.Add(new { t = "—", text = "✓ Hoàn thành", cls = "done" });
         return ops;
@@ -273,7 +273,10 @@ public static class TripsUi
         return b.VehicleTypeName;
     }
 
+    /// <summary>Booking Start/End dates are already Vietnam wall-clock.</summary>
     private static string Fmt(DateTime dt) => dt.ToString("dd/MM/yyyy HH:mm", Vi);
+    /// <summary>Timestamps written by the server (inspections, incidents, assignments) are UTC.</summary>
+    private static string FmtUtc(DateTime dt) => Fmt(UiDisplay.ToVietnam(dt));
     private static string Money(decimal v) => v.ToString("#,0", Vi) + " ₫";
     private static string Truncate(string? s, int n)
     {

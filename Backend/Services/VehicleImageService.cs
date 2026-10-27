@@ -20,6 +20,18 @@ public class VehicleImageService(CarRentalDbContext db)
         return (rows.Select(Map).ToList(), null, StatusCodes.Status200OK);
     }
 
+    /// <summary>Primary photo URL per vehicle (vehicles without one are absent).</summary>
+    public async Task<IReadOnlyDictionary<int, string>> GetPrimaryUrlsAsync(IEnumerable<int> vehicleIds)
+    {
+        var ids = vehicleIds.Distinct().ToList();
+        var rows = await db.VehicleImages.AsNoTracking()
+            .Where(i => i.IsPrimary && ids.Contains(i.VehicleId))
+            .OrderBy(i => i.DisplayOrder).ThenByDescending(i => i.VehicleImageId)
+            .Select(i => new { i.VehicleId, i.ImageUrl })
+            .ToListAsync();
+        return rows.GroupBy(r => r.VehicleId).ToDictionary(g => g.Key, g => g.First().ImageUrl);
+    }
+
     public async Task<(VehicleImageResponse? Data, string? Error, int Status)> GetByIdAsync(
         int vehicleId, int imageId)
     {
@@ -51,6 +63,7 @@ public class VehicleImageService(CarRentalDbContext db)
             DisplayOrder = request.DisplayOrder,
             CreatedAt = DateTime.UtcNow
         };
+        if (row.IsPrimary) await ClearPrimaryAsync(vehicleId, exceptImageId: null);
         db.VehicleImages.Add(row);
         await db.SaveChangesAsync();
         return (Map(row), null, StatusCodes.Status201Created);
@@ -74,6 +87,7 @@ public class VehicleImageService(CarRentalDbContext db)
         row.ImageType = TrimOrNull(request.ImageType);
         row.IsPrimary = request.IsPrimary;
         row.DisplayOrder = request.DisplayOrder;
+        if (row.IsPrimary) await ClearPrimaryAsync(vehicleId, exceptImageId: imageId);
         await db.SaveChangesAsync();
         return (Map(row), null, StatusCodes.Status200OK);
     }
@@ -88,6 +102,15 @@ public class VehicleImageService(CarRentalDbContext db)
         db.VehicleImages.Remove(row);
         await db.SaveChangesAsync();
         return (true, null, StatusCodes.Status204NoContent);
+    }
+
+    /// <summary>One primary photo per vehicle: making an image primary demotes the others.</summary>
+    private async Task ClearPrimaryAsync(int vehicleId, int? exceptImageId)
+    {
+        var others = await db.VehicleImages
+            .Where(i => i.VehicleId == vehicleId && i.IsPrimary && i.VehicleImageId != exceptImageId)
+            .ToListAsync();
+        foreach (var other in others) other.IsPrimary = false;
     }
 
     private static VehicleImageResponse Map(VehicleImage i) => new(

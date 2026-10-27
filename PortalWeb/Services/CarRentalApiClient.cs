@@ -518,6 +518,35 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
     }
 
+    /// <summary>Deposit receipts + trip invoice of a booking (owner / admin / dispatcher).</summary>
+    public async Task<List<InvoiceDocumentResponse>> GetBookingInvoicesAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/invoices");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<InvoiceDocumentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    /// <summary>Admin: email the deposit receipt of a paid payment again.</summary>
+    public async Task<(InvoiceSendResponse? Data, string? Error)> ResendDepositReceiptAsync(int paymentId)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/admin/invoices/deposit/{paymentId}/send");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<InvoiceSendResponse>(JsonOptions), null);
+    }
+
+    /// <summary>Public chatbot (anonymous allowed): vehicle search via real availability + written FAQ.</summary>
+    public async Task<(ChatbotAskResponse? Data, string? Error)> AskChatbotAsync(string message)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/chatbot/ask");
+        request.Content = JsonContent.Create(new { message });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<ChatbotAskResponse>(JsonOptions), null);
+    }
+
     public async Task<(List<NotificationResponse> Data, string? Error)> GetNotificationsAsync()
     {
         using var request = CreateRequest(HttpMethod.Get, "/api/notifications");
@@ -871,5 +900,54 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
 
         var data = await response.Content.ReadFromJsonAsync<CustomerVehicleInteractionResponse>(JsonOptions);
         return (data, null, code);
+    }
+
+    // ---------- Admin CSV + reports (plan1.md Giai đoạn 3) ----------
+
+    /// <summary>Admin: a CSV file from the Backend (template, export or report) with its file name.</summary>
+    public async Task<(byte[]? Bytes, string? FileName, string? Error)> DownloadAdminCsvAsync(string path)
+    {
+        using var request = CreateRequest(HttpMethod.Get, path);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, null, await GetErrorAsync(response));
+        var name = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "du-lieu.csv";
+        return (await response.Content.ReadAsByteArrayAsync(), name, null);
+    }
+
+    /// <summary>Admin: import a CSV of vehicles / customers / drivers; valid rows are created, the others reported.</summary>
+    public async Task<(CsvImportResult? Data, string? Error)> ImportAdminCsvAsync(string entity, Stream file, string fileName)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/admin/csv/{entity}/import");
+        var content = new StreamContent(file);
+        content.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+        request.Content = new MultipartFormDataContent { { content, "file", fileName } };
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<CsvImportResult>(JsonOptions), null);
+    }
+
+    // ---------- Vehicle photos (plan1.md Giai đoạn 5) ----------
+
+    public async Task<List<VehicleImageResponse>> GetVehicleImagesAsync(int vehicleId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{vehicleId}/images");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleImageResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    /// <summary>Admin: attach a photo URL to a vehicle; isPrimary makes it the car's main photo.</summary>
+    public async Task<(VehicleImageResponse? Data, string? Error)> SaveVehicleImageAsync(
+        int vehicleId, int? imageId, string imageUrl, string? imageType, bool isPrimary)
+    {
+        using var request = CreateRequest(imageId is null ? HttpMethod.Post : HttpMethod.Put,
+            imageId is null ? $"/api/vehicles/{vehicleId}/images" : $"/api/vehicles/{vehicleId}/images/{imageId}");
+        request.Content = JsonContent.Create(new { imageUrl, imageType, isPrimary, displayOrder = 0 }, options: WriteJson);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<VehicleImageResponse>(JsonOptions), null);
     }
 }

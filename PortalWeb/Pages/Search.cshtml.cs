@@ -17,10 +17,13 @@ public class SearchModel(CarRentalApiClient api, AuthSession auth) : PageModel
     [BindProperty(SupportsGet = true)] public List<int> TypeId { get; set; } = [];
     [BindProperty(SupportsGet = true)] public List<int> Seats { get; set; } = [];
     [BindProperty(SupportsGet = true)] public decimal? PriceMax { get; set; }
+    /// <summary>"WithDriver" (default) or "SelfDrive"; carried to the booking form.</summary>
+    [BindProperty(SupportsGet = true)] public string RentalMode { get; set; } = "WithDriver";
+
+    public bool IsSelfDrive => RentalMode == "SelfDrive";
 
     public IReadOnlyList<VehicleTypeResponse> VehicleTypes { get; private set; } = [];
     public IReadOnlyList<SearchVehicleCard> Results { get; private set; } = [];
-    public IReadOnlyList<CustomerNotice> Notices { get; private set; } = [];
     public string? ErrorMessage { get; private set; }
 
     public int? HeroTypeId => TypeId.Count == 1 ? TypeId[0] : null;
@@ -31,6 +34,8 @@ public class SearchModel(CarRentalApiClient api, AuthSession auth) : PageModel
         if (auth.IsLoggedIn && auth.Role is not null and not "Customer")
             return Redirect(RoleRoutes.HomeFor(auth.Role));
 
+        if (RentalMode is not ("SelfDrive" or "WithDriver"))
+            RentalMode = "WithDriver";
         if (StartDate is null)
             StartDate = VehicleSearchSupport.DefaultStart();
         if (EndDate is null)
@@ -41,7 +46,6 @@ public class SearchModel(CarRentalApiClient api, AuthSession auth) : PageModel
             api, VehicleTypes, TypeId, Seats, PriceMax, StartDate, EndDate);
         ErrorMessage = error;
         Results = results;
-        Notices = SearchUi.Notices;
         return Page();
     }
 }

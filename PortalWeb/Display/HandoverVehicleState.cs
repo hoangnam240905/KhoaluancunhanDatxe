@@ -86,7 +86,9 @@ public static class HandoverVehicleState
     }
 
     /// <summary>
-    /// CurrentKm always from snapshot (backend). Fuel: known backend value (incl. 0), else client input.
+    /// CurrentKm always from snapshot (backend, never editable). Fuel: the dispatcher's entered value (0–100) when sent —
+    /// the form is pre-filled with the last known level but the car may have been refuelled since; otherwise the known
+    /// backend value (incl. 0); otherwise required.
     /// </summary>
     public static (decimal OdometerKm, decimal FuelLevel, string? Error) ResolveHandoverCondition(
         Snapshot snap,
@@ -103,19 +105,17 @@ public static class HandoverVehicleState
 
         var odometer = (decimal)snap.CurrentKm.Value;
 
-        if (!snap.RequiresFuelInput)
+        if (clientFuelLevel is decimal entered)
         {
-            if (snap.FuelLevel is decimal known && IsValidFuelPercent(known))
-                return (odometer, known, null);
-            // Inconsistent snapshot — fall through to client input requirement.
+            return IsValidFuelPercent(entered)
+                ? (odometer, entered, null)
+                : (0, 0, FuelInvalidMessage);
         }
 
-        if (clientFuelLevel is null)
-            return (0, 0, FuelRequiredMessage);
-        if (!IsValidFuelPercent(clientFuelLevel.Value))
-            return (0, 0, FuelInvalidMessage);
+        if (snap.FuelLevel is decimal known && IsValidFuelPercent(known))
+            return (odometer, known, null);
 
-        return (odometer, clientFuelLevel.Value, null);
+        return (0, 0, FuelRequiredMessage);
     }
 
     public static bool IsValidFuelPercent(decimal fuel)

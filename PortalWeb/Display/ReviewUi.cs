@@ -50,7 +50,7 @@ public static class ReviewUi
         BookingCalendarUi.Code(bookingId),
         "Xe thuê",
         null,
-        HomeUi.VehicleImage(null, null, null),
+        HomeUi.NoImage,
         "",
         null,
         default,

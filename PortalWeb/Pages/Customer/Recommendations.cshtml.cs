@@ -102,7 +102,8 @@ public class RecommendationsModel(CarRentalApiClient api, AuthSession auth, ILog
                     seats = r.Seats,
                     seatsOk = r.SeatsOk,
                     maintenanceDue = r.MaintenanceDue,
-                    fromBusinessRule = r.FromBusinessRule
+                    fromBusinessRule = r.FromBusinessRule,
+                    primaryImageUrl = r.PrimaryImageUrl
                 }),
                 partySize = data.PartySize
             });

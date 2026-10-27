@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Icon(Icons.directions_car_filled, size: 56, color: Colors.white),
             SizedBox(height: 16),
             Text(
-              'Car Rental',
+              'DriveX',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,

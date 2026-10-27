@@ -441,3 +441,68 @@ body.aui-body {
   .aui-drawer { width: 100%; }
   .aui-search { max-width: none; }
 }
+
+/* Dashboard — trip revenue KPIs, vehicle ranking, pickup heatmap, latest reviews (plan1.md) */
+.aui-kpi-sub { margin-top: .25rem; font-size: .76rem; color: var(--aui-muted); }
+.aui-kpi-warn { display: inline-flex; gap: .3rem; align-items: center; margin-top: .3rem; font-size: .74rem; font-weight: 600; color: #b91c1c; text-decoration: none; }
+.aui-note { margin: -.4rem 0 .9rem; font-size: .76rem; color: var(--aui-muted); }
+.aui-stat-strip {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem;
+}
+.aui-stat-strip > div {
+  background: #fff; border: 1px solid var(--aui-border, #e2e8f0); border-radius: 12px; padding: .6rem .85rem;
+  display: flex; justify-content: space-between; align-items: baseline; gap: .5rem;
+}
+.aui-stat-strip span { font-size: .78rem; color: var(--aui-muted); }
+.aui-stat-strip strong { font-size: .95rem; }
+.aui-seg { display: flex; gap: .35rem; flex-wrap: wrap; }
+.aui-seg .is-on { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+#auiRanking { margin-bottom: 1rem; }
+.aui-rank-table th.num, .aui-rank-table td.num { text-align: right; white-space: nowrap; }
+.aui-rank-table th button { all: unset; cursor: pointer; font: inherit; color: inherit; }
+.aui-rank-table th button.is-on { color: #1d4ed8; text-decoration: underline; }
+.aui-rank-table .rank-no { color: var(--aui-muted); width: 2.5rem; }
+.aui-heat-peak { font-size: .84rem; margin: 0 0 .6rem; }
+.aui-heat { display: grid; gap: 3px; overflow-x: auto; }
+.aui-heat-row { display: grid; grid-template-columns: 2rem repeat(24, minmax(12px, 1fr)); gap: 3px; align-items: center; }
+.aui-heat-hours span { font-size: .66rem; color: var(--aui-muted); text-align: left; }
+.aui-heat-day { font-size: .72rem; color: var(--aui-muted); font-weight: 600; }
+.aui-heat-cell { height: 18px; border-radius: 4px; background: #f1f5f9; }
+.aui-heat-cell.l1 { background: #dbeafe; }
+.aui-heat-cell.l2 { background: #93c5fd; }
+.aui-heat-cell.l3 { background: #3b82f6; }
+.aui-heat-cell.l4 { background: #1d4ed8; }
+.aui-review-list { display: grid; gap: .65rem; }
+.aui-review { border: 1px solid var(--aui-border, #e2e8f0); border-radius: 10px; padding: .6rem .75rem; }
+.aui-review p { margin: .25rem 0; font-size: .86rem; }
+.aui-review small { color: var(--aui-muted); font-size: .74rem; }
+.aui-review-head { display: flex; justify-content: space-between; align-items: center; }
+.aui-stars { color: #f59e0b; letter-spacing: .05em; }
+.aui-stars span { color: #e2e8f0; }
+@media (max-width: 992px) {
+  .aui-stat-strip { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .aui-stat-strip { grid-template-columns: 1fr; }
+}
+/* ---------- CSV import/export + reports (plan1.md Giai đoạn 3) ---------- */
+.aui-csv { display: contents; }
+.aui-csv-card { width: min(640px, 100%); }
+.aui-csv-card .aui-modal-body { max-height: 60vh; overflow: auto; color: var(--aui-text); }
+.aui-csv-sum { margin: 0 0 .75rem; }
+.aui-csv-bad { color: var(--aui-danger); }
+.aui-csv-note { margin: 0 0 .5rem; padding: .5rem .7rem; border-radius: 8px; background: #FEF9C3; font-size: .85rem; }
+.aui-csv-table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-bottom: .9rem; }
+.aui-csv-table th, .aui-csv-table td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--aui-border); vertical-align: top; }
+.aui-csv-table th { color: var(--aui-muted); font-weight: 600; font-size: .74rem; text-transform: uppercase; }
+.aui-csv-table td:first-child { width: 3.5rem; font-variant-numeric: tabular-nums; }
+.aui-report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+.aui-report-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0 .5rem; }
+.aui-report-note { color: var(--aui-muted); font-size: .82rem; margin: 0 0 1rem; }
+/* ---------- vehicle photos (plan1.md Giai đoạn 5) ---------- */
+.aui-vimg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+.aui-vimg { margin: 0; border: 1px solid var(--aui-border); border-radius: 10px; overflow: hidden; background: #fff; }
+.aui-vimg.is-primary { border-color: var(--aui-primary); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+.aui-vimg img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #F1F5F9; }
+.aui-vimg figcaption { padding: .4rem .5rem; }
+.aui-vimg-tag { font-size: .76rem; font-weight: 600; color: var(--aui-primary); }

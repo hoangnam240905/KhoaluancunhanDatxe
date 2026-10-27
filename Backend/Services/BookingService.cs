@@ -171,7 +171,7 @@ public class BookingService(
         var query = db.Bookings
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
-            .Include(b => b.AssignedVehicle)
+            .Include(b => b.AssignedVehicle).ThenInclude(v => v!.Images)
             .Include(b => b.RequestedDriver).ThenInclude(d => d!.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
@@ -197,7 +197,7 @@ public class BookingService(
         var booking = await db.Bookings
             .Include(b => b.Customer).ThenInclude(c => c.User)
             .Include(b => b.VehicleType)
-            .Include(b => b.AssignedVehicle)
+            .Include(b => b.AssignedVehicle).ThenInclude(v => v!.Images)
             .Include(b => b.RequestedDriver).ThenInclude(d => d!.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Driver).ThenInclude(d => d.User)
             .Include(b => b.TripAssignment).ThenInclude(t => t!.Vehicle)
@@ -487,7 +487,8 @@ public class BookingService(
                 b.AssignedVehicle.LicensePlate,
                 b.AssignedVehicle.Brand,
                 b.AssignedVehicle.Model,
-                b.AssignedVehicle.Status);
+                b.AssignedVehicle.Status,
+                VehicleService.PrimaryImage(b.AssignedVehicle));
         }
 
         var fees = (b.Fees ?? [])

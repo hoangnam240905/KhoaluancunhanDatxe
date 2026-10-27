@@ -36,7 +36,7 @@ public class PhaseAuthOtpGoogleTests
         Assert.True(body.RequiresVerification);
         Assert.False(string.IsNullOrEmpty(factory.Email.LastOtp));
         Assert.Equal(6, factory.Email.LastOtp!.Length);
-        Assert.Contains("Car Rental", factory.Email.LastBody, StringComparison.Ordinal);
+        Assert.Contains("DriveX", factory.Email.LastBody, StringComparison.Ordinal);
         Assert.Contains("xác minh email", factory.Email.LastBody, StringComparison.Ordinal);
         Assert.Contains("hết hạn", factory.Email.LastBody, StringComparison.Ordinal);
         Assert.DoesNotContain("Bearer ", factory.Email.LastBody, StringComparison.Ordinal);
@@ -369,7 +369,7 @@ public class PhaseAuthOtpGoogleTests
         var forgotJson = await forgot.Content.ReadAsStringAsync();
         Assert.DoesNotContain(factory.Email.LastOtp!, forgotJson, StringComparison.Ordinal);
         Assert.Contains("đặt lại mật khẩu", factory.Email.LastBody, StringComparison.Ordinal);
-        Assert.Contains("Car Rental", factory.Email.LastBody, StringComparison.Ordinal);
+        Assert.Contains("DriveX", factory.Email.LastBody, StringComparison.Ordinal);
     }
 
     [Fact]

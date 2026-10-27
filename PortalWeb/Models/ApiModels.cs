@@ -77,7 +77,7 @@ public record VehicleResponse(
     string? Color, string Status, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
     DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null,
-    int SeatCapacity = 0, decimal PricePerDay = 0);
+    int SeatCapacity = 0, decimal PricePerDay = 0, string? PrimaryImageUrl = null);
 public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 public record MaintenanceRecordResponse(
     int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
@@ -108,20 +108,41 @@ public record VehicleOperationalProfileResponse(
     string? MaintenanceAlertReason,
     IReadOnlyList<VehicleInspectionResponse>? RecentInspections);
 public record DashboardRange(DateTime From, DateTime To, bool DefaultRangeApplied, string TimeRangeNote, string SnapshotNote);
-public record DashboardSummary(int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel);
+public record DashboardSummary(
+    int TotalBookings, int CompletedBookings, int CancelledBookings, decimal DepositPaidAmount, string DepositPaidLabel,
+    decimal? DepositPaidChangePercent = null, decimal? BookingsChangePercent = null);
 public record DashboardDriverTrips(int Assigned, int Accepted, int InProgress, int Completed, int Cancelled);
 public record DashboardBookings(int Total, int Pending, int Confirmed, int Assigned, int InProgress, int Completed, int Cancelled, DashboardDriverTrips DriverTrips);
 public record DashboardPayments(int PaidDepositCount, int PendingDepositCount, int FailedDepositCount, decimal DepositPaidAmount, string AmountLabel, string MetricNote);
 public record DashboardVehicles(int Total, int Available, int Rented, int Maintenance, int Inactive, string SnapshotNote);
 public record DashboardDriverRow(int DriverId, string FullName, int CompletedAssignments, int CancelledAssignments, int IncidentCount, decimal? AverageReviewRating, decimal? AssignmentCompletionRate);
 public record DashboardDrivers(int Total, int Available, int Busy, int Offline, string SnapshotNote, IReadOnlyList<DashboardDriverRow> Performance);
-public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount);
+public record DashboardTopVehicle(int VehicleId, string LicensePlate, string Brand, string Model, int CompletedCount,
+    decimal RentalAmount = 0, decimal AdjustmentAmount = 0, decimal TotalAmount = 0, decimal? AverageRating = null, int ReviewCount = 0, int OutlierTrips = 0);
+public record DashboardRevenueSummary(int CompletedTrips, decimal RentalAmount, decimal AdjustmentAmount, decimal TotalAmount,
+    decimal DepositPaidAmount, int OutlierTrips, decimal? RentalChangePercent, string Note);
+public record DashboardHeatCell(int DayOfWeek, int Hour, int Count);
+public record DashboardHeatmap(IReadOnlyList<DashboardHeatCell> Cells, int Max, int Total, string Note);
+public record DashboardLatestReview(int ReviewId, int BookingId, int Rating, string? Comment, string VehicleLabel,
+    string CustomerName, string DriverName, DateTime CreatedAt);
+public record DashboardReviews(decimal? AverageRating, int Count, IReadOnlyList<DashboardLatestReview> Latest);
 public record DashboardMaintenance(int AlertCount, IReadOnlyList<MaintenanceAlertResponse> Alerts);
 public record DashboardRecommendation(int TotalBookings, int RecommendedBookings, decimal? AttributionShare, int RecommendedCompletedBookings, decimal? AverageRatingRecommendedReviewed, string MetricNote);
+public record DashboardRevenuePoint(string Label, int Year, int Month, decimal Amount);
+public record DashboardRecentBooking(int BookingId, string CustomerName, string VehicleLabel, DateTime StartDate, string Status, decimal TotalAmount);
+public record DashboardUpcomingPickup(int BookingId, string CustomerName, string VehicleLabel, DateTime StartDate, string Status);
 public record DashboardResponse(
     DashboardRange Range, DashboardSummary Summary, DashboardBookings Bookings, DashboardPayments Payments,
     DashboardVehicles Vehicles, DashboardDrivers Drivers, IReadOnlyList<DashboardTopVehicle> TopVehicles,
-    DashboardMaintenance Maintenance, DashboardRecommendation Recommendation);
+    DashboardMaintenance Maintenance, DashboardRecommendation Recommendation,
+    int TotalCustomers = 0,
+    int ActiveFleet = 0,
+    IReadOnlyList<DashboardRevenuePoint>? RevenueOverview = null,
+    IReadOnlyList<DashboardRecentBooking>? RecentBookings = null,
+    IReadOnlyList<DashboardUpcomingPickup>? UpcomingPickups = null,
+    DashboardRevenueSummary? Revenue = null,
+    DashboardHeatmap? RentalHeatmap = null,
+    DashboardReviews? Reviews = null);
 public record CreateVehicleRequest(
     int TypeId, string LicensePlate, string Brand, string Model, int Year, string? Color, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
@@ -160,7 +181,7 @@ public record DriverScheduleResponse(
     IReadOnlyList<DriverBusyPeriodResponse> Busy,
     decimal AverageRating = 0,
     int TotalTrips = 0);
-public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
+public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status, string? PrimaryImageUrl = null);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
 public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null);
 public record BookingQuoteResponse(
@@ -242,6 +263,7 @@ public record BookingResponse(
     DateTime? CustomerCancelDeadline = null);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
+public record CancelBookingRequest(string? CancellationReason);
 public record AssignTripRequest(int? DriverId, int VehicleId);
 
 public class VehicleConditionRequest
@@ -340,7 +362,8 @@ public record RecommendationItemResponse(
     int? Seats = null,
     bool? SeatsOk = null,
     bool? MaintenanceDue = null,
-    bool FromBusinessRule = false);
+    bool FromBusinessRule = false,
+    string? PrimaryImageUrl = null);
 
 /// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
 public record CustomerVehicleInteractionResponse(
@@ -353,3 +376,17 @@ public record CustomerVehicleInteractionResponse(
 public record NotificationResponse(
     int NotificationId, int UserId, string Title, string Message, string? Type, bool IsRead, DateTime CreatedAt, int? BookingId = null);
 public record MarkAllReadResponse(int Updated);
+
+public record ChatbotVehicle(int VehicleId, string Name, string TypeName, int Seats, string LicensePlate, int Days, decimal TotalAmount);
+public record ChatbotLink(string Text, string Url);
+public record ChatbotSearchEcho(DateTime Start, DateTime End, string RentalMode, IReadOnlyList<int> Seats, decimal? MaxPrice);
+public record ChatbotAskResponse(string Kind, string Reply, IReadOnlyList<ChatbotVehicle> Vehicles, IReadOnlyList<ChatbotLink> Links, ChatbotSearchEcho? Search = null);
+
+public record InvoiceDocumentResponse(string Kind, string Number, string Title, DateTime IssuedAt, string Html);
+public record InvoiceSendResponse(bool Sent, string Message);
+
+public record CsvRowError(int Row, string Reason);
+public record CsvCreatedAccount(int Row, string Email, string TemporaryPassword);
+public record CsvImportResult(int Imported, List<CsvRowError> Errors, List<CsvCreatedAccount> Accounts);
+
+public record VehicleImageResponse(int VehicleImageId, int VehicleId, string ImageUrl, string? ImageType, bool IsPrimary, int DisplayOrder, DateTime CreatedAt);

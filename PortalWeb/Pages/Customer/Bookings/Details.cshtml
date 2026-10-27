@@ -240,6 +240,21 @@
                             </div>
                         }
 
+                        @if (Model.Invoices.Count > 0)
+                        {
+                            <div class="bd-card bd-contract" style="padding:0;border:0;box-shadow:none;margin-top:1rem;" data-invoices>
+                                <div class="bd-contract-status">
+                                    <h3 style="margin:0">Biên nhận &amp; hóa đơn</h3>
+                                </div>
+                                <div class="bd-actions">
+                                    @foreach (var inv in Model.Invoices)
+                                    {
+                                        <a class="bd-btn bd-btn-ghost" asp-page="Invoice" asp-route-id="@d.BookingId" asp-route-number="@inv.Number">@inv.Title</a>
+                                    }
+                                </div>
+                            </div>
+                        }
+
                         @if (Model.Booking is { } reviewBooking && (reviewBooking.Review is not null || ReviewUi.CanOfferReview(reviewBooking)))
                         {
                             <div class="bd-actions">

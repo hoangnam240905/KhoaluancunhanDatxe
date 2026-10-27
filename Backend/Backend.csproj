@@ -14,6 +14,7 @@
   <ItemGroup>
     <Content Update="Data\v7-vehicle-catalog.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="Data\v7-carid-vehicle-map.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Data\ChatbotKnowledge.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,6 +16,7 @@
             <p>Quản lý tài xế, theo dõi hiệu suất và đảm bảo hoạt động vận hành thuận lợi.</p>
         </div>
         <div class="aui-head-actions">
+            <partial name="_AdminCsvTools" model="@("drivers")" />
             <button type="button" class="aui-btn aui-btn-primary" data-add-driver><i class="bi bi-plus-lg"></i> Thêm tài xế</button>
         </div>
     </div>
@@ -67,9 +68,7 @@
                 <option value="">Tất cả khu vực</option>
             </select>
         </div>
-        <div class="aui-field" style="align-self:end">
-            <button type="button" class="aui-btn aui-btn-ghost" data-export><i class="bi bi-download"></i> Xuất dữ liệu</button>
-        </div>
+
     </div>
 
     <div class="aui-card" @(string.IsNullOrEmpty(Model.ErrorMessage) ? null : "hidden")>
