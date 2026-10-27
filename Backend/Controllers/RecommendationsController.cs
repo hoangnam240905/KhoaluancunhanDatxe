@@ -18,7 +18,8 @@ namespace Backend.Controllers;
 [Route("api/recommendations")]
 public class RecommendationsController(
     IRecommendationMappingService mapping,
-    RecommendationLogService recommendationLogs) : ControllerBase
+    RecommendationLogService recommendationLogs,
+    VehicleImageService images) : ControllerBase
 {
     /// <summary>GET /api/recommendations?topK=5</summary>
     [HttpGet]
@@ -57,7 +58,7 @@ public class RecommendationsController(
             StatusCodes.Status400BadRequest =>
                 BadRequest(new { message = result.Reason }),
             StatusCodes.Status200OK when result.Success =>
-                Ok(ToApiResponse(result)),
+                Ok(ToApiResponse(result, await images.GetPrimaryUrlsAsync(result.Recommendations.Select(r => r.VehicleId)))),
             _ =>
                 StatusCode(result.StatusCode is >= 400 and < 600
                         ? result.StatusCode
@@ -66,7 +67,8 @@ public class RecommendationsController(
         };
     }
 
-    private static CustomerRecommendationApiResponse ToApiResponse(RecommendationResultDto result)
+    private static CustomerRecommendationApiResponse ToApiResponse(
+        RecommendationResultDto result, IReadOnlyDictionary<int, string> primaryImages)
         => new(
             PredictedSegment: result.PredictedSegment ?? string.Empty,
             Recommendations: result.Recommendations
@@ -84,7 +86,8 @@ public class RecommendationsController(
                     Seats: r.Seats,
                     SeatsOk: r.SeatsOk,
                     MaintenanceDue: r.MaintenanceDue,
-                    FromBusinessRule: r.FromBusinessRule))
+                    FromBusinessRule: r.FromBusinessRule,
+                    PrimaryImageUrl: primaryImages.GetValueOrDefault(r.VehicleId)))
                 .ToList(),
             PartySize: result.PartySize);
 }

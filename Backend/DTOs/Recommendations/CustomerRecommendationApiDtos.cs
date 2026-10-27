@@ -28,4 +28,6 @@ public record CustomerRecommendationApiItem(
     int? Seats = null,
     bool? SeatsOk = null,
     bool? MaintenanceDue = null,
-    bool FromBusinessRule = false);
+    bool FromBusinessRule = false,
+    // The car's own primary photo (null → "Chưa có ảnh" on the web).
+    string? PrimaryImageUrl = null);

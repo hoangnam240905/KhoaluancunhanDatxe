@@ -1,0 +1,38 @@
+@page "/Credits"
+@model PortalWeb.Pages.CreditsModel
+@{
+    ViewData["Title"] = "Nguồn ảnh xe";
+}
+<div class="container py-4" style="max-width: 960px;">
+    <h1 class="h3 mb-2">Nguồn ảnh xe</h1>
+    <p class="text-muted">
+        Ảnh xe trên DriveX là ảnh thật của đúng hãng và mẫu xe, lấy từ Wikimedia Commons theo giấy phép cho phép dùng lại.
+        Ảnh đã được cắt về tỉ lệ 16:10 và nén lại. Các phiên bản của cùng một mẫu xe dùng chung ảnh của mẫu đó;
+        xe chưa có ảnh đúng mẫu hiển thị khung "Chưa có ảnh". Ảnh ở thẻ loại xe trên trang chủ là ảnh minh họa.
+    </p>
+    @if (Model.Credits.Count == 0)
+    {
+        <p>Chưa có thông tin ghi công.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr><th style="width:120px">Ảnh</th><th>Ảnh gốc</th><th>Tác giả</th><th>Giấy phép</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Credits)
+                    {
+                        <tr>
+                            <td><img src="/images/vehicles/@c.File" alt="" loading="lazy" style="width:112px;aspect-ratio:16/10;object-fit:cover;border-radius:6px" /></td>
+                            <td><a href="@c.SourceUrl" target="_blank" rel="noopener">@c.Title</a></td>
+                            <td>@c.Author</td>
+                            <td><a href="@c.LicenseUrl" target="_blank" rel="noopener">@c.License</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

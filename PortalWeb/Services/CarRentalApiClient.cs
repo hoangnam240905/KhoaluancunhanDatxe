@@ -995,4 +995,27 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
         return (await response.Content.ReadFromJsonAsync<CsvImportResult>(JsonOptions), null);
     }
+
+    // ---------- Vehicle photos (plan1.md Giai đoạn 5) ----------
+
+    public async Task<List<VehicleImageResponse>> GetVehicleImagesAsync(int vehicleId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/vehicles/{vehicleId}/images");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleImageResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    /// <summary>Admin: attach a photo URL to a vehicle; isPrimary makes it the car's main photo.</summary>
+    public async Task<(VehicleImageResponse? Data, string? Error)> SaveVehicleImageAsync(
+        int vehicleId, int? imageId, string imageUrl, string? imageType, bool isPrimary)
+    {
+        using var request = CreateRequest(imageId is null ? HttpMethod.Post : HttpMethod.Put,
+            imageId is null ? $"/api/vehicles/{vehicleId}/images" : $"/api/vehicles/{vehicleId}/images/{imageId}");
+        request.Content = JsonContent.Create(new { imageUrl, imageType, isPrimary, displayOrder = 0 }, options: WriteJson);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response));
+        return (await response.Content.ReadFromJsonAsync<VehicleImageResponse>(JsonOptions), null);
+    }
 }

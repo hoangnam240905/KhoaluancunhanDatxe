@@ -149,9 +149,8 @@ public static class CreateBookingUi
         var name = $"{vehicle.Brand} {vehicle.Model}".Trim();
         if (string.IsNullOrWhiteSpace(name))
             name = vehicle.LicensePlate;
-        var image = HomeUi.VehicleImage(type?.ImageUrl, typeName, seats);
-        if (image.Contains("van.jpg", StringComparison.OrdinalIgnoreCase))
-            image = "/images/home/limousine.jpg";
+        // A specific car shows its own photo, never the group illustration of its type.
+        var image = HomeUi.OwnImage(vehicle.PrimaryImageUrl);
         var price = type is { PricePerDay: > 0 } ? type.PricePerDay : vehicle.PricePerDay;
         var plate = vehicle.LicensePlate;
 

@@ -499,3 +499,10 @@ body.aui-body {
 .aui-report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
 .aui-report-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0 .5rem; }
 .aui-report-note { color: var(--aui-muted); font-size: .82rem; margin: 0 0 1rem; }
+/* ---------- vehicle photos (plan1.md Giai đoạn 5) ---------- */
+.aui-vimg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+.aui-vimg { margin: 0; border: 1px solid var(--aui-border); border-radius: 10px; overflow: hidden; background: #fff; }
+.aui-vimg.is-primary { border-color: var(--aui-primary); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+.aui-vimg img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #F1F5F9; }
+.aui-vimg figcaption { padding: .4rem .5rem; }
+.aui-vimg-tag { font-size: .76rem; font-weight: 600; color: var(--aui-primary); }

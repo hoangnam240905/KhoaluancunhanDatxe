@@ -649,3 +649,16 @@ button.ch-icon-btn { cursor: pointer; }
 @media (min-width: 992px) {
     .ch-nav-mobile { display: none !important; }
 }
+
+/* plan1.md Giai đoạn 5: a vehicle TYPE card shows a group illustration, not a specific car. */
+.ch-illus {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 0.6rem;
+    background: rgba(15, 23, 42, 0.62);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    padding: 0.15rem 0.45rem;
+    z-index: 2;
+}

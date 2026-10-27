@@ -101,7 +101,7 @@ public static class PaymentUi
             booking.BookingId,
             vehicleTitle,
             meta.Count == 0 ? null : string.Join(" · ", meta),
-            HomeUi.VehicleImage(null, booking.VehicleTypeName, null),
+            HomeUi.BookingImage(booking),
             withDriver,
             booking.StartDate,
             booking.EndDate,

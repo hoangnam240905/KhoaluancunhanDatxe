@@ -31,12 +31,10 @@
       .replace(/"/g, "&quot;");
   }
 
-  function imageForSegment(segment) {
-    const n = String(segment || "").toLowerCase();
-    if (n.includes("limousine") || n.includes("luxury")) return "/images/home/limousine.jpg";
-    if (n.includes("suv")) return "/images/home/suv.jpg";
-    if (n.includes("van") || n.includes("mpv")) return "/images/home/van.jpg";
-    return "/images/home/sedan.jpg";
+  // Each recommendation is one specific car: show its own photo, never a photo of another model.
+  const NO_IMAGE = "/images/vehicles/no-image.svg";
+  function imageForCar(item) {
+    return item.primaryImageUrl ? escapeHtml(item.primaryImageUrl) : NO_IMAGE;
   }
 
   function scoreText(score) {
@@ -104,14 +102,14 @@
       const segment = escapeHtml(item.segment);
       const carId = escapeHtml(item.carId);
       const vehicleId = Number(item.vehicleId) || 0;
-      const img = imageForSegment(item.segment);
+      const img = imageForCar(item);
       // Large-party rule additions are not ranked by V7: own badge, no "Điểm khớp".
       const badge = item.fromBusinessRule ? "Đủ chỗ cho nhóm lớn" : index === 0 ? "Đề xuất hàng đầu" : "Gợi ý";
       const badgeClass = index === 0 || item.fromBusinessRule ? "" : "ch-badge-alt";
       return `
         <article class="ch-card">
           <div class="ch-card-media">
-            <img src="${img}" alt="${brand} ${model}" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
+            <img src="${img}" alt="${brand} ${model}" onerror="this.onerror=null;this.src='${NO_IMAGE}';" />
             <span class="ch-badge ${badgeClass}">${badge}</span>
           </div>
           <div class="ch-card-body">

@@ -128,7 +128,7 @@ public static class BookingDetailUi
             vehicleAssigned,
             vehicleTitle,
             meta.Count == 0 ? null : string.Join(" · ", meta),
-            HomeUi.VehicleImage(null, booking.VehicleTypeName, null),
+            HomeUi.BookingImage(booking),
             booking.TotalAmount,
             rentalLine,
             driverFee,

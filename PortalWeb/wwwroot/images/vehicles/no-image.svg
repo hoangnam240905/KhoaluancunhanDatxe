@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-label="Chưa có ảnh">
+  <rect width="1200" height="750" fill="#F1F5F9"/>
+  <g fill="none" stroke="#94A3B8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" transform="translate(450 250)">
+    <path d="M30 150 L60 75 Q70 55 95 55 L205 55 Q230 55 240 75 L270 150"/>
+    <rect x="10" y="150" width="280" height="80" rx="22"/>
+    <circle cx="75" cy="235" r="28" fill="#F1F5F9"/>
+    <circle cx="225" cy="235" r="28" fill="#F1F5F9"/>
+  </g>
+  <text x="600" y="580" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="600" fill="#64748B">Chưa có ảnh</text>
+</svg>

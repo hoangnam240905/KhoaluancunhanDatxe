@@ -179,6 +179,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteTravelProfileColumns();
     db.EnsureSqliteNotificationColumns();
     DbSeeder.Seed(db);
+    VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);
     db.FillVehicleTypePricingDefaults();

@@ -1014,6 +1014,67 @@
       paint();
     }
 
+    /* Vehicle photos (plan1.md Giai đoạn 5): the customer pages show the primary photo of THIS car. */
+    async function loadVehicleImages(v) {
+      const box = document.querySelector("#auiDrawer [data-vehicle-images]");
+      if (!box) return;
+      box.innerHTML = `<h4>Ảnh xe</h4><p class="aui-muted">Đang tải ảnh…</p>`;
+      let list = [];
+      try {
+        const res = await fetch(`/Admin/Vehicles?handler=Images&id=${encodeURIComponent(v.vehicleId)}`, {
+          headers: { Accept: "application/json" },
+          credentials: "same-origin"
+        });
+        list = res.ok ? await res.json() : [];
+      } catch (_) { /* shown as empty below */ }
+      box.innerHTML = `
+        <h4>Ảnh xe</h4>
+        ${list.length ? `<div class="aui-vimg-grid">${list.map((img) => `
+          <figure class="aui-vimg ${img.isPrimary ? "is-primary" : ""}">
+            <img src="${esc(img.imageUrl)}" alt="" loading="lazy" />
+            <figcaption>${img.isPrimary
+              ? `<span class="aui-vimg-tag"><i class="bi bi-star-fill"></i> Ảnh chính</span>`
+              : `<button type="button" class="aui-btn aui-btn-ghost aui-btn-sm" data-set-primary="${esc(img.vehicleImageId)}">Đặt làm ảnh chính</button>`}</figcaption>
+          </figure>`).join("")}</div>`
+          : `<p class="aui-muted">Xe chưa có ảnh — trang khách hiển thị "Chưa có ảnh".</p>`}
+        <label class="aui-btn aui-btn-ghost aui-btn-sm" style="margin-top:.6rem">
+          <i class="bi bi-upload"></i> Tải ảnh mới
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload-image />
+        </label>
+        <small class="aui-muted" style="display:block;margin-top:.35rem">Ảnh phải là ảnh thật của đúng xe này (đúng hãng, mẫu). JPG/PNG/WebP, tối đa 5 MB. Ảnh mới thành ảnh chính.</small>`;
+
+      async function send(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { RequestVerificationToken: antiforgery(), Accept: "application/json" },
+          body,
+          credentials: "same-origin"
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.message || "Thao tác thất bại.");
+      }
+
+      box.querySelectorAll("[data-set-primary]").forEach((btn) => btn.addEventListener("click", async () => {
+        try {
+          await send(`/Admin/Vehicles?handler=SetPrimaryImage&id=${encodeURIComponent(v.vehicleId)}&imageId=${encodeURIComponent(btn.getAttribute("data-set-primary"))}`, new FormData());
+          toast("Đã đổi ảnh chính.");
+          loadVehicleImages(v);
+        } catch (err) { toast(err.message); }
+      }));
+
+      box.querySelector("[data-upload-image]")?.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const body = new FormData();
+        body.append("file", file);
+        try {
+          await send(`/Admin/Vehicles?handler=UploadImage&id=${encodeURIComponent(v.vehicleId)}`, body);
+          toast("Đã tải ảnh và đặt làm ảnh chính.");
+          loadVehicleImages(v);
+        } catch (err) { toast(err.message); }
+      });
+    }
+
     function openVehicleForm(v, mode) {
       const isEdit = mode === "edit" || mode === "view";
       const readOnly = mode === "view";
@@ -1065,7 +1126,8 @@
               <div><dt>Trạng thái</dt><dd>${badge(v.status)}</dd></div>
               <div><dt>Số chỗ</dt><dd>${esc(v.seatCapacity ?? "—")}</dd></div>
             </dl>
-          </div>` : ""}`,
+          </div>` : ""}
+          ${readOnly ? `<div class="aui-section" style="margin-top:1rem" data-vehicle-images></div>` : ""}`,
         footerHtml: readOnly
           ? `<button type="button" class="aui-btn aui-btn-ghost" data-aui-drawer-close>Đóng</button>
              <button type="button" class="aui-btn aui-btn-primary" data-to-edit>Chỉnh sửa</button>
@@ -1076,6 +1138,7 @@
       });
 
       drawerFoot.querySelector("[data-to-edit]")?.addEventListener("click", () => openVehicleForm(v, "edit"));
+      if (readOnly && v) loadVehicleImages(v);
 
       drawerFoot.querySelector("[data-save]")?.addEventListener("click", () => {
         const form = readForm();

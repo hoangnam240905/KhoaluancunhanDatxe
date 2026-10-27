@@ -40,7 +40,8 @@ public record AssignedVehicleResponse(
     string LicensePlate,
     string Brand,
     string Model,
-    string Status);
+    string Status,
+    string? PrimaryImageUrl = null);
 
 public record BookingResponse(
     int BookingId,
@@ -130,7 +131,8 @@ public record VehicleAlternativeResponse(
     string LicensePlate,
     string Brand,
     string Model,
-    string Status);
+    string Status,
+    string? PrimaryImageUrl = null);
 
 public record DriverAlternativeResponse(
     int DriverId,

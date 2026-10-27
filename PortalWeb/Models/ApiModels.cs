@@ -77,7 +77,7 @@ public record VehicleResponse(
     string? Color, string Status, int CurrentKm,
     string? RegistrationNumber = null, DateOnly? RegistrationExpiryDate = null,
     DateOnly? InspectionExpiryDate = null, DateOnly? InsuranceExpiryDate = null,
-    int SeatCapacity = 0, decimal PricePerDay = 0);
+    int SeatCapacity = 0, decimal PricePerDay = 0, string? PrimaryImageUrl = null);
 public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 public record MaintenanceRecordResponse(
     int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
@@ -181,7 +181,7 @@ public record DriverScheduleResponse(
     IReadOnlyList<DriverBusyPeriodResponse> Busy,
     decimal AverageRating = 0,
     int TotalTrips = 0);
-public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);
+public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status, string? PrimaryImageUrl = null);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
 public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null);
 public record BookingQuoteResponse(
@@ -362,7 +362,8 @@ public record RecommendationItemResponse(
     int? Seats = null,
     bool? SeatsOk = null,
     bool? MaintenanceDue = null,
-    bool FromBusinessRule = false);
+    bool FromBusinessRule = false,
+    string? PrimaryImageUrl = null);
 
 /// <summary>Step 4.5: customer–vehicle interaction history (JWT CustomerId only).</summary>
 public record CustomerVehicleInteractionResponse(
@@ -387,3 +388,5 @@ public record InvoiceSendResponse(bool Sent, string Message);
 public record CsvRowError(int Row, string Reason);
 public record CsvCreatedAccount(int Row, string Email, string TemporaryPassword);
 public record CsvImportResult(int Imported, List<CsvRowError> Errors, List<CsvCreatedAccount> Accounts);
+
+public record VehicleImageResponse(int VehicleImageId, int VehicleId, string ImageUrl, string? ImageType, bool IsPrimary, int DisplayOrder, DateTime CreatedAt);

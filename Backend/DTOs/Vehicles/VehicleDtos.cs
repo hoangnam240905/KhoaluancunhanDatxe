@@ -74,7 +74,8 @@ public record VehicleResponse(
     int? MaintenanceIntervalKm = null,
     int? MaintenanceIntervalDays = null,
     DateTime? NextMaintenanceDate = null,
-    int? NextMaintenanceOdometer = null);
+    int? NextMaintenanceOdometer = null,
+    string? PrimaryImageUrl = null);
 
 public record CreateVehicleRequest(
     int TypeId,
