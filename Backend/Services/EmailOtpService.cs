@@ -14,7 +14,9 @@ public class EmailOtpService(
     IEmailSender emailSender,
     IOptions<EmailOptions> emailOptions,
     IConfiguration configuration,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IHostEnvironment? environment = null,
+    ILogger<EmailOtpService>? logger = null)
 {
     public const string InvalidOtp = "Mã OTP không đúng hoặc đã hết hạn.";
     public const string ExpiredOtp = "Mã OTP đã hết hạn.";
@@ -23,12 +25,33 @@ public class EmailOtpService(
     public const string Cooldown = "Vui lòng đợi trước khi gửi lại mã OTP.";
     public const string SentVerification = "Đã gửi mã OTP đến email của bạn.";
     public const string ForgotGeneric = "Nếu email tồn tại, mã OTP đã được gửi.";
+    public const string NotConfigured =
+        "Hệ thống chưa cấu hình gửi email nên không gửi được mã OTP. Vui lòng liên hệ quản trị viên.";
+    public const string DevConsoleNotice =
+        "Máy chủ chưa cấu hình Gmail nên không gửi email. Đang chạy thử (Development): mã OTP được in trong cửa sổ chạy Backend.";
+    public const string SendFailed =
+        "Không gửi được email chứa mã OTP (lỗi máy chủ email). Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+
+    /// <summary>Real email delivery is set up (Email:Enabled + SMTP password); otherwise NullEmailSender is used.</summary>
+    public bool CanDeliver => emailSender is not NullEmailSender;
+
+    /// <summary>
+    /// Without SMTP an OTP can only be issued in Development, where the code is written to the Backend log
+    /// so the app can still be tried on a machine without the Gmail secrets. Elsewhere it is a clear error,
+    /// never a silent "đã gửi".
+    /// </summary>
+    public bool CanIssue => CanDeliver || environment?.IsDevelopment() == true;
+
+    /// <summary>Message shown after an OTP was issued.</summary>
+    public string SentMessage => CanDeliver ? SentVerification : DevConsoleNotice;
 
     public async Task<(bool Ok, string? Error)> IssueAsync(string email, string purpose, CancellationToken cancellationToken = default)
     {
         var normalized = NormalizeEmail(email);
         if (string.IsNullOrEmpty(normalized))
             return (false, InvalidOtp);
+        if (!CanIssue)
+            return (false, NotConfigured);
 
         var settings = emailOptions.Value;
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -72,7 +95,23 @@ public class EmailOtpService(
             <p>Mã OTP của bạn là <strong>{code}</strong>.</p>
             <p>Mã hết hạn sau {expiryMinutes} phút. Không chia sẻ mã này cho bất kỳ ai.</p>
             """;
-        await emailSender.SendAsync(normalized, subject, html, cancellationToken);
+        if (!CanDeliver)
+        {
+            // Plain ASCII: the Windows console often cannot show Vietnamese diacritics.
+            logger?.LogWarning(
+                "EMAIL CHUA CAU HINH (Development) - ma OTP [{Purpose}] cho {Email}: {Code} (het han sau {Minutes} phut).",
+                purpose, normalized, code, expiryMinutes);
+            return (true, null);
+        }
+        try
+        {
+            await emailSender.SendAsync(normalized, subject, html, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger?.LogError(ex, "Sending the OTP email failed.");
+            return (false, SendFailed);
+        }
         return (true, null);
     }
 

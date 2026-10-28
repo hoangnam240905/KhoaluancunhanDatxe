@@ -548,6 +548,23 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     }
 
     /// <summary>Public chatbot (anonymous allowed): vehicle search via real availability + written FAQ.</summary>
+    /// <summary>Customer: saved chat with the assistant, oldest first (empty for guests / on error).</summary>
+    public async Task<List<ChatbotHistoryItem>> GetChatbotHistoryAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/chatbot/history");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<ChatbotHistoryItem>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<bool> ClearChatbotHistoryAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Delete, "/api/chatbot/history");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<(ChatbotAskResponse? Data, string? Error)> AskChatbotAsync(string message)
     {
         using var request = CreateRequest(HttpMethod.Post, "/api/chatbot/ask");

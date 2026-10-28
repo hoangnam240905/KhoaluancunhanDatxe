@@ -62,6 +62,10 @@ public class AuthService(
         if (error is not null)
             return (null, error);
 
+        // No account is created when the verification code cannot reach the customer.
+        if (!otpService.CanIssue)
+            return (null, EmailOtpService.NotConfigured);
+
         var existing = await db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == email);
         if (existing is not null)
         {
@@ -79,7 +83,7 @@ public class AuthService(
 
             var (resent, resendError) = await otpService.IssueAsync(email, OtpPurposes.EmailVerification);
             return resent
-                ? (new RegisterPendingResponse(email, EmailOtpService.SentVerification, true), null)
+                ? (new RegisterPendingResponse(email, otpService.SentMessage, true), null)
                 : (null, resendError ?? "Không thể gửi mã OTP.");
         }
 
@@ -116,9 +120,9 @@ public class AuthService(
 
         var (sent, sendError) = await otpService.IssueAsync(email, OtpPurposes.EmailVerification);
         if (!sent)
-            return (new RegisterPendingResponse(email, sendError ?? EmailOtpService.SentVerification, true), null);
+            return (new RegisterPendingResponse(email, sendError ?? EmailOtpService.SendFailed, true), null);
 
-        return (new RegisterPendingResponse(email, EmailOtpService.SentVerification, true), null);
+        return (new RegisterPendingResponse(email, otpService.SentMessage, true), null);
     }
 
     public async Task<(AuthResponse? Data, string? Error)> VerifyEmailAsync(VerifyEmailRequest request)
@@ -148,18 +152,24 @@ public class AuthService(
 
         var (ok, error) = await otpService.IssueAsync(email, OtpPurposes.EmailVerification);
         return ok
-            ? (new RegisterPendingResponse(email, EmailOtpService.SentVerification, true), null)
+            ? (new RegisterPendingResponse(email, otpService.SentMessage, true), null)
             : (null, error ?? "Không thể gửi lại mã xác minh.");
     }
 
     public async Task<MessageResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
     {
         var email = EmailOtpService.NormalizeEmail(request.Email);
+        // Said for every email (exists or not), so it reveals nothing about accounts.
+        if (!otpService.CanIssue)
+            return new MessageResponse(EmailOtpService.NotConfigured);
+
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
         if (user is not null && user.IsActive && !user.IsLocked)
             await otpService.IssueAsync(email, OtpPurposes.PasswordReset);
 
-        return new MessageResponse(EmailOtpService.ForgotGeneric);
+        return new MessageResponse(otpService.CanDeliver
+            ? EmailOtpService.ForgotGeneric
+            : "Nếu email tồn tại: " + EmailOtpService.DevConsoleNotice);
     }
 
     public async Task<(bool Ok, string? Error)> ResetPasswordAsync(ResetPasswordRequest request)

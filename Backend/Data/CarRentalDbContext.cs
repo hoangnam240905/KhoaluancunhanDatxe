@@ -24,6 +24,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<IncidentReport> IncidentReports => Set<IncidentReport>();
     public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ChatbotMessage> ChatbotMessages => Set<ChatbotMessage>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -277,6 +278,18 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<ChatbotMessage>(e =>
+        {
+            e.ToTable("ChatbotMessages");
+            e.HasKey(x => x.ChatbotMessageId);
+            e.Property(x => x.Text).HasMaxLength(2000);
+            e.HasIndex(x => new { x.CustomerId, x.CreatedAt });
+            e.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Notification>(e =>
@@ -1011,6 +1024,29 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     /// <summary>
     /// Creates IncidentReports on an existing SQLite database. No backfill.
     /// </summary>
+    /// <summary>Chat history of logged-in customers (chatbot widget), for databases created before it existed.</summary>
+    public void EnsureSqliteChatbotMessagesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "ChatbotMessages" (
+                "ChatbotMessageId" INTEGER NOT NULL CONSTRAINT "PK_ChatbotMessages" PRIMARY KEY AUTOINCREMENT,
+                "CustomerId" INTEGER NOT NULL,
+                "FromCustomer" INTEGER NOT NULL,
+                "Text" TEXT NOT NULL,
+                "AnswerJson" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_ChatbotMessages_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("CustomerId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_ChatbotMessages_CustomerId_CreatedAt" ON "ChatbotMessages" ("CustomerId", "CreatedAt");""");
+    }
+
     public void EnsureSqliteIncidentReportsTable()
     {
         if (Database.ProviderName is null ||

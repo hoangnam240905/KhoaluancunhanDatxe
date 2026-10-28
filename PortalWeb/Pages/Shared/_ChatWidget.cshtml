@@ -1,16 +1,46 @@
-@* Floating chat (plan1.md Giai đoạn 1): vehicle search + FAQ. Shown on customer / public pages only. *@
+@inject PortalWeb.Services.AuthSession Auth
+@* Floating chat (plan1.md Giai đoạn 1): vehicle search + FAQ. Shown on customer / public pages only.
+   A logged-in customer's chat is saved on the server; a guest's lives only in this browser tab. *@
+@{
+    var isCustomer = Auth.IsLoggedIn && Auth.Role == "Customer";
+    var name = isCustomer ? Auth.FullName?.Trim() : null;
+}
 <link rel="stylesheet" href="~/css/chat-widget.css" asp-append-version="true" />
-<div class="cw" id="dxChat" data-ask-url="@Url.Page("/Chatbot", "Ask")">
+<div class="cw" id="dxChat"
+     data-ask-url="@Url.Page("/Chatbot", "Ask")"
+     data-history-url="@Url.Page("/Chatbot", "History")"
+     data-clear-url="@Url.Page("/Chatbot", "Clear")"
+     data-customer="@(isCustomer ? "1" : "0")">
     <button type="button" class="cw-fab" data-cw-toggle aria-expanded="false" aria-controls="dxChatPanel" title="Hỏi DriveX">
         <i class="bi bi-chat-dots-fill"></i><span>Hỏi DriveX</span>
     </button>
     <section class="cw-panel" id="dxChatPanel" hidden aria-label="Trợ lý DriveX">
         <header class="cw-head">
             <div><strong>Trợ lý DriveX</strong><small>Tìm xe trống, hỏi cách đặt xe</small></div>
-            <button type="button" class="cw-close" data-cw-toggle aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+            <div class="cw-head-actions">
+                @if (isCustomer)
+                {
+                    <button type="button" class="cw-close" data-cw-clear title="Xóa lịch sử trò chuyện" aria-label="Xóa lịch sử trò chuyện"><i class="bi bi-trash3"></i></button>
+                }
+                <button type="button" class="cw-close" data-cw-toggle aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+            </div>
         </header>
         <div class="cw-log" data-cw-log aria-live="polite">
-            <div class="cw-msg is-bot">Chào bạn! Bạn có thể hỏi: "Từ ngày 22 đến 25 còn xe 7 chỗ nào dưới 6 triệu?" hoặc "Hủy đơn như thế nào?"</div>
+            <div class="cw-msg is-bot cw-welcome">
+                @if (!string.IsNullOrEmpty(name))
+                {
+                    <p><strong>Xin chào @name! 👋</strong> Chào mừng bạn đến với DriveX.</p>
+                }
+                else
+                {
+                    <p><strong>Xin chào! 👋</strong> Chào mừng bạn đến với DriveX.</p>
+                }
+                <p>Mình có thể tìm xe còn trống theo ngày thuê, ví dụ "Từ ngày 22 đến 25 còn xe 7 chỗ nào dưới 6 triệu?", hoặc giải đáp cách đặt xe, đặt cọc, hủy đơn.</p>
+                @if (!isCustomer)
+                {
+                    <p class="cw-hint"><a href="/Account/Login">Đăng nhập</a> để lưu lại lịch sử trò chuyện.</p>
+                }
+            </div>
             <div class="cw-chips">
                 <button type="button" data-cw-sample="Còn xe 4 chỗ hoặc 7 chỗ nào trống từ ngày 22 đến 25?">Xe trống 22→25</button>
                 <button type="button" data-cw-sample="Đặt xe như thế nào?">Cách đặt xe</button>

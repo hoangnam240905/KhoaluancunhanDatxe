@@ -21,5 +21,8 @@ public record ChatbotVehicle(
 
 public record ChatbotLink(string Text, string Url);
 
+/// <summary>One line of a customer's saved chat: a question (Answer null) or the assistant's answer.</summary>
+public record ChatbotHistoryItem(bool FromCustomer, string Text, DateTime CreatedAt, ChatbotAskResponse? Answer);
+
 /// <summary>What was searched — the web uses it to build the "Đặt xe" link.</summary>
 public record ChatbotSearchEcho(DateTime Start, DateTime End, string RentalMode, IReadOnlyList<int> Seats, decimal? MaxPrice);

@@ -11,6 +11,8 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : RolePa
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
 
+    public const string OtpNoticeKey = "OtpNotice";
+
     public class InputModel
     {
         [Required(ErrorMessage = "Vui lòng nhập email.")]
@@ -30,7 +32,7 @@ public class VerifyEmailModel(CarRentalApiClient api, AuthSession auth) : RolePa
         Input.Email = email ?? string.Empty;
         InfoMessage = string.IsNullOrEmpty(Input.Email)
             ? null
-            : "Đã gửi mã OTP đến email của bạn. Mã hết hạn sau 5 phút.";
+            : TempData[OtpNoticeKey] as string ?? "Mã OTP đã được gửi đến email của bạn (hết hạn sau 5 phút).";
         return Page();
     }
 
