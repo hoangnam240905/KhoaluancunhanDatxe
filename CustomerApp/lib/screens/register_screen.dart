@@ -87,7 +87,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => VerifyEmailScreen(email: pending.email),
+          builder: (_) => VerifyEmailScreen(
+            email: pending.email,
+            devOtp: pending.devOtp,
+            message: pending.message,
+          ),
         ),
       );
     } catch (e) {

@@ -121,6 +121,29 @@ public class VehicleInspectionService(CarRentalDbContext db)
         return rows.Select(ToResponse).ToList();
     }
 
+    /// <summary>
+    /// Latest known tank level for a vehicle from inspection history (Return preferred, else any).
+    /// Returns null when the vehicle has never recorded a valid FuelLevel — callers must not invent 0.
+    /// </summary>
+    public async Task<decimal?> GetLatestFuelLevelAsync(int vehicleId)
+    {
+        var rows = await db.VehicleInspections
+            .AsNoTracking()
+            .Where(i => i.VehicleId == vehicleId && i.FuelLevel != null)
+            .OrderByDescending(i => i.InspectionId)
+            .Select(i => new { i.InspectionType, i.FuelLevel })
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return null;
+
+        var latestReturn = rows.FirstOrDefault(i => i.InspectionType == VehicleInspectionTypes.Return);
+        var fuel = latestReturn?.FuelLevel ?? rows[0].FuelLevel;
+        if (fuel is < 0 or > 100)
+            return null;
+        return fuel;
+    }
+
     public static VehicleInspectionResponse ToResponse(VehicleInspection i) => new(
         i.InspectionId,
         i.BookingId,

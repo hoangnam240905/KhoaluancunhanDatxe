@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
 import 'create_booking_screen.dart';
+import 'chatbot_screen.dart';
+import 'search_screen.dart';
 import 'login_screen.dart';
 import 'vehicle_detail_screen.dart';
 
@@ -34,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _end = DateTime.now().add(const Duration(days: 2));
   final _seats = TextEditingController();
   final _priceMax = TextEditingController();
+  Offset? _chatbotOffset;
 
   @override
   void initState() {
@@ -115,117 +118,249 @@ class _HomeScreenState extends State<HomeScreen> {
       return _types.where((t) => t.seatCapacity <= 4).toList();
     }
     if (_selectedCategory == '7 chỗ') {
-      return _types.where((t) => t.seatCapacity > 4 && t.seatCapacity <= 7).toList();
+      return _types
+          .where((t) => t.seatCapacity > 4 && t.seatCapacity <= 7)
+          .toList();
     }
     if (_selectedCategory == '16 chỗ') {
-      return _types.where((t) => t.seatCapacity > 7 && t.seatCapacity <= 16 && !t.typeName.contains('Limousine')).toList();
+      return _types
+          .where(
+            (t) =>
+                t.seatCapacity > 7 &&
+                t.seatCapacity <= 16 &&
+                !t.typeName.contains('Limousine'),
+          )
+          .toList();
     }
     if (_selectedCategory == 'Limousine') {
-      return _types.where((t) => t.typeName.toLowerCase().contains('limousine')).toList();
+      return _types
+          .where((t) => t.typeName.toLowerCase().contains('limousine'))
+          .toList();
     }
     return _types;
   }
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenSize = mediaQuery.size;
+    const chatbotWidth = 124.0;
+    const chatbotHeight = 46.0;
+    const edgePadding = 14.0;
+
+    void moveChatbot(DragUpdateDetails details) {
+      final current =
+          _chatbotOffset ??
+          Offset(
+            screenSize.width - chatbotWidth - edgePadding,
+            screenSize.height - mediaQuery.padding.bottom - chatbotHeight - 92,
+          );
+      final next = current + details.delta;
+      setState(() {
+        _chatbotOffset = Offset(
+          next.dx.clamp(
+            edgePadding,
+            screenSize.width - chatbotWidth - edgePadding,
+          ),
+          next.dy.clamp(
+            mediaQuery.padding.top + edgePadding,
+            screenSize.height -
+                mediaQuery.padding.bottom -
+                chatbotHeight -
+                edgePadding,
+          ),
+        );
+      });
+    }
+
+    void openChatbot() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatbotScreen(api: widget.api, vehicleTypes: _types),
+        ),
+      );
+    }
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              expandedHeight: 210,
-              backgroundColor: AppColors.primaryDark,
-              foregroundColor: Colors.white,
-              actions: [
-                if (!widget.isLoggedIn)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: FilledButton.tonal(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(80, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                      ),
+        child: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  expandedHeight: 210,
+                  backgroundColor: AppColors.primaryDark,
+                  foregroundColor: Colors.white,
+                  actions: [
+                    IconButton(
+                      tooltip: 'Tìm xe',
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      ),
-                      child: const Text('Đăng nhập'),
-                    ),
-                  ),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      'assets/images/home/hero.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox(),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF0F172A).withValues(alpha: 0.88),
-                            const Color(0xFF1E3A8A).withValues(alpha: 0.82),
-                            const Color(0xFF2563EB).withValues(alpha: 0.70),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                        MaterialPageRoute(
+                          builder: (_) => SearchScreen(api: widget.api),
                         ),
                       ),
+                      icon: const Icon(Icons.search),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 78, 20, 16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    if (!widget.isLoggedIn)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(80, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          ),
+                          child: const Text('Đăng nhập'),
+                        ),
+                      ),
+                  ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          'assets/images/home/hero.jpg',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox(),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF0F172A).withValues(alpha: 0.88),
+                                const Color(0xFF1E3A8A).withValues(alpha: 0.82),
+                                const Color(0xFF2563EB).withValues(alpha: 0.70),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 78, 20, 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.car_rental, color: Colors.white, size: 18),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.car_rental,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    widget.isLoggedIn
+                                        ? 'Xin chào, ${widget.userName}'
+                                        : 'DriveX',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                widget.isLoggedIn
-                                    ? 'Xin chào, ${widget.userName}'
-                                    : 'DriveX',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Thuê xe du lịch\n4 - 16 chỗ cao cấp',
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.2,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: _body()),
+              ],
+            ),
+            Positioned(
+              left: _chatbotOffset?.dx,
+              top: _chatbotOffset?.dy,
+              right: _chatbotOffset == null ? edgePadding : null,
+              bottom: _chatbotOffset == null
+                  ? mediaQuery.padding.bottom + 92
+                  : null,
+              child: GestureDetector(
+                onPanUpdate: moveChatbot,
+                onTap: openChatbot,
+                child: Semantics(
+                  button: true,
+                  label: 'Mở trợ lý AI DriveX',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      width: chatbotWidth,
+                      height: chatbotHeight,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F2F67), AppColors.primary],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          width: 1.5,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 7),
                           const Text(
-                            'Thuê xe du lịch\n4 - 16 chỗ cao cấp',
+                            'Trợ lý AI',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: _body()),
           ],
         ),
       ),
@@ -261,7 +396,10 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_recommendError != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(_recommendError!, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                _recommendError!,
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           if (_recommendLoading)
             const Padding(
@@ -286,7 +424,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Text(
                 '${_filteredTypes.length} xe',
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -296,26 +438,35 @@ class _HomeScreenState extends State<HomeScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['Tất cả', '4 chỗ', '7 chỗ', '16 chỗ', 'Limousine'].map((cat) {
-                final isSelected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (_) => setState(() => _selectedCategory = cat),
-                    selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(
-                      color: isSelected ? AppColors.primary : AppColors.muted,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+              children: ['Tất cả', '4 chỗ', '7 chỗ', '16 chỗ', 'Limousine'].map(
+                (cat) {
+                  final isSelected = _selectedCategory == cat;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(cat),
+                      selected: isSelected,
+                      onSelected: (_) =>
+                          setState(() => _selectedCategory = cat),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppColors.primary : AppColors.muted,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                      ),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.border,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
-                    side: BorderSide(
-                      color: isSelected ? AppColors.primary : AppColors.border,
-                    ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                );
-              }).toList(),
+                  );
+                },
+              ).toList(),
             ),
           ),
           const SizedBox(height: 12),
@@ -422,7 +573,8 @@ class _HomeScreenState extends State<HomeScreen> {
         priceMax: price,
       );
       if (_recommended.isEmpty) {
-        _recommendError = 'Không có loại xe khả dụng trong khoảng thời gian này.';
+        _recommendError =
+            'Không có loại xe khả dụng trong khoảng thời gian này.';
       }
     } catch (e) {
       _recommendError = e.toString().replaceFirst('Exception: ', '');
@@ -453,8 +605,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(fontSize: 12),
                   ),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -468,8 +625,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(fontSize: 12),
                   ),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -486,7 +648,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     labelText: 'Số chỗ tối thiểu',
                     prefixIcon: const Icon(Icons.person_outline, size: 18),
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -499,7 +663,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     labelText: 'Giá tối đa/ngày',
                     prefixIcon: const Icon(Icons.payments_outlined, size: 18),
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ),
@@ -514,7 +680,9 @@ class _HomeScreenState extends State<HomeScreen> {
               label: const Text('Tìm xe gợi ý tốt nhất'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -539,16 +707,29 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(item.typeName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  item.typeName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'Điểm: ${item.score.toStringAsFixed(1)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -560,7 +741,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 4),
                 Text(
                   '${item.avgRating.toStringAsFixed(1)} · ${item.availableCount} xe sẵn sàng',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -573,10 +758,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 fromRecommendation: true,
               ),
               icon: const Icon(Icons.check, size: 16),
-              label: Text(widget.isLoggedIn ? 'Chọn xe này và Đặt' : 'Đăng nhập để đặt'),
+              label: Text(
+                widget.isLoggedIn ? 'Chọn xe này và Đặt' : 'Đăng nhập để đặt',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.success,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -608,14 +797,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   top: 12,
                   right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '${type.seatCapacity} Chỗ',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -632,7 +828,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: Text(
                           type.typeName,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       Text(
@@ -654,7 +853,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           type.description ?? 'Xe gia đình & du lịch hiện đại',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -667,7 +869,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 12),
                   const Row(
                     children: [
-                      VehicleSpecChip(icon: Icons.airline_seat_recline_normal, label: 'Tiện nghi'),
+                      VehicleSpecChip(
+                        icon: Icons.airline_seat_recline_normal,
+                        label: 'Tiện nghi',
+                      ),
                       SizedBox(width: 6),
                       VehicleSpecChip(icon: Icons.ac_unit, label: 'Điều hòa'),
                       SizedBox(width: 6),
@@ -682,7 +887,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _openDetail(type),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           child: const Text('Xem chi tiết'),
                         ),
@@ -693,9 +900,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _openBooking(type: type),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          child: Text(widget.isLoggedIn ? 'Đặt xe' : 'Đăng nhập'),
+                          child: Text(
+                            widget.isLoggedIn ? 'Đặt xe' : 'Đăng nhập',
+                          ),
                         ),
                       ),
                     ],
@@ -712,9 +923,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _routeEmoji(String icon) {
     return Container(
       color: const Color(0xFFEFF6FF),
-      child: Center(
-        child: Text(icon, style: const TextStyle(fontSize: 26)),
-      ),
+      child: Center(child: Text(icon, style: const TextStyle(fontSize: 26))),
     );
   }
 
@@ -758,7 +967,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     route.title,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Row(
@@ -768,19 +980,31 @@ class _HomeScreenState extends State<HomeScreen> {
                           route.from,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.text),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.text,
+                          ),
                         ),
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(Icons.arrow_forward, size: 12, color: AppColors.primary),
+                        child: Icon(
+                          Icons.arrow_forward,
+                          size: 12,
+                          color: AppColors.primary,
+                        ),
                       ),
                       Flexible(
                         child: Text(
                           route.to,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.primary),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ],
@@ -788,7 +1012,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 3),
                   Text(
                     '${route.distanceKm} km · ${route.duration}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -796,7 +1023,9 @@ class _HomeScreenState extends State<HomeScreen> {
             FilledButton.tonal(
               onPressed: () => _openBooking(route: route),
               style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Đặt tuyến'),
             ),
@@ -806,4 +1035,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
