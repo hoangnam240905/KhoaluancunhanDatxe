@@ -4,7 +4,8 @@ namespace Backend.Services.Chatbot;
 
 public sealed record FaqLink(string Text, string Url);
 
-public sealed record FaqItem(string Id, string Category, IReadOnlyList<string> Keywords, string Answer, IReadOnlyList<FaqLink> Links);
+/// <param name="RuleTopic">A rental rule (documents, insurance, late return…): beats a search that only names a seat count.</param>
+public sealed record FaqItem(string Id, string Category, IReadOnlyList<string> Keywords, string Answer, IReadOnlyList<FaqLink> Links, bool RuleTopic = false);
 
 /// <summary>
 /// Written FAQ about using the app (plan1.md 1.5), loaded from Data/ChatbotKnowledge.json.
@@ -42,15 +43,24 @@ public sealed class FaqKnowledgeBase
 
     /// <summary>
     /// Best item by number of keyword phrases found in the normalized message (longer phrases weigh more
-    /// so "huy don" beats "don"). Only items that have an answer can win.
+    /// so "huy don" beats "don"). Items still waiting for the company's rules (empty answer) take part too:
+    /// when one of them is the best match the result is null ("chưa có thông tin"), so a question about,
+    /// say, insurance is not answered by a nearby item that only shares a word.
     /// </summary>
     public FaqItem? Match(string normalizedMessage)
+    {
+        var best = Best(normalizedMessage);
+        return string.IsNullOrWhiteSpace(best?.Answer) ? null : best;
+    }
+
+    /// <summary>Best-scoring item including those still waiting for an answer (null = nothing matched).</summary>
+    public FaqItem? Best(string normalizedMessage)
     {
         if (string.IsNullOrWhiteSpace(normalizedMessage)) return null;
         var padded = $" {normalizedMessage} ";
         FaqItem? best = null;
         var bestScore = 0;
-        foreach (var item in Items.Where(i => !string.IsNullOrWhiteSpace(i.Answer)))
+        foreach (var item in Items)
         {
             var score = item.Keywords.Where(k => padded.Contains($" {k} ") || (k.Contains(' ') && padded.Contains(k)))
                 .Sum(k => k.Split(' ').Length);

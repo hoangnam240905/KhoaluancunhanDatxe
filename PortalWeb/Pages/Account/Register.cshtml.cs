@@ -51,6 +51,8 @@ public class RegisterModel(CarRentalApiClient api, AuthSession auth) : RolePageM
         var (data, error) = await api.RegisterAsync(new RegisterCustomerRequest(
             Input.Email, Input.Password, Input.FullName, Input.Phone, null, null, null, Input.ConfirmPassword));
         if (data is null) { ErrorMessage = error; return Page(); }
+        // The Backend says what really happened (sent by Gmail, printed to the Backend log in Development, failed).
+        TempData[VerifyEmailModel.OtpNoticeKey] = data.Message;
         return RedirectToPage("/Account/VerifyEmail", new { email = data.Email });
     }
 }

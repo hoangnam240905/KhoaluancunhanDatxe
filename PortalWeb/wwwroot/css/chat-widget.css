@@ -46,3 +46,13 @@
     .cw { right: .75rem; bottom: .75rem; }
     .cw-fab span { display: none; }
 }
+
+/* Welcome + saved history */
+.cw-head-actions { display: flex; align-items: center; gap: .55rem; }
+.cw-head-actions .cw-close { opacity: .85; }
+.cw-head-actions .cw-close:hover { opacity: 1; }
+.cw-welcome p + p { margin-top: .4rem; }
+.cw-hint { color: #64748b; font-size: .8rem; }
+.cw-hint a { color: #2563eb; font-weight: 600; }
+.cw-divider { display: flex; align-items: center; gap: .5rem; color: #94a3b8; font-size: .72rem; margin: .25rem 0; }
+.cw-divider::before, .cw-divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }

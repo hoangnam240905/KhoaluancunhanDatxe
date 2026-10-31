@@ -1,11 +1,11 @@
 {
-  "_note": "Kho hỏi đáp của chatbot DriveX (plan1.md 1.5). Chỉ ghi điều có trong hệ thống. Từ khóa viết KHÔNG DẤU, chữ thường. Mục có answer rỗng thì chatbot không trả lời mục đó — điền từ quy định thực tế của nhà xe.",
+  "_note": "Kho hỏi đáp của chatbot DriveX (plan1.md 1.5, 1.7). Chỉ ghi điều có trong hệ thống. Từ khóa viết KHÔNG DẤU, chữ thường. Mục có answer rỗng = chờ quy định thật của nhà xe: chatbot trả 'chưa có thông tin' (mục đó vẫn được so khớp để câu hỏi không bị mục khác trả lời nhầm). ruleTopic = câu hỏi về quy định, thắng câu chỉ nhắc số chỗ xe.",
   "contactFallback": "lien-he",
   "items": [
     {
       "id": "dat-xe",
       "category": "Đặt xe",
-      "keywords": ["dat xe", "cach dat", "thue xe nhu the nao", "quy trinh", "cac buoc", "lam sao de thue", "dat nhu the nao", "huong dan dat"],
+      "keywords": ["dat xe", "cach dat", "thue xe nhu the nao", "quy trinh", "cac buoc", "lam sao de thue", "dat nhu the nao", "huong dan dat", "xac nhan", "bao lau duoc xac nhan"],
       "answer": "Các bước: Tìm xe → xem chi tiết → tạo đơn → chờ điều phối xác nhận → ký hợp đồng và đặt cọc (cần xong cả hai thì điều phối mới phân công xe) → nhận xe → trả xe → đánh giá chuyến.",
       "links": [{ "text": "Tìm xe", "url": "/Search" }, { "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
     },
@@ -26,22 +26,22 @@
     {
       "id": "hinh-thuc",
       "category": "Tự lái và có tài xế",
-      "keywords": ["tu lai", "co tai xe", "khac nhau", "tai xe rieng", "thue kem tai xe", "lai rieng"],
+      "keywords": ["tu lai", "co tai xe", "khac nhau", "tai xe rieng", "thue kem tai xe", "lai rieng", "vuot km", "vuot so km", "vuot so kilomet", "kilomet", "phi km", "phat sinh phi"],
       "answer": "Tự lái: tính giá tự lái theo ngày, mỗi ngày có số km miễn phí theo loại xe (mặc định 200 km/ngày), vượt thì tính thêm theo km. Có tài xế: giá thuê theo ngày + phí tài xế theo ngày + cước km theo quãng đường.",
       "links": [{ "text": "Tìm xe", "url": "/Search" }]
     },
     {
       "id": "cach-tinh-gia",
       "category": "Cách tính giá",
-      "keywords": ["tinh gia", "gia thue", "bang gia", "tinh tien", "tinh theo ngay", "may ngay", "bao nhieu tien", "chi phi"],
-      "answer": "Số ngày thuê tính theo thời gian nhận–trả, làm tròn lên, tối thiểu 1 ngày (ví dụ 26 giờ tính 2 ngày). Giá theo ngày khác nhau giữa tự lái và có tài xế; xem báo giá chính xác khi tạo đơn.",
+      "keywords": ["tinh gia", "gia thue", "bang gia", "tinh tien", "tinh theo ngay", "may ngay", "bao nhieu tien", "chi phi", "cuoi tuan", "ngay thuong", "thue thang", "theo thang", "dai han"],
+      "answer": "Số ngày thuê tính theo thời gian nhận–trả, làm tròn lên, tối thiểu 1 ngày (ví dụ 26 giờ tính 2 ngày). Giá theo ngày khác nhau giữa tự lái và có tài xế, không phân biệt ngày thường hay cuối tuần. Chưa có giá thuê theo tháng riêng: thuê dài ngày vẫn tính theo số ngày; xem báo giá chính xác khi tạo đơn.",
       "links": [{ "text": "Tìm xe", "url": "/Search" }]
     },
     {
       "id": "diem-don",
       "category": "Điểm đón / trả",
-      "keywords": ["diem don", "diem tra", "noi nhan", "nhan xe o dau", "tra xe o dau", "dia diem nhan", "giao xe tan noi"],
-      "answer": "Bạn nhập điểm nhận và điểm trả xe khi tạo đơn.",
+      "keywords": ["diem don", "diem tra", "noi nhan", "nhan xe o dau", "tra xe o dau", "dia diem nhan"],
+      "answer": "Bạn nhập điểm nhận xe và điểm trả xe khi tạo đơn.",
       "links": [{ "text": "Tìm xe", "url": "/Search" }]
     },
     {
@@ -54,9 +54,10 @@
     {
       "id": "hop-dong",
       "category": "Hợp đồng",
-      "keywords": ["hop dong", "ky hop dong", "ky ten", "dieu khoan"],
+      "keywords": ["hop dong", "ky hop dong", "ky ten", "dieu khoan", "ky online", "ky truc tiep", "hop dong online"],
       "answer": "Sau khi đơn được xác nhận, bạn ký hợp đồng điện tử trên trang chi tiết đơn. Hợp đồng lưu lại điều khoản tại thời điểm ký.",
-      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
+      "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }],
+      "ruleTopic": true
     },
     {
       "id": "dang-ky",
@@ -94,9 +95,31 @@
       "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
     },
     {
+      "id": "pham-vi",
+      "category": "Phạm vi dịch vụ",
+      "keywords": ["xe may", "mo to", "xe ga", "xe dap", "xe so"],
+      "answer": "DriveX chỉ cho thuê ô tô (xe 4 chỗ, 7 chỗ, limousine 9 chỗ và 16 chỗ), không cho thuê xe máy.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }],
+      "ruleTopic": true
+    },
+    {
+      "id": "danh-sach-xe",
+      "category": "Danh sách xe",
+      "keywords": ["tat ca xe", "danh sach xe", "xem xe", "xe dang cho thue", "cac xe dang co", "doi xe"],
+      "answer": "Bạn xem toàn bộ xe, lọc theo loại, số chỗ, giá và ngày thuê ở trang Tìm xe.",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }]
+    },
+    {
+      "id": "nhieu-xe",
+      "category": "Thuê nhiều xe",
+      "keywords": ["hai xe", "2 xe", "nhieu xe", "cung luc", "them mot xe"],
+      "answer": "Mỗi đơn đặt 1 xe; muốn thuê 2 xe thì tạo 2 đơn. Còn đủ xe hay không thì hỏi mình theo ngày và số chỗ, ví dụ \"Từ ngày 22 đến 25 còn xe 7 chỗ nào trống?\".",
+      "links": [{ "text": "Tìm xe", "url": "/Search" }]
+    },
+    {
       "id": "lien-he",
       "category": "Liên hệ",
-      "keywords": ["lien he", "hotline", "so dien thoai", "goi dien", "tong dai", "ho tro"],
+      "keywords": ["lien he", "hotline", "so dien thoai", "goi dien", "tong dai", "ho tro", "ho tro 24", "24/7"],
       "answer": "",
       "links": []
     },
@@ -116,10 +139,75 @@
     },
     {
       "id": "giay-to",
-      "category": "Giấy tờ",
-      "keywords": ["giay to", "bang lai", "cccd", "can mang", "thu tuc"],
+      "category": "Giấy tờ, bằng lái",
+      "keywords": ["giay to", "bang lai", "giay phep lai xe", "hang b", "moi co bang", "khach nuoc ngoai", "nguoi nuoc ngoai", "cccd", "can mang", "thu tuc"],
       "answer": "",
-      "links": []
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "giao-xe",
+      "category": "Giao xe",
+      "keywords": ["giao xe", "phi giao xe", "tan nha", "san bay", "dua xe den"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "tra-muon",
+      "category": "Trả xe muộn",
+      "keywords": ["tra muon", "tra xe muon", "xe muon", "tre gio", "ket xe", "qua gio"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "su-co",
+      "category": "Bảo hiểm, sự cố",
+      "keywords": ["bao hiem", "va quet", "tai nan", "thung lop", "hong xe", "hong giua duong", "mat chia khoa", "vet xuoc", "su co", "boi thuong"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "hoan-coc-bao-lau",
+      "category": "Thời gian hoàn cọc",
+      "keywords": ["hoan lai trong bao lau", "bao lau thi hoan", "bao lau duoc hoan", "hoan coc trong bao lau", "may ngay hoan"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "tra-khac-diem",
+      "category": "Trả xe khác điểm nhận",
+      "keywords": ["tra o dia diem khac", "tra xe noi khac", "tra o noi khac", "tra o tinh khac", "mot chieu"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "doi-lich",
+      "category": "Giờ nhận, đổi ngày, gia hạn",
+      "keywords": ["nhan xe luc", "gio sang", "gia han", "doi ngay", "doi ngay thue", "tra som", "tra xe som", "them 1 ngay", "them mot ngay"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "tai-xe-quy-dinh",
+      "category": "Quy định tài xế",
+      "keywords": ["tai xe cho", "tai xe co cho", "cho suot", "cho suot chuyen", "an nghi", "tien an", "don tai nha", "chi phi tai xe"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
+    },
+    {
+      "id": "bao-duong-xe",
+      "category": "Bảo dưỡng xe",
+      "keywords": ["bao duong", "dang bao duong", "dang bao tri"],
+      "answer": "",
+      "links": [],
+      "ruleTopic": true
     }
   ]
 }
