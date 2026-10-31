@@ -29,11 +29,13 @@ class RegisterPendingResponse {
   final String email;
   final String message;
   final bool requiresVerification;
+  final String? devOtp;
 
   RegisterPendingResponse({
     required this.email,
     required this.message,
     required this.requiresVerification,
+    this.devOtp,
   });
 
   factory RegisterPendingResponse.fromJson(Map<String, dynamic> json) =>
@@ -41,6 +43,7 @@ class RegisterPendingResponse {
         email: json['email'] as String,
         message: json['message'] as String,
         requiresVerification: json['requiresVerification'] as bool? ?? true,
+        devOtp: json['devOtp'] as String?,
       );
 }
 
@@ -138,6 +141,84 @@ class Vehicle {
   );
 
   String get label => '$licensePlate · $brand $model';
+}
+
+class DriverOption {
+  final int driverId;
+  final String fullName;
+  final String? phone;
+  final double averageRating;
+  final int totalTrips;
+  final String licenseNumber;
+  final String availabilityStatus;
+  final bool canSelect;
+
+  DriverOption({
+    required this.driverId,
+    required this.fullName,
+    this.phone,
+    required this.averageRating,
+    required this.totalTrips,
+    required this.licenseNumber,
+    required this.availabilityStatus,
+    required this.canSelect,
+  });
+
+  factory DriverOption.fromJson(Map<String, dynamic> json) => DriverOption(
+        driverId: json['driverId'] as int,
+        fullName: json['fullName'] as String? ?? 'Tài xế',
+        phone: json['phone'] as String?,
+        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+        totalTrips: json['totalTrips'] as int? ?? 0,
+        licenseNumber: json['licenseNumber'] as String? ?? '',
+        availabilityStatus: json['availabilityStatus'] as String? ?? '',
+        canSelect: json['canSelect'] as bool? ?? true,
+      );
+}
+
+class DriverBusyPeriod {
+  final DateTime startDate;
+  final DateTime endDate;
+  final String label;
+
+  DriverBusyPeriod({
+    required this.startDate,
+    required this.endDate,
+    required this.label,
+  });
+
+  factory DriverBusyPeriod.fromJson(Map<String, dynamic> json) =>
+      DriverBusyPeriod(
+        startDate: DateTime.parse(json['startDate'] as String),
+        endDate: DateTime.parse(json['endDate'] as String),
+        label: json['label'] as String? ?? 'Đã có lịch',
+      );
+}
+
+class DriverSchedule {
+  final int driverId;
+  final String fullName;
+  final double averageRating;
+  final int totalTrips;
+  final List<DriverBusyPeriod> busy;
+
+  DriverSchedule({
+    required this.driverId,
+    required this.fullName,
+    required this.averageRating,
+    required this.totalTrips,
+    required this.busy,
+  });
+
+  factory DriverSchedule.fromJson(Map<String, dynamic> json) => DriverSchedule(
+        driverId: json['driverId'] as int,
+        fullName: json['fullName'] as String? ?? 'Tài xế',
+        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+        totalTrips: json['totalTrips'] as int? ?? 0,
+        busy: (json['busy'] as List<dynamic>? ?? [])
+            .map((e) => DriverBusyPeriod.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
 class VehicleTypeRecommendation {
@@ -362,6 +443,7 @@ class Booking {
   final double? finalBaseAmount;
   final double? totalFees;
   final List<VehicleInspection> inspections;
+  final String? cancellationReason;
 
   Booking({
     required this.bookingId,
@@ -392,6 +474,7 @@ class Booking {
     this.finalBaseAmount,
     this.totalFees,
     this.inspections = const [],
+    this.cancellationReason,
   });
 
   bool get isSelfDrive => rentalMode == 'SelfDrive';
@@ -442,6 +525,7 @@ class Booking {
     finalBaseAmount: (json['finalBaseAmount'] as num?)?.toDouble(),
     totalFees: (json['totalFees'] as num?)?.toDouble(),
     inspections: _parseInspections(json['inspections']),
+    cancellationReason: json['cancellationReason'] as String?,
   );
 
   static List<BookingFee> _parseFees(dynamic raw) {
@@ -579,6 +663,147 @@ class RentalContract {
         ? null
         : DateTime.parse(json['signedAt'] as String),
   );
+}
+
+class InvoiceDocument {
+  final String kind;
+  final String number;
+  final String title;
+  final DateTime issuedAt;
+  final String html;
+
+  InvoiceDocument({
+    required this.kind,
+    required this.number,
+    required this.title,
+    required this.issuedAt,
+    required this.html,
+  });
+
+  factory InvoiceDocument.fromJson(Map<String, dynamic> json) =>
+      InvoiceDocument(
+        kind: json['kind'] as String? ?? '',
+        number: json['number'] as String? ?? '',
+        title: json['title'] as String? ?? 'Hóa đơn',
+        issuedAt: DateTime.parse(json['issuedAt'] as String),
+        html: json['html'] as String? ?? '',
+      );
+}
+
+class CustomerNotification {
+  final int notificationId;
+  final String title;
+  final String message;
+  final String? type;
+  final bool isRead;
+  final DateTime createdAt;
+  final int? bookingId;
+
+  CustomerNotification({
+    required this.notificationId,
+    required this.title,
+    required this.message,
+    required this.isRead,
+    required this.createdAt,
+    this.type,
+    this.bookingId,
+  });
+
+  factory CustomerNotification.fromJson(Map<String, dynamic> json) =>
+      CustomerNotification(
+        notificationId: json['notificationId'] as int,
+        title: json['title'] as String? ?? 'Thông báo',
+        message: json['message'] as String? ?? '',
+        type: json['type'] as String?,
+        isRead: json['isRead'] as bool? ?? false,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        bookingId: json['bookingId'] as int?,
+      );
+}
+
+class ChatbotVehicle {
+  final int vehicleId;
+  final String name;
+  final String? typeName;
+  final int? seats;
+  final String? licensePlate;
+  final int? days;
+  final double? totalAmount;
+
+  ChatbotVehicle({
+    required this.vehicleId,
+    required this.name,
+    this.typeName,
+    this.seats,
+    this.licensePlate,
+    this.days,
+    this.totalAmount,
+  });
+
+  factory ChatbotVehicle.fromJson(Map<String, dynamic> json) => ChatbotVehicle(
+        vehicleId: json['vehicleId'] as int,
+        name: json['name'] as String? ?? 'Xe',
+        typeName: json['typeName'] as String?,
+        seats: json['seats'] as int?,
+        licensePlate: json['licensePlate'] as String?,
+        days: json['days'] as int?,
+        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+      );
+}
+
+class ChatbotLink {
+  final String text;
+  final String url;
+
+  ChatbotLink({required this.text, required this.url});
+
+  factory ChatbotLink.fromJson(Map<String, dynamic> json) => ChatbotLink(
+        text: json['text'] as String? ?? 'Mở liên kết',
+        url: json['url'] as String? ?? '/',
+      );
+}
+
+class ChatbotReply {
+  final String kind;
+  final String reply;
+  final List<ChatbotVehicle> vehicles;
+  final List<ChatbotLink> links;
+  final DateTime? start;
+  final DateTime? end;
+  final String? rentalMode;
+
+  ChatbotReply({
+    required this.kind,
+    required this.reply,
+    required this.vehicles,
+    required this.links,
+    this.start,
+    this.end,
+    this.rentalMode,
+  });
+
+  factory ChatbotReply.fromJson(Map<String, dynamic> json) => ChatbotReply(
+        kind: json['kind'] as String? ?? '',
+        reply: json['reply'] as String? ?? '',
+        vehicles: (json['vehicles'] as List<dynamic>? ?? [])
+            .map((e) => ChatbotVehicle.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        links: (json['links'] as List<dynamic>? ?? [])
+            .map((e) => ChatbotLink.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        start: (json['search'] as Map<String, dynamic>?)?['start'] == null
+            ? null
+            : DateTime.parse(
+                (json['search'] as Map<String, dynamic>)['start'] as String,
+              ),
+        end: (json['search'] as Map<String, dynamic>?)?['end'] == null
+            ? null
+            : DateTime.parse(
+                (json['search'] as Map<String, dynamic>)['end'] as String,
+              ),
+        rentalMode: (json['search'] as Map<String, dynamic>?)?['rentalMode']
+            as String?,
+      );
 }
 
 class TripAssignment {

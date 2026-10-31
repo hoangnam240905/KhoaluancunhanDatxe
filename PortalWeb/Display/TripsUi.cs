@@ -12,8 +12,7 @@ public static class TripsUi
         BookingResponse b,
         IReadOnlyList<VehicleInspectionResponse> inspections,
         IncidentResponse? openIncident,
-        DispatchDriverStatusResponse? fleetDriver,
-        decimal? lastKnownFuel = null)
+        DispatchDriverStatusResponse? fleetDriver)
     {
         var mode = string.IsNullOrWhiteSpace(b.RentalMode) ? "WithDriver" : b.RentalMode;
         var isSelf = string.Equals(mode, "SelfDrive", StringComparison.OrdinalIgnoreCase);

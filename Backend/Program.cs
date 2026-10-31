@@ -168,7 +168,6 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteBookingRequestedDriverColumn();
     db.EnsureSqliteMaintenanceRecordsTable();
     db.EnsureSqliteBookingRecommendationColumn();
-    db.EnsureSqliteBookingCancellationReasonColumn();
     db.EnsureSqliteContractsTable();
     db.EnsureSqliteCancelPolicyColumns();
     db.EnsureSqliteInspectionConditionColumns();

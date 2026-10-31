@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Backend.DTOs.Vehicles;
 using Microsoft.Extensions.Options;
 
@@ -11,7 +12,8 @@ public class FastApiRecommenderClient(HttpClient http) : IRecommenderClient
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
     public async Task<(List<VehicleTypeRecommendationResponse>? Items, string? Error, int StatusCode)> RecommendAsync(

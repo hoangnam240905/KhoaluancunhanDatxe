@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7341be9b-0c9e-41bb-b020-68f227dca387" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/Backend.Tests/PhaseP012VehicleSearchTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend.Tests/PhaseP012VehicleSearchTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend.Tests/TestAuthFactory.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend.Tests/TestAuthFactory.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Controllers/AuthController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Controllers/AuthController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Controllers/BookingsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Controllers/BookingsController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Controllers/VehiclesController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Controllers/VehiclesController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/DTOs/Auth/AuthDtos.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/DTOs/Auth/AuthDtos.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Data/v7-carid-vehicle-map.json" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Data/v7-carid-vehicle-map.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Entities/Booking.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Entities/Booking.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/AuthService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/AuthService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/DriverService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/DriverService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/EmailOtpService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/EmailOtpService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/FastApiRecommenderClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/FastApiRecommenderClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/NullEmailSender.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/NullEmailSender.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/VehicleInspectionService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/VehicleInspectionService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/Services/VehicleService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/Services/VehicleService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Backend/carrental.db" beforeDir="false" afterPath="$PROJECT_DIR$/Backend/carrental.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/models/models.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/models/models.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/screens/account_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/screens/account_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/screens/booking_detail_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/screens/booking_detail_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/screens/register_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/screens/register_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/screens/verify_email_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/screens/verify_email_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerApp/lib/services/api_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerApp/lib/services/api_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/Display/ProfileUi.cs" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/Display/ProfileUi.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/Models/ApiModels.cs" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/Models/ApiModels.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/Pages/Profile.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/Pages/Profile.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/Pages/Profile.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/Pages/Profile.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/Services/CarRentalApiClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/Services/CarRentalApiClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CustomerWeb/wwwroot/js/profile.js" beforeDir="false" afterPath="$PROJECT_DIR$/CustomerWeb/wwwroot/js/profile.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/Models/ApiModels.cs" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/Models/ApiModels.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/Pages/Mockup/Settings.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/Pages/Mockup/Settings.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/Pages/Mockup/Trips.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/Pages/Mockup/Trips.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/Pages/Shared/_Layout.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/Pages/Shared/_Layout.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/Services/CarRentalApiClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/Services/CarRentalApiClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/wwwroot/js/mockup-settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/wwwroot/js/mockup-settings.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DispatcherWeb/wwwroot/js/mockup-trips.js" beforeDir="false" afterPath="$PROJECT_DIR$/DispatcherWeb/wwwroot/js/mockup-trips.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DriverApp/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/DriverApp/android/gradle.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Display/BookingCalendarUi.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Display/BookingCalendarUi.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Display/BookingSubmitUi.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Display/BookingSubmitUi.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Display/TripsUi.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Display/TripsUi.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Models/ApiModels.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Models/ApiModels.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Account/Register.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Account/Register.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Account/VerifyEmail.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Account/VerifyEmail.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Bookings/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Bookings/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Contracts/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Contracts/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Create.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Create.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Edit.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Edit.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Customers/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Create.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Create.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Edit.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Edit.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Drivers/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Payments/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Payments/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Create.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Create.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Edit.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Edit.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Pricing/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Create.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Create.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Details.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Details.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Edit.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Edit.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Maintenance.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Admin/Vehicles/Maintenance.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Complete.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Complete.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Complete.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Complete.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Handover.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Handover.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Handover.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Handover.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Index.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Index.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Index.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Dispatcher/Index.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Hub.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Hub.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Hub.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Hub.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Settings.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Settings.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Settings.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Settings.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Trips.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Trips.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Trips.cshtml.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Mockup/Trips.cshtml.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Pages/Shared/_Layout.cshtml" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Pages/Shared/_Layout.cshtml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/Services/CarRentalApiClient.cs" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/Services/CarRentalApiClient.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/wwwroot/js/booking-create.js" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/wwwroot/js/booking-create.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-hub.js" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-hub.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-settings.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-trips.js" beforeDir="false" afterPath="$PROJECT_DIR$/PortalWeb/wwwroot/js/mockup-trips.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="3KKVaw3gsd90XE6Yefhgj1qxkSt" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.android.tools.idea.streaming.zoom.toolbar.visible&quot;: &quot;false&quot;,
+    &quot;com.google.services.firebase.aqiPopupShown&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev__duong&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/ASUS/Documents/KhoaluancunhanDatxe-dev_duong/KhoaluancunhanDatxe-dev_duong&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;device.screenshot&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
+  }
+}</component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7341be9b-0c9e-41bb-b020-68f227dca387" name="Changes" comment="" />
+      <created>1791306316351</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1791306316351</updated>
+    </task>
+    <servers />
+  </component>
+</project>

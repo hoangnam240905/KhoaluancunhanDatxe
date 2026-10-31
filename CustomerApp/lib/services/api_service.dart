@@ -70,7 +70,9 @@ class ApiService {
     final headers = {'Content-Type': 'application/json'};
     if (auth) {
       final token = await authService.getToken();
-      if (token != null) headers['Authorization'] = 'Bearer $token';
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
     return headers;
   }
@@ -97,15 +99,22 @@ class ApiService {
         if (title != null && title.isNotEmpty) return title;
       }
     } catch (_) {}
-    return 'Lỗi ${response.statusCode}';
+    return 'Lá»—i ${response.statusCode}';
   }
 
   Future<AuthResponse> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
-      headers: await _headers(),
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/auth/login'),
+          headers: await _headers(),
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception(
+            'KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n mÃ¡y chá»§ (quÃ¡ thá»i gian chá»). Vui lÃ²ng kiá»ƒm tra xem Backend Ä‘Ã£ báº­t chÆ°a.',
+          ),
+        );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final auth = AuthResponse.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -172,15 +181,16 @@ class ApiService {
     return auth;
   }
 
-  Future<String> resendVerificationOtp(String email) async {
+  Future<RegisterPendingResponse> resendVerificationOtp(String email) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/auth/resend-verification-otp'),
       headers: await _headers(),
       body: jsonEncode({'email': email}),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return json['message'] as String? ?? 'Đã gửi mã OTP.';
+    return RegisterPendingResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<String> forgotPassword(String email) async {
@@ -192,7 +202,7 @@ class ApiService {
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return json['message'] as String? ??
-        'Nếu email tồn tại, mã OTP đã được gửi.';
+        'Náº¿u email tá»“n táº¡i, mÃ£ OTP Ä‘Ã£ Ä‘Æ°á»£c gá»­i.';
   }
 
   Future<void> resetPassword({
@@ -252,6 +262,35 @@ class ApiService {
     );
   }
 
+  Future<UserProfile> updateProfile({
+    required String fullName,
+    String? phone,
+  }) async {
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({'fullName': fullName, 'phone': phone}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final profile = UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+    final currentAuth = await authService.getAuth();
+    if (currentAuth != null) {
+      await authService.saveAuth(
+        AuthResponse(
+          token: currentAuth.token,
+          userId: currentAuth.userId,
+          email: currentAuth.email,
+          fullName: profile.fullName,
+          role: currentAuth.role,
+          expiresAt: currentAuth.expiresAt,
+        ),
+      );
+    }
+    return profile;
+  }
+
   Future<List<VehicleType>> getVehicleTypes() async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/vehicle-types'),
@@ -264,15 +303,60 @@ class ApiService {
   }
 
   Future<List<Vehicle>> getVehicles({String? status}) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/vehicles').replace(
-      queryParameters: status == null ? null : {'status': status},
-    );
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/vehicles',
+    ).replace(queryParameters: status == null ? null : {'status': status});
     final response = await http.get(uri);
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
         .map((e) => Vehicle.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<DriverOption>> getAvailableDrivers({
+    int? vehicleId,
+    int? vehicleTypeId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final params = <String, String>{
+      'startDate': Formatters.rentalQuery(startDate),
+      'endDate': Formatters.rentalQuery(endDate),
+      if (vehicleId != null) 'vehicleId': '$vehicleId',
+      if (vehicleTypeId != null) 'vehicleTypeId': '$vehicleTypeId',
+    };
+    final response = await http.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/drivers/available',
+      ).replace(queryParameters: params),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => DriverOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<DriverSchedule> getDriverSchedule({
+    required int driverId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/$driverId/schedule').replace(
+        queryParameters: {
+          'startDate': Formatters.rentalQuery(startDate),
+          'endDate': Formatters.rentalQuery(endDate),
+        },
+      ),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return DriverSchedule.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<VehicleTypeRecommendation>> getRecommended({
@@ -366,6 +450,7 @@ class ApiService {
     String? notes,
     bool fromRecommendation = false,
     int? vehicleId,
+    int? driverId,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings').replace(
       queryParameters: fromRecommendation
@@ -384,13 +469,84 @@ class ApiService {
         'endDate': Formatters.rentalQuery(endDate),
         'estimatedDistance': estimatedDistance,
         'notes': notes,
+        // ignore: use_null_aware_elements
         if (vehicleId != null) 'vehicleId': vehicleId,
+        // ignore: use_null_aware_elements
+        if (driverId != null) 'driverId': driverId,
       }),
     );
     if (response.statusCode != 201 && response.statusCode != 200) {
       throw Exception(_errorMessage(response));
     }
     return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<Booking> cancelBooking({
+    required int bookingId,
+    required String reason,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({'reason': reason}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<InvoiceDocument>> getBookingInvoices(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/invoices'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => InvoiceDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<CustomerNotification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => CustomerNotification.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<CustomerNotification> markNotificationRead(int id) async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/$id/read'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return CustomerNotification.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/read-all'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  Future<ChatbotReply> askChatbot(String message) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/chatbot/ask'),
+      headers: await _headers(),
+      body: jsonEncode({'message': message}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return ChatbotReply.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<void> createReview({
@@ -478,7 +634,9 @@ class ApiService {
 
   Future<Payment> simulatePaymentSuccess(int paymentId) async {
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/payments/$paymentId/simulate-success'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/payments/$paymentId/simulate-success',
+      ),
       headers: await _headers(auth: true),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
@@ -487,7 +645,9 @@ class ApiService {
 
   Future<Payment> simulatePaymentFailure(int paymentId) async {
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/payments/$paymentId/simulate-failure'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/payments/$paymentId/simulate-failure',
+      ),
       headers: await _headers(auth: true),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));

@@ -53,8 +53,11 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   VehicleType? _type;
   List<VehicleType> _types = [];
   Vehicle? _vehicle;
+  DriverOption? _driver;
   List<Vehicle> _vehicles = [];
+  List<DriverOption> _drivers = [];
   bool _loadingVehicles = false;
+  bool _loadingDrivers = false;
   bool _loadingTypes = false;
   String? _typesError;
 
@@ -130,6 +133,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       });
       return;
     }
+
     setState(() => _loadingVehicles = true);
     try {
       final all = await widget.api.getVehicles(status: 'Available');
@@ -152,15 +156,63 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
   }
 
+  Future<void> _loadDrivers() async {
+    if (_rentalMode == 'SelfDrive' ||
+        _type == null ||
+        _start == null ||
+        _end == null) {
+      if (mounted) setState(() => _drivers = []);
+      return;
+    }
+    setState(() {
+      _loadingDrivers = true;
+      _driver = null;
+    });
+    try {
+      final drivers = await widget.api.getAvailableDrivers(
+        vehicleId: _vehicle?.vehicleId,
+        vehicleTypeId: _type!.typeId,
+        startDate: _start!,
+        endDate: _end!,
+      );
+      if (!mounted) return;
+      setState(() {
+        _drivers = drivers.where((driver) => driver.canSelect).toList();
+        _loadingDrivers = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _drivers = [];
+        _loadingDrivers = false;
+        _formError = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
   Future<void> _pickDateTime({required bool start}) async {
     final now = DateTime.now();
-    final initial =
-        (start ? _start : _end) ?? now.add(Duration(days: start ? 1 : 2));
+    final today = DateTime(now.year, now.month, now.day);
+
+    final firstDate = start
+        ? today
+        : (_start != null
+              ? DateTime(_start!.year, _start!.month, _start!.day)
+              : today);
+    DateTime initial =
+        (start ? _start : _end) ??
+        (start
+            ? today.add(const Duration(days: 1))
+            : today.add(const Duration(days: 2)));
+    if (initial.isBefore(firstDate)) {
+      initial = firstDate;
+    }
+
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      firstDate: firstDate,
+      lastDate: today.add(const Duration(days: 365)),
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
@@ -183,10 +235,20 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         }
       } else {
         _end = selected;
+        if (_start != null && !_end!.isAfter(_start!)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thời gian kết thúc phải sau thời gian bắt đầu.'),
+            ),
+          );
+          _end = _start!.add(const Duration(hours: 8));
+        }
       }
       _formError = null;
       _quote = null;
       _quoteError = null;
+      _drivers = [];
+      _driver = null;
     });
   }
 
@@ -249,6 +311,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
     setState(() => _formError = null);
     if (_step < 4) {
+      if (_step == 3) _loadDrivers();
       _page.nextPage(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -307,7 +370,9 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     if (_submitting) return;
     final error = _validateSubmit();
     if (error != null || _type == null || _start == null || _end == null) {
-      setState(() => _formError = error ?? 'Vui lòng kiểm tra lại thông tin đặt xe.');
+      setState(
+        () => _formError = error ?? 'Vui lòng kiểm tra lại thông tin đặt xe.',
+      );
       return;
     }
     setState(() {
@@ -326,6 +391,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         fromRecommendation: widget.fromRecommendation,
         vehicleId: _vehicle?.vehicleId,
+        driverId: _driver?.driverId,
       );
       if (!mounted) return;
       if (booking.bookingId <= 0) {
@@ -362,10 +428,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => BookingDetailScreen(
-                      api: widget.api,
-                      booking: booking,
-                    ),
+                    builder: (_) =>
+                        BookingDetailScreen(api: widget.api, booking: booking),
                   ),
                 );
               },
@@ -525,7 +589,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
           style: TextStyle(color: AppColors.muted),
         ),
         const SizedBox(height: 12),
-          RentalModeToggle(
+        RentalModeToggle(
           value: _rentalMode,
           onChanged: (v) => setState(() {
             _rentalMode = v;
@@ -548,51 +612,66 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         ..._types.map((type) {
-        final selected = _type?.typeId == type.typeId;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: AppCard(
-            onTap: () {
-              setState(() {
-                _type = type;
-                _vehicle = null;
-                _quote = null;
-                _quoteError = null;
-              });
-              _loadVehicles();
-            },
-            child: Row(
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: selected ? AppColors.primary : AppColors.muted,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        type.typeName,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      Text(
-                        '${type.seatCapacity} chỗ · ${Formatters.vnd(type.pricePerDay)}/ngày · ${Formatters.vnd(type.pricePerKm)}/km',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+          final selected = _type?.typeId == type.typeId;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              onTap: () {
+                setState(() {
+                  _type = type;
+                  _vehicle = null;
+                  _quote = null;
+                  _quoteError = null;
+                });
+                _loadVehicles();
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: selected ? AppColors.primary : AppColors.muted,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 56,
+                      height: 42,
+                      child: VehicleImage(
+                        imageUrl: type.imageUrl,
+                        typeName: type.typeName,
+                        seatCapacity: type.seatCapacity,
+                        height: 42,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type.typeName,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          '${type.seatCapacity} chỗ · ${Formatters.vnd(type.pricePerDay)}/ngày · ${Formatters.vnd(type.pricePerKm)}/km',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
         const SizedBox(height: 8),
         const Text(
           'Xe cụ thể (không bắt buộc)',
@@ -625,9 +704,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         : AppColors.muted,
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text('Để điều phối chọn sau'),
-                  ),
+                  const Expanded(child: Text('Để điều phối chọn sau')),
                 ],
               ),
             ),
@@ -767,7 +844,12 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
               _row('Hình thức', Formatters.rentalModeLabel(_rentalMode)),
               _row('Loại xe', _type?.typeName ?? '—'),
               _row('Xe cụ thể', _vehicle?.label ?? 'Để điều phối chọn sau'),
-              _row('Nhận xe', _start == null ? '—' : Formatters.rentalDt(_start!)),
+              if (_rentalMode != 'SelfDrive')
+                _row('Tài xế', _driver?.fullName ?? 'Để điều phối chọn sau'),
+              _row(
+                'Nhận xe',
+                _start == null ? '—' : Formatters.rentalDt(_start!),
+              ),
               _row('Trả xe', _end == null ? '—' : Formatters.rentalDt(_end!)),
               _row(
                 'Điểm đón',
@@ -790,6 +872,42 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             ],
           ),
         ),
+        if (_rentalMode != 'SelfDrive') ...[
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Chọn tài xế',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Không chọn thì điều phối sẽ phân công tài xế phù hợp.',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                if (_loadingDrivers)
+                  const Center(child: CircularProgressIndicator())
+                else if (_drivers.isEmpty)
+                  const Text(
+                    'Chưa có tài xế phù hợp hoặc chưa tải được danh sách.',
+                    style: TextStyle(color: AppColors.muted),
+                  )
+                else ...[
+                  _driverChoice(null, 'Để điều phối chọn sau'),
+                  ..._drivers.map(
+                    (driver) => _driverChoice(
+                      driver,
+                      '${driver.fullName} · ${driver.averageRating.toStringAsFixed(1)} sao · ${driver.totalTrips} chuyến',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         AppCard(
           child: Column(
@@ -886,5 +1004,84 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         ],
       ),
     );
+  }
+
+  Widget _driverChoice(DriverOption? driver, String label) {
+    final selected = _driver?.driverId == driver?.driverId;
+    return InkWell(
+      onTap: () => setState(() => _driver = driver),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? AppColors.primary : AppColors.muted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (driver != null)
+              IconButton(
+                tooltip: 'Xem lịch tài xế',
+                icon: const Icon(Icons.calendar_month_outlined),
+                onPressed: () => _showDriverSchedule(driver),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDriverSchedule(DriverOption driver) async {
+    if (_start == null || _end == null) return;
+    try {
+      final schedule = await widget.api.getDriverSchedule(
+        driverId: driver.driverId,
+        startDate: _start!,
+        endDate: _end!,
+      );
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Lịch của ${schedule.fullName}'),
+          content: schedule.busy.isEmpty
+              ? const Text('Tài xế không có lịch bận trong khoảng đã chọn.')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: schedule.busy
+                      .map(
+                        (period) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            '${Formatters.rentalDt(period.startDate)} - '
+                            '${Formatters.rentalDt(period.endDate)}\n${period.label}',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
   }
 }
