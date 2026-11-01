@@ -255,7 +255,7 @@ public class DispatchService(
             bookingId,
             VehicleInspectionTypes.Handover,
             request?.OdometerKm,
-            request?.FuelLevel,
+            fuelLevel,
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,

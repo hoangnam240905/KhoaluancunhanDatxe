@@ -11,6 +11,7 @@ public class PhaseDispatcherHandoverUiTests
         var indexCode = Read("PortalWeb", "Pages", "Dispatcher", "Index.cshtml.cs");
         var handoverView = Read("PortalWeb", "Pages", "Dispatcher", "Handover.cshtml");
         var handoverCode = Read("PortalWeb", "Pages", "Dispatcher", "Handover.cshtml.cs");
+        var hubJs = Read("PortalWeb", "wwwroot", "js", "mockup-hub.js");
 
         Assert.Contains("asp-page=\"/Dispatcher/Handover\"", indexView);
         Assert.Contains(">Giao xe</a>", indexView);
@@ -23,9 +24,14 @@ public class PhaseDispatcherHandoverUiTests
         Assert.Contains("asp-page=\"/Dispatcher/Handover\"", handoverView);
         Assert.Contains("Input.OdometerKm", handoverView);
         Assert.Contains("Input.FuelLevel", handoverView);
-        Assert.Contains("Input.ExteriorCondition", handoverView);
-        Assert.Contains("Input.TechnicalCondition", handoverView);
-        Assert.Contains("Input.Notes", handoverView);
+        Assert.Contains("Mức nhiên liệu", handoverView);
+        Assert.Contains("HandoverVehicleState", handoverCode);
+        Assert.Contains("RequiresFuelInput", handoverCode);
+        Assert.Contains("ResolveHandoverCondition", handoverCode);
+        Assert.DoesNotContain("VehicleId ==", handoverCode);
+        Assert.DoesNotContain("if (!currentKm)", hubJs);
+        Assert.Contains("isValidKm", hubJs);
+        Assert.Contains("isValidFuelPercent", hubJs);
     }
 
     [Fact]

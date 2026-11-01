@@ -24,4 +24,7 @@ app.UseAuthorization();
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 
+// Phase 1: alias so /admin-ui/dashboard matches the dashboard route family
+app.MapGet("/admin-ui/dashboard", () => Results.Redirect("/dashboard"));
+
 app.Run();

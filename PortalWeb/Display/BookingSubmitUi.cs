@@ -9,8 +9,9 @@ public static class BookingSubmitUi
     public const string NeedQuoteReview =
         "Vui lòng kiểm tra báo giá bên dưới, rồi bấm «Xác nhận đặt xe» để gửi đơn.";
     public const string QuoteUnavailable = "Không thể tính báo giá. Vui lòng kiểm tra lại thông tin.";
-    public const string VehicleUnavailable = "Xe không còn khả dụng trong khoảng thời gian này.";
+    public const string VehicleUnavailable = "Xe này hiện không khả dụng trong khoảng thời gian bạn đã chọn.";
     public const string QuoteLoading = "Đang tính giá...";
+    public const string AvailabilityLoading = "Đang kiểm tra tình trạng xe...";
     public const string Creating = "Đang tạo đơn...";
 
     public static string FriendlyCreateFailure(string? apiMessage)
@@ -49,7 +50,9 @@ public static class BookingSubmitUi
     private static bool LooksUnavailable(string msg)
     {
         return msg.Contains("không còn khả dụng", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("không khả dụng", StringComparison.OrdinalIgnoreCase)
             || msg.Contains("khong con kha dung", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("khong kha dung", StringComparison.OrdinalIgnoreCase)
             || msg.Contains("xung đột", StringComparison.OrdinalIgnoreCase)
             || msg.Contains("xung dot", StringComparison.OrdinalIgnoreCase)
             || msg.Contains("conflict", StringComparison.OrdinalIgnoreCase)
