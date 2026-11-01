@@ -223,8 +223,10 @@
     drawerBackdrop?.classList.remove("is-on");
   }
 
-  function openDrawer({ title, subtitle, tabs, renderTab, footerHtml, bindFooter }) {
+  function openDrawer({ title, subtitle, tabs, renderTab, footerHtml, bindFooter, compact }) {
     if (!drawer) return;
+    // compact: short forms take only the height they need instead of the full screen.
+    drawer.classList.toggle("is-compact", !!compact);
     drawerTitle.textContent = title || "Details";
     drawerSub.textContent = subtitle || "";
     drawerTabs.innerHTML = "";
@@ -2978,6 +2980,7 @@
         `<option value="${v.vehicleId}">${esc(v.licensePlate)} · ${esc((v.brand || "") + " " + (v.model || "")).trim()}</option>`
       ).join("");
       openDrawer({
+        compact: true,
         title: "Tạo phiếu bảo dưỡng",
         subtitle: "API bảo dưỡng xe",
         renderTab: () => `
