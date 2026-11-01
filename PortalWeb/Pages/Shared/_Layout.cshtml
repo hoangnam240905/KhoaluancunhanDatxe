@@ -132,6 +132,7 @@
                             @if (role == "Customer")
                             {
                                 <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                                <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                             }
                             <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                             <li><hr class="dropdown-divider" /></li>
@@ -201,6 +202,10 @@
 @if (role is null or "Customer")
 {
     <partial name="_ChatWidget" />
+    <script src="~/js/favorites.js" asp-append-version="true"
+            data-customer="@(role == "Customer" ? "1" : "0")"
+            data-ids-url="@Url.Page("/Customer/Favorites", "Ids")"
+            data-toggle-url="@Url.Page("/Customer/Favorites", "Toggle")"></script>
 }
 </body>
 </html>

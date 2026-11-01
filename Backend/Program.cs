@@ -44,6 +44,7 @@ builder.Services.AddScoped<ScheduleConflictService>();
 builder.Services.AddSingleton(Backend.Services.Chatbot.FaqKnowledgeBase.LoadDefault());
 builder.Services.AddScoped<Backend.Services.Chatbot.ChatbotService>();
 builder.Services.AddScoped<Backend.Services.Chatbot.ChatbotHistoryService>();
+builder.Services.AddScoped<FavoriteVehicleService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<DriverEligibilityService>();
 builder.Services.AddScoped<DriverService>();
@@ -180,6 +181,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteTravelProfileColumns();
     db.EnsureSqliteNotificationColumns();
     db.EnsureSqliteChatbotMessagesTable();
+    db.EnsureSqliteFavoriteVehiclesTable();
     DbSeeder.Seed(db);
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))

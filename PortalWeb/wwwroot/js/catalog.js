@@ -16,16 +16,6 @@
         });
     });
 
-    document.querySelectorAll("[data-cc-fav]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            btn.classList.toggle("is-on");
-            const icon = btn.querySelector("i");
-            if (!icon) return;
-            icon.classList.toggle("bi-heart");
-            icon.classList.toggle("bi-heart-fill");
-        });
-    });
-
     const main = document.querySelector("[data-cd-main]");
     document.querySelectorAll("[data-cd-thumb]").forEach((btn) => {
         btn.addEventListener("click", () => {

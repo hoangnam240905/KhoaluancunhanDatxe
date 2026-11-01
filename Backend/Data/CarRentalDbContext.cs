@@ -25,6 +25,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ChatbotMessage> ChatbotMessages => Set<ChatbotMessage>();
+    public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -278,6 +279,21 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<FavoriteVehicle>(e =>
+        {
+            e.ToTable("FavoriteVehicles");
+            e.HasKey(x => x.FavoriteVehicleId);
+            e.HasIndex(x => new { x.CustomerId, x.VehicleId }).IsUnique();
+            e.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Vehicle)
+                .WithMany()
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ChatbotMessage>(e =>
@@ -1025,6 +1041,27 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     /// Creates IncidentReports on an existing SQLite database. No backfill.
     /// </summary>
     /// <summary>Chat history of logged-in customers (chatbot widget), for databases created before it existed.</summary>
+    public void EnsureSqliteFavoriteVehiclesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "FavoriteVehicles" (
+                "FavoriteVehicleId" INTEGER NOT NULL CONSTRAINT "PK_FavoriteVehicles" PRIMARY KEY AUTOINCREMENT,
+                "CustomerId" INTEGER NOT NULL,
+                "VehicleId" INTEGER NOT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_FavoriteVehicles_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("CustomerId") ON DELETE CASCADE,
+                CONSTRAINT "FK_FavoriteVehicles_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE UNIQUE INDEX IF NOT EXISTS "IX_FavoriteVehicles_CustomerId_VehicleId" ON "FavoriteVehicles" ("CustomerId", "VehicleId");""");
+    }
+
     public void EnsureSqliteChatbotMessagesTable()
     {
         if (Database.ProviderName is null ||

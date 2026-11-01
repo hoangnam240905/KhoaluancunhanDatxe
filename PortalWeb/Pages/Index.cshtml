@@ -58,6 +58,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                             <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                             <li><hr class="dropdown-divider" /></li>
                             <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -181,7 +182,6 @@
                                 <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
                                 <span class="ch-illus">Ảnh minh họa</span>
                                 <span class="ch-badge @(isTop ? "" : "ch-badge-alt")">@(isTop ? "Đề xuất hàng đầu" : "Gợi ý")</span>
-                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
                             </div>
                             <div class="ch-card-body">
                                 <h3>@t.TypeName</h3>
@@ -214,7 +214,6 @@
                                 <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
                                 <span class="ch-illus">Ảnh minh họa</span>
                                 <span class="ch-badge @(isTop ? "" : "ch-badge-alt")">@(isTop ? "Đề xuất hàng đầu" : "Gợi ý")</span>
-                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
                             </div>
                             <div class="ch-card-body">
                                 <h3>@t.TypeName</h3>
@@ -252,7 +251,6 @@
                             <div class="ch-card-media">
                                 <img src="@img" alt="@t.TypeName" onerror="this.onerror=null;this.src='/images/home/sedan.jpg';" />
                                 <span class="ch-illus">Ảnh minh họa</span>
-                                <button type="button" class="ch-fav" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
                             </div>
                             <div class="ch-card-body">
                                 <h3>@t.TypeName</h3>

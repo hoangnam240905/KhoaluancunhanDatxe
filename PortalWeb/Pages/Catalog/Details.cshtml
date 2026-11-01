@@ -54,6 +54,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                             <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                             <li><hr class="dropdown-divider" /></li>
                             <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -152,7 +153,10 @@
                     <button type="button" class="cd-schedule" data-cd-schedule>
                         <i class="bi bi-calendar3"></i> Xem lịch xe
                     </button>
-                    <button type="button" class="cd-wish" data-cc-fav><i class="bi bi-heart"></i> Thêm vào yêu thích</button>
+                    @if (v.VehicleId is int favId and > 0)
+                    {
+                        <button type="button" class="cd-wish" data-fav-vehicle="@favId"><i class="bi bi-heart"></i> <span data-fav-label>Thêm vào yêu thích</span></button>
+                    }
                 </div>
             </div>
         </div>

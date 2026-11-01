@@ -505,6 +505,7 @@ button.ch-icon-btn { cursor: pointer; }
 }
 
 .ch-fav:hover { color: #e11d48; }
+.ch-fav.is-on { color: #e11d48; }
 
 .ch-card-body {
     padding: 1rem 1rem 1.1rem;

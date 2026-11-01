@@ -111,6 +111,7 @@
           <div class="ch-card-media">
             <img src="${img}" alt="${brand} ${model}" onerror="this.onerror=null;this.src='${NO_IMAGE}';" />
             <span class="ch-badge ${badgeClass}">${badge}</span>
+            <button type="button" class="ch-fav" data-fav-vehicle="${vehicleId}" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
           </div>
           <div class="ch-card-body">
             <h3>${brand} ${model}</h3>
@@ -129,6 +130,7 @@
           </div>
         </article>`;
     }).join("");
+    window.dxFavorites?.mark();
   }
 
   async function load() {

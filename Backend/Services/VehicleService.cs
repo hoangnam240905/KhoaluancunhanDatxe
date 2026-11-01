@@ -153,7 +153,7 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         return vehicle is null ? null : MapVehicle(vehicle);
     }
 
-    private static VehicleResponse MapVehicle(Entities.Vehicle v) => new(
+    internal static VehicleResponse MapVehicle(Entities.Vehicle v) => new(
         v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
         v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
         v.RegistrationNumber, v.RegistrationExpiryDate,
@@ -386,6 +386,8 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         if (hasAssignment)
             return (false, VehicleOccupancyRules.CannotDeleteHistoric, StatusCodes.Status400BadRequest);
 
+        // Photos belong to the car (their foreign key is Restrict); without this every car with a photo is undeletable.
+        db.VehicleImages.RemoveRange(await db.VehicleImages.Where(i => i.VehicleId == id).ToListAsync());
         db.Vehicles.Remove(vehicle);
         try
         {

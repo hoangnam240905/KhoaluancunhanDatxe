@@ -1,0 +1,122 @@
+@page "/Customer/Favorites"
+@model PortalWeb.Pages.Customer.FavoritesModel
+@using PortalWeb.Display
+@{
+    ViewData["Title"] = "Xe yêu thích";
+    ViewData["FullBleed"] = true;
+    ViewData["HomeShell"] = true;
+    var initials = string.IsNullOrWhiteSpace(Model.UserName)
+        ? "DX"
+        : string.Concat(Model.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => p[0])).ToUpperInvariant();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/recommendations.css" asp-append-version="true" />
+}
+
+<div class="ch-page cr-page">
+    <header class="ch-nav">
+        <div class="ch-container ch-nav-inner">
+            <a class="ch-brand" href="/">
+                <span class="ch-brand-mark"><i class="bi bi-car-front-fill"></i></span>
+                DriveX
+            </a>
+            <nav class="ch-nav-links" aria-label="Khách hàng">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Recommendations">Gợi ý</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </nav>
+            <div class="ch-nav-actions">
+                <a class="ch-icon-btn" asp-page="/Search" title="Tìm xe" aria-label="Tìm xe"><i class="bi bi-search"></i></a>
+                <partial name="_CustomerNotify" />
+                <button type="button" class="ch-nav-toggle" data-bs-toggle="collapse" data-bs-target="#chMobileNav" aria-label="Mở menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="dropdown">
+                    <a class="dx-user" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="dx-avatar">@initials</span>
+                        <span class="dx-user-meta ch-user-meta">
+                            <span class="dx-user-name">@Model.UserName</span>
+                            <span class="dx-user-role">Khách hàng</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
+                        <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ch-container">
+            <div class="collapse ch-nav-mobile" id="chMobileNav">
+                <a href="/">Trang chủ</a>
+                <a asp-page="/Search">Xe</a>
+                <a asp-page="/Customer/Recommendations">Gợi ý</a>
+                <a asp-page="/Customer/Bookings/Index">Đơn đặt</a>
+                <a href="/#about">Về chúng tôi</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="cr-hero">
+        <div class="ch-container cr-hero-grid">
+            <div>
+                <div class="ch-eyebrow">Của bạn</div>
+                <h1>Xe yêu thích</h1>
+                <p class="cr-hero-lead">Những xe bạn đã thả tim, để xem lại và đặt nhanh khi cần.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cr-body">
+        <div class="ch-container">
+            @if (Model.ErrorMessage is not null)
+            {
+                <div class="cr-state" role="alert"><p>@Model.ErrorMessage</p></div>
+            }
+            else
+            {
+                <div class="cr-state" data-fav-empty @(Model.Cards.Count > 0 ? "hidden" : null)>
+                    <p>Bạn chưa có xe yêu thích nào. Bấm hình trái tim trên thẻ xe để lưu lại.</p>
+                    <a class="btn btn-primary btn-sm" asp-page="/Search">Tìm xe</a>
+                </div>
+                <div class="ch-grid">
+                    @foreach (var card in Model.Cards)
+                    {
+                        var v = card.Vehicle;
+                        <article class="ch-card" data-fav-card>
+                            <div class="ch-card-media">
+                                <img src="@v.ImageUrl" alt="@v.Name" />
+                                <button type="button" class="ch-fav" data-fav-vehicle="@v.VehicleId" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            </div>
+                            <div class="ch-card-body">
+                                <h3>@v.Name</h3>
+                                <div class="ch-meta">
+                                    <span>@v.Category · @v.LicensePlate · @HomeUi.SeatLabel(v.Seats)</span>
+                                </div>
+                                <div class="ch-price">
+                                    <strong>@HomeUi.PricePerDay(v.PricePerDay)</strong>
+                                    <a asp-page="/Catalog/Details" asp-route-slug="@v.VehicleId" class="btn btn-outline-primary btn-sm">Chi tiết</a>
+                                    @if (card.Inactive)
+                                    {
+                                        <span class="btn btn-outline-secondary btn-sm disabled">Ngừng hoạt động</span>
+                                    }
+                                    else
+                                    {
+                                        <a asp-page="/Customer/Bookings/Create" asp-route-vehicleId="@v.VehicleId" class="btn btn-primary btn-sm">Đặt xe</a>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+</div>

@@ -548,6 +548,23 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     }
 
     /// <summary>Public chatbot (anonymous allowed): vehicle search via real availability + written FAQ.</summary>
+    /// <summary>Customer: favourite cars, newest first; null when the API call fails.</summary>
+    public async Task<List<VehicleResponse>?> GetFavoritesAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/favorites");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleResponse>>(JsonOptions)
+            : null;
+    }
+
+    public async Task<bool> SetFavoriteAsync(int vehicleId, bool on)
+    {
+        using var request = CreateRequest(on ? HttpMethod.Put : HttpMethod.Delete, $"/api/favorites/{vehicleId}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Customer: saved chat with the assistant, oldest first (empty for guests / on error).</summary>
     public async Task<List<ChatbotHistoryItem>> GetChatbotHistoryAsync()
     {
