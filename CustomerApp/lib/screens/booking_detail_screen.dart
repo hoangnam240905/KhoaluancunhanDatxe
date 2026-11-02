@@ -5,9 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../utils/review_rules.dart';
 import '../widgets/app_widgets.dart';
-import 'contract_screen.dart';
 import 'create_booking_screen.dart';
-import 'deposit_payment_screen.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final ApiService api;
@@ -1350,7 +1348,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _openDepositPaymentScreen,
+                onPressed: _creatingPayment ? null : _openDepositDialog,
                 icon: const Icon(Icons.payment, size: 18),
                 label: const Text('Thanh toán tiền cọc ngay'),
                 style: FilledButton.styleFrom(
@@ -1359,13 +1357,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton(
-                onPressed: _creatingPayment ? null : _openDepositDialog,
-                child: const Text('Hoặc nhập mã giao dịch thủ công'),
               ),
             ),
           ],
@@ -1698,49 +1689,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _openContractScreen,
-                icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Xem toàn văn hợp đồng điện tử'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
           ],
         ],
       ),
     );
-  }
-
-    void _openContractScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ContractScreen(
-          booking: _booking,
-          api: widget.api,
-        ),
-      ),
-    ).then((_) => _loadPayments());
-  }
-
-  void _openDepositPaymentScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DepositPaymentScreen(
-          booking: _booking,
-          api: widget.api,
-        ),
-      ),
-    ).then((_) => _loadPayments());
   }
 
   Future<void> _issueContract() async {
