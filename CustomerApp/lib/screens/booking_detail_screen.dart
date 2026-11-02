@@ -1361,11 +1361,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Center(
               child: TextButton(
                 onPressed: _creatingPayment ? null : _openDepositDialog,
-                child: const Text('Hoặc tạo yêu cầu thanh toán thủ công'),
+                child: const Text('Hoặc nhập mã giao dịch thủ công'),
               ),
             ),
           ],
@@ -1681,21 +1681,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ],
               ),
             ),
-                        const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _openContractScreen,
-                icon: const Icon(Icons.description_outlined, size: 18),
-                label: const Text('Xem toàn văn hợp đồng điện tử'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
             if (_canSignContract) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -1713,6 +1698,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openContractScreen,
+                icon: const Icon(Icons.description_outlined, size: 18),
+                label: const Text('Xem toàn văn hợp đồng điện tử'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),
