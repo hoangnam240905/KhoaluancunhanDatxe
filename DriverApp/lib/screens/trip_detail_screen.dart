@@ -20,12 +20,16 @@ class TripDetailScreen extends StatefulWidget {
 class _TripDetailScreenState extends State<TripDetailScreen> {
   late DriverBooking _trip;
   bool _busy = false;
+  List<VehicleInspection> _inspections = [];
+  bool _loadingInspections = true;
+  String? _inspectionError;
 
   @override
   void initState() {
     super.initState();
     _trip = widget.trip;
     widget.api.realtime.addListener(_onRealtime);
+    _loadInspections();
   }
 
   @override
@@ -52,6 +56,143 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     if (found != null) {
       setState(() => _trip = found);
     }
+    _loadInspections();
+  }
+
+  Future<void> _loadInspections() async {
+    if (mounted) {
+      setState(() {
+        _loadingInspections = true;
+        _inspectionError = null;
+      });
+    }
+    try {
+      final items = await widget.api.getBookingInspections(_trip.bookingId);
+      if (mounted) setState(() => _inspections = items);
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _inspectionError = e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingInspections = false);
+    }
+  }
+
+  Future<void> _startWithInspection() async {
+    final aid = _trip.assignmentId;
+    if (aid == null) return;
+    final message = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CompleteTripDialog(
+        title: 'Kiểm tra xe trước chuyến',
+        description:
+            'Ghi nhận số km, nhiên liệu và tình trạng xe khi nhận xe. Dữ liệu này được lưu thành biên bản giao xe.',
+        submitLabel: 'Kiểm tra & bắt đầu',
+        odometerLabel: 'Số km lúc nhận xe (bắt buộc)',
+        fuelLabel: 'Nhiên liệu lúc nhận xe % (bắt buộc)',
+        onSubmit:
+            ({
+              required odometerKm,
+              required fuelLevel,
+              exteriorCondition,
+              technicalCondition,
+              notes,
+            }) => widget.api.startTrip(
+              aid,
+              odometerKm: odometerKm,
+              fuelLevel: fuelLevel,
+              exteriorCondition: exteriorCondition,
+              technicalCondition: technicalCondition,
+              notes: notes,
+            ),
+      ),
+    );
+    if (!mounted || message == null) return;
+    try {
+      await _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  Widget _inspectionSection() {
+    final theme = Theme.of(context);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('BIÊN BẢN KIỂM XE', style: _section),
+          const SizedBox(height: 8),
+          if (_loadingInspections)
+            const LinearProgressIndicator()
+          else if (_inspectionError != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _inspectionError!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadInspections,
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            )
+          else if (_inspections.isEmpty)
+            Text(
+              'Chưa có biên bản kiểm xe.',
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+            )
+          else
+            ..._inspections.map(_inspectionTile),
+        ],
+      ),
+    );
+  }
+
+  Widget _inspectionTile(VehicleInspection inspection) {
+    final type = inspection.inspectionType.toLowerCase() == 'handover'
+        ? 'Giao xe'
+        : 'Nhận xe';
+    final details = <String>[
+      if (inspection.odometerKm != null)
+        'Số km: ${inspection.odometerKm!.toStringAsFixed(0)}',
+      if (inspection.fuelLevel != null)
+        'Nhiên liệu: ${inspection.fuelLevel!.toStringAsFixed(0)}%',
+      if ((inspection.exteriorCondition ?? inspection.condition)?.isNotEmpty ==
+          true)
+        'Ngoại thất: ${inspection.exteriorCondition ?? inspection.condition}',
+      if (inspection.technicalCondition?.isNotEmpty == true)
+        'Kỹ thuật: ${inspection.technicalCondition}',
+      if (inspection.notes?.isNotEmpty == true) 'Ghi chú: ${inspection.notes}',
+    ];
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        Icons.fact_check_outlined,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      title: Text(
+        'Biên bản $type',
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(
+        '${Formatters.dt(inspection.actualAt)}${details.isEmpty ? '' : '\n${details.join(' · ')}'}',
+      ),
+      isThreeLine: details.isNotEmpty,
+    );
   }
 
   Future<void> _run(Future<String> Function() action) async {
@@ -108,7 +249,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       return;
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _reportIncident() async {
@@ -139,7 +282,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       return;
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -197,6 +342,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          _inspectionSection(),
           const SizedBox(height: 12),
           AppCard(
             child: Column(
@@ -264,7 +411,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       case 'Accepted':
         return [
           FilledButton(
-            onPressed: () => _run(() => widget.api.startTrip(aid)),
+            onPressed: _startWithInspection,
             child: const Text('Bắt đầu chuyến'),
           ),
           const SizedBox(height: 8),
@@ -315,7 +462,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 children: [
                   Icon(
                     done ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: done ? AppColors.success : AppColors.muted,
+                    color: done
+                        ? AppColors.success
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -323,7 +472,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     Formatters.assignmentStatus(steps[i]),
                     style: TextStyle(
                       fontWeight: done ? FontWeight.w800 : FontWeight.w500,
-                      color: done ? AppColors.text : AppColors.muted,
+                      color: done
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -343,13 +494,15 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         children: [
           SizedBox(
             width: 130,
-            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+            child: Text(value, style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

@@ -94,8 +94,9 @@ public class BookingsController(
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         if (role == RoleNames.Driver)
-            return Forbid();
-
+            return booking.Assignment?.DriverId == userId
+                ? Ok(await inspections.GetByBookingAsync(id))
+                : Forbid();
         if (role == RoleNames.Customer && booking.CustomerId != userId)
             return Forbid();
 

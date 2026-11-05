@@ -1,29 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/driver_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
-  runApp(const DriverApp());
-}
+void main() => runApp(const DriverApp());
 
-class DriverApp extends StatelessWidget {
+class DriverApp extends StatefulWidget {
   const DriverApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DriveX Tài xế',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: const SplashScreen(),
-    );
+  State<DriverApp> createState() => _DriverAppState();
+}
+
+class _DriverAppState extends State<DriverApp> {
+  static const _darkModeKey = 'driver_app_dark_mode';
+  bool _darkMode = false;
+  bool _themeLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
   }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _darkMode = prefs.getBool(_darkModeKey) ?? false;
+        _themeLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _setDarkMode(bool value) async {
+    setState(() => _darkMode = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_darkModeKey, value);
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'DriveX Tài xế',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light,
+    darkTheme: AppTheme.dark,
+    themeMode: _darkMode ? ThemeMode.dark : ThemeMode.light,
+    home: _themeLoaded
+        ? SplashScreen(darkMode: _darkMode, onDarkModeChanged: _setDarkMode)
+        : const _ThemeLoadingScreen(),
+  );
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({
+    super.key,
+    required this.darkMode,
+    required this.onDarkModeChanged,
+  });
+  final bool darkMode;
+  final ValueChanged<bool> onDarkModeChanged;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -48,43 +86,49 @@ class _SplashScreenState extends State<SplashScreen> {
     if (valid) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => DriverShell(api: _api, userName: auth.fullName),
+          builder: (_) => DriverShell(
+            api: _api,
+            userName: auth.fullName,
+            darkMode: widget.darkMode,
+            onDarkModeChanged: widget.onDarkModeChanged,
+          ),
         ),
       );
       return;
     }
-    if (auth != null) {
-      await _api.authService.logout();
-    }
+    if (auth != null) await _api.authService.logout();
     if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.primaryDark,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.local_taxi, size: 56, color: Colors.white),
-            SizedBox(height: 16),
-            Text(
-              'DriverApp',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 24),
-            CircularProgressIndicator(color: Colors.white),
-          ],
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => LoginScreen(
+          darkMode: widget.darkMode,
+          onDarkModeChanged: widget.onDarkModeChanged,
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    body: Center(
+      child: CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
+}
+
+class _ThemeLoadingScreen extends StatelessWidget {
+  const _ThemeLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    body: Center(
+      child: CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
 }

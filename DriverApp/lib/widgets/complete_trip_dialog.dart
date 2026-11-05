@@ -16,7 +16,22 @@ typedef CompleteTripSubmit =
 /// disposed in [State.dispose] after the route unmounts — not by the caller
 /// while the dialog is still in the tree.
 class CompleteTripDialog extends StatefulWidget {
-  const CompleteTripDialog({super.key, required this.onSubmit});
+  const CompleteTripDialog({
+    super.key,
+    required this.onSubmit,
+    this.title = 'Hoàn thành chuyến',
+    this.description =
+        'Nhập số km, mức nhiên liệu và tình trạng xe khi kết thúc chuyến.',
+    this.submitLabel = 'Hoàn thành',
+    this.odometerLabel = 'Số km (bắt buộc)',
+    this.fuelLabel = 'Nhiên liệu % (bắt buộc)',
+  });
+
+  final String title;
+  final String description;
+  final String submitLabel;
+  final String odometerLabel;
+  final String fuelLabel;
 
   final CompleteTripSubmit onSubmit;
 
@@ -79,20 +94,20 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
     return PopScope(
       canPop: !_submitting,
       child: AlertDialog(
-        title: const Text('Hoàn thành chuyến'),
+        title: Text(widget.title),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Ghi nhận dữ liệu vận hành khi trả xe. Số km và nhiên liệu là bắt buộc.',
-                style: TextStyle(fontSize: 13),
-              ),
+              Text(widget.description, style: TextStyle(fontSize: 13)),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -102,9 +117,7 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Số km (bắt buộc)',
-                ),
+                decoration: InputDecoration(labelText: widget.odometerLabel),
               ),
               TextField(
                 key: const Key('complete-fuel'),
@@ -113,9 +126,7 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Nhiên liệu % (bắt buộc)',
-                ),
+                decoration: InputDecoration(labelText: widget.fuelLabel),
               ),
               TextField(
                 key: const Key('complete-exterior'),
@@ -141,25 +152,18 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                 enabled: !_submitting,
                 maxLength: 500,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú (notes)',
-                ),
+                decoration: const InputDecoration(labelText: 'Ghi chú (notes)'),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: const TextStyle(color: AppColors.danger),
-                ),
+                Text(_error!, style: const TextStyle(color: AppColors.danger)),
               ],
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: _submitting
-                ? null
-                : () => Navigator.of(context).pop(),
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
             child: const Text('Hủy'),
           ),
           FilledButton(
@@ -170,7 +174,7 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Hoàn thành'),
+                : Text(widget.submitLabel),
           ),
         ],
       ),
