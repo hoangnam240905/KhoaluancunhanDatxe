@@ -66,12 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F5FB),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 900;
-            if (!wide) return _mobileLayout();
-            return Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          if (!wide) return _mobileLayout();
+          return SafeArea(
+            child: Row(
               children: [
                 Expanded(flex: 11, child: _heroPanel()),
                 Expanded(
@@ -87,23 +87,61 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _mobileLayout() => Center(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: _loginCard(),
+  Widget _mobileLayout() => Stack(
+    fit: StackFit.expand,
+    children: [
+      Image.asset('assets/images/hero-car.jpg', fit: BoxFit.cover),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x77334E77), Color(0xE610203B)],
+          ),
+        ),
       ),
-    ),
+      SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _brand(light: true),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Đồng hành cùng bạn trên mọi hành trình',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Những hành trình tuyệt vời bắt đầu từ sự tin cậy.',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 22),
+                  _loginCard(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ],
   );
-
   Widget _heroPanel() => Stack(
     fit: StackFit.expand,
     children: [
