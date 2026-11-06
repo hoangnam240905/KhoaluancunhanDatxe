@@ -143,32 +143,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final screenSize = mediaQuery.size;
     const chatbotWidth = 124.0;
     const chatbotHeight = 46.0;
     const edgePadding = 14.0;
 
-    void moveChatbot(DragUpdateDetails details) {
-      final current =
-          _chatbotOffset ??
-          Offset(
-            screenSize.width - chatbotWidth - edgePadding,
-            screenSize.height - mediaQuery.padding.bottom - chatbotHeight - 92,
-          );
+    void moveChatbot(DragUpdateDetails details, BoxConstraints constraints) {
+      final maxX = constraints.maxWidth - chatbotWidth - edgePadding;
+      final maxY = constraints.maxHeight - chatbotHeight - edgePadding;
+      final current = _chatbotOffset ?? Offset(maxX, maxY - 78);
       final next = current + details.delta;
       setState(() {
         _chatbotOffset = Offset(
-          next.dx.clamp(
-            edgePadding,
-            screenSize.width - chatbotWidth - edgePadding,
-          ),
-          next.dy.clamp(
-            mediaQuery.padding.top + edgePadding,
-            screenSize.height -
-                mediaQuery.padding.bottom -
-                chatbotHeight -
-                edgePadding,
-          ),
+          next.dx.clamp(edgePadding, maxX),
+          next.dy.clamp(edgePadding, maxY),
         );
       });
     }
@@ -185,183 +172,193 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
-        child: Stack(
-          children: [
-            CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  expandedHeight: 210,
-                  backgroundColor: AppColors.primaryDark,
-                  foregroundColor: Colors.white,
-                  actions: [
-                    IconButton(
-                      tooltip: 'Tìm xe',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SearchScreen(api: widget.api),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    pinned: true,
+                    expandedHeight: 210,
+                    backgroundColor: AppColors.primaryDark,
+                    foregroundColor: Colors.white,
+                    actions: [
+                      IconButton(
+                        tooltip: 'Tìm xe',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SearchScreen(api: widget.api),
+                          ),
                         ),
+                        icon: const Icon(Icons.search),
                       ),
-                      icon: const Icon(Icons.search),
-                    ),
-                    if (!widget.isLoggedIn)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(80, 36),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                          ),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          ),
-                          child: const Text('Đăng nhập'),
-                        ),
-                      ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.asset(
-                          'assets/images/home/hero.jpg',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const SizedBox(),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF0F172A).withValues(alpha: 0.88),
-                                const Color(0xFF1E3A8A).withValues(alpha: 0.82),
-                                const Color(0xFF2563EB).withValues(alpha: 0.70),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                        ),
+                      if (!widget.isLoggedIn)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 78, 20, 16),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.car_rental,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    widget.isLoggedIn
-                                        ? 'Xin chào, ${widget.userName}'
-                                        : 'DriveX',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                          padding: const EdgeInsets.only(right: 12),
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(80, 36),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
                               ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Thuê xe du lịch\n4 - 16 chỗ cao cấp',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.2,
-                                ),
+                            ),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
                               ),
-                            ],
+                            ),
+                            child: const Text('Đăng nhập'),
                           ),
                         ),
-                      ],
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.asset(
+                            'assets/images/home/hero.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const SizedBox(),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(
+                                    0xFF0F172A,
+                                  ).withValues(alpha: 0.88),
+                                  const Color(
+                                    0xFF1E3A8A,
+                                  ).withValues(alpha: 0.82),
+                                  const Color(
+                                    0xFF2563EB,
+                                  ).withValues(alpha: 0.70),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 78, 20, 16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.car_rental,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.isLoggedIn
+                                          ? 'Xin chào, ${widget.userName}'
+                                          : 'DriveX',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Thuê xe du lịch\n4 - 16 chỗ cao cấp',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(child: _body()),
-              ],
-            ),
-            Positioned(
-              left: _chatbotOffset?.dx,
-              top: _chatbotOffset?.dy,
-              right: _chatbotOffset == null ? edgePadding : null,
-              bottom: _chatbotOffset == null
-                  ? mediaQuery.padding.bottom + 92
-                  : null,
-              child: GestureDetector(
-                onPanUpdate: moveChatbot,
-                onTap: openChatbot,
-                child: Semantics(
-                  button: true,
-                  label: 'Mở trợ lý AI DriveX',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      width: chatbotWidth,
-                      height: chatbotHeight,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0F2F67), AppColors.primary],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          width: 1.5,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x33000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 3),
+                  SliverToBoxAdapter(child: _body()),
+                ],
+              ),
+              Positioned(
+                left: _chatbotOffset?.dx,
+                top: _chatbotOffset?.dy,
+                right: _chatbotOffset == null ? edgePadding : null,
+                bottom: _chatbotOffset == null
+                    ? mediaQuery.padding.bottom + 92
+                    : null,
+                child: GestureDetector(
+                  onPanUpdate: (details) => moveChatbot(details, constraints),
+                  onTap: openChatbot,
+                  child: Semantics(
+                    button: true,
+                    label: 'Mở trợ lý AI DriveX',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Container(
+                        width: chatbotWidth,
+                        height: chatbotHeight,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0F2F67), AppColors.primary],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                            size: 24,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1.5,
                           ),
-                          const SizedBox(width: 7),
-                          const Text(
-                            'Trợ lý AI',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x33000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 7),
+                            const Text(
+                              'Trợ lý AI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

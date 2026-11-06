@@ -298,142 +298,148 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             20,
             MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Hủy chuyến xe',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.danger,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Bạn có chắc chắn muốn hủy đơn #${b.bookingId}? Xe và tài xế đã giữ chỗ sẽ được giải phóng ngay lập tức.',
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Chọn lý do nhanh:',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: presets.map((preset) {
-                  final isSelected = selectedPreset == preset;
-                  return ChoiceChip(
-                    label: Text(
-                      preset,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Hủy chuyến xe',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: isSelected ? Colors.white : null,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.danger,
                       ),
                     ),
-                    selected: isSelected,
-                    selectedColor: AppColors.danger,
-                    onSelected: (val) {
-                      setLocal(() {
-                        selectedPreset = val ? preset : null;
-                        if (val) reasonController.text = preset;
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reasonController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Lý do cụ thể (tùy chọn)',
-                  hintText: 'Nhập lý do bạn muốn hủy đơn...',
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
-              ),
-              if (errorText != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  errorText!,
-                  style: const TextStyle(color: AppColors.danger, fontSize: 13),
+                  'Bạn có chắc chắn muốn hủy đơn #${b.bookingId}? Xe và tài xế đã giữ chỗ sẽ được giải phóng ngay lập tức.',
+                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
                 ),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Quay lại'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: busy
-                          ? null
-                          : () async {
-                              final reason =
-                                  reasonController.text.trim().isEmpty
-                                  ? (selectedPreset ?? 'Khách hàng hủy đơn')
-                                  : reasonController.text.trim();
-                              setLocal(() {
-                                busy = true;
-                                errorText = null;
-                              });
-                              try {
-                                final updated = await widget.api.cancelBooking(
-                                  bookingId: b.bookingId,
-                                  reason: reason,
-                                );
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx);
-                                }
-                                if (!mounted) return;
-                                setState(() {
-                                  _booking = updated;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Đã hủy chuyến xe thành công.',
-                                    ),
-                                  ),
-                                );
-                                _loadPayments();
-                              } catch (e) {
-                                if (ctx.mounted) {
-                                  setLocal(() {
-                                    busy = false;
-                                    errorText = e.toString().replaceFirst(
-                                      'Exception: ',
-                                      '',
-                                    );
-                                  });
-                                }
-                              }
-                            },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.danger,
+                const SizedBox(height: 16),
+                const Text(
+                  'Chọn lý do nhanh:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: presets.map((preset) {
+                    final isSelected = selectedPreset == preset;
+                    return ChoiceChip(
+                      label: Text(
+                        preset,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isSelected ? Colors.white : null,
+                        ),
                       ),
-                      child: Text(busy ? 'Đang hủy...' : 'Xác nhận hủy'),
+                      selected: isSelected,
+                      selectedColor: AppColors.danger,
+                      onSelected: (val) {
+                        setLocal(() {
+                          selectedPreset = val ? preset : null;
+                          if (val) reasonController.text = preset;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Lý do cụ thể (tùy chọn)',
+                    hintText: 'Nhập lý do bạn muốn hủy đơn...',
+                  ),
+                ),
+                if (errorText != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorText!,
+                    style: const TextStyle(
+                      color: AppColors.danger,
+                      fontSize: 13,
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Quay lại'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                final reason =
+                                    reasonController.text.trim().isEmpty
+                                    ? (selectedPreset ?? 'Khách hàng hủy đơn')
+                                    : reasonController.text.trim();
+                                setLocal(() {
+                                  busy = true;
+                                  errorText = null;
+                                });
+                                try {
+                                  final updated = await widget.api
+                                      .cancelBooking(
+                                        bookingId: b.bookingId,
+                                        reason: reason,
+                                      );
+                                  if (ctx.mounted) {
+                                    Navigator.pop(ctx);
+                                  }
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _booking = updated;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Đã hủy chuyến xe thành công.',
+                                      ),
+                                    ),
+                                  );
+                                  _loadPayments();
+                                } catch (e) {
+                                  if (ctx.mounted) {
+                                    setLocal(() {
+                                      busy = false;
+                                      errorText = e.toString().replaceFirst(
+                                        'Exception: ',
+                                        '',
+                                      );
+                                    });
+                                  }
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.danger,
+                        ),
+                        child: Text(busy ? 'Đang hủy...' : 'Xác nhận hủy'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

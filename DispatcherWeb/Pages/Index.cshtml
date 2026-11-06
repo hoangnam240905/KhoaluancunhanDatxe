@@ -231,12 +231,14 @@
                                     @if (BookingHubUi.CanConfirm(b))
                                     {
                                         <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline">
+                                            <input type="hidden" name="id" value="@b.BookingId" />
                                             <button type="submit" class="btn btn-sm btn-success">✓ Xác nhận đơn</button>
                                         </form>
                                     }
                                     @if (BookingHubUi.CanCancel(b))
                                     {
                                         <form method="post" asp-page-handler="Reject" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                                            <input type="hidden" name="id" value="@b.BookingId" />
                                             <button type="submit" class="btn btn-sm btn-outline-danger">Không duyệt / Hủy đơn</button>
                                         </form>
                                     }
@@ -277,12 +279,14 @@
                             @if (BookingHubUi.CanConfirm(b))
                             {
                                 <form method="post" asp-page-handler="Confirm" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline">
+                                    <input type="hidden" name="id" value="@b.BookingId" />
                                     <button type="submit" class="btn btn-sm btn-success">✓ Xác nhận đơn</button>
                                 </form>
                             }
                             @if (BookingHubUi.CanCancel(b))
                             {
                                 <form method="post" asp-page-handler="Reject" asp-route-id="@b.BookingId" asp-all-route-data="Model.FilterRoutes()" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                                    <input type="hidden" name="id" value="@b.BookingId" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Không duyệt / Hủy đơn</button>
                                 </form>
                             }
@@ -476,12 +480,14 @@
                     @if (BookingHubUi.CanCancel(selected))
                     {
                         <form method="post" asp-page-handler="Reject" asp-route-id="@selected.BookingId" asp-all-route-data="Model.FilterRoutes()" onsubmit="return confirm('Bạn có chắc muốn từ chối đơn thuê này?');">
+                            <input type="hidden" name="id" value="@selected.BookingId" />
                             <button type="submit" class="btn btn-outline-danger">Không duyệt / Hủy đơn</button>
                         </form>
                     }
                     @if (BookingHubUi.CanConfirm(selected))
                     {
                         <form method="post" asp-page-handler="Confirm" asp-route-id="@selected.BookingId" asp-all-route-data="Model.FilterRoutes()">
+                            <input type="hidden" name="id" value="@selected.BookingId" />
                             <button type="submit" class="btn btn-success">✓ Xác nhận đơn</button>
                         </form>
                     }

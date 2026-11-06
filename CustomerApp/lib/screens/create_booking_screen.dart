@@ -39,16 +39,6 @@ class CreateBookingScreen extends StatefulWidget {
 }
 
 class _CreateBookingScreenState extends State<CreateBookingScreen> {
-  static const _titles = [
-    'Hình thức thuê',
-    'Loại xe',
-    'Thời gian',
-    'Địa điểm',
-    'Xác nhận',
-  ];
-
-  final _page = PageController();
-  int _step = 0;
   late String _rentalMode;
   VehicleType? _type;
   List<VehicleType> _types = [];
@@ -72,6 +62,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   BookingQuote? _quote;
   bool _quoteLoading = false;
   String? _quoteError;
+  bool _quoteRequested = false;
+  bool _driversRequested = false;
 
   @override
   void initState() {
@@ -99,7 +91,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   @override
   void dispose() {
-    _page.dispose();
     _pickup.dispose();
     _dropoff.dispose();
     _distance.dispose();
@@ -247,37 +238,11 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       _formError = null;
       _quote = null;
       _quoteError = null;
+      _quoteRequested = false;
       _drivers = [];
       _driver = null;
+      _driversRequested = false;
     });
-  }
-
-  String? _validateStep() {
-    switch (_step) {
-      case 1:
-        if (_type == null) return 'Vui lòng chọn loại xe.';
-      case 2:
-        if (_start == null || _end == null) {
-          return 'Vui lòng chọn thời gian nhận và trả xe.';
-        }
-        final clock = DateTime.now();
-        final today = DateTime(clock.year, clock.month, clock.day);
-        final startDay = DateTime(_start!.year, _start!.month, _start!.day);
-        if (startDay.isBefore(today)) {
-          return 'Ngày bắt đầu không được trong quá khứ.';
-        }
-        if (!_end!.isAfter(_start!)) {
-          return 'Thời gian trả phải sau thời gian nhận.';
-        }
-      case 3:
-        if (_pickup.text.trim().isEmpty) return 'Vui lòng nhập điểm đón.';
-        if (_dropoff.text.trim().isEmpty) return 'Vui lòng nhập điểm trả.';
-        final km = _distance.text.trim();
-        if (km.isNotEmpty && double.tryParse(km.replaceAll(',', '.')) == null) {
-          return 'Km dự kiến không hợp lệ.';
-        }
-    }
-    return null;
   }
 
   String? _validateSubmit() {
@@ -303,31 +268,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     return null;
   }
 
-  void _next() {
-    final error = _validateStep();
-    if (error != null) {
-      setState(() => _formError = error);
-      return;
-    }
-    setState(() => _formError = null);
-    if (_step < 4) {
-      if (_step == 3) _loadDrivers();
-      _page.nextPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
   void _back() {
-    if (_step == 0) {
-      Navigator.pop(context);
-      return;
-    }
-    _page.previousPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+    Navigator.pop(context);
   }
 
   double? get _distanceValue {
@@ -469,119 +411,113 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_type != null &&
+        _start != null &&
+        _end != null &&
+        _end!.isAfter(_start!) &&
+        !_quoteRequested &&
+        !_quoteLoading) {
+      _quoteRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadQuote();
+      });
+    }
+    if (_rentalMode != 'SelfDrive' &&
+        _type != null &&
+        _start != null &&
+        _end != null &&
+        !_driversRequested &&
+        !_loadingDrivers) {
+      _driversRequested = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadDrivers();
+      });
+    }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Đặt xe · ${_step + 1}/5'),
+        title: const Text('Đặt xe'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _back,
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _titles[_step],
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: (_step + 1) / 5,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Thông tin đặt xe',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             ),
-          ),
-          Expanded(
-            child: PageView(
-              controller: _page,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (i) {
-                setState(() => _step = i);
-                if (i == 4) _loadQuote();
-              },
-              children: [
-                _modeStep(),
-                _vehicleStep(),
-                _timeStep(),
-                _locationStep(),
-                _confirmStep(),
-              ],
+            const SizedBox(height: 4),
+            const Text(
+              'Điền các thông tin trên cùng một màn hình rồi gửi yêu cầu.',
+              style: TextStyle(color: AppColors.muted),
             ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Column(
-                children: [
-                  if (_formError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        _formError!,
-                        style: const TextStyle(color: AppColors.danger),
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      if (_step > 0)
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _submitting ? null : _back,
-                            child: const Text('Quay lại'),
+            const SizedBox(height: 18),
+            _sectionTitle('1. Hình thức thuê'),
+            _modeStep(),
+            _sectionTitle('2. Loại xe và xe cụ thể'),
+            _vehicleStep(),
+            _sectionTitle('3. Thời gian thuê'),
+            _timeStep(),
+            _sectionTitle('4. Địa điểm và ghi chú'),
+            _locationStep(),
+            _sectionTitle('5. Xác nhận và giá dự kiến'),
+            _confirmStep(),
+            if (_formError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _formError!,
+                  style: const TextStyle(color: AppColors.danger),
+                ),
+              ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _submitting ? null : _submit,
+                child: _submitting
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                      if (_step > 0) const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
-                        child: FilledButton(
-                          onPressed: _submitting
-                              ? null
-                              : (_step == 4 ? _submit : _next),
-                          child: _submitting
-                              ? const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text('Đang xử lý...'),
-                                  ],
-                                )
-                              : Text(
-                                  _step == 4
-                                      ? 'Gửi yêu cầu đặt xe'
-                                      : 'Tiếp tục',
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                          SizedBox(width: 8),
+                          Text('Đang xử lý...'),
+                        ],
+                      )
+                    : const Text('Gửi yêu cầu đặt xe'),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 4),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
       ),
     );
   }
 
   Widget _modeStep() {
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         const Text(
@@ -595,6 +531,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             _rentalMode = v;
             _quote = null;
             _quoteError = null;
+            _quoteRequested = false;
+            _driversRequested = false;
           }),
         ),
       ],
@@ -609,6 +547,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       return AppErrorState(message: _typesError!, onRetry: _loadTypes);
     }
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         ..._types.map((type) {
@@ -622,6 +562,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                   _vehicle = null;
                   _quote = null;
                   _quoteError = null;
+                  _quoteRequested = false;
+                  _driversRequested = false;
                 });
                 _loadVehicles();
               },
@@ -742,6 +684,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   Widget _timeStep() {
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         _timeTile('Ngày giờ nhận xe', _start, () => _pickDateTime(start: true)),
@@ -791,6 +735,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   Widget _locationStep() {
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         TextField(
@@ -836,6 +782,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
 
   Widget _confirmStep() {
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         AppCard(
