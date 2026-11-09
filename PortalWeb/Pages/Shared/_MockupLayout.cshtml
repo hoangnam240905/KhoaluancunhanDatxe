@@ -14,7 +14,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@(ViewData["Title"] ?? "Điều phối") — DriveX Mockup</title>
+    <title>@(ViewData["Title"] ?? "Điều phối") — DriveX Điều phối</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -43,7 +43,6 @@
                 <a class="@NavClass("notifications")" asp-page="/Mockup/Notifications"><i class="bi bi-bell"></i> Thông báo</a>
                 <a class="@NavClass("settings")" asp-page="/Mockup/Settings"><i class="bi bi-gear"></i> Cài đặt tài khoản</a>
             </nav>
-            <p class="mk-sidebar-note">Giao diện mô phỏng — chưa kết nối hệ thống</p>
         </aside>
         <div class="mk-main">
             <header class="mk-topbar">
@@ -55,10 +54,9 @@
                 <div class="mk-topbar-spacer"></div>
                 @if (dashMeta)
                 {
+                    @* Today in Vietnam time (no weather: the system has no weather data). *@
                     <div class="dash-meta">
-                        <span>Thứ Hai, 15 tháng 09, 2026</span>
-                        <span>Nhiệt độ 28°C</span>
-                        <span>TP. Hồ Chí Minh</span>
+                        <span>@PortalWeb.Display.UiDisplay.ToVietnam(DateTime.UtcNow).ToString("dddd, dd/MM/yyyy", System.Globalization.CultureInfo.GetCultureInfo("vi-VN"))</span>
                     </div>
                 }
                 <div class="nt-bell-wrap">

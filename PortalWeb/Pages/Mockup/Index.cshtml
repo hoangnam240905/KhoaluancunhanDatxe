@@ -5,46 +5,56 @@
     ViewData["Title"] = "Tổng quan";
     ViewData["Nav"] = "dashboard";
     ViewData["DashMeta"] = true;
+    var maxVehicles = Math.Max(1, Model.VehicleTotal);
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/mockup-dashboard.css" asp-append-version="true" />
 }
 
-<div class="mk-banner">Giao diện mô phỏng — số liệu, biểu đồ và vị trí dưới đây là dữ liệu mẫu, chưa gọi hệ thống.</div>
+@foreach (var error in Model.Errors)
+{
+    <div class="mk-banner" role="alert">@error</div>
+}
 
 <section class="mk-hub-head dash-hero">
     <div>
-        <h1>Chào buổi sáng, Điều phối viên!</h1>
-        <p>Tổng quan hoạt động điều phối của bạn hôm nay.</p>
+        <h1>@Model.Greeting, @(string.IsNullOrWhiteSpace(Model.UserName) ? "Điều phối viên" : Model.UserName)!</h1>
+        <p>Tổng quan hoạt động điều phối hôm nay, cập nhật từ hệ thống.</p>
     </div>
-    <div class="dash-quick" id="dashQuick">
+    <div class="dash-quick">
         <span>Thao tác nhanh</span>
-        <a class="mk-btn mk-btn-primary" asp-page="/Mockup/Hub">+ Đơn thuê</a>
-        <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Hub">Điều phối</a>
+        <a class="mk-btn mk-btn-primary" asp-page="/Mockup/Hub">Đơn thuê</a>
         <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Schedule">Lịch xe</a>
         <a class="mk-btn mk-btn-ghost" asp-page="/Mockup/Trips">Vận hành chuyến</a>
     </div>
 </section>
 
-<div class="dash-kpis" id="dashKpis"></div>
+<div class="dash-kpis">
+    @foreach (var k in Model.Kpis)
+    {
+        <a class="dash-kpi" href="@k.Href">
+            <div class="dash-kpi-ico">@k.Icon</div>
+            <span>@k.Label</span>
+            <strong>@k.Value</strong>
+            <em>@k.Sub</em>
+        </a>
+    }
+</div>
 
 <div class="dash-row dash-row-a">
     <section class="mk-card dash-card">
-        <div class="dash-card-head">
-            <h2>Hiệu suất điều phối</h2>
-            <select id="dashPeriod" aria-label="Kỳ biểu đồ">
-                <option value="today">Hôm nay</option>
-                <option value="week">Tuần này</option>
-                <option value="month">Tháng này</option>
-            </select>
-        </div>
-        <div class="dash-chart-wrap"><canvas id="dashPerfChart"></canvas></div>
+        <div class="dash-card-head"><h2>Lịch nhận xe 7 ngày tới</h2></div>
+        @if (Model.PickupsNext7Days == 0)
+        {
+            <p class="mk-muted">Không có đơn nhận xe trong 7 ngày tới.</p>
+        }
+        <div class="dash-chart-wrap"><canvas id="dashPerfChart" aria-label="Số đơn nhận xe theo ngày"></canvas></div>
     </section>
     <section class="mk-card dash-card">
-        <div class="dash-card-head"><h2>Trạng thái chuyến hôm nay</h2></div>
+        <div class="dash-card-head"><h2>Đơn đang mở theo trạng thái</h2></div>
         <div class="dash-donut-wrap">
-            <canvas id="dashDonut"></canvas>
-            <div class="dash-donut-center"><strong>68</strong><span>Tổng số chuyến</span></div>
+            <canvas id="dashDonut" aria-label="Đơn đang mở theo trạng thái"></canvas>
+            <div class="dash-donut-center"><strong>@Model.OpenBookingTotal</strong><span>Đơn đang mở</span></div>
         </div>
         <ul class="dash-legend" id="dashDonutLegend"></ul>
     </section>
@@ -53,31 +63,79 @@
             <h2>Công việc cần xử lý</h2>
             <a asp-page="/Mockup/Hub">Xem tất cả</a>
         </div>
-        <div id="dashTasks"></div>
+        @if (Model.Tasks.Count == 0)
+        {
+            <p class="mk-muted">Không có việc cần xử lý.</p>
+        }
+        @foreach (var t in Model.Tasks)
+        {
+            <a class="dash-task" href="@t.Href">
+                <span>@t.Tone</span>
+                <span><strong>@t.Title</strong><br><small>@t.Detail</small></span>
+                <time>@t.When</time>
+            </a>
+        }
     </section>
 </div>
 
 <div class="dash-row dash-row-b">
     <section class="mk-card dash-card">
         <div class="dash-card-head">
-            <h2>Đơn thuê hôm nay</h2>
+            <h2>Đơn nhận xe hôm nay</h2>
             <a asp-page="/Mockup/Hub">Xem tất cả</a>
         </div>
-        <div id="dashBookings"></div>
+        @if (Model.TodayBookings.Count == 0)
+        {
+            <p class="mk-muted">Hôm nay không có đơn nhận xe.</p>
+        }
+        @foreach (var b in Model.TodayBookings)
+        {
+            <a class="dash-book" asp-page="/Mockup/Hub">
+                <time>@b.Time</time>
+                <span class="dash-thumb">🚗</span>
+                <span><strong>@b.Customer</strong><br><small>@b.Vehicle</small></span>
+                <span class="mk-badge mk-badge-@b.Status.ToLowerInvariant()">@b.StatusLabel</span>
+            </a>
+        }
     </section>
     <section class="mk-card dash-card">
         <div class="dash-card-head">
-            <h2>Tài xế đang hoạt động</h2>
+            <h2>Tài xế</h2>
             <a asp-page="/Mockup/Schedule">Xem tất cả</a>
         </div>
-        <div id="dashDrivers"></div>
+        @if (Model.Drivers.Count == 0)
+        {
+            <p class="mk-muted">Chưa có dữ liệu tài xế.</p>
+        }
+        @foreach (var d in Model.Drivers)
+        {
+            <a class="dash-drv" asp-page="/Mockup/Schedule">
+                <span class="dash-ava">@d.Initials</span>
+                <span><strong>@d.Name</strong><br><small>@d.Detail</small></span>
+                <span class="@PortalWeb.Pages.Mockup.IndexModel.DriverBadge(d.Status)">@PortalWeb.Pages.Mockup.IndexModel.DriverLabel(d.Status)</span>
+            </a>
+        }
     </section>
     <section class="mk-card dash-card">
         <div class="dash-card-head">
-            <h2>Tình trạng xe</h2>
+            <h2>Tình trạng xe (@Model.VehicleTotal xe)</h2>
             <a asp-page="/Mockup/Schedule">Xem tất cả</a>
         </div>
-        <div id="dashVehicles"></div>
+        <div class="dash-vgrid">
+            @foreach (var v in Model.Vehicles)
+            {
+                <a class="dash-vcell" asp-page="/Mockup/Schedule">
+                    <span>@v.Icon @v.Label</span>
+                    <strong>@v.Count</strong>
+                </a>
+            }
+        </div>
+        <div class="dash-bar">
+            @foreach (var v in Model.Vehicles.Where(v => v.Count > 0))
+            {
+                <i style="width:@(v.Count * 100.0 / maxVehicles)%;background:@v.Color"></i>
+            }
+        </div>
     </section>
 </div>
 
@@ -87,35 +145,56 @@
             <h2>Hoạt động gần đây</h2>
             <a asp-page="/Mockup/Notifications">Xem tất cả</a>
         </div>
-        <div id="dashActivities"></div>
+        @if (Model.Activities.Count == 0)
+        {
+            <p class="mk-muted">Chưa có hoạt động.</p>
+        }
+        @foreach (var a in Model.Activities)
+        {
+            <a class="dash-act" asp-page="/Mockup/Notifications">
+                <span>🔔</span>
+                <span><time>@a.Time</time><strong>@a.Title</strong><br><small>@a.Detail</small></span>
+            </a>
+        }
     </section>
     <section class="mk-card dash-card">
         <div class="dash-card-head">
-            <h2>Bản đồ theo dõi</h2>
-            <a asp-page="/Mockup/Trips">Xem bản đồ</a>
+            <h2>Sự cố đang mở</h2>
+            <a asp-page="/Mockup/Trips">Xem chuyến</a>
         </div>
-        <div class="dash-map" id="dashMap">
-            <span class="dash-map-label">Chế độ mô phỏng · Vị trí mô phỏng</span>
-            <div class="dash-map-zoom">
-                <button type="button" data-map="in" title="Phóng to" aria-label="Phóng to">+</button>
-                <button type="button" data-map="out" title="Thu nhỏ" aria-label="Thu nhỏ">−</button>
-                <button type="button" data-map="center" title="Về giữa" aria-label="Về giữa">⊙</button>
-            </div>
-        </div>
+        @if (Model.OpenIncidents.Count == 0)
+        {
+            <p class="mk-muted">Không có sự cố đang mở.</p>
+        }
+        @foreach (var i in Model.OpenIncidents.Take(5))
+        {
+            <a class="dash-note" asp-page="/Mockup/Trips">
+                <span>⚠️</span>
+                <span><strong>Đơn #@i.BookingId · @i.IncidentType</strong><br><small>@i.Description</small><br><small>@i.DriverName · @PortalWeb.Display.UiDisplay.ToVietnam(i.CreatedAt).ToString("dd/MM HH:mm")</small></span>
+            </a>
+        }
     </section>
     <section class="mk-card dash-card">
         <div class="dash-card-head">
-            <h2>Thông báo hệ thống</h2>
-            <a asp-page="/Mockup/Notifications">Xem tất cả</a>
+            <h2>Cảnh báo bảo trì</h2>
+            <a asp-page="/Mockup/Schedule">Xem lịch xe</a>
         </div>
-        <div id="dashNotices"></div>
+        @if (Model.Alerts.Count == 0)
+        {
+            <p class="mk-muted">Không có xe đến hạn bảo trì.</p>
+        }
+        @foreach (var a in Model.Alerts.Take(5))
+        {
+            <a class="dash-note" asp-page="/Mockup/Schedule">
+                <span>🛠</span>
+                <span><strong>@a.LicensePlate</strong><br><small>@a.Reason</small></span>
+            </a>
+        }
     </section>
 </div>
 
-<aside class="mk-drawer" id="dashDrawer" aria-hidden="true"></aside>
-<div class="mk-toast" id="dashToast"></div>
-
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script type="application/json" id="dashData">@Html.Raw(Model.ChartJson)</script>
     <script src="~/js/mockup-dashboard.js" asp-append-version="true"></script>
 }

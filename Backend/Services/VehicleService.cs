@@ -386,6 +386,10 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         if (hasAssignment)
             return (false, VehicleOccupancyRules.CannotDeleteHistoric, StatusCodes.Status400BadRequest);
 
+        // Maintenance records keep the car's history (foreign key Restrict): say so instead of a generic error.
+        if (await db.MaintenanceRecords.AnyAsync(m => m.VehicleId == id))
+            return (false, VehicleOccupancyRules.CannotDeleteWithMaintenance, StatusCodes.Status400BadRequest);
+
         // Photos belong to the car (their foreign key is Restrict); without this every car with a photo is undeletable.
         db.VehicleImages.RemoveRange(await db.VehicleImages.Where(i => i.VehicleId == id).ToListAsync());
         db.Vehicles.Remove(vehicle);

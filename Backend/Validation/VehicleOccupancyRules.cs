@@ -11,6 +11,9 @@ public static class VehicleOccupancyRules
     public const string CannotDeleteHistoric =
         "Không thể xóa xe đã được sử dụng.";
 
+    public const string CannotDeleteWithMaintenance =
+        "Không thể xóa xe đã có lịch sử bảo trì. Hãy chuyển xe sang Ngừng hoạt động.";
+
     public const string CannotReleaseRented =
         "Không thể chuyển xe đang cho thuê về Sẵn sàng. Hãy hoàn thành trả xe hoặc kết thúc chuyến.";
 
