@@ -4,7 +4,7 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../utils/driver_trip_actions.dart';
 import '../utils/formatters.dart';
-import 'customer_shell.dart';
+import 'login_screen.dart';
 
 class DriverTripsScreen extends StatefulWidget {
   final ApiService api;
@@ -84,7 +84,7 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
     await widget.api.authService.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => CustomerShell(api: widget.api)),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
   }

@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
-                          'Đăng nhập khách hàng / tài xế',
+                          'Đăng nhập để tiếp tục',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Color(0xFF64748B)),
                         ),
@@ -207,10 +207,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 },
                           child: const Text('Chưa có tài khoản? Đăng ký'),
                         ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Quay lại'),
-                        ),
+                        if (Navigator.canPop(context))
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Quay lại'),
+                          ),
                       ],
                     ),
                   ),

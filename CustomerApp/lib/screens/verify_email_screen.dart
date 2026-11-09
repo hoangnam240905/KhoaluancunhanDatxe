@@ -5,7 +5,9 @@ import '../services/api_service.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;
-  const VerifyEmailScreen({super.key, required this.email});
+  final String? devOtp;
+  final String? message;
+  const VerifyEmailScreen({super.key, required this.email, this.devOtp, this.message});
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -23,7 +25,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   void initState() {
     super.initState();
     _email = TextEditingController(text: widget.email);
-    _info = 'Đã gửi mã OTP đến ${widget.email}. Mã hết hạn sau 5 phút.';
+    if (widget.devOtp != null && widget.devOtp!.isNotEmpty) {
+      _otp.text = widget.devOtp!;
+    }
+    _info = widget.message ?? 'Đã gửi mã OTP đến ${widget.email}. Mã hết hạn sau 5 phút.';
   }
 
   @override
@@ -72,8 +77,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       _error = null;
     });
     try {
-      final message = await _api.resendVerificationOtp(widget.email);
-      setState(() => _info = message);
+      final res = await _api.resendVerificationOtp(widget.email);
+      setState(() {
+        _info = res.message;
+        if (res.devOtp != null && res.devOtp!.isNotEmpty) {
+          _otp.text = res.devOtp!;
+        }
+      });
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
