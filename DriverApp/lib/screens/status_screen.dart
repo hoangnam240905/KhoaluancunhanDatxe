@@ -105,16 +105,18 @@ class _StatusScreenState extends State<StatusScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Trạng thái máy chủ',
                               style: TextStyle(
-                                color: AppColors.muted,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 fontSize: 12,
                               ),
                             ),
                             Text(
                               Formatters.driverStatus(_status),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 18,
                               ),
@@ -164,7 +166,12 @@ class _StatusScreenState extends State<StatusScreen> {
       onTap: _busy ? null : () => _setStatus(value),
       child: Row(
         children: [
-          Icon(icon, color: selected ? AppColors.primary : AppColors.muted),
+          Icon(
+            icon,
+            color: selected
+                ? AppColors.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -172,18 +179,22 @@ class _StatusScreenState extends State<StatusScreen> {
               children: [
                 Text(
                   Formatters.driverStatus(value),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Text(subtitle, style: const TextStyle(color: AppColors.muted)),
               ],
             ),
           ),
           Icon(
             selected ? Icons.radio_button_checked : Icons.radio_button_off,
-            color: selected ? AppColors.primary : AppColors.muted,
+            color: selected
+                ? AppColors.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ],
       ),

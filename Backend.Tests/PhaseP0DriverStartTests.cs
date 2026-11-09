@@ -200,6 +200,50 @@ public class PhaseP0DriverStartTests
             Authed(HttpMethod.Post, $"/api/drivers/trips/{assignmentId}/start", driverA))).StatusCode);
     }
 
+    [Fact]
+    public async Task Start_with_condition_saves_handover_inspection()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var (drivers, dispatch, _) = Services(iso);
+        var assignmentId = await AssignAsync(iso, dispatch);
+        Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        var bookingId = iso.Db.TripAssignments.Find(assignmentId)!.BookingId;
+        var handoversBefore = iso.Db.VehicleInspections.Count(i =>
+            i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover);
+
+        var (ok, error) = await drivers.StartTripAsync(
+            6, assignmentId, TestDispatchReady.InspectionForBooking(iso.Db, bookingId));
+
+        Assert.True(ok, error);
+        Assert.Equal(handoversBefore + 1, iso.Db.VehicleInspections.Count(i =>
+            i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover));
+        Assert.Equal(TripAssignmentStatuses.InProgress, iso.Db.TripAssignments.Find(assignmentId)!.Status);
+    }
+
+    [Fact]
+    public async Task Api_driver_sees_inspections_only_of_own_trip()
+    {
+        using var factory = new IsolatedApiFactory();
+        var client = factory.CreateClient();
+        var customer = await LoginAsync(client, "customer1@gmail.com");
+        var dispatcher = await LoginAsync(client, "dispatcher@carrental.vn");
+        var assigned = await LoginAsync(client, "driver2@carrental.vn");
+        var other = await LoginAsync(client, "driver1@carrental.vn");
+
+        var created = await client.SendAsync(Authed(HttpMethod.Post, "/api/bookings", customer,
+            JsonContent.Create(WithDriver())));
+        var booking = await created.Content.ReadFromJsonAsync<BookingResponse>();
+        await client.SendAsync(Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking!.BookingId}/confirm", dispatcher));
+        await TestDispatchReady.EnsureSignedAndPaidHttpAsync(client, customer, booking.BookingId);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
+            Authed(HttpMethod.Post, $"/api/dispatch/bookings/{booking.BookingId}/assign", dispatcher,
+                JsonContent.Create(new AssignTripRequest(6, 2))))).StatusCode);
+
+        var url = $"/api/bookings/{booking.BookingId}/inspections";
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Authed(HttpMethod.Get, url, assigned))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(Authed(HttpMethod.Get, url, other))).StatusCode);
+    }
+
     private static async Task<int> AssignAsync(IsolatedCarRentalDb iso, DispatchService dispatch)
     {
         var bookings = new BookingService(iso.Db, new PricingService());

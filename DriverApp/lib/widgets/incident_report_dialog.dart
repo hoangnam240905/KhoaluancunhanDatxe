@@ -99,18 +99,13 @@ class _IncidentReportDialogState extends State<IncidentReportDialog> {
                 decoration: const InputDecoration(labelText: 'Mô tả'),
               ),
               if (_error != null)
-                Text(
-                  _error!,
-                  style: const TextStyle(color: AppColors.danger),
-                ),
+                Text(_error!, style: const TextStyle(color: AppColors.danger)),
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: _submitting
-                ? null
-                : () => Navigator.of(context).pop(),
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
             child: const Text('Hủy'),
           ),
           FilledButton(

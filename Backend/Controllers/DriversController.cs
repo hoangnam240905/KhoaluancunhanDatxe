@@ -90,11 +90,15 @@ public class DriversController(
 
     [Authorize(Roles = RoleNames.Driver)]
     [HttpPost("trips/{assignmentId:int}/start")]
-    public async Task<IActionResult> StartTrip(int assignmentId)
+    public async Task<IActionResult> StartTrip(
+        int assignmentId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VehicleConditionRequest? request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var ok = await driverService.StartTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Đã bắt đầu chuyến." }) : BadRequest();
+        var (ok, error) = await driverService.StartTripAsync(userId, assignmentId, request);
+        return ok
+            ? Ok(new { message = request is null ? "Đã bắt đầu chuyến." : "Đã lưu biên bản đầu chuyến và bắt đầu chuyến." })
+            : BadRequest(new { message = error ?? "Không thể bắt đầu chuyến." });
     }
 
     [Authorize(Roles = RoleNames.Driver)]

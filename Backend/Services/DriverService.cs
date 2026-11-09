@@ -99,14 +99,36 @@ public class DriverService(
 
     public async Task<bool> StartTripAsync(int driverId, int assignmentId)
     {
+        var (ok, _) = await StartTripAsync(driverId, assignmentId, null);
+        return ok;
+    }
+
+    public async Task<(bool Ok, string? Error)> StartTripAsync(
+        int driverId, int assignmentId, VehicleConditionRequest? request)
+    {
         var assignment = await db.TripAssignments
             .Include(t => t.Booking)
             .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
 
         if (assignment is null || assignment.Status != TripAssignmentStatuses.Accepted)
-            return false;
+            return (false, null);
         if (!BookingStateTransitionRules.CanTransition(assignment.Booking.Status, BookingStatuses.InProgress))
-            return false;
+            return (false, BookingStateTransitionRules.InvalidTransition);
+
+        if (request is not null)
+        {
+            var (inspection, error) = await inspections.AddAsync(
+                assignment.BookingId,
+                VehicleInspectionTypes.Handover,
+                request.OdometerKm,
+                request.FuelLevel,
+                request.Condition,
+                request.Notes,
+                request.ExteriorCondition,
+                request.TechnicalCondition);
+            if (inspection is null)
+                return (false, error ?? "Không thể lưu biên bản kiểm tra đầu chuyến.");
+        }
 
         assignment.Status = TripAssignmentStatuses.InProgress;
         assignment.StartedAt = DateTime.UtcNow;
@@ -131,9 +153,8 @@ public class DriverService(
             assignment.Booking.Status,
             assignment.Booking.AssignedVehicleId,
             driverId);
-        return true;
+        return (true, null);
     }
-
     public async Task<(bool Ok, string? Error)> CompleteTripAsync(
         int driverId, int assignmentId, VehicleConditionRequest? request)
     {

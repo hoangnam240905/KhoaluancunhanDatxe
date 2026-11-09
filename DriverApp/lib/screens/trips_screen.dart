@@ -72,7 +72,7 @@ class _TripsScreenState extends State<TripsScreen> {
             const Text('Chuyến của tôi', style: TextStyle(fontSize: 18)),
             Text(
               widget.userName,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
             ),
           ],
         ),
@@ -126,7 +126,7 @@ class _TripsScreenState extends State<TripsScreen> {
                 Expanded(
                   child: Text(
                     '#${t.bookingId} · ${t.vehicleTypeName}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
@@ -140,12 +140,15 @@ class _TripsScreenState extends State<TripsScreen> {
             const SizedBox(height: 4),
             Text(
               '${t.pickupAddress} → ${t.dropoffAddress}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Text(
               '${Formatters.rentalDt(t.startDate)}  →  ${Formatters.rentalDt(t.endDate)}',
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -158,12 +161,15 @@ class _TripsScreenState extends State<TripsScreen> {
                 const SizedBox(width: 6),
                 Text(
                   a?.licensePlate ?? '—',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
                 Text(
                   Formatters.bookingStatus(t.status),
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
