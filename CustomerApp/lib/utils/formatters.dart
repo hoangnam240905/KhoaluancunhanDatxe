@@ -141,6 +141,8 @@ class Formatters {
         return 'Nhiên liệu';
       case 'Damage':
         return 'Hư hỏng';
+      case 'VehicleChange':
+        return 'Chênh lệch đổi xe';
       case 'Other':
         return 'Khác';
       default:

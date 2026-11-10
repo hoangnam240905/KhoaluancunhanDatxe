@@ -2,27 +2,18 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../screens/customer_shell.dart';
-import '../screens/driver_trips_screen.dart';
 
-/// Điều hướng sau đăng nhập/đăng ký theo vai trò (giống PortalWeb).
+/// Điều hướng sau đăng nhập/đăng ký. App này chỉ dành cho khách hàng:
+/// tài xế dùng DriverApp, điều phối / admin dùng web.
 class RoleRouter {
-  static Widget homeFor(ApiService api, AuthResponse auth) {
-    switch (auth.role) {
-      case 'Customer':
-        return CustomerShell(api: api, userName: auth.fullName);
-      case 'Driver':
-        return DriverTripsScreen(api: api, userName: auth.fullName);
-      default:
-        return CustomerShell(api: api);
-    }
-  }
+  static Widget homeFor(ApiService api, AuthResponse auth) =>
+      CustomerShell(api: api, userName: auth.fullName);
 
   static void goHome(BuildContext context, ApiService api, AuthResponse auth) {
-    if (auth.role != 'Customer' && auth.role != 'Driver') {
+    final roleError = mobileRoleError(auth.role);
+    if (roleError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Vai trò ${auth.role} chỉ dùng trên Web Portal.'),
-        ),
+        SnackBar(content: Text(roleError)),
       );
       return;
     }
@@ -33,7 +24,10 @@ class RoleRouter {
   }
 
   static String? mobileRoleError(String role) {
-    if (role == 'Customer' || role == 'Driver') return null;
-    return 'Tài khoản $role chỉ đăng nhập trên Web. App chỉ hỗ trợ Khách hàng / Tài xế.';
+    if (role == 'Customer') return null;
+    if (role == 'Driver') {
+      return 'Tài khoản tài xế dùng ứng dụng DriveX Tài xế (DriverApp), không dùng app khách hàng.';
+    }
+    return 'Tài khoản $role chỉ đăng nhập trên Web. App này dành cho khách hàng.';
   }
 }
