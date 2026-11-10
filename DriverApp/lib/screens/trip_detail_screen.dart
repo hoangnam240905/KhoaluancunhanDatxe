@@ -23,6 +23,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   bool _busy = false;
   List<VehicleInspection> _inspections = [];
   List<InspectionDispute> _disputes = [];
+  List<VehicleChange> _vehicleChanges = [];
   bool _loadingInspections = true;
   String? _inspectionError;
 
@@ -101,10 +102,17 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       final disputes = aid == null
           ? <InspectionDispute>[]
           : await widget.api.getTripDisputes(aid);
+      List<VehicleChange> changes = [];
+      try {
+        changes = await widget.api.getVehicleChanges(_trip.bookingId);
+      } catch (_) {
+        changes = [];
+      }
       if (mounted) {
         setState(() {
           _inspections = items;
           _disputes = disputes;
+          _vehicleChanges = changes;
         });
       }
     } catch (e) {
@@ -500,6 +508,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_vehicleChanges.isNotEmpty) ...[
+            _vehicleChangesSection(),
+            const SizedBox(height: 12),
+          ],
           if (_waitingToStart) ...[
             _preCheckSection(),
             const SizedBox(height: 12),
@@ -664,6 +676,53 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  Widget _vehicleChangesSection() {
+    String num(double? v) => v == null ? '—' : v.toStringAsFixed(0);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('PHỤ LỤC ĐỔI XE', style: _section),
+          const SizedBox(height: 10),
+          for (var i = 0; i < _vehicleChanges.length; i++) ...[
+            if (i > 0) const Divider(height: 20),
+            Text(
+              'Lần đổi ${i + 1} · ${Formatters.dt(_vehicleChanges[i].createdAt)}',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            _row('Xe cũ', '${_vehicleChanges[i].oldVehicle} (${_vehicleChanges[i].oldTypeName})'),
+            _row('Xe mới', '${_vehicleChanges[i].newVehicle} (${_vehicleChanges[i].newTypeName})'),
+            _row(
+              'Lý do',
+              (_vehicleChanges[i].note ?? '').isEmpty
+                  ? _vehicleChanges[i].reasonLabel
+                  : '${_vehicleChanges[i].reasonLabel} — ${_vehicleChanges[i].note}',
+            ),
+            _row('Thời điểm', _vehicleChanges[i].duringTrip ? 'Giữa chuyến' : 'Trước khi bắt đầu chuyến'),
+            if (_vehicleChanges[i].duringTrip) ...[
+              _row('Xe cũ khi đổi',
+                  '${num(_vehicleChanges[i].oldOdometerKm)} km · ${num(_vehicleChanges[i].oldFuelLevel)}% nhiên liệu'),
+              _row('Xe mới khi nhận',
+                  '${num(_vehicleChanges[i].newOdometerKm)} km · ${num(_vehicleChanges[i].newFuelLevel)}% nhiên liệu'),
+            ],
+            _row('Người duyệt', _vehicleChanges[i].approvedByName ?? 'Điều phối viên'),
+          ],
+          if (_vehicleChanges.last.duringTrip)
+            const Text(
+              'Khi trả xe, nhập số km của xe mới; hệ thống cộng km của cả hai xe.',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            )
+          else if (_waitingToStart)
+            const Text(
+              'Đối chiếu biên bản trước giao của xe mới trước khi bắt đầu chuyến.',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
         ],
       ),
     );

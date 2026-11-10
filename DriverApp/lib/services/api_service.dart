@@ -244,6 +244,21 @@ class ApiService {
         .toList();
   }
 
+  /// "Phụ lục đổi xe" of a trip (plan1.md Phần I); the trip's driver may read it.
+  Future<List<VehicleChange>> getVehicleChanges(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/vehicle-changes'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(VehicleChange.fromJson)
+        .toList();
+  }
+
   Future<String> raiseDispute(int assignmentId, String note) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/dispute'),
