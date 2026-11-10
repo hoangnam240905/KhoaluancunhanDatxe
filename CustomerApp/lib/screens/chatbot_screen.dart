@@ -270,7 +270,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return Align(
           alignment: item.fromBot ? Alignment.centerLeft : Alignment.centerRight,
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 350),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * 0.86,
+            ),
             margin: const EdgeInsets.only(bottom: 14),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -461,12 +463,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       const SizedBox(width: 6),
                     ],
                     if (vehicle.totalAmount != null)
-                      Text(
-                        Formatters.vnd(vehicle.totalAmount!),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            Formatters.vnd(vehicle.totalAmount!),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                       ),
                   ],
@@ -474,15 +482,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           FilledButton.icon(
             onPressed: () => _book(vehicle, reply),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 13),
-            label: const Text('Đặt ngay', style: TextStyle(fontSize: 12)),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 12),
+            label: const Text('Đặt ngay', style: TextStyle(fontSize: 11.5)),
             style: FilledButton.styleFrom(
               visualDensity: VisualDensity.compact,
               backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),

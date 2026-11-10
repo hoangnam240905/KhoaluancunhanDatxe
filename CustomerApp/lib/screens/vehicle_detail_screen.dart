@@ -422,7 +422,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        Expanded(
+          child: Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.text)),
       ],
     );
@@ -586,7 +589,10 @@ class _PriceTextRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        Expanded(
+          child: Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.text)),
       ],
     );
