@@ -3283,6 +3283,7 @@
             <div><dt>Xe</dt><dd>${esc(detail.licensePlate || "—")}</dd></div>
             <div><dt>Mẫu / loại</dt><dd>${esc(detail.vehicleModel || "—")}</dd></div>
             <div><dt>Tài xế</dt><dd>${esc(inc.driverName || "—")}</dd></div>
+            <div><dt>Người báo</dt><dd>${esc(inc.reportedByName ? inc.reportedByName + (inc.reportedByRole === "Dispatcher" ? " (điều phối)" : inc.reportedByRole === "Driver" ? " (tài xế)" : "") : (inc.driverName || "—"))}</dd></div>
             <div><dt>Loại</dt><dd>${esc(t(inc.incidentType))}</dd></div>
             <div><dt>Mức độ</dt><dd>—</dd></div>
             <div><dt>Trạng thái</dt><dd>${badge(inc.status)}</dd></div>

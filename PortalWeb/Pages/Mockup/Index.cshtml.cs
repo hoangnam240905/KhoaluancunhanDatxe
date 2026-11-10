@@ -142,7 +142,7 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         foreach (var i in OpenIncidents)
         {
             var at = UiDisplay.ToVietnam(i.CreatedAt);
-            tasks.Add(new("⚠️", $"Sự cố đơn #{i.BookingId}", $"{i.DriverName} · {i.IncidentType}", at.ToString("dd/MM HH:mm"), "/DieuPhoi/Trips", DateTime.MinValue));
+            tasks.Add(new("⚠️", $"Sự cố đơn #{i.BookingId}", $"{i.Reporter} · {i.IncidentType}", at.ToString("dd/MM HH:mm"), "/DieuPhoi/Trips", DateTime.MinValue));
         }
         Tasks = tasks.OrderBy(t => t.SortKey).Take(6).ToList();
     }

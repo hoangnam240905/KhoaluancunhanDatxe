@@ -778,6 +778,15 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<VehicleInspectionResponse>(JsonOptions), null);
     }
 
+    public async Task<(IncidentResponse? Data, string? Error)> ReportIncidentAsDispatcherAsync(int bookingId, CreateIncidentRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/incidents");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không ghi được sự cố.");
+        return (await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions), null);
+    }
+
     public async Task<(BookingResponse? Data, string? Error)> SettleBookingAsync(int bookingId, SettleBookingRequest body)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/settle");

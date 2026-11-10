@@ -8,8 +8,8 @@ public record CreateIncidentRequest(
 public record IncidentResponse(
     int IncidentId,
     int BookingId,
-    int AssignmentId,
-    int DriverId,
+    int? AssignmentId,
+    int? DriverId,
     string DriverName,
     string IncidentType,
     string Description,
@@ -20,7 +20,9 @@ public record IncidentResponse(
     string? ResolvedByName = null,
     string? ResolvedByRole = null,
     DateTime? ResolvedAt = null,
-    string? ResolutionNote = null);
+    string? ResolutionNote = null,
+    string? ReportedByName = null,
+    string? ReportedByRole = null);
 
 /// <summary>Dispatcher closes an incident; the note says what was done.</summary>
 public record ResolveIncidentRequest(string? Note);

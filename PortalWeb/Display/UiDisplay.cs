@@ -190,7 +190,7 @@ public static class UiDisplay
         return TimeZoneInfo.ConvertTimeFromUtc(utc, VietnamZone);
     }
 
-    private static readonly TimeZoneInfo VietnamZone = ResolveVietnam();
+    public static readonly TimeZoneInfo VietnamZone = ResolveVietnam();
 
     private static TimeZoneInfo ResolveVietnam()
     {

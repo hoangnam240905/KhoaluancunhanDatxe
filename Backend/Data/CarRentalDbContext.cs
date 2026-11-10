@@ -1142,6 +1142,85 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
         }
     }
 
+    /// <summary>
+    /// Incidents of self-drive bookings have no trip assignment / driver, and every incident records who reported
+    /// it. SQLite cannot drop NOT NULL in place, so an old table is rebuilt once with the same rows (nothing deleted).
+    /// Runs after EnsureSqliteActorColumns (the Resolved* columns must exist).
+    /// </summary>
+    public void EnsureSqliteIncidentReportsOptionalDriver()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('IncidentReports')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns[reader.GetString(1)] = reader.GetInt32(3) == 1;
+        }
+        if (columns.Count == 0)
+            return;
+
+        if (columns.TryGetValue("DriverId", out var driverNotNull) && driverNotNull)
+        {
+            const string copied = "\"IncidentId\", \"BookingId\", \"AssignmentId\", \"DriverId\", \"IncidentType\", \"Description\", " +
+                "\"OccurredAt\", \"Status\", \"CreatedAt\", \"ResolvedByUserId\", \"ResolvedByName\", \"ResolvedByRole\", " +
+                "\"ResolvedAt\", \"ResolutionNote\"";
+            Database.ExecuteSqlRaw("PRAGMA foreign_keys = OFF");
+            using (var tx = Database.BeginTransaction())
+            {
+                Database.ExecuteSqlRaw("""
+                    CREATE TABLE "IncidentReports_new" (
+                        "IncidentId" INTEGER NOT NULL CONSTRAINT "PK_IncidentReports" PRIMARY KEY AUTOINCREMENT,
+                        "BookingId" INTEGER NOT NULL,
+                        "AssignmentId" INTEGER NULL,
+                        "DriverId" INTEGER NULL,
+                        "IncidentType" TEXT NOT NULL,
+                        "Description" TEXT NOT NULL,
+                        "OccurredAt" TEXT NOT NULL,
+                        "Status" TEXT NOT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "ResolvedByUserId" INTEGER NULL,
+                        "ResolvedByName" TEXT NULL,
+                        "ResolvedByRole" TEXT NULL,
+                        "ResolvedAt" TEXT NULL,
+                        "ResolutionNote" TEXT NULL,
+                        "ReportedByUserId" INTEGER NULL,
+                        "ReportedByName" TEXT NULL,
+                        "ReportedByRole" TEXT NULL,
+                        CONSTRAINT "FK_IncidentReports_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE RESTRICT,
+                        CONSTRAINT "FK_IncidentReports_TripAssignments_AssignmentId" FOREIGN KEY ("AssignmentId") REFERENCES "TripAssignments" ("AssignmentId") ON DELETE RESTRICT,
+                        CONSTRAINT "FK_IncidentReports_Drivers_DriverId" FOREIGN KEY ("DriverId") REFERENCES "Drivers" ("DriverId") ON DELETE RESTRICT
+                    )
+                    """);
+                Database.ExecuteSqlRaw($"INSERT INTO \"IncidentReports_new\" ({copied}) SELECT {copied} FROM \"IncidentReports\"");
+                Database.ExecuteSqlRaw("DROP TABLE \"IncidentReports\"");
+                Database.ExecuteSqlRaw("ALTER TABLE \"IncidentReports_new\" RENAME TO \"IncidentReports\"");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_BookingId\" ON \"IncidentReports\" (\"BookingId\")");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_DriverId\" ON \"IncidentReports\" (\"DriverId\")");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_AssignmentId\" ON \"IncidentReports\" (\"AssignmentId\")");
+                // Rows from before: those written by the driver app (the return-check mismatch rows say "Điều phối …").
+                Database.ExecuteSqlRaw("""
+                    UPDATE "IncidentReports"
+                    SET "ReportedByUserId" = "DriverId", "ReportedByRole" = 'Driver',
+                        "ReportedByName" = (SELECT "FullName" FROM "Users" WHERE "Users"."UserId" = "IncidentReports"."DriverId")
+                    WHERE "ReportedByName" IS NULL AND "Description" NOT LIKE 'Điều phối %'
+                    """);
+                tx.Commit();
+            }
+            Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON");
+            return;
+        }
+
+        foreach (var (name, type) in new[] { ("ReportedByUserId", "INTEGER"), ("ReportedByName", "TEXT"), ("ReportedByRole", "TEXT") })
+            if (!columns.ContainsKey(name))
+                Database.ExecuteSqlRaw($"ALTER TABLE IncidentReports ADD COLUMN {name} {type} NULL");
+    }
+
     /// <summary>Vehicle change appendix (plan1.md Phần I), for databases created before it existed.</summary>
     public void EnsureSqliteVehicleChangesTable()
     {

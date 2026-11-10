@@ -207,7 +207,7 @@ public static class TripsUi
     private static object ToIncident(IncidentResponse i) => new
     {
         id = i.IncidentId,
-        reporter = i.DriverName,
+        reporter = i.Reporter,
         time = FmtUtc(i.OccurredAt),
         type = i.IncidentType,
         severity = "—", // not in API

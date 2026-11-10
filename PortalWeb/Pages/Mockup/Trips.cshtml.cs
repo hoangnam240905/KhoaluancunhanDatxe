@@ -176,6 +176,22 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
     }
 
+    /// <summary>Dispatcher records an incident reported by phone (self-drive customer or the trip's driver).</summary>
+    public async Task<IActionResult> OnPostReportIncidentAsync(int id, string? incidentType, string? description, DateTime? occurredAt)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (string.IsNullOrWhiteSpace(description)) return ActionFail("Vui lòng mô tả sự cố.");
+        // The form sends Vietnam local time; the API stores UTC.
+        DateTime? utc = occurredAt is DateTime local
+            ? TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), UiDisplay.VietnamZone)
+            : null;
+        var (_, error) = await api.ReportIncidentAsDispatcherAsync(id, new CreateIncidentRequest(incidentType, description.Trim(), utc));
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
     /// <summary>Dispatcher closes the settlement of a completed trip (extra fees + balance / refund).</summary>
     public async Task<IActionResult> OnPostSettleAsync(int id, decimal? extraFuel, decimal? damage, decimal? other,
         string? note, string? paymentMethod)
@@ -391,7 +407,6 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                 missingApis = new[]
                 {
                     "Dispatcher WithDriver complete/return (chỉ SelfDrive: POST /api/dispatch/bookings/{id}/complete)",
-                    "Dispatcher create/update incident status (chỉ GET /api/dispatch/incidents)",
                     "Live GPS / map pins (không có endpoint)"
                 },
                 warnings

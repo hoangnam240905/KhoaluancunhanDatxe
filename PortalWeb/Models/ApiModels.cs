@@ -342,8 +342,8 @@ public record DispatchAssignableResponse(List<VehicleResponse> Vehicles, List<Dr
 public record IncidentResponse(
     int IncidentId,
     int BookingId,
-    int AssignmentId,
-    int DriverId,
+    int? AssignmentId,
+    int? DriverId,
     string DriverName,
     string IncidentType,
     string Description,
@@ -354,7 +354,16 @@ public record IncidentResponse(
     string? ResolvedByName = null,
     string? ResolvedByRole = null,
     DateTime? ResolvedAt = null,
-    string? ResolutionNote = null);
+    string? ResolutionNote = null,
+    string? ReportedByName = null,
+    string? ReportedByRole = null)
+{
+    /// <summary>Who reported it: the recorded reporter, else (older rows) the trip's driver.</summary>
+    public string Reporter => !string.IsNullOrWhiteSpace(ReportedByName)
+        ? ReportedByName + (ReportedByRole == "Dispatcher" ? " (điều phối)" : ReportedByRole == "Driver" ? " (tài xế)" : "")
+        : string.IsNullOrWhiteSpace(DriverName) ? "—" : DriverName;
+}
+public record CreateIncidentRequest(string? IncidentType, string? Description, DateTime? OccurredAt = null);
 public record ResolveIncidentRequest(string? Note);
 public record ChangePasswordRequest(string OldPassword, string NewPassword);
 public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, decimal PricePerKm);

@@ -161,6 +161,16 @@ public class DispatchController(
         return inspection is null ? BadRequest(new { message = error }) : Ok(inspection);
     }
 
+    /// <summary>Dispatcher records an incident reported by phone (self-drive customer or the trip's driver).</summary>
+    [HttpPost("bookings/{id:int}/incidents")]
+    public async Task<ActionResult<IncidentResponse>> ReportIncident(int id, CreateIncidentRequest request)
+    {
+        var (incident, error, status) = await incidents.CreateByDispatcherAsync(CurrentUserId(), id, request);
+        if (incident is not null)
+            return StatusCode(StatusCodes.Status201Created, incident);
+        return status == StatusCodes.Status404NotFound ? NotFound(new { message = error }) : BadRequest(new { message = error });
+    }
+
     /// <summary>Close the settlement of a completed trip: extra fees typed now + balance/refund payment.</summary>
     [HttpPost("bookings/{id:int}/settle")]
     public async Task<ActionResult<BookingResponse>> Settle(

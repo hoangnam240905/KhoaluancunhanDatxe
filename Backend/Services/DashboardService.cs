@@ -500,8 +500,8 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
             .ToDictionary(x => x.Key, x => x.Count);
 
         var incidents = (await db.IncidentReports.AsNoTracking()
-            .Where(i => i.CreatedAt >= fromUtc && i.CreatedAt <= toUtc)
-            .GroupBy(i => i.DriverId)
+            .Where(i => i.CreatedAt >= fromUtc && i.CreatedAt <= toUtc && i.DriverId != null)
+            .GroupBy(i => i.DriverId!.Value)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToListAsync())
             .ToDictionary(x => x.Key, x => x.Count);

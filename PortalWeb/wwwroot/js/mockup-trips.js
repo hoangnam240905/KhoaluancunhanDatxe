@@ -462,7 +462,7 @@
 
     function quickActions(t) {
         const a = [`<button type="button" class="mk-btn mk-btn-ghost" data-contact="${t.id}">📞 Liên hệ</button>`];
-        if (t.status === "inProgress" || t.status === "accepted" || t.status === "handedOver") {
+        if (t.bookingStatus === "Assigned" || t.bookingStatus === "InProgress") {
             a.push(`<button type="button" class="mk-btn mk-btn-danger" data-report="${t.id}">⚠️ Báo sự cố</button>`);
         }
         a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-inspect="${t.id}">📋 Inspection</button>`);
@@ -869,10 +869,45 @@
         }
     }
 
+    const INCIDENT_TYPES = { Accident: "Tai nạn / va chạm", VehicleIssue: "Xe hỏng / sự cố kỹ thuật", CustomerIssue: "Vấn đề với khách", Other: "Khác" };
+
+    /** nowVn() keeps Vietnam wall-clock time in the UTC fields. */
+    function nowLocalInput() {
+        const d = nowVn();
+        const p = (n) => String(n).padStart(2, "0");
+        return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+    }
+
+    /** Dispatcher records an incident reported by phone (customer of a self-drive booking, or the trip's driver). */
+    function reportIncidentForm(t) {
+        if (!t) return;
+        const who = t.mode === "SelfDrive" ? "khách tự lái" : "tài xế / khách";
+        openModal(`
+            <h2>Ghi sự cố · Đơn #${t.id}</h2>
+            <dl class="mk-dl">
+                <div><dt>Xe</dt><dd>${esc(t.vehicle)} · ${esc(t.plate)}</dd></div>
+                <div><dt>Hình thức</dt><dd>${MODE_LABEL[t.mode] || t.mode}${t.driver ? " · Tài xế " + esc(t.driver) : ""}</dd></div>
+            </dl>
+            <form id="opReportIncidentForm" data-id="${t.id}" class="op-form-grid">
+                <label class="mk-field"><span>Loại sự cố *</span>
+                    <select name="incidentType"><option value="">— Chọn —</option>${Object.entries(INCIDENT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
+                <label class="mk-field"><span>Thời điểm xảy ra</span><input type="datetime-local" name="occurredAt" value="${nowLocalInput()}" /></label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Mô tả *</span>
+                    <textarea name="description" rows="3" maxlength="500" class="mk-input" placeholder="Ví dụ: khách báo xe nổ lốp trên cao tốc, đang chờ cứu hộ"></textarea></label>
+            </form>
+            <p class="mk-note">Dùng khi ${who} gọi điện báo. Hệ thống lưu tên bạn là người báo${t.mode === "WithDriver" ? " và gửi thông báo cho tài xế" : ""}. Xe hỏng cần thay thì dùng thêm nút "Đổi xe".</p>
+            <p class="mk-note" id="opReportIncidentError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opReportIncidentForm" class="mk-btn mk-btn-danger">Ghi sự cố</button>
+            </div>`);
+        state.modal = "reportIncident";
+    }
+
     function incidentForm(t) {
         const i = t.incident;
         if (!i) {
-            toast("Chuyến này chưa có sự cố từ API. Dispatcher không có API tạo sự cố.");
+            reportIncidentForm(t);
             return;
         }
         openModal(`
@@ -882,7 +917,7 @@
                 <div><dt>Xe</dt><dd>${t.vehicle}<br>${t.plate}</dd></div>
                 <div><dt>Người báo</dt><dd>${i.reporter}</dd></div>
                 <div><dt>Thời gian</dt><dd>${i.time}</dd></div>
-                <div><dt>Loại</dt><dd>${i.type}</dd></div>
+                <div><dt>Loại</dt><dd>${INCIDENT_TYPES[i.type] || esc(i.type)}</dd></div>
                 <div><dt>Trạng thái</dt><dd>${i.status}</dd></div>
                 ${i.resolvedBy ? `<div><dt>Người xử lý</dt><dd>${esc(i.resolvedBy)}</dd></div>` : ""}
             </dl>
@@ -1031,10 +1066,7 @@
             return;
         }
         const report = e.target.closest("[data-report]");
-        if (report) {
-            toast("Dispatcher không có API tạo sự cố (chỉ tài xế POST incidents). Không gắn cờ giả như dữ liệu thật.");
-            return;
-        }
+        if (report) { reportIncidentForm(trip(report.dataset.report)); return; }
 
         const vc = e.target.closest("[data-vehicle-change]");
         if (vc) { vehicleChangeForm(trip(vc.dataset.vehicleChange)); return; }
@@ -1138,6 +1170,26 @@
             closeModal();
             await reloadFromServer();
             render();
+            return;
+        }
+        if (e.target.id === "opReportIncidentForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opReportIncidentError");
+            if (!data.get("incidentType")) { box.textContent = "Vui lòng chọn loại sự cố."; return; }
+            const desc = String(data.get("description") || "").trim();
+            if (!desc) { box.textContent = "Vui lòng mô tả sự cố."; return; }
+            const url = handlers.reportIncident + (handlers.reportIncident.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, { incidentType: data.get("incidentType"), description: desc, occurredAt: data.get("occurredAt") });
+            if (!ok) { box.textContent = (res && res.error) || "Không ghi được sự cố."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã ghi sự cố.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated && state.selectedId === updated.id) renderDrawer(updated);
             return;
         }
         if (e.target.id === "opSettleForm") {

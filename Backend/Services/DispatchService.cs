@@ -782,7 +782,10 @@ public class DispatchService(
                     Description = description.Length > 500 ? description[..500] : description,
                     OccurredAt = DateTime.UtcNow,
                     Status = IncidentStatuses.Open,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    ReportedByUserId = actor?.UserId,
+                    ReportedByName = actor?.Name,
+                    ReportedByRole = actor?.Role
                 });
             }
         }
