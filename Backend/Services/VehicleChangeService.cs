@@ -53,7 +53,14 @@ public class VehicleChangeService(CarRentalDbContext db, VehicleInspectionServic
             c.CurrentType.TypeName, c.DuringTrip, c.RemainingDays, c.SegmentStartKm, same, others), null);
     }
 
-    public async Task<(VehicleChangeResponse? Data, string? Error)> ApplyAsync(int bookingId, int dispatcherId, ChangeVehicleRequest request)
+    /// <summary>
+    /// Runs under the same write lock as assignment / payment (SqliteWriteLock): the free-car check and the switch
+    /// happen in one transaction, so two dispatchers cannot move two bookings onto the same car (no double-booking).
+    /// </summary>
+    public Task<(VehicleChangeResponse? Data, string? Error)> ApplyAsync(int bookingId, int dispatcherId, ChangeVehicleRequest request)
+        => SqliteWriteLock.ExecuteAsync(db, () => ApplyCoreAsync(bookingId, dispatcherId, request));
+
+    private async Task<(VehicleChangeResponse? Data, string? Error)> ApplyCoreAsync(int bookingId, int dispatcherId, ChangeVehicleRequest request)
     {
         if (!VehicleChangeReasons.IsValid(request.Reason))
             return (null, ReasonInvalid);
