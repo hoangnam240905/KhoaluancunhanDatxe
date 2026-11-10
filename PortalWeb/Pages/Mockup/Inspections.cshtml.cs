@@ -124,7 +124,6 @@ public class InspectionsModel(CarRentalApiClient api, AuthSession auth) : RolePa
                 missingApis = new[]
                 {
                     "POST/PUT standalone inspection create/edit (inspections only created via handover/complete/driver flows)",
-                    "Inspector name on VehicleInspectionResponse",
                     "Interior / tires checklist items",
                     "Inspection photos / media"
                 }

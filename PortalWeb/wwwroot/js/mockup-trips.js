@@ -151,6 +151,10 @@
     };
 
 
+    function esc(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     function antiforgery() {
         const input = document.querySelector("#opAntiForgery input[name='__RequestVerificationToken']");
         return input ? input.value : "";
@@ -442,7 +446,7 @@
             <div><span>⛽ Fuel</span><strong>${ret.fuel}%</strong></div>
             <div class="${warnEx ? "warn" : ""}"><span>🚗 Exterior</span><strong>${ret.exterior}${warnEx ? " ⚠️" : ""}</strong></div>
             <div class="${warnTech ? "warn" : ""}"><span>🔧 Technical</span><strong>${ret.tech}${warnTech ? " ⚠️" : ""}</strong></div>
-        </div>${km !== null ? `<p class="mk-note">Km thực tế: ${km.toLocaleString("vi-VN")} km = trả − giao (từ biên bản API).</p>` : ""}`;
+        </div>${ret.by ? `<p class="mk-note">Người lập: ${esc(ret.by)} · ${ret.at || ""}</p>` : ""}${km !== null ? `<p class="mk-note">Km thực tế: ${km.toLocaleString("vi-VN")} km = trả − giao (từ biên bản API).</p>` : ""}`;
     }
 
     function quickActions(t) {
@@ -717,24 +721,32 @@
         }
         openModal(`
             <h2>Báo cáo sự cố</h2>
-            <p class="mk-note">Dữ liệu từ GET /api/dispatch/incidents. Không có API cập nhật trạng thái sự cố cho dispatcher.</p>
             <dl class="mk-dl">
                 <div><dt>Mã đơn</dt><dd>#${t.id}</dd></div>
                 <div><dt>Xe</dt><dd>${t.vehicle}<br>${t.plate}</dd></div>
                 <div><dt>Người báo</dt><dd>${i.reporter}</dd></div>
                 <div><dt>Thời gian</dt><dd>${i.time}</dd></div>
                 <div><dt>Loại</dt><dd>${i.type}</dd></div>
-                <div><dt>Trạng thái API</dt><dd id="opIncStatus">${i.status}</dd></div>
+                <div><dt>Trạng thái</dt><dd>${i.status}</dd></div>
+                ${i.resolvedBy ? `<div><dt>Người xử lý</dt><dd>${esc(i.resolvedBy)}</dd></div>` : ""}
             </dl>
-            <p>${i.desc || ""}</p>
-            <div class="op-photo">[ Ảnh hiện trường — không có API media ]</div>
-            <p class="mk-note" style="margin-top:.7rem">Nút trạng thái dưới đây chỉ đổi UI cục bộ — chưa gọi API.</p>
+            <p>${esc(i.desc || "")}</p>
+            ${i.resolutionNote ? `<p class="mk-note">Cách xử lý: ${esc(i.resolutionNote)}</p>` : ""}
+            ${i.apiStatus === "Open" ? `
+            <form id="opIncidentForm" data-id="${t.id}" data-incident-id="${i.id}" style="margin-top:.7rem">
+                <label for="opIncNote" style="display:block;font-weight:600;margin-bottom:.3rem">Cách xử lý <span style="color:#b91c1c">*</span></label>
+                <textarea id="opIncNote" name="note" rows="3" maxlength="500" class="mk-input" style="width:100%" required
+                    placeholder="Ví dụ: đã gọi tài xế, xe đi tiếp; đã gửi xe thay thế..."></textarea>
+                <p class="mk-note" id="opIncError" style="color:#b91c1c"></p>
+                <p class="mk-note">Hệ thống lưu tên bạn và thời điểm xử lý.</p>
+                <div class="mk-actions">
+                    <button type="submit" class="mk-btn mk-btn-success">Đã xử lý</button>
+                    <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                </div>
+            </form>` : `
             <div class="mk-actions" style="margin-top:.7rem">
-                <button type="button" class="mk-btn mk-btn-primary" data-inc-status="Tiếp nhận" data-for="${t.id}">Tiếp nhận</button>
-                <button type="button" class="mk-btn mk-btn-ghost" data-inc-status="Đang xử lý" data-for="${t.id}">Đang xử lý</button>
-                <button type="button" class="mk-btn mk-btn-success" data-inc-status="Đã xử lý" data-for="${t.id}">Đã xử lý</button>
                 <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
-            </div>`);
+            </div>`}`);
         state.modal = "incident";
     }
 
@@ -851,13 +863,7 @@
             toast("Dispatcher không có API tạo sự cố (chỉ tài xế POST incidents). Không gắn cờ giả như dữ liệu thật.");
             return;
         }
-        const incSt = e.target.closest("[data-inc-status]");
-        if (incSt) {
-            toast(`UI only: «${incSt.dataset.incStatus}» — thiếu API cập nhật trạng thái sự cố dispatcher.`);
-            const box = document.getElementById("opIncStatus");
-            if (box) box.textContent = incSt.dataset.incStatus + " (local)";
-            return;
-        }
+
         const settleDone = e.target.closest("[data-close-settle]");
         if (settleDone) {
             toast("Chốt quyết toán — thiếu API. Không đổi trạng thái Backend.");
@@ -916,6 +922,28 @@
     });
 
     document.body.addEventListener("submit", async (e) => {
+        if (e.target.id === "opIncidentForm") {
+            e.preventDefault();
+            const form = e.target;
+            const note = String(new FormData(form).get("note") || "").trim();
+            const box = document.getElementById("opIncError");
+            if (!note) {
+                if (box) box.textContent = "Vui lòng ghi cách xử lý sự cố.";
+                return;
+            }
+            const url = handlers.resolveIncident + (handlers.resolveIncident.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, { incidentId: form.dataset.incidentId, note });
+            if (!ok) {
+                if (box) box.textContent = (res && res.error) || "Không cập nhật được sự cố.";
+                return;
+            }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã ghi nhận xử lý sự cố.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
         if (e.target.id === "opHandoverForm") {
             e.preventDefault();
             return;

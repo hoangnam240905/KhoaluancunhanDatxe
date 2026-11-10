@@ -15,4 +15,12 @@ public record IncidentResponse(
     string Description,
     DateTime OccurredAt,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? ResolvedByUserId = null,
+    string? ResolvedByName = null,
+    string? ResolvedByRole = null,
+    DateTime? ResolvedAt = null,
+    string? ResolutionNote = null);
+
+/// <summary>Dispatcher closes an incident; the note says what was done.</summary>
+public record ResolveIncidentRequest(string? Note);

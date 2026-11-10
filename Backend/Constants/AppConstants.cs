@@ -215,6 +215,7 @@ public static class IncidentTypes
 public static class IncidentStatuses
 {
     public const string Open = "Open";
+    public const string Resolved = "Resolved";
 }
 
 public static class MaintenanceTypes

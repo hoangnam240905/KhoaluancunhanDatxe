@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Maintenance;
 using Backend.Services;
@@ -16,7 +17,7 @@ public class VehicleMaintenanceController(
     [HttpPost("{id:int}/maintenance")]
     public async Task<ActionResult<MaintenanceRecordResponse>> Create(int id, CreateMaintenanceRequest request)
     {
-        var (data, error, status) = await maintenance.CreateAsync(id, request);
+        var (data, error, status) = await maintenance.CreateAsync(id, request, CurrentUserId());
         return status switch
         {
             201 => CreatedAtAction(nameof(GetHistory), new { id }, data),
@@ -30,7 +31,7 @@ public class VehicleMaintenanceController(
     public async Task<ActionResult<MaintenanceRecordResponse>> Complete(
         int id, int maintenanceId, [FromBody] CompleteMaintenanceRequest? request)
     {
-        var (data, error, status) = await maintenance.CompleteAsync(id, maintenanceId, request);
+        var (data, error, status) = await maintenance.CompleteAsync(id, maintenanceId, request, CurrentUserId());
         return status switch
         {
             200 => Ok(data),
@@ -53,4 +54,7 @@ public class VehicleMaintenanceController(
     [HttpGet("maintenance-alerts")]
     public async Task<ActionResult<List<MaintenanceAlertResponse>>> GetAlerts()
         => Ok(await alerts.GetAlertsAsync());
+
+    private int? CurrentUserId()
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }

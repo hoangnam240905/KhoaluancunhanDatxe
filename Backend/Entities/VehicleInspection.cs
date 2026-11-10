@@ -15,6 +15,11 @@ public class VehicleInspection
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>Who recorded it (from the JWT user at the time); null on records made before this was kept.</summary>
+    public int? CreatedByUserId { get; set; }
+    public string? CreatedByName { get; set; }
+    public string? CreatedByRole { get; set; }
+
     public Booking Booking { get; set; } = null!;
     public Vehicle Vehicle { get; set; } = null!;
 }

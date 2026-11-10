@@ -138,7 +138,7 @@
             <td>${r.fuel}%</td>
             <td>${condBadge(r.condition)}</td>
             <td>${r.datetime}</td>
-            <td>${r.inspector}<div class="mk-muted">không có trong API</div></td>
+            <td>${r.inspector}</td>
             <td><button type="button" class="mk-btn mk-btn-ghost" data-open="${r.id}">Xem</button></td>
         </tr>`;
     }
@@ -305,7 +305,7 @@
                     <button type="button" class="mk-btn mk-btn-ghost" data-edit="${r.id}">Chỉnh sửa (thiếu API)</button>
                     <button type="button" class="mk-btn mk-btn-ghost" data-print="${r.id}">In biên bản</button>
                 </div>
-                <p class="mk-note">Người kiểm tra không có trên DTO Backend.</p>
+                <p class="mk-note">Người lập: ${r.inspector} · ${r.datetime}</p>
             </div>`;
     }
 
@@ -314,6 +314,7 @@
         els.print.innerHTML = `
             <h1>Biên bản kiểm xe</h1>
             <p>${r.booking} · ${TYPE[r.type]} · ${r.datetime}</p>
+            <p>Người lập: ${r.inspector}</p>
             <p>${r.vehicle} · ${r.plate}<br>Khách hàng: ${r.customer}</p>
             <p>Số km: ${kmText(r.km)} · Nhiên liệu: ${r.fuel}% · Tình trạng: ${(COND[r.condition] || COND.good).text}</p>
             <p>Ngoại thất: ${r.exterior} · Kỹ thuật: ${r.technical}</p>

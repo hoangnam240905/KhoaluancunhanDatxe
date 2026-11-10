@@ -11,6 +11,39 @@ public class IncidentService(CarRentalDbContext db, IRealtimePublisher? realtime
     public const string DescriptionRequired = "Mô tả sự cố không được để trống.";
     public const string DescriptionTooLong = "Mô tả sự cố tối đa 500 ký tự.";
     public const string InvalidType = "Loại sự cố không hợp lệ.";
+    public const string NotFound = "Không tìm thấy sự cố.";
+    public const string AlreadyResolved = "Sự cố này đã được xử lý.";
+    public const string NoteRequired = "Vui lòng ghi cách xử lý sự cố.";
+    public const string NoteTooLong = "Ghi chú xử lý tối đa 500 ký tự.";
+
+    /// <summary>Dispatcher marks an open incident as handled; who and when are recorded from the JWT user.</summary>
+    public async Task<(IncidentResponse? Incident, string? Error, int StatusCode)> ResolveAsync(
+        int incidentId, int actorUserId, ResolveIncidentRequest? request)
+    {
+        var note = request?.Note?.Trim();
+        if (string.IsNullOrWhiteSpace(note))
+            return Fail(NoteRequired, StatusCodes.Status400BadRequest);
+        if (note.Length > 500)
+            return Fail(NoteTooLong, StatusCodes.Status400BadRequest);
+
+        var incident = await db.IncidentReports
+            .Include(i => i.Driver).ThenInclude(d => d.User)
+            .FirstOrDefaultAsync(i => i.IncidentId == incidentId);
+        if (incident is null)
+            return Fail(NotFound, StatusCodes.Status404NotFound);
+        if (incident.Status != IncidentStatuses.Open)
+            return Fail(AlreadyResolved, StatusCodes.Status400BadRequest);
+
+        var actor = await ActorLookup.FindAsync(db, actorUserId);
+        incident.Status = IncidentStatuses.Resolved;
+        incident.ResolvedAt = DateTime.UtcNow;
+        incident.ResolvedByUserId = actor?.UserId;
+        incident.ResolvedByName = actor?.Name;
+        incident.ResolvedByRole = actor?.Role;
+        incident.ResolutionNote = note;
+        await db.SaveChangesAsync();
+        return (MapRow(incident), null, StatusCodes.Status200OK);
+    }
 
     public async Task<(IncidentResponse? Incident, string? Error, int StatusCode)> CreateAsync(
         int driverId, int assignmentId, CreateIncidentRequest request)
@@ -91,7 +124,12 @@ public class IncidentService(CarRentalDbContext db, IRealtimePublisher? realtime
         i.Description,
         i.OccurredAt,
         i.Status,
-        i.CreatedAt);
+        i.CreatedAt,
+        i.ResolvedByUserId,
+        i.ResolvedByName,
+        i.ResolvedByRole,
+        i.ResolvedAt,
+        i.ResolutionNote);
 
     private static (IncidentResponse? Incident, string? Error, int StatusCode) Fail(string error, int status)
         => (null, error, status);

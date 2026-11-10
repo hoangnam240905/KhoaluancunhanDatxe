@@ -17,7 +17,8 @@ public class VehicleInspectionService(CarRentalDbContext db)
         string? condition,
         string? notes,
         string? exteriorCondition = null,
-        string? technicalCondition = null)
+        string? technicalCondition = null,
+        int? actorUserId = null)
     {
         var error = VehicleInspectionRules.Validate(
             inspectionType, odometerKm, fuelLevel, condition, notes, out var resolvedType,
@@ -69,6 +70,7 @@ public class VehicleInspectionService(CarRentalDbContext db)
             }
         }
 
+        var actor = await ActorLookup.FindAsync(db, actorUserId);
         var now = DateTime.UtcNow;
         var exterior = TrimOrNull(exteriorCondition) ?? TrimOrNull(condition);
         var technical = TrimOrNull(technicalCondition);
@@ -84,7 +86,10 @@ public class VehicleInspectionService(CarRentalDbContext db)
             ExteriorCondition = exterior,
             TechnicalCondition = technical,
             Notes = TrimOrNull(notes),
-            CreatedAt = now
+            CreatedAt = now,
+            CreatedByUserId = actor?.UserId,
+            CreatedByName = actor?.Name,
+            CreatedByRole = actor?.Role
         };
 
         db.VehicleInspections.Add(inspection);
@@ -156,7 +161,10 @@ public class VehicleInspectionService(CarRentalDbContext db)
         i.Notes,
         i.CreatedAt,
         i.ExteriorCondition,
-        i.TechnicalCondition);
+        i.TechnicalCondition,
+        i.CreatedByUserId,
+        i.CreatedByName,
+        i.CreatedByRole);
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

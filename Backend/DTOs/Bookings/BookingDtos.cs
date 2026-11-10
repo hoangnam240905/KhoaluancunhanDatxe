@@ -95,7 +95,10 @@ public record VehicleInspectionResponse(
     string? Notes,
     DateTime CreatedAt,
     string? ExteriorCondition = null,
-    string? TechnicalCondition = null);
+    string? TechnicalCondition = null,
+    int? CreatedByUserId = null,
+    string? CreatedByName = null,
+    string? CreatedByRole = null);
 
 public record BookingFeeResponse(
     int FeeId,

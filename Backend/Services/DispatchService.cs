@@ -259,7 +259,8 @@ public class DispatchService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            dispatcherId);
         if (inspection is null)
             return Fail(inspectError ?? "Không thể ghi nhận giao xe.");
 
@@ -332,7 +333,8 @@ public class DispatchService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            dispatcherId);
         if (inspection is null)
             return Fail(inspectError ?? "Không thể ghi nhận trả xe.");
 

@@ -2606,10 +2606,13 @@
       return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("vi-VN");
     };
 
+    // Incident times are stored in UTC; Backend sends them without a zone, so read them as UTC
+    // and show Vietnam time (otherwise 07:37 VN appears as 00:37).
     const when = (iso) => {
       if (!iso) return "—";
-      const dt = new Date(iso);
-      return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("vi-VN");
+      const s = String(iso);
+      const dt = new Date(/Z$|[+-]\d\d:?\d\d$/.test(s) ? s : s + "Z");
+      return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     };
 
     const kmText = (n) => {
@@ -2880,11 +2883,18 @@
       });
     }
 
+    // Who opened / completed a maintenance record; old records without it say so instead of guessing.
+    function maintActor(name, role) {
+      if (!name) return "Không rõ (dữ liệu cũ)";
+      const roles = { Admin: "Quản trị", Dispatcher: "Điều phối", Driver: "Tài xế", Customer: "Khách hàng" };
+      return role ? `${name} (${roles[role] || role})` : name;
+    }
+
     function paintHistory() {
       if (!historyBody) return;
       const completed = historyRows.filter((h) => h.record.completedDate);
       if (!completed.length) {
-        historyBody.innerHTML = `<tr><td colspan="7"><div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div></td></tr>`;
+        historyBody.innerHTML = `<tr><td colspan="8"><div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div></td></tr>`;
         return;
       }
       historyBody.innerHTML = completed.map((h, i) => `
@@ -2895,6 +2905,7 @@
           <td>${esc(dayOnly(h.record.scheduledDate))}</td>
           <td>${esc(dayOnly(h.record.completedDate))}</td>
           <td>${esc(money(h.record.cost))}</td>
+          <td><small>Lập: ${esc(maintActor(h.record.createdByName, h.record.createdByRole))}<br>Hoàn thành: ${esc(maintActor(h.record.completedByName, h.record.completedByRole))}</small></td>
           <td>${badge("Completed")}</td>
         </tr>`).join("");
     }
@@ -3069,12 +3080,13 @@
       const open = p?.openMaintenance || null;
       const history = Array.isArray(detail.history) ? detail.history : [];
       const historyHtml = history.length
-        ? `<table class="aui-table"><thead><tr><th>Loại</th><th>Dự kiến</th><th>Hoàn thành</th><th>Chi phí</th></tr></thead><tbody>
+        ? `<table class="aui-table"><thead><tr><th>Loại</th><th>Dự kiến</th><th>Hoàn thành</th><th>Chi phí</th><th>Người thực hiện</th></tr></thead><tbody>
             ${history.map((h) => `<tr>
               <td>${esc(t(h.maintenanceType))}</td>
               <td>${esc(dayOnly(h.scheduledDate))}</td>
               <td>${esc(dayOnly(h.completedDate))}</td>
               <td>${esc(money(h.cost))}</td>
+              <td><small>Lập: ${esc(maintActor(h.createdByName, h.createdByRole))}${h.completedDate ? `<br>Hoàn thành: ${esc(maintActor(h.completedByName, h.completedByRole))}` : ""}</small></td>
             </tr>`).join("")}
           </tbody></table>`
         : `<div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div>`;
@@ -3232,9 +3244,11 @@
             <div><dt>Trạng thái</dt><dd>${badge(inc.status)}</dd></div>
             <div><dt>Thời điểm</dt><dd>${esc(when(inc.occurredAt))}</dd></div>
             <div><dt>Tạo lúc</dt><dd>${esc(when(inc.createdAt))}</dd></div>
+            ${inc.resolvedAt ? `<div><dt>Người xử lý</dt><dd>${esc(maintActor(inc.resolvedByName, inc.resolvedByRole))} · ${esc(when(inc.resolvedAt))}</dd></div>
+            <div><dt>Cách xử lý</dt><dd>${esc(inc.resolutionNote || "—")}</dd></div>` : ""}
             <div><dt>Mô tả</dt><dd>${esc(inc.description || "—")}</dd></div>
           </dl>
-          <p class="aui-muted" style="margin-top:1rem">Hành động giải quyết/đóng: chưa hỗ trợ trên backend.</p>`,
+          <p class="aui-muted" style="margin-top:1rem">Sự cố do điều phối viên đóng (ghi cách xử lý) trên trang Vận hành chuyến.</p>`,
         footerHtml: `<button type="button" class="aui-btn aui-btn-ghost" data-aui-drawer-close>Đóng</button>`
       });
     }

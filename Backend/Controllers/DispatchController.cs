@@ -79,6 +79,19 @@ public class DispatchController(
         [FromQuery] string? status)
         => Ok(await incidents.GetOperationsAsync(bookingId, status));
 
+    [HttpPost("incidents/{id:int}/resolve")]
+    public async Task<ActionResult<IncidentResponse>> ResolveIncident(int id, ResolveIncidentRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (incident, error, status) = await incidents.ResolveAsync(id, userId, request);
+        return status switch
+        {
+            200 => Ok(incident),
+            404 => NotFound(new { message = error }),
+            _ => BadRequest(new { message = error })
+        };
+    }
+
     [HttpGet("inspections")]
     public async Task<ActionResult<IReadOnlyList<VehicleInspectionResponse>>> GetInspections(
         [FromQuery] int? bookingId)

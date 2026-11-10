@@ -182,6 +182,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteNotificationColumns();
     db.EnsureSqliteChatbotMessagesTable();
     db.EnsureSqliteFavoriteVehiclesTable();
+    db.EnsureSqliteActorColumns();
     DbSeeder.Seed(db);
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))

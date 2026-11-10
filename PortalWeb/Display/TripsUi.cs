@@ -189,7 +189,8 @@ public static class TripsUi
             exterior = string.IsNullOrWhiteSpace(i.ExteriorCondition) ? (i.Condition ?? "—") : i.ExteriorCondition,
             tech = string.IsNullOrWhiteSpace(i.TechnicalCondition) ? "—" : i.TechnicalCondition,
             note = i.Notes ?? "",
-            at = FmtUtc(i.ActualAt)
+            at = FmtUtc(i.ActualAt),
+            by = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole)
         };
     }
 
@@ -203,7 +204,9 @@ public static class TripsUi
         status = MapIncidentStatus(i.Status),
         summary = Truncate(i.Description, 80),
         desc = i.Description,
-        apiStatus = i.Status
+        apiStatus = i.Status,
+        resolvedBy = i.ResolvedAt is null ? null : UiDisplay.Actor(i.ResolvedByName, i.ResolvedByRole, i.ResolvedAt),
+        resolutionNote = i.ResolutionNote
     };
 
     private static string MapIncidentStatus(string? s) => s?.Trim() switch

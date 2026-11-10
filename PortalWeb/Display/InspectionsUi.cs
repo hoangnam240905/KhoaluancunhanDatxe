@@ -69,7 +69,7 @@ public static class InspectionsUi
             // ActualAt is UTC (server clock) — show Vietnam time.
             datetime = Fmt(UiDisplay.ToVietnam(i.ActualAt)),
             dateIso = UiDisplay.ToVietnam(i.ActualAt).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            inspector = "—", // not in VehicleInspectionResponse
+            inspector = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole),
             customer = booking?.CustomerName ?? "—",
             driver,
             mode,

@@ -1040,7 +1040,45 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     /// <summary>
     /// Creates IncidentReports on an existing SQLite database. No backfill.
     /// </summary>
-    /// <summary>Chat history of logged-in customers (chatbot widget), for databases created before it existed.</summary>
+    /// <summary>
+    /// "Who did it" columns on inspections, incidents and maintenance (plan1.md, Yêu cầu chung).
+    /// Old rows stay null and are shown as unknown; nothing is guessed.
+    /// </summary>
+    public void EnsureSqliteActorColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        AddColumns("VehicleInspections",
+            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"));
+        AddColumns("IncidentReports",
+            ("ResolvedByUserId", "INTEGER"), ("ResolvedByName", "TEXT"), ("ResolvedByRole", "TEXT"),
+            ("ResolvedAt", "TEXT"), ("ResolutionNote", "TEXT"));
+        AddColumns("MaintenanceRecords",
+            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"),
+            ("CompletedByUserId", "INTEGER"), ("CompletedByName", "TEXT"), ("CompletedByRole", "TEXT"));
+
+        void AddColumns(string table, params (string Name, string Type)[] wanted)
+        {
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = $"PRAGMA table_info('{table}')";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    columns.Add(reader.GetString(1));
+            }
+            if (columns.Count == 0)
+                return;
+            foreach (var (name, type) in wanted)
+                if (!columns.Contains(name))
+                    Database.ExecuteSqlRaw($"ALTER TABLE {table} ADD COLUMN {name} {type} NULL");
+        }
+    }
+
+    /// <summary>Customers' favourite vehicles (heart button), for databases created before it existed.</summary>
     public void EnsureSqliteFavoriteVehiclesTable()
     {
         if (Database.ProviderName is null ||

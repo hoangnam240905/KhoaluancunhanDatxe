@@ -133,6 +133,23 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         return await ActionOkTripAsync(data);
     }
 
+    /// <summary>Dispatcher closes an open incident; Backend records who did it from the login token.</summary>
+    public async Task<IActionResult> OnPostResolveIncidentAsync(int id, int incidentId, string? note)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (string.IsNullOrWhiteSpace(note))
+            return ActionFail("Vui lòng ghi cách xử lý sự cố.");
+
+        var (_, error) = await api.ResolveIncidentAsync(incidentId, note.Trim());
+        if (error is not null) return ActionFail(error);
+
+        var booking = await api.GetBookingAsync(id);
+        return booking is null
+            ? new JsonResult(new { ok = true })
+            : await ActionOkTripAsync(booking);
+    }
+
     public async Task<IActionResult> OnGetReturnInfoAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");

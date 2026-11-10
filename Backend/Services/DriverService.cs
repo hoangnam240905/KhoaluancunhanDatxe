@@ -125,7 +125,8 @@ public class DriverService(
                 request.Condition,
                 request.Notes,
                 request.ExteriorCondition,
-                request.TechnicalCondition);
+                request.TechnicalCondition,
+                driverId);
             if (inspection is null)
                 return (false, error ?? "Không thể lưu biên bản kiểm tra đầu chuyến.");
         }
@@ -184,7 +185,8 @@ public class DriverService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            driverId);
         if (inspection is null)
             return (false, inspectError ?? "Không thể ghi nhận trả xe.");
 

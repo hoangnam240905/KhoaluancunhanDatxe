@@ -629,6 +629,15 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
     }
 
+    public async Task<(IncidentResponse? Data, string? Error)> ResolveIncidentAsync(int incidentId, string? note)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/incidents/{incidentId}/resolve");
+        request.Content = JsonContent.Create(new ResolveIncidentRequest(note));
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không thể cập nhật sự cố.");
+        return (await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions), null);
+    }
+
     public async Task<(List<MaintenanceAlertResponse>? Data, string? Error)> GetMaintenanceAlertsWithStatusAsync()
     {
         using var request = CreateRequest(HttpMethod.Get, "/api/vehicles/maintenance-alerts");

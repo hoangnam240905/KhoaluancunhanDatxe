@@ -81,7 +81,9 @@ public record VehicleResponse(
 public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 public record MaintenanceRecordResponse(
     int MaintenanceId, int VehicleId, string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate,
-    int? OdometerAtMaintenance, decimal? Cost, string? Notes, DateTime CreatedAt);
+    int? OdometerAtMaintenance, decimal? Cost, string? Notes, DateTime CreatedAt,
+    int? ScheduledOdometer = null, DateTime? NextMaintenanceDate = null, int? NextMaintenanceOdometer = null,
+    string? CreatedByName = null, string? CreatedByRole = null, string? CompletedByName = null, string? CompletedByRole = null);
 public record CreateMaintenanceRequest(
     string MaintenanceType, DateTime ScheduledDate, DateTime? CompletedDate, int? OdometerAtMaintenance, decimal? Cost, string? Notes);
 public record CompleteMaintenanceRequest(int? OdometerAtMaintenance);
@@ -183,7 +185,7 @@ public record DriverScheduleResponse(
     int TotalTrips = 0);
 public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status, string? PrimaryImageUrl = null);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
-public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null);
+public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null, int? CreatedByUserId = null, string? CreatedByName = null, string? CreatedByRole = null);
 public record BookingQuoteResponse(
     int VehicleTypeId,
     string VehicleTypeName,
@@ -329,7 +331,13 @@ public record IncidentResponse(
     string Description,
     DateTime OccurredAt,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? ResolvedByUserId = null,
+    string? ResolvedByName = null,
+    string? ResolvedByRole = null,
+    DateTime? ResolvedAt = null,
+    string? ResolutionNote = null);
+public record ResolveIncidentRequest(string? Note);
 public record ChangePasswordRequest(string OldPassword, string NewPassword);
 public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, decimal PricePerKm);
 public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive);
