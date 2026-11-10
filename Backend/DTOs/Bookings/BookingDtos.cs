@@ -79,7 +79,10 @@ public record BookingResponse(
     int? RequestedDriverId = null,
     string? RequestedDriverName = null,
     bool CustomerCanCancel = false,
-    DateTime? CustomerCancelDeadline = null);
+    DateTime? CustomerCancelDeadline = null,
+    string? CustomerLicenseStatus = null,
+    string? OriginalLicenseCheckedByName = null,
+    DateTime? OriginalLicenseCheckedAt = null);
 
 public record CancelBookingRequest(string? CancellationReason);
 
@@ -120,7 +123,8 @@ public record VehicleConditionRequest(
     string? Condition = null,
     string? Notes = null,
     string? ExteriorCondition = null,
-    string? TechnicalCondition = null);
+    string? TechnicalCondition = null,
+    bool? OriginalLicenseChecked = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,

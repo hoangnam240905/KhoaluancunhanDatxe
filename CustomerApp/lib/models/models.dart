@@ -877,3 +877,149 @@ class DriverBooking extends Booking {
 
   int? get assignmentId => assignment?.assignmentId;
 }
+
+/// One photo of the licence and its review (plan1.md Phần F).
+class UserDocument {
+  final int userDocumentId;
+  final String documentType;
+  final String status;
+  final String? rejectReason;
+
+  const UserDocument({
+    required this.userDocumentId,
+    required this.documentType,
+    required this.status,
+    this.rejectReason,
+  });
+
+  factory UserDocument.fromJson(Map<String, dynamic> json) => UserDocument(
+    userDocumentId: json['userDocumentId'] as int? ?? 0,
+    documentType: json['documentType'] as String? ?? '',
+    status: json['status'] as String? ?? '',
+    rejectReason: json['rejectReason'] as String?,
+  );
+}
+
+class LicenseClassOption {
+  final String code;
+  final String label;
+  final int maxSeats;
+
+  const LicenseClassOption({
+    required this.code,
+    required this.label,
+    required this.maxSeats,
+  });
+
+  factory LicenseClassOption.fromJson(Map<String, dynamic> json) =>
+      LicenseClassOption(
+        code: json['code'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        maxSeats: json['maxSeats'] as int? ?? 0,
+      );
+}
+
+/// Whether the customer's licence may drive a vehicle type self-drive (plan1.md Phần E).
+class SelfDriveTypeEligibility {
+  final int typeId;
+  final String typeName;
+  final int seatCapacity;
+  final String minLicenseClass;
+  final bool canDrive;
+  final String? reason;
+
+  const SelfDriveTypeEligibility({
+    required this.typeId,
+    required this.typeName,
+    required this.seatCapacity,
+    required this.minLicenseClass,
+    required this.canDrive,
+    this.reason,
+  });
+
+  factory SelfDriveTypeEligibility.fromJson(Map<String, dynamic> json) =>
+      SelfDriveTypeEligibility(
+        typeId: json['typeId'] as int? ?? 0,
+        typeName: json['typeName'] as String? ?? '',
+        seatCapacity: json['seatCapacity'] as int? ?? 0,
+        minLicenseClass: json['minLicenseClass'] as String? ?? '',
+        canDrive: json['canDrive'] as bool? ?? false,
+        reason: json['reason'] as String?,
+      );
+}
+
+/// The customer's self-drive licence file. licenseStatus: None / Pending / Approved / Rejected.
+class CustomerLicense {
+  final String? licenseNumber;
+  final String? licenseClass;
+  final String? licenseClassLabel;
+  final DateTime? licenseIssueDate;
+  final DateTime? licenseExpiry;
+  final String licenseStatus;
+  final String photoStatus;
+  final List<UserDocument> documents;
+  final String? reviewedByName;
+  final String? reviewNote;
+  final bool licenseExpiringSoon;
+  final bool licenseExpired;
+  final List<SelfDriveTypeEligibility> vehicleTypes;
+
+  const CustomerLicense({
+    required this.licenseStatus,
+    required this.photoStatus,
+    required this.documents,
+    required this.vehicleTypes,
+    this.licenseNumber,
+    this.licenseClass,
+    this.licenseClassLabel,
+    this.licenseIssueDate,
+    this.licenseExpiry,
+    this.reviewedByName,
+    this.reviewNote,
+    this.licenseExpiringSoon = false,
+    this.licenseExpired = false,
+  });
+
+  bool get isDeclared => licenseStatus != 'None';
+
+  UserDocument? documentOf(String type) {
+    for (final d in documents) {
+      if (d.documentType == type) return d;
+    }
+    return null;
+  }
+
+  SelfDriveTypeEligibility? typeOf(int typeId) {
+    for (final t in vehicleTypes) {
+      if (t.typeId == typeId) return t;
+    }
+    return null;
+  }
+
+  factory CustomerLicense.fromJson(Map<String, dynamic> json) =>
+      CustomerLicense(
+        licenseNumber: json['licenseNumber'] as String?,
+        licenseClass: json['licenseClass'] as String?,
+        licenseClassLabel: json['licenseClassLabel'] as String?,
+        licenseIssueDate: DateTime.tryParse(
+          json['licenseIssueDate']?.toString() ?? '',
+        ),
+        licenseExpiry: DateTime.tryParse(
+          json['licenseExpiry']?.toString() ?? '',
+        ),
+        licenseStatus: json['licenseStatus'] as String? ?? 'None',
+        photoStatus: json['photoStatus'] as String? ?? 'Missing',
+        documents: (json['documents'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(UserDocument.fromJson)
+            .toList(),
+        reviewedByName: json['reviewedByName'] as String?,
+        reviewNote: json['reviewNote'] as String?,
+        licenseExpiringSoon: json['licenseExpiringSoon'] as bool? ?? false,
+        licenseExpired: json['licenseExpired'] as bool? ?? false,
+        vehicleTypes: (json['vehicleTypes'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SelfDriveTypeEligibility.fromJson)
+            .toList(),
+      );
+}

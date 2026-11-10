@@ -49,6 +49,27 @@ public static class DriverLicenseBackfill
             }
         }
 
+        // plan1.md Phần E: the two sample customers get an approved class B licence; others stay "chưa khai".
+        var sampleEmails = new[] { "customer1@gmail.com", "customer2@gmail.com" };
+        var samples = db.Customers
+            .Where(c => c.LicenseStatus == CustomerLicenseStatuses.None && c.DriverLicenseNumber == null
+                && sampleEmails.Contains(c.User.Email))
+            .ToList();
+        foreach (var c in samples)
+        {
+            c.DriverLicenseNumber = $"7903{c.CustomerId:D8}";
+            c.DriverLicenseClass = "B";
+            c.DriverLicenseExpiry = new DateOnly(2034, 12, 31);
+            c.LicenseStatus = CustomerLicenseStatuses.Approved;
+            changed++;
+        }
+        // A licence typed in earlier (admin page) but never reviewed waits for approval.
+        foreach (var c in db.Customers.Where(c => c.LicenseStatus == CustomerLicenseStatuses.None && c.DriverLicenseNumber != null).ToList())
+        {
+            c.LicenseStatus = CustomerLicenseStatuses.Pending;
+            changed++;
+        }
+
         if (changed > 0)
             db.SaveChanges();
         return changed;

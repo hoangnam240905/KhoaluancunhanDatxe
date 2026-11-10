@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
@@ -300,6 +301,88 @@ class ApiService {
     return list
         .map((e) => VehicleType.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  // ---- Self-drive licence (plan1.md Phần E) + photos (Phần F) ----
+
+  Future<CustomerLicense> getMyLicense({DateTime? endDate}) async {
+    final query = endDate == null
+        ? ''
+        : '?endDate=${Uri.encodeQueryComponent(endDate.toIso8601String())}';
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/customers/me/license$query'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return CustomerLicense.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<CustomerLicense> updateMyLicense({
+    required String licenseNumber,
+    required String licenseClass,
+    DateTime? licenseIssueDate,
+    required DateTime licenseExpiry,
+  }) async {
+    String day(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/customers/me/license'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({
+        'licenseNumber': licenseNumber,
+        'licenseClass': licenseClass,
+        'licenseIssueDate': licenseIssueDate == null
+            ? null
+            : day(licenseIssueDate),
+        'licenseExpiry': day(licenseExpiry),
+      }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return CustomerLicense.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<LicenseClassOption>> getLicenseClasses() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/license-classes'),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(LicenseClassOption.fromJson)
+        .toList();
+  }
+
+  Future<void> uploadDocument(
+    String type,
+    Uint8List bytes,
+    String fileName,
+  ) async {
+    final token = await authService.getToken();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/api/documents'),
+    );
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.fields['type'] = type;
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  String documentFileUrl(int documentId) =>
+      '${ApiConfig.baseUrl}/api/documents/$documentId/file';
+
+  Future<Map<String, String>> authHeaders() async {
+    final token = await authService.getToken();
+    return token == null ? {} : {'Authorization': 'Bearer $token'};
   }
 
   Future<List<Vehicle>> getVehicles({String? status}) async {

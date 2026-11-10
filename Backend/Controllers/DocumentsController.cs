@@ -11,7 +11,7 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/documents")]
-public class DocumentsController(UserDocumentService documents, DriverVerificationService driverVerification) : ControllerBase
+public class DocumentsController(UserDocumentService documents, DriverVerificationService driverVerification, CustomerLicenseService customerLicences) : ControllerBase
 {
     /// <summary>Upload one side of a document (multipart: type, file).</summary>
     [HttpPost]
@@ -25,6 +25,8 @@ public class DocumentsController(UserDocumentService documents, DriverVerificati
             return BadRequest(new { message = error });
         if (User.IsInRole(RoleNames.Driver))
             await driverVerification.NotifyDispatchersIfReadyAsync(CurrentUserId());
+        else if (User.IsInRole(RoleNames.Customer))
+            await customerLicences.NotifyDispatchersIfReadyAsync(CurrentUserId());
         return Ok(document);
     }
 

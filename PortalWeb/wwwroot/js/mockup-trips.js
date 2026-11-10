@@ -574,6 +574,25 @@
         btn.disabled = fuel === null || !isValidKm(state.handoverPayload.odometerKm);
     }
 
+    // plan1.md Phần E: the customer's declared licence + the "original checked" tick required to hand over.
+    function licenceCheckBlock(l) {
+        if (!l) return "";
+        const status = { Approved: "Đã duyệt", Pending: "Chờ duyệt", Rejected: "Chưa được chấp nhận", None: "Chưa khai" }[l.status] || l.status;
+        return `<div class="mk-block" style="border-left:3px solid #2563eb;padding-left:.6rem;margin-top:.6rem">
+            <h3>Bằng lái của khách</h3>
+            <dl class="mk-dl">
+                <div><dt>Số bằng</dt><dd>${esc(l.number || "—")}</dd></div>
+                <div><dt>Hạng</dt><dd>${esc(l.cls || "—")}</dd></div>
+                <div><dt>Hết hạn</dt><dd>${esc(l.expiry || "—")}${l.expired ? " (đã hết hạn)" : ""}</dd></div>
+                <div><dt>Duyệt</dt><dd>${esc(status)}</dd></div>
+            </dl>
+            <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:600">
+                <input type="checkbox" data-handover-licence-check style="margin-top:.25rem" />
+                <span>Đã kiểm tra bằng lái gốc: khớp số bằng, hạng và ảnh đã duyệt, còn hạn.</span>
+            </label>
+            <p class="mk-note">Không khớp hoặc hết hạn thì không giao xe; chuyển đơn để điều phối xử lý (hủy, hoàn cọc theo quy định). Hệ thống lưu tên bạn là người kiểm tra.</p>
+        </div>`;
+    }
     async function handoverForm(t) {
         if (!t.canHandoverApi) {
             toast("Chỉ giao xe khi đơn đã được gán xe.");
@@ -638,6 +657,7 @@
                 ${kmOk && !knownFuelOk ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
                 ${kmOk && knownFuelOk ? `<p class="mk-note">Nhiên liệu điền sẵn từ lần kiểm xe gần nhất (${Number(data.fuelLevel).toLocaleString("vi-VN")}%) — sửa lại nếu thực tế khác.</p>` : ""}
                 ${kmOk ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+                ${licenceCheckBlock(data.licence)}
                 <div class="mk-actions">
                     <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
                     <button type="button" class="mk-btn mk-btn-success" data-handover-submit ${canConfirmNow ? "" : "disabled"}>Xác nhận giao xe</button>
@@ -967,11 +987,17 @@
                 toast("Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
                 return;
             }
+            const licenceBox = document.querySelector("[data-handover-licence-check]");
+            if (licenceBox && !licenceBox.checked) {
+                toast("Vui lòng kiểm tra bằng lái gốc của khách và tick ô xác nhận.");
+                return;
+            }
             const url = handlers.handover + (handlers.handover.includes("?") ? "&" : "?") + "id=" + payload.id;
             handoverSubmit.disabled = true;
             const { ok, data: res } = await postForm(url, {
                 odometerKm: payload.odometerKm,
-                fuelLevel: payload.fuelLevel
+                fuelLevel: payload.fuelLevel,
+                originalLicenseChecked: licenceBox ? licenceBox.checked : false
             });
             if (!ok) {
                 toast((res && res.error) || "Giao xe thất bại.");

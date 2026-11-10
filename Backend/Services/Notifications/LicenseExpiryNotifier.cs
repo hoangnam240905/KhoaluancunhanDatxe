@@ -57,6 +57,21 @@ public sealed class LicenseExpiryNotifier(IServiceScopeFactory scopes, ILogger<L
             UserNotifications.Add(db, d.DriverId, Title, message);
             written++;
         }
+        // Self-drive customers with an approved licence (plan1.md Phần E).
+        var customers = await db.Customers.AsNoTracking()
+            .Where(c => c.LicenseStatus == CustomerLicenseStatuses.Approved && c.DriverLicenseExpiry != null
+                && c.DriverLicenseExpiry >= today && c.DriverLicenseExpiry < limit)
+            .Select(c => new { c.CustomerId, c.DriverLicenseExpiry })
+            .ToListAsync();
+        foreach (var c in customers)
+        {
+            var message = $"Bằng lái của bạn hết hạn ngày {c.DriverLicenseExpiry:dd/MM/yyyy}. Vui lòng cập nhật bằng mới để tiếp tục thuê xe tự lái.";
+            if (await db.Notifications.AnyAsync(n => n.UserId == c.CustomerId && n.Title == Title && n.Message == message))
+                continue;
+            UserNotifications.Add(db, c.CustomerId, Title, message);
+            written++;
+        }
+
         if (written > 0)
             await db.SaveChangesAsync();
         return written;

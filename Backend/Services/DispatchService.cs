@@ -32,6 +32,16 @@ public class DispatchService(
         if (dateError is not null)
             return AssignTripResult.Fail(dateError);
 
+        if (ResolveMode(booking.RentalMode) == RentalModes.SelfDrive)
+        {
+            // plan1.md Phần E: self-drive is confirmed only once the customer's licence is approved.
+            var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == booking.CustomerId);
+            var type = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == booking.VehicleTypeId);
+            if (customer is not null && type is not null
+                && CustomerLicenseService.ConfirmBlockReason(customer, type, booking.EndDate) is string licenceBlock)
+                return AssignTripResult.Fail(licenceBlock);
+        }
+
         if (booking.AssignedVehicleId is int vehicleId and > 0)
         {
             var (vehicle, vehicleFail) = await LoadAssignableVehicleAsync(vehicleId, booking.VehicleTypeId);
@@ -251,6 +261,7 @@ public class DispatchService(
         if (readiness is not null)
             return Fail(readiness);
 
+
         // Prefer request fuel; else reuse last known level from vehicle inspections.
         // Do not invent 0 — if neither source has a valid level, inspection rules reject as before.
         var fuelLevel = request?.FuelLevel;
@@ -269,6 +280,15 @@ public class DispatchService(
             dispatcherId);
         if (inspection is null)
             return Fail(inspectError ?? "Không thể ghi nhận giao xe.");
+
+        // plan1.md Phần E: the dispatcher checks the customer's original licence before handing over the car
+        // (after the report itself is valid; nothing is saved when this fails).
+        if (request?.OriginalLicenseChecked != true)
+            return Fail(OriginalLicenceNotChecked);
+        var licenceChecker = await ActorLookup.FindAsync(db, dispatcherId);
+        booking.OriginalLicenseCheckedByUserId = licenceChecker?.UserId;
+        booking.OriginalLicenseCheckedByName = licenceChecker?.Name;
+        booking.OriginalLicenseCheckedAt = DateTime.UtcNow;
 
         var oldStatus = booking.Status;
         booking.Status = BookingStatuses.InProgress;
@@ -609,6 +629,8 @@ public class DispatchService(
 
     public const string WithDriverUsesPreHandover =
         "Đơn có tài xế: điều phối ghi \"Kiểm tra trước giao\", tài xế xác nhận trên app để bắt đầu chuyến.";
+    public const string OriginalLicenceNotChecked =
+        "Vui lòng kiểm tra bằng lái gốc của khách (đối chiếu thông tin và ảnh đã duyệt) rồi tick \"Đã kiểm tra bằng lái\". Không khớp hoặc hết hạn thì không giao xe.";
     public const string PreHandoverSelfDrive = "Đơn tự lái giao xe trực tiếp cho khách, không cần kiểm tra trước giao.";
     public const string PreHandoverNotAssigned = "Chỉ ghi kiểm tra trước giao khi đơn đã phân công tài xế và chuyến chưa bắt đầu.";
     public const string PreHandoverLocked = "Tài xế đã xác nhận biên bản trước giao, không sửa được nữa.";

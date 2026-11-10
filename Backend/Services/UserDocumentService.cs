@@ -159,6 +159,21 @@ public class UserDocumentService(CarRentalDbContext db, DocumentStorage storage)
         return (ToResponse(doc), null, StatusCodes.Status200OK);
     }
 
+    /// <summary>
+    /// Review state of the required photos, newest of each side only:
+    /// Missing (a side not sent) / Rejected (one rejected) / Pending / Accepted (all approved).
+    /// </summary>
+    public static string PhotoStatus(IReadOnlyList<UserDocumentResponse> current, IReadOnlyList<string> required, out List<string> missing)
+    {
+        missing = required.Where(t => current.All(d => d.DocumentType != t)).ToList();
+        var relevant = current.Where(d => required.Contains(d.DocumentType)).ToList();
+        if (relevant.Any(d => d.Status == UserDocumentStatuses.Rejected))
+            return "Rejected";
+        if (missing.Count > 0)
+            return "Missing";
+        return relevant.All(d => d.Status == UserDocumentStatuses.Approved) ? "Accepted" : "Pending";
+    }
+
     /// <summary>JPEG starts FF D8 FF; PNG starts 89 50 4E 47 0D 0A 1A 0A. Anything else is refused.</summary>
     public static (string ContentType, string Extension)? DetectImage(ReadOnlySpan<byte> bytes)
     {

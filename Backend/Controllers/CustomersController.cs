@@ -11,8 +11,23 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize(Roles = RoleNames.Customer)]
 [Route("api/customers")]
-public class CustomersController(CustomerProfileService profiles) : ControllerBase
+public class CustomersController(CustomerProfileService profiles, CustomerLicenseService licences) : ControllerBase
 {
+    /// <summary>My self-drive licence: status, photos and which vehicle types I may drive (until endDate if given).</summary>
+    [HttpGet("me/license")]
+    public async Task<ActionResult<CustomerLicenseResponse>> MyLicense([FromQuery] DateTime? endDate)
+    {
+        var data = await licences.GetAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), endDate);
+        return data is null ? NotFound(new { message = CustomerLicenseService.NotFound }) : Ok(data);
+    }
+
+    [HttpPut("me/license")]
+    public async Task<ActionResult<CustomerLicenseResponse>> UpdateMyLicense(UpdateCustomerLicenseRequest request)
+    {
+        var (data, error) = await licences.UpdateAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [HttpGet("me")]
     public async Task<ActionResult<CustomerProfileResponse>> GetMe()
     {

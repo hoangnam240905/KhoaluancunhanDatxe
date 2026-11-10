@@ -127,18 +127,22 @@ public class VehicleInspectionReadTests
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        Assert.Equal("CustomerCancelDeadline", names[^1]);
-        Assert.Equal("CustomerCanCancel", names[^2]);
-        Assert.Equal("RequestedDriverName", names[^3]);
-        Assert.Equal("RequestedDriverId", names[^4]);
-        Assert.Equal("CancellationReason", names[^5]);
-        Assert.Equal("HasActiveDeposit", names[^6]);
-        Assert.Equal("Review", names[^7]);
-        Assert.Equal("Inspections", names[^8]);
-        Assert.Equal("TotalFees", names[^9]);
-        Assert.Equal("FinalBaseAmount", names[^10]);
-        Assert.Equal("Fees", names[^11]);
-        Assert.Equal("FinalAmount", names[^12]);
+        // plan1.md Phần E appended the self-drive licence fields at the end.
+        Assert.Equal("OriginalLicenseCheckedAt", names[^1]);
+        Assert.Equal("OriginalLicenseCheckedByName", names[^2]);
+        Assert.Equal("CustomerLicenseStatus", names[^3]);
+        Assert.Equal("CustomerCancelDeadline", names[^4]);
+        Assert.Equal("CustomerCanCancel", names[^5]);
+        Assert.Equal("RequestedDriverName", names[^6]);
+        Assert.Equal("RequestedDriverId", names[^7]);
+        Assert.Equal("CancellationReason", names[^8]);
+        Assert.Equal("HasActiveDeposit", names[^9]);
+        Assert.Equal("Review", names[^10]);
+        Assert.Equal("Inspections", names[^11]);
+        Assert.Equal("TotalFees", names[^12]);
+        Assert.Equal("FinalBaseAmount", names[^13]);
+        Assert.Equal("Fees", names[^14]);
+        Assert.Equal("FinalAmount", names[^15]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

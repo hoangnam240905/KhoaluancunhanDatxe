@@ -35,6 +35,10 @@ public class Booking
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    /// <summary>Self-drive handover: dispatcher who checked the customer's original licence (plan1.md Phần E).</summary>
+    public int? OriginalLicenseCheckedByUserId { get; set; }
+    public string? OriginalLicenseCheckedByName { get; set; }
+    public DateTime? OriginalLicenseCheckedAt { get; set; }
 
     public Customer Customer { get; set; } = null!;
     public VehicleType VehicleType { get; set; } = null!;

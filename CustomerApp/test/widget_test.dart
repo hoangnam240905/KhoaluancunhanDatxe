@@ -16,7 +16,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const CarRentalApp());
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Car Rental'), findsOneWidget);
+    expect(find.text('DriveX'), findsOneWidget);
   });
   testWidgets('CustomerShell renders all tabs without errors', (WidgetTester tester) async {
     final api = ApiService();

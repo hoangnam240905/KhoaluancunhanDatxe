@@ -1087,6 +1087,22 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             ("ResolvedByUserId", "INTEGER"), ("ResolvedByName", "TEXT"), ("ResolvedByRole", "TEXT"),
             ("ResolvedAt", "TEXT"), ("ResolutionNote", "TEXT"));
         AddColumns("VehicleTypes", ("MinLicenseClass", "TEXT"));
+        AddColumns("Customers",
+            ("DriverLicenseIssueDate", "TEXT"), ("LicenseReviewedByUserId", "INTEGER"), ("LicenseReviewedByName", "TEXT"),
+            ("LicenseReviewedAt", "TEXT"), ("LicenseReviewNote", "TEXT"));
+        AddColumns("Bookings",
+            ("OriginalLicenseCheckedByUserId", "INTEGER"), ("OriginalLicenseCheckedByName", "TEXT"), ("OriginalLicenseCheckedAt", "TEXT"));
+        // Needs a NOT NULL default so existing customers start as "None" (no licence declared).
+        var customerColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Customers')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                customerColumns.Add(reader.GetString(1));
+        }
+        if (customerColumns.Count > 0 && !customerColumns.Contains("LicenseStatus"))
+            Database.ExecuteSqlRaw("ALTER TABLE Customers ADD COLUMN LicenseStatus TEXT NOT NULL DEFAULT 'None'");
         AddColumns("Drivers",
             ("VerifiedByUserId", "INTEGER"), ("VerifiedByName", "TEXT"), ("VerifiedAt", "TEXT"), ("VerificationNote", "TEXT"));
         AddColumns("MaintenanceRecords",

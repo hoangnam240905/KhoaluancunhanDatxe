@@ -328,6 +328,18 @@ public static class InspectionVerificationStatuses
     public const string Mismatch = "Mismatch";
 }
 
+/// <summary>
+/// Self-drive customer's licence (plan1.md Phần E), approved once per customer, not per booking.
+/// None = not declared yet. A changed licence goes back to Pending.
+/// </summary>
+public static class CustomerLicenseStatuses
+{
+    public const string None = "None";
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
+}
+
 /// <summary>Driver licence check (plan1.md Phần D, step 2): only Verified drivers can be assigned.</summary>
 public static class DriverVerificationStatuses
 {

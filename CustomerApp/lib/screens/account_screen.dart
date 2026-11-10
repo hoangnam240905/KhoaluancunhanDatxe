@@ -3,6 +3,7 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
+import 'license_screen.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'notifications_screen.dart';
@@ -526,6 +527,28 @@ class _AccountScreenState extends State<AccountScreen> {
                         key: const ValueKey('info'),
                         children: [
                           _buildPersonalInfoCard(),
+                          const SizedBox(height: 14),
+                          // plan1.md Phần E: self-drive licence and its approval.
+                          AppCard(
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.credit_card_outlined),
+                              title: const Text(
+                                'Bằng lái xe (thuê tự lái)',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              subtitle: const Text(
+                                'Khai bằng lái, gửi ảnh 2 mặt, xem trạng thái duyệt',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LicenseScreen(api: widget.api),
+                                ),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 14),
                           _buildAccountStatusCard(),
                         ],

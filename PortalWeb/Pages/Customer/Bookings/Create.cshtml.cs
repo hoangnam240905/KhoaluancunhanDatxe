@@ -20,6 +20,8 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     public BookingResponse? CreatedBooking { get; set; }
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
+    /// <summary>Self-drive (plan1.md Phần E): why this customer cannot book this type self-drive yet.</summary>
+    public string? LicenceWarning { get; private set; }
     public bool IsLoggedIn => auth.IsLoggedIn;
     public bool IsCustomer => auth.Role == "Customer";
     public string? UserName => auth.FullName;
@@ -101,7 +103,20 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
         await ValidateRecommendationVehicleAsync(vehicleId);
         await LoadQuoteIfReadyAsync();
         await EnsureVehicleAvailabilityAsync();
+        await LoadLicenceWarningAsync();
         return Page();
+    }
+
+    private async Task LoadLicenceWarningAsync()
+    {
+        if (!IsSelfDrive(Input.RentalMode) || Input.VehicleTypeId <= 0)
+            return;
+        var licence = await api.GetMyLicenseAsync(Input.EndDate);
+        var type = licence?.VehicleTypes.FirstOrDefault(t => t.TypeId == Input.VehicleTypeId);
+        if (type is { CanDrive: false })
+            LicenceWarning = type.Reason;
+        else if (licence?.LicenseStatus == "Pending")
+            LicenceWarning = "Bằng lái đang chờ điều phối duyệt — đơn tự lái sẽ được xác nhận sau khi bằng lái được duyệt.";
     }
 
     public async Task<IActionResult> OnGetAvailabilityJsonAsync(

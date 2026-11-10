@@ -192,9 +192,45 @@
 
                     <article class="pf-card pf-panel is-on" data-pf-panel="info" id="giay-to">
                         <div class="pf-card-head">
-                            <h2>Ảnh bằng lái xe</h2>
+                            <h2>Bằng lái xe (thuê tự lái)</h2>
                         </div>
-                        <p class="pf-help">Chỉ cần khi thuê <strong>xe tự lái</strong>. Gửi ảnh rõ nét cả 2 mặt (JPG hoặc PNG, tối đa 5 MB); điều phối viên sẽ duyệt. Lúc nhận xe vẫn cần mang bằng lái gốc để đối chiếu.</p>
+                        <p class="pf-help">Chỉ cần khi thuê <strong>xe tự lái</strong>. Khai thông tin bằng lái và gửi ảnh rõ nét cả 2 mặt (JPG hoặc PNG, tối đa 5 MB); điều phối viên duyệt một lần, các lần thuê sau không phải gửi lại. Lúc nhận xe vẫn cần mang bằng lái gốc để đối chiếu.</p>
+                        @{ var lic = Model.License; }
+                        <div class="pf-status-row"><span>Trạng thái duyệt</span><strong>@ProfileModel.LicenseStatusLabel(lic?.LicenseStatus)</strong></div>
+                        @if (lic?.LicenseStatus == "Rejected" && !string.IsNullOrWhiteSpace(lic.ReviewNote))
+                        {
+                            <p class="pf-help" style="color:#b91c1c">Lý do: @lic.ReviewNote</p>
+                        }
+                        @if (lic?.ReviewedAt is DateTime licReviewed)
+                        {
+                            <p class="pf-help">Người duyệt: @UiDisplay.Actor(lic.ReviewedByName, "Dispatcher", licReviewed)</p>
+                        }
+                        @if (lic is not null && (lic.LicenseExpired || lic.LicenseExpiringSoon))
+                        {
+                            <p class="pf-help" style="color:#b91c1c">@(lic.LicenseExpired ? "Bằng lái đã hết hạn — cập nhật bằng mới để thuê xe tự lái." : $"Bằng lái hết hạn ngày {lic.LicenseExpiry:dd/MM/yyyy}. Vui lòng cập nhật bằng mới.")</p>
+                        }
+                        @if (lic is not null && lic.LicenseStatus != "None")
+                        {
+                            <p class="pf-help">Loại xe được tự lái: @string.Join(", ", lic.VehicleTypes.Where(t => t.CanDrive).Select(t => t.TypeName).DefaultIfEmpty("chưa có"))</p>
+                        }
+                        <form method="post" asp-page-handler="SaveLicense" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0 1rem">
+                            <label class="pf-field"><span>Số bằng lái</span>
+                                <input name="licenseNumber" value="@lic?.LicenseNumber" maxlength="30" required class="form-control" /></label>
+                            <label class="pf-field"><span>Hạng bằng</span>
+                                <select name="licenseClass" required class="form-select">
+                                    <option value="">— Chọn hạng —</option>
+                                    @foreach (var c in Model.LicenseClasses)
+                                    {
+                                        <option value="@c.Code" selected="@(c.Code == lic?.LicenseClass ? "selected" : null)">@c.Label</option>
+                                    }
+                                </select></label>
+                            <label class="pf-field"><span>Ngày cấp</span>
+                                <input type="date" name="licenseIssueDate" value="@(lic?.LicenseIssueDate?.ToString("yyyy-MM-dd"))" class="form-control" /></label>
+                            <label class="pf-field"><span>Ngày hết hạn</span>
+                                <input type="date" name="licenseExpiry" value="@(lic?.LicenseExpiry?.ToString("yyyy-MM-dd"))" required class="form-control" /></label>
+                            <div style="grid-column:1/-1"><button type="submit" class="pf-btn">Lưu thông tin bằng lái</button>
+                                <span class="pf-help">Xe 4–9 chỗ cần bằng B trở lên (B1, B2 cũ còn hạn được chấp nhận); xe 16 chỗ cần D1 trở lên.</span></div>
+                        </form>
                         @if (!string.IsNullOrEmpty(Model.DocumentMessage))
                         {
                             <p class="pf-ok is-on">@Model.DocumentMessage</p>

@@ -124,6 +124,12 @@
                         }
                     </div>
                 }
+                @if (Model.LicenceWarning is not null)
+                {
+                    <p class="cb-note" role="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.6rem .8rem;border-radius:10px">
+                        @Model.LicenceWarning <a href="/Customer/Profile#giay-to">Cập nhật bằng lái</a>
+                    </p>
+                }
                 <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
                 <input type="hidden" asp-for="Input.VehicleTypeId" />
                 <input type="hidden" asp-for="Input.VehicleId" />

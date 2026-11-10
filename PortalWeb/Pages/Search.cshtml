@@ -195,6 +195,19 @@
                     </div>
                 </div>
 
+                @if (Model.LicenceMessage is not null)
+                {
+                    <p class="bk-alert" role="status" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412">
+                        @Model.LicenceMessage <a href="/Customer/Profile#giay-to">Cập nhật bằng lái</a>
+                    </p>
+                }
+                @if (Model.ExcludedTypes.Count > 0)
+                {
+                    <p class="bk-alert" role="status" style="background:#f8fafc;border-color:#e2e8f0;color:#334155">
+                        Không hiện các loại xe bằng lái của bạn chưa lái được:
+                        @string.Join("; ", Model.ExcludedTypes.Select(t => $"{t.TypeName} — {t.Reason}"))
+                    </p>
+                }
                 <div class="cs-results-grid" data-cs-grid>
                     @if (!Model.Results.Any() && string.IsNullOrWhiteSpace(Model.ErrorMessage))
                     {
@@ -245,7 +258,11 @@
                                            asp-route-startDate="@Model.StartDate"
                                            asp-route-endDate="@Model.EndDate"
                                            class="btn btn-outline-primary btn-sm">Chi tiết</a>
-                                        @if (t.IsAvailableForPeriod)
+                                        @if (t.IsAvailableForPeriod && Model.BookingBlocked)
+                                        {
+                                            <a href="/Customer/Profile#giay-to" class="btn btn-primary btn-sm" title="Cần khai bằng lái trước khi thuê xe tự lái">Khai bằng lái</a>
+                                        }
+                                        else if (t.IsAvailableForPeriod)
                                         {
                                             <a asp-page="/Customer/Bookings/Create"
                                                asp-route-vehicleId="@vehicleId"

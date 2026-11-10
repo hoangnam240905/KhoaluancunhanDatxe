@@ -239,16 +239,7 @@ public class DriverVerificationService(
 
     /// <summary>Step-1 state of the four required photos, looking only at the newest of each side.</summary>
     public static string PhotoStatusOf(IReadOnlyList<UserDocumentResponse> current, out List<string> missing)
-    {
-        var required = UserDocumentService.RequiredFor(RoleNames.Driver);
-        missing = required.Where(t => current.All(d => d.DocumentType != t)).ToList();
-        var relevant = current.Where(d => required.Contains(d.DocumentType)).ToList();
-        if (relevant.Any(d => d.Status == UserDocumentStatuses.Rejected))
-            return PhotoRejected;
-        if (missing.Count > 0)
-            return PhotoMissing;
-        return relevant.All(d => d.Status == UserDocumentStatuses.Approved) ? PhotoAccepted : PhotoPending;
-    }
+        => UserDocumentService.PhotoStatus(current, UserDocumentService.RequiredFor(RoleNames.Driver), out missing);
 
     private async Task<DriverVerificationResponse> ToResponseAsync(Driver d)
     {

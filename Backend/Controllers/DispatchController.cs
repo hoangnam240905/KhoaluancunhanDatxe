@@ -17,8 +17,31 @@ public class DispatchController(
     DispatchService dispatchService,
     IncidentService incidents,
     VehicleInspectionService inspections,
-    DriverVerificationService driverVerification) : ControllerBase
+    DriverVerificationService driverVerification,
+    CustomerLicenseService customerLicences) : ControllerBase
 {
+    // ---- Self-drive customer licences (plan1.md Phần E) ----
+
+    /// <summary>status: Pending (default) / Approved / Rejected / All.</summary>
+    [HttpGet("customer-licenses")]
+    public async Task<ActionResult<List<Backend.DTOs.Customers.CustomerLicenseResponse>>> CustomerLicenses([FromQuery] string? status)
+        => Ok(await customerLicences.ListAsync(status));
+
+    [HttpGet("customer-licenses/{customerId:int}")]
+    public async Task<ActionResult<Backend.DTOs.Customers.CustomerLicenseResponse>> CustomerLicense(int customerId)
+    {
+        var data = await customerLicences.GetAsync(customerId);
+        return data is null ? NotFound(new { message = CustomerLicenseService.NotFound }) : Ok(data);
+    }
+
+    [HttpPost("customer-licenses/{customerId:int}/review")]
+    public async Task<ActionResult<Backend.DTOs.Customers.CustomerLicenseResponse>> ReviewCustomerLicense(
+        int customerId, Backend.DTOs.Customers.ReviewCustomerLicenseRequest request)
+    {
+        var (data, error) = await customerLicences.ReviewAsync(customerId, CurrentUserId(), request.Approve, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     // ---- Driver licence verification (plan1.md Phần D) ----
 
     /// <summary>status: Pending (default) / Verified / Rejected / All.</summary>

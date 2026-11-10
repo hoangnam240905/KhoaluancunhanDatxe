@@ -58,6 +58,7 @@ builder.Services.AddSingleton(new DocumentStorage(
         : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "documents")));
 builder.Services.AddScoped<UserDocumentService>();
 builder.Services.AddScoped<DriverVerificationService>();
+builder.Services.AddScoped<CustomerLicenseService>();
 builder.Services.AddScoped<VehicleInspectionService>();
 builder.Services.AddScoped<BookingFeeService>();
 builder.Services.AddScoped<AdminCustomerService>();

@@ -48,7 +48,10 @@ public static class HubBookingUi
             vehicleHeld = held,
             driverAssigned,
             requestedDriver = b.RequestedDriverName,
-            vehicleId = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId
+            vehicleId = b.AssignedVehicle?.VehicleId ?? b.Assignment?.VehicleId,
+            // plan1.md Phần E: self-drive orders wait for the customer's licence approval before Confirm.
+            licenseStatus = b.CustomerLicenseStatus,
+            licensePending = b.CustomerLicenseStatus is not null && b.CustomerLicenseStatus != "Approved"
         };
     }
 

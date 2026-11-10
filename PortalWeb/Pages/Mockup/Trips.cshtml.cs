@@ -71,6 +71,21 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         });
     }
 
+    /// <summary>Self-drive (plan1.md Phần E): the licence the customer declared, shown next to the "checked original" tick.</summary>
+    private async Task<object?> LicenceForHandoverAsync(BookingResponse booking)
+    {
+        if (booking.RentalMode != "SelfDrive") return null;
+        var l = await api.GetCustomerLicenseAsync(booking.CustomerId);
+        return l is null ? null : new
+        {
+            number = l.LicenseNumber,
+            cls = l.LicenseClassLabel,
+            expiry = l.LicenseExpiry?.ToString("dd/MM/yyyy"),
+            status = l.LicenseStatus,
+            expired = l.LicenseExpired
+        };
+    }
+
     public async Task<IActionResult> OnGetHandoverInfoAsync(int id)
     {
         var denied = RequireRole(auth, "Dispatcher");
@@ -99,12 +114,13 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             fuelLevel = snap.FuelLevel,
             requiresFuelInput = snap.RequiresFuelInput,
             canConfirm = kmOk && !snap.RequiresFuelInput,
-            blockReason = snap.BlockReason
+            blockReason = snap.BlockReason,
+            licence = await LicenceForHandoverAsync(booking)
         });
     }
 
     public async Task<IActionResult> OnPostHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel,
-        string? exteriorCondition, string? technicalCondition, string? notes)
+        string? exteriorCondition, string? technicalCondition, string? notes, bool originalLicenseChecked = false)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
@@ -126,7 +142,8 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             FuelLevel = fuel,
             ExteriorCondition = exteriorCondition,
             TechnicalCondition = technicalCondition,
-            Notes = notes
+            Notes = notes,
+            OriginalLicenseChecked = originalLicenseChecked
         };
 
         var (data, error) = await api.HandoverBookingAsync(id, condition);

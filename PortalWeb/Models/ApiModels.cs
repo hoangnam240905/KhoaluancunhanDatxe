@@ -187,6 +187,9 @@ public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
 public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null, int? CreatedByUserId = null, string? CreatedByName = null, string? CreatedByRole = null, string? UpdatedByName = null, string? UpdatedByRole = null, DateTime? UpdatedAt = null, string? VerificationStatus = null, string? VerificationNote = null, string? VerifiedByName = null, DateTime? VerifiedAt = null);
 public record UserDocumentResponse(int UserDocumentId, int UserId, string? UserName, string DocumentType, string ContentType, long SizeBytes, string Status, string? ReviewedByName, DateTime? ReviewedAt, string? RejectReason, DateTime CreatedAt);
+public record LicenseClassOption(string Code, string Label, int MaxSeats, bool AllowedForDrivers);
+public record SelfDriveTypeEligibility(int TypeId, string TypeName, int SeatCapacity, string MinLicenseClass, bool CanDrive, string? Reason);
+public record CustomerLicenseResponse(int CustomerId, string FullName, string Email, string? Phone, string? LicenseNumber, string? LicenseClass, string? LicenseClassLabel, DateOnly? LicenseIssueDate, DateOnly? LicenseExpiry, string LicenseStatus, string PhotoStatus, IReadOnlyList<string> MissingDocuments, IReadOnlyList<UserDocumentResponse> Documents, string? ReviewedByName, DateTime? ReviewedAt, string? ReviewNote, bool LicenseExpiringSoon, bool LicenseExpired, IReadOnlyList<SelfDriveTypeEligibility> VehicleTypes);
 public record DriverVerificationResponse(int DriverId, string FullName, string Email, string? Phone, string? LicenseNumber, string? LicenseClass, string? LicenseClassLabel, DateOnly? LicenseIssueDate, DateOnly? LicenseExpiry, string? IdNumber, string VerificationStatus, string PhotoStatus, IReadOnlyList<string> MissingDocuments, IReadOnlyList<UserDocumentResponse> Documents, string? VerifiedByName, DateTime? VerifiedAt, string? VerificationNote, bool LicenseExpiringSoon, bool LicenseExpired, bool LicenseInfoComplete, bool IsActive);
 public record InspectionDisputeResponse(int InspectionDisputeId, int BookingId, int InspectionId, string? RaisedByName, string Note, string Status, string? ResolvedByName, string? ResolutionNote, DateTime? ResolvedAt, DateTime CreatedAt);
 public record BookingQuoteResponse(
@@ -265,7 +268,10 @@ public record BookingResponse(
     int? RequestedDriverId = null,
     string? RequestedDriverName = null,
     bool CustomerCanCancel = false,
-    DateTime? CustomerCancelDeadline = null);
+    DateTime? CustomerCancelDeadline = null,
+    string? CustomerLicenseStatus = null,
+    string? OriginalLicenseCheckedByName = null,
+    DateTime? OriginalLicenseCheckedAt = null);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record CancelBookingRequest(string? CancellationReason);
@@ -279,6 +285,8 @@ public class VehicleConditionRequest
     public string? ExteriorCondition { get; set; }
     public string? TechnicalCondition { get; set; }
     public string? Notes { get; set; }
+    /// <summary>Self-drive handover: the dispatcher ticked "Đã kiểm tra bằng lái" (plan1.md Phần E).</summary>
+    public bool? OriginalLicenseChecked { get; set; }
 
     [JsonIgnore]
     public bool HasValues =>
@@ -296,7 +304,8 @@ public class VehicleConditionRequest
         Condition = string.IsNullOrWhiteSpace(Condition) ? null : Condition.Trim(),
         ExteriorCondition = string.IsNullOrWhiteSpace(ExteriorCondition) ? null : ExteriorCondition.Trim(),
         TechnicalCondition = string.IsNullOrWhiteSpace(TechnicalCondition) ? null : TechnicalCondition.Trim(),
-        Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim()
+        Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim(),
+        OriginalLicenseChecked = OriginalLicenseChecked
     };
 }
 public record VehicleAlternativeResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status);

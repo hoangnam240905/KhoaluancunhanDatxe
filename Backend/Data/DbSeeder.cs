@@ -31,8 +31,9 @@ public static class DbSeeder
         db.SaveChanges();
 
         db.Customers.AddRange(
-            new Customer { CustomerId = 3, Address = "123 Nguyen Hue, Q1, TP.HCM", IdNumber = "079123456789", DateOfBirth = new DateOnly(1995, 3, 15) },
-            new Customer { CustomerId = 4, Address = "456 Le Loi, Q3, TP.HCM", IdNumber = "079987654321", DateOfBirth = new DateOnly(1990, 8, 22) });
+            // Sample self-drive customers already hold an approved class B licence (plan1.md Phần E).
+            new Customer { CustomerId = 3, Address = "123 Nguyen Hue, Q1, TP.HCM", IdNumber = "079123456789", DateOfBirth = new DateOnly(1995, 3, 15), DriverLicenseNumber = "790300000003", DriverLicenseClass = "B", DriverLicenseExpiry = new DateOnly(2034, 12, 31), LicenseStatus = CustomerLicenseStatuses.Approved },
+            new Customer { CustomerId = 4, Address = "456 Le Loi, Q3, TP.HCM", IdNumber = "079987654321", DateOfBirth = new DateOnly(1990, 8, 22), DriverLicenseNumber = "790400000004", DriverLicenseClass = "B", DriverLicenseExpiry = new DateOnly(2034, 12, 31), LicenseStatus = CustomerLicenseStatuses.Approved });
 
         db.Drivers.AddRange(
             // Sample drivers are already verified (plan1.md Phần D): old B2 licences cover cars up to 9 seats,

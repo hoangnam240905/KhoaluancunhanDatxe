@@ -682,6 +682,61 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<UserDocumentResponse>(JsonOptions), null);
     }
 
+    // ---- Self-drive customer licence (plan1.md Phần E) ----
+
+    public async Task<CustomerLicenseResponse?> GetMyLicenseAsync(DateTime? endDate = null)
+    {
+        var url = "/api/customers/me/license" + (endDate is DateTime e ? $"?endDate={Uri.EscapeDataString(e.ToString("yyyy-MM-ddTHH:mm:ss"))}" : "");
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions) : null;
+    }
+
+    public async Task<(CustomerLicenseResponse? Data, string? Error)> UpdateMyLicenseAsync(
+        string? number, string? licenseClass, DateOnly? issueDate, DateOnly? expiry)
+    {
+        using var request = CreateRequest(HttpMethod.Put, "/api/customers/me/license");
+        request.Content = JsonContent.Create(new { licenseNumber = number, licenseClass, licenseIssueDate = issueDate, licenseExpiry = expiry });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được thông tin bằng lái.");
+        return (await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<LicenseClassOption>> GetLicenseClassesAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/drivers/license-classes");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<LicenseClassOption>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<List<CustomerLicenseResponse>> GetCustomerLicensesAsync(string? status)
+    {
+        var url = "/api/dispatch/customer-licenses" + (string.IsNullOrWhiteSpace(status) ? "" : $"?status={Uri.EscapeDataString(status)}");
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<CustomerLicenseResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<CustomerLicenseResponse?> GetCustomerLicenseAsync(int customerId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/dispatch/customer-licenses/{customerId}");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions) : null;
+    }
+
+    public async Task<(CustomerLicenseResponse? Data, string? Error)> ReviewCustomerLicenseAsync(int customerId, bool approve, string? reason)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/customer-licenses/{customerId}/review");
+        request.Content = JsonContent.Create(new { approve, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả duyệt bằng lái.");
+        return (await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions), null);
+    }
+
     // ---- Driver licence verification (plan1.md Phần D) ----
 
     public async Task<List<DriverVerificationResponse>> GetDriverVerificationsAsync(string? status)

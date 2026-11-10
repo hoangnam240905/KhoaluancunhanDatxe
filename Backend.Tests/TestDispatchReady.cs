@@ -84,7 +84,7 @@ internal static class TestDispatchReady
         string? notes = null,
         string exterior = "Ngoại thất tốt",
         string technical = "Kỹ thuật tốt")
-        => new(odometerKm, fuel, exterior, notes, exterior, technical);
+        => new(odometerKm, fuel, exterior, notes, exterior, technical, OriginalLicenseChecked: true);
 
     public static VehicleConditionRequest InspectionForVehicle(
         CarRentalDbContext db,
