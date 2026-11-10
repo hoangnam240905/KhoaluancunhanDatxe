@@ -17,6 +17,7 @@ namespace Backend.Tests;
 public class IsolatedApiFactory : WebApplicationFactory<Program>
 {
     public string DbPath { get; } = Path.Combine(Path.GetTempPath(), $"crs-api-{Guid.NewGuid():N}.db");
+    public string DocumentRoot { get; } = Path.Combine(Path.GetTempPath(), $"crs-docs-{Guid.NewGuid():N}");
     public CapturingEmailSender Email { get; } = new();
     public FakeGoogleIdTokenValidator Google { get; } = new();
 
@@ -25,6 +26,7 @@ public class IsolatedApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("DatabaseProvider", "Sqlite");
         builder.UseSetting("ConnectionStrings:DefaultConnection", $"Data Source={DbPath}");
         builder.UseSetting("SeedDemoRich", "false");
+        builder.UseSetting("DocumentStorage:Root", DocumentRoot);
         builder.UseSetting("Urls", "http://127.0.0.1:0");
         builder.UseSetting("Email:Enabled", "false");
         builder.UseSetting("Email:SmtpPassword", "");

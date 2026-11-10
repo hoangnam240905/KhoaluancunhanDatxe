@@ -27,6 +27,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<ChatbotMessage> ChatbotMessages => Set<ChatbotMessage>();
     public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
     public DbSet<InspectionDispute> InspectionDisputes => Set<InspectionDispute>();
+    public DbSet<UserDocument> UserDocuments => Set<UserDocument>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -280,6 +281,19 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<UserDocument>(e =>
+        {
+            e.ToTable("UserDocuments");
+            e.HasKey(x => x.UserDocumentId);
+            e.Property(x => x.DocumentType).HasMaxLength(20);
+            e.Property(x => x.FilePath).HasMaxLength(260);
+            e.Property(x => x.ContentType).HasMaxLength(50);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.RejectReason).HasMaxLength(500);
+            e.HasIndex(x => new { x.UserId, x.DocumentType });
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<InspectionDispute>(e =>
@@ -1092,6 +1106,35 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
                 if (!columns.Contains(name))
                     Database.ExecuteSqlRaw($"ALTER TABLE {table} ADD COLUMN {name} {type} NULL");
         }
+    }
+
+    /// <summary>Licence / ID-card photos (plan1.md Phần F), for databases created before it existed.</summary>
+    public void EnsureSqliteUserDocumentsTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "UserDocuments" (
+                "UserDocumentId" INTEGER NOT NULL CONSTRAINT "PK_UserDocuments" PRIMARY KEY AUTOINCREMENT,
+                "UserId" INTEGER NOT NULL,
+                "DocumentType" TEXT NOT NULL,
+                "FilePath" TEXT NOT NULL,
+                "ContentType" TEXT NOT NULL,
+                "SizeBytes" INTEGER NOT NULL,
+                "Status" TEXT NOT NULL,
+                "ReviewedByUserId" INTEGER NULL,
+                "ReviewedByName" TEXT NULL,
+                "ReviewedAt" TEXT NULL,
+                "RejectReason" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_UserDocuments_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_UserDocuments_UserId_DocumentType" ON "UserDocuments" ("UserId", "DocumentType");""");
     }
 
     /// <summary>Driver disputes of the dispatcher's pre-handover check (plan1.md Phần A), for older databases.</summary>

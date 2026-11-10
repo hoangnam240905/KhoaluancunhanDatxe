@@ -190,6 +190,53 @@
                         </form>
                     </article>
 
+                    <article class="pf-card pf-panel is-on" data-pf-panel="info" id="giay-to">
+                        <div class="pf-card-head">
+                            <h2>Ảnh bằng lái xe</h2>
+                        </div>
+                        <p class="pf-help">Chỉ cần khi thuê <strong>xe tự lái</strong>. Gửi ảnh rõ nét cả 2 mặt (JPG hoặc PNG, tối đa 5 MB); điều phối viên sẽ duyệt. Lúc nhận xe vẫn cần mang bằng lái gốc để đối chiếu.</p>
+                        @if (!string.IsNullOrEmpty(Model.DocumentMessage))
+                        {
+                            <p class="pf-ok is-on">@Model.DocumentMessage</p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.DocumentError))
+                        {
+                            <p class="pf-error is-on" style="color:#b91c1c">@Model.DocumentError</p>
+                        }
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+                            @foreach (var side in new[] { "LicenseFront", "LicenseBack" })
+                            {
+                                var doc = Model.DocumentOf(side);
+                                <form method="post" asp-page-handler="UploadDocument" enctype="multipart/form-data"
+                                      style="border:1px solid #e5e7eb;border-radius:12px;padding:.8rem">
+                                    <input type="hidden" name="type" value="@side" />
+                                    <strong>@UiDisplay.DocumentType(side)</strong>
+                                    <div style="margin:.5rem 0;aspect-ratio:16/10;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                                        @if (doc is not null)
+                                        {
+                                            <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;height:100%;object-fit:cover" />
+                                        }
+                                        else
+                                        {
+                                            <span class="pf-help">Chưa có ảnh</span>
+                                        }
+                                    </div>
+                                    <div class="pf-status-row"><span>Trạng thái</span><strong>@UiDisplay.DocumentStatus(doc?.Status)</strong></div>
+                                    @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason))
+                                    {
+                                        <p class="pf-help" style="color:#b91c1c">Lý do: @doc.RejectReason</p>
+                                    }
+                                    @if (doc?.ReviewedAt is DateTime reviewedAt)
+                                    {
+                                        <p class="pf-help">Người duyệt: @UiDisplay.Actor(doc.ReviewedByName, "Dispatcher", reviewedAt)</p>
+                                    }
+                                    <input type="file" name="file" accept="image/jpeg,image/png" required class="form-control form-control-sm" style="margin:.4rem 0" />
+                                    <button type="submit" class="pf-btn">@(doc is null ? "Gửi ảnh" : "Gửi lại ảnh")</button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+
                     <article class="pf-card pf-panel" data-pf-panel="activity">
                         <h2>Hoạt động gần đây</h2>
                         <p class="pf-help">@ProfileUi.ActivityUnavailable</p>

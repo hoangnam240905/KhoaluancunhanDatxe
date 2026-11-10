@@ -51,6 +51,12 @@ builder.Services.AddScoped<DriverService>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<ContractService>();
 builder.Services.AddScoped<IncidentService>();
+// Licence / ID photos live in a private folder (never wwwroot); override with DocumentStorage:Root.
+builder.Services.AddSingleton(new DocumentStorage(
+    builder.Configuration["DocumentStorage:Root"] is { Length: > 0 } documentRoot
+        ? documentRoot
+        : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "documents")));
+builder.Services.AddScoped<UserDocumentService>();
 builder.Services.AddScoped<VehicleInspectionService>();
 builder.Services.AddScoped<BookingFeeService>();
 builder.Services.AddScoped<AdminCustomerService>();
@@ -184,6 +190,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteFavoriteVehiclesTable();
     db.EnsureSqliteActorColumns();
     db.EnsureSqliteInspectionDisputesTable();
+    db.EnsureSqliteUserDocumentsTable();
     DbSeeder.Seed(db);
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))

@@ -23,6 +23,13 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public string? PasswordSuccess { get; private set; }
     public bool ShowPasswordPanel { get; private set; }
 
+    /// <summary>Newest licence photo of each side (plan1.md Phần F); needed only for self-drive rentals.</summary>
+    public List<UserDocumentResponse> Documents { get; private set; } = [];
+    [TempData] public string? DocumentMessage { get; set; }
+    [TempData] public string? DocumentError { get; set; }
+
+    public UserDocumentResponse? DocumentOf(string type) => Documents.FirstOrDefault(d => d.DocumentType == type);
+
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Presentation.FullName) ? (auth.FullName ?? "") : Presentation.FullName;
 
@@ -78,7 +85,30 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        return await LoadProfileAsync() ?? Page();
+        var result = await LoadProfileAsync();
+        Documents = await api.GetMyDocumentsAsync();
+        return result ?? Page();
+    }
+
+    /// <summary>Upload one side of the driver's licence; the dispatcher reviews it.</summary>
+    public async Task<IActionResult> OnPostUploadDocumentAsync(string? type, IFormFile? file)
+    {
+        var denied = RequireRole(auth, "Customer");
+        if (denied is not null) return denied;
+        if (type is not ("LicenseFront" or "LicenseBack"))
+            DocumentError = "Loại giấy tờ không hợp lệ.";
+        else if (file is null || file.Length == 0)
+            DocumentError = "Vui lòng chọn ảnh.";
+        else if (file.Length > 5 * 1024 * 1024)
+            DocumentError = "Ảnh tối đa 5 MB.";
+        else
+        {
+            await using var stream = file.OpenReadStream();
+            var (_, error) = await api.UploadDocumentAsync(type, stream, file.FileName, file.ContentType);
+            if (error is null) DocumentMessage = $"Đã gửi ảnh {UiDisplay.DocumentType(type).ToLowerInvariant()}, chờ điều phối duyệt.";
+            else DocumentError = error;
+        }
+        return RedirectToPage(null, null, "giay-to");
     }
 
     public async Task<IActionResult> OnPostSaveProfileAsync()

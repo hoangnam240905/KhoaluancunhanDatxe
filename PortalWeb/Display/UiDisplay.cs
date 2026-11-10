@@ -5,6 +5,23 @@ public static class UiDisplay
 {
     public const string UnknownActor = "Không rõ (dữ liệu cũ)";
 
+    public static string DocumentType(string? type) => type switch
+    {
+        "LicenseFront" => "Bằng lái — mặt trước",
+        "LicenseBack" => "Bằng lái — mặt sau",
+        "IdCardFront" => "CCCD — mặt trước",
+        "IdCardBack" => "CCCD — mặt sau",
+        _ => type ?? ""
+    };
+
+    public static string DocumentStatus(string? status) => status switch
+    {
+        "Pending" => "Chờ duyệt",
+        "Approved" => "Đã duyệt",
+        "Rejected" => "Bị từ chối",
+        _ => "Chưa gửi"
+    };
+
     public static string Role(string? role) => role switch
     {
         "Admin" => "Quản trị",

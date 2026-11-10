@@ -629,6 +629,59 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
     }
 
+    // ---- Licence / ID-card photos (plan1.md Phần F) ----
+
+    public async Task<List<UserDocumentResponse>> GetMyDocumentsAsync()
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/documents/me");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<UserDocumentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<List<UserDocumentResponse>> GetDocumentsAsync(int? userId = null, string? status = null)
+    {
+        var parts = new List<string>();
+        if (userId is int uid) parts.Add($"userId={uid}");
+        if (!string.IsNullOrWhiteSpace(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+        using var request = CreateRequest(HttpMethod.Get, "/api/documents" + (parts.Count == 0 ? "" : "?" + string.Join("&", parts)));
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<UserDocumentResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<(UserDocumentResponse? Data, string? Error)> UploadDocumentAsync(
+        string type, Stream file, string fileName, string? contentType)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/documents");
+        var content = new StreamContent(file);
+        content.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+        request.Content = new MultipartFormDataContent { { new StringContent(type), "type" }, { content, "file", fileName } };
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không tải được ảnh lên.");
+        return (await response.Content.ReadFromJsonAsync<UserDocumentResponse>(JsonOptions), null);
+    }
+
+    /// <summary>The photo bytes, fetched with the signed-in user's token (Backend decides who may see it).</summary>
+    public async Task<(byte[]? Bytes, string? ContentType, int Status)> GetDocumentFileAsync(int documentId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/documents/{documentId}/file");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, null, (int)response.StatusCode);
+        return (await response.Content.ReadAsByteArrayAsync(), response.Content.Headers.ContentType?.MediaType, 200);
+    }
+
+    public async Task<(UserDocumentResponse? Data, string? Error)> ReviewDocumentAsync(int documentId, bool approve, string? reason)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/documents/{documentId}/review");
+        request.Content = JsonContent.Create(new { approve, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả duyệt.");
+        return (await response.Content.ReadFromJsonAsync<UserDocumentResponse>(JsonOptions), null);
+    }
+
     // ---- Two-sided vehicle check on with-driver trips (plan1.md Phần A) ----
 
     public async Task<(VehicleInspectionResponse? Data, string? Error)> SavePreHandoverAsync(int bookingId, VehicleConditionRequest condition)

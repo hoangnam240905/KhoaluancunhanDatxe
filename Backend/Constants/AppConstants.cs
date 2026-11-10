@@ -328,6 +328,30 @@ public static class InspectionVerificationStatuses
     public const string Mismatch = "Mismatch";
 }
 
+/// <summary>Sides of the documents a driver / self-drive customer photographs (plan1.md Phần F).</summary>
+public static class UserDocumentTypes
+{
+    public const string LicenseFront = "LicenseFront";
+    public const string LicenseBack = "LicenseBack";
+    public const string IdCardFront = "IdCardFront";
+    public const string IdCardBack = "IdCardBack";
+
+    public static readonly IReadOnlyList<string> All = [LicenseFront, LicenseBack, IdCardFront, IdCardBack];
+
+    public static bool TryResolve(string? value, out string resolved)
+    {
+        resolved = All.FirstOrDefault(t => string.Equals(t, value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+        return resolved.Length > 0;
+    }
+}
+
+public static class UserDocumentStatuses
+{
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
+}
+
 public static class InspectionDisputeStatuses
 {
     public const string Open = "Open";
