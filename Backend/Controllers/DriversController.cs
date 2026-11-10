@@ -139,6 +139,15 @@ public class DriversController(
             : Ok(new { message = "Đã báo sai lệch cho điều phối.", disputeId = dispute.InspectionDisputeId });
     }
 
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpGet("trips/{assignmentId:int}/disputes")]
+    public async Task<ActionResult<List<InspectionDisputeResponse>>> MyTripDisputes(int assignmentId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var list = await driverService.GetDisputesAsync(userId, assignmentId);
+        return list is null ? NotFound(new { message = "Không tìm thấy chuyến của tài xế này." }) : Ok(list);
+    }
+
     /// <summary>"Nhắc điều phối": no pre-handover record yet.</summary>
     [Authorize(Roles = RoleNames.Driver)]
     [HttpPost("trips/{assignmentId:int}/remind-dispatcher")]

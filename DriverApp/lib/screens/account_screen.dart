@@ -10,6 +10,7 @@ class AccountScreen extends StatefulWidget {
   final String userName;
   final bool darkMode;
   final ValueChanged<bool> onDarkModeChanged;
+  final VoidCallback? onOpenVerification;
 
   const AccountScreen({
     super.key,
@@ -17,6 +18,7 @@ class AccountScreen extends StatefulWidget {
     required this.userName,
     required this.darkMode,
     required this.onDarkModeChanged,
+    this.onOpenVerification,
   });
 
   @override
@@ -196,6 +198,18 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                       const Divider(height: 24),
                       _row(Icons.badge_outlined, 'Vai trò', 'Driver'),
+                      const Divider(height: 24),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.credit_card_outlined),
+                        title: const Text(
+                          'Bằng lái & giấy tờ',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: const Text('Thông tin bằng lái, ảnh giấy tờ, trạng thái xác minh'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: widget.onOpenVerification,
+                      ),
                       const Divider(height: 24),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,

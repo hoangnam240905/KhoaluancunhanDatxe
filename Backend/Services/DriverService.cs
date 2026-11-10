@@ -164,6 +164,24 @@ public class DriverService(
         return null;
     }
 
+    /// <summary>Disputes on the driver's own trip, newest first (DriverApp shows open / resolved).</summary>
+    public async Task<List<DTOs.Dispatch.InspectionDisputeResponse>?> GetDisputesAsync(int driverId, int assignmentId)
+    {
+        var bookingId = await db.TripAssignments
+            .Where(t => t.AssignmentId == assignmentId && t.DriverId == driverId)
+            .Select(t => (int?)t.BookingId)
+            .FirstOrDefaultAsync();
+        if (bookingId is null)
+            return null;
+        var rows = await db.InspectionDisputes.AsNoTracking()
+            .Where(d => d.BookingId == bookingId.Value)
+            .OrderByDescending(d => d.InspectionDisputeId)
+            .ToListAsync();
+        return rows.Select(d => new DTOs.Dispatch.InspectionDisputeResponse(
+            d.InspectionDisputeId, d.BookingId, d.InspectionId, d.RaisedByName, d.Note, d.Status,
+            d.ResolvedByName, d.ResolutionNote, d.ResolvedAt, d.CreatedAt)).ToList();
+    }
+
     private Task<bool> HasOpenDisputeAsync(int bookingId)
         => db.InspectionDisputes.AnyAsync(d => d.BookingId == bookingId && d.Status == InspectionDisputeStatuses.Open);
 

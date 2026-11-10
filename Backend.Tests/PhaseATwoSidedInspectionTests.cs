@@ -280,6 +280,12 @@ public class PhaseATwoSidedInspectionTests
             .Content.ReadFromJsonAsync<List<InspectionDisputeResponse>>();
         var open = Assert.Single(disputes!);
         Assert.Equal("Võ Thị Lái", open.RaisedByName);
+        var mine = await (await client.SendAsync(Authed(HttpMethod.Get,
+            $"/api/drivers/trips/{assignmentId}/disputes", driver))).Content.ReadFromJsonAsync<List<InspectionDisputeResponse>>();
+        Assert.Equal(InspectionDisputeStatuses.Open, Assert.Single(mine!).Status);
+        var otherDriver = await LoginAsync(client, "driver1@carrental.vn");
+        Assert.Equal(HttpStatusCode.NotFound, (await client.SendAsync(Authed(HttpMethod.Get,
+            $"/api/drivers/trips/{assignmentId}/disputes", otherDriver))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(Authed(HttpMethod.Post,
             $"/api/dispatch/inspection-disputes/{open.InspectionDisputeId}/resolve", driver))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Authed(HttpMethod.Post,

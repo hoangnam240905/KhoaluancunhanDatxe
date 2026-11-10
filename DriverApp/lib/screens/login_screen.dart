@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'driver_shell.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -341,7 +342,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 8),
+        Center(
+          child: TextButton(
+            key: const Key('open-register'),
+            onPressed: _loading
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RegisterScreen(
+                        darkMode: widget.darkMode,
+                        onDarkModeChanged: widget.onDarkModeChanged,
+                      ),
+                    ),
+                  ),
+            child: const Text('Chưa có tài khoản? Đăng ký tài xế'),
+          ),
+        ),
+        const SizedBox(height: 10),
         const Text(
           'Tài khoản chỉ dành cho tài xế DriveX.',
           textAlign: TextAlign.center,

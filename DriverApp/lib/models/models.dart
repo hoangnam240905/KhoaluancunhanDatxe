@@ -264,6 +264,17 @@ class VehicleInspection {
   final String? notes;
   final String? exteriorCondition;
   final String? technicalCondition;
+  final String? createdByName;
+  final String? createdByRole;
+  final String? updatedByName;
+  final DateTime? updatedAt;
+  final String? verificationStatus;
+  final String? verificationNote;
+  final String? verifiedByName;
+
+  bool get isPreHandover => inspectionType == 'PreHandover';
+  bool get isHandover => inspectionType == 'Handover';
+  bool get isReturn => inspectionType == 'Return';
 
   const VehicleInspection({
     required this.inspectionId,
@@ -277,6 +288,13 @@ class VehicleInspection {
     this.notes,
     this.exteriorCondition,
     this.technicalCondition,
+    this.createdByName,
+    this.createdByRole,
+    this.updatedByName,
+    this.updatedAt,
+    this.verificationStatus,
+    this.verificationNote,
+    this.verifiedByName,
   });
 
   factory VehicleInspection.fromJson(Map<String, dynamic> json) =>
@@ -294,6 +312,160 @@ class VehicleInspection {
         notes: json['notes'] as String?,
         exteriorCondition: json['exteriorCondition'] as String?,
         technicalCondition: json['technicalCondition'] as String?,
+        createdByName: json['createdByName'] as String?,
+        createdByRole: json['createdByRole'] as String?,
+        updatedByName: json['updatedByName'] as String?,
+        updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
+        verificationStatus: json['verificationStatus'] as String?,
+        verificationNote: json['verificationNote'] as String?,
+        verifiedByName: json['verifiedByName'] as String?,
+      );
+}
+
+/// Driver's report that the dispatcher's pre-handover record does not match the car (plan1.md Phần A).
+class InspectionDispute {
+  final int inspectionDisputeId;
+  final String note;
+  final String status;
+  final String? resolvedByName;
+  final String? resolutionNote;
+  final DateTime createdAt;
+
+  const InspectionDispute({
+    required this.inspectionDisputeId,
+    required this.note,
+    required this.status,
+    required this.createdAt,
+    this.resolvedByName,
+    this.resolutionNote,
+  });
+
+  bool get isOpen => status == 'Open';
+
+  factory InspectionDispute.fromJson(Map<String, dynamic> json) =>
+      InspectionDispute(
+        inspectionDisputeId: json['inspectionDisputeId'] as int? ?? 0,
+        note: json['note'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        resolvedByName: json['resolvedByName'] as String?,
+        resolutionNote: json['resolutionNote'] as String?,
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+/// One photo of the licence / ID card and its review (plan1.md Phần F).
+class UserDocument {
+  final int userDocumentId;
+  final String documentType;
+  final String status;
+  final String? rejectReason;
+  final String? reviewedByName;
+
+  const UserDocument({
+    required this.userDocumentId,
+    required this.documentType,
+    required this.status,
+    this.rejectReason,
+    this.reviewedByName,
+  });
+
+  factory UserDocument.fromJson(Map<String, dynamic> json) => UserDocument(
+    userDocumentId: json['userDocumentId'] as int? ?? 0,
+    documentType: json['documentType'] as String? ?? '',
+    status: json['status'] as String? ?? '',
+    rejectReason: json['rejectReason'] as String?,
+    reviewedByName: json['reviewedByName'] as String?,
+  );
+}
+
+class LicenseClassOption {
+  final String code;
+  final String label;
+  final bool allowedForDrivers;
+
+  const LicenseClassOption({
+    required this.code,
+    required this.label,
+    required this.allowedForDrivers,
+  });
+
+  factory LicenseClassOption.fromJson(Map<String, dynamic> json) =>
+      LicenseClassOption(
+        code: json['code'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        allowedForDrivers: json['allowedForDrivers'] as bool? ?? false,
+      );
+}
+
+/// The driver's licence verification file (plan1.md Phần D).
+/// photoStatus: Missing / Pending / Accepted / Rejected; verificationStatus: Pending / Verified / Rejected.
+class DriverVerification {
+  final String? licenseNumber;
+  final String? licenseClass;
+  final String? licenseClassLabel;
+  final DateTime? licenseIssueDate;
+  final DateTime? licenseExpiry;
+  final String? idNumber;
+  final String verificationStatus;
+  final String photoStatus;
+  final List<String> missingDocuments;
+  final List<UserDocument> documents;
+  final String? verifiedByName;
+  final String? verificationNote;
+  final bool licenseExpiringSoon;
+  final bool licenseExpired;
+
+  const DriverVerification({
+    required this.verificationStatus,
+    required this.photoStatus,
+    required this.missingDocuments,
+    required this.documents,
+    this.licenseNumber,
+    this.licenseClass,
+    this.licenseClassLabel,
+    this.licenseIssueDate,
+    this.licenseExpiry,
+    this.idNumber,
+    this.verifiedByName,
+    this.verificationNote,
+    this.licenseExpiringSoon = false,
+    this.licenseExpired = false,
+  });
+
+  bool get isVerified => verificationStatus == 'Verified';
+
+  UserDocument? documentOf(String type) {
+    for (final d in documents) {
+      if (d.documentType == type) return d;
+    }
+    return null;
+  }
+
+  factory DriverVerification.fromJson(Map<String, dynamic> json) =>
+      DriverVerification(
+        licenseNumber: json['licenseNumber'] as String?,
+        licenseClass: json['licenseClass'] as String?,
+        licenseClassLabel: json['licenseClassLabel'] as String?,
+        licenseIssueDate: DateTime.tryParse(
+          json['licenseIssueDate']?.toString() ?? '',
+        ),
+        licenseExpiry: DateTime.tryParse(json['licenseExpiry']?.toString() ?? ''),
+        idNumber: json['idNumber'] as String?,
+        verificationStatus: json['verificationStatus'] as String? ?? 'Pending',
+        photoStatus: json['photoStatus'] as String? ?? 'Missing',
+        missingDocuments: (json['missingDocuments'] as List? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        documents: (json['documents'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(UserDocument.fromJson)
+            .toList(),
+        verifiedByName: json['verifiedByName'] as String?,
+        verificationNote: json['verificationNote'] as String?,
+        licenseExpiringSoon: json['licenseExpiringSoon'] as bool? ?? false,
+        licenseExpired: json['licenseExpired'] as bool? ?? false,
       );
 }
 

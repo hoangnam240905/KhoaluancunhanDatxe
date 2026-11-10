@@ -25,7 +25,19 @@ class CompleteTripDialog extends StatefulWidget {
     this.submitLabel = 'Hoàn thành',
     this.odometerLabel = 'Số km (bắt buộc)',
     this.fuelLabel = 'Nhiên liệu % (bắt buộc)',
+    this.initialOdometer,
+    this.initialFuel,
+    this.initialExterior,
+    this.initialTechnical,
+    this.showServerTimeNote = true,
   });
+
+  /// Pre-filled values (e.g. the dispatcher's pre-handover record the driver checks against the car).
+  final double? initialOdometer;
+  final double? initialFuel;
+  final String? initialExterior;
+  final String? initialTechnical;
+  final bool showServerTimeNote;
 
   final String title;
   final String description;
@@ -47,6 +59,19 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
   final _notes = TextEditingController();
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialOdometer != null) {
+      _odo.text = widget.initialOdometer!.toStringAsFixed(0);
+    }
+    if (widget.initialFuel != null) {
+      _fuel.text = widget.initialFuel!.toStringAsFixed(0);
+    }
+    _exterior.text = widget.initialExterior ?? '';
+    _technical.text = widget.initialTechnical ?? '';
+  }
 
   @override
   void dispose() {
@@ -101,14 +126,16 @@ class _CompleteTripDialogState extends State<CompleteTripDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(widget.description, style: TextStyle(fontSize: 13)),
-              const SizedBox(height: 8),
-              Text(
-                'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 12,
+              if (widget.showServerTimeNote) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Thời điểm do máy chủ ghi UTC. Ứng dụng không tính giá chốt.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 12),
               TextField(
                 key: const Key('complete-odometer'),
