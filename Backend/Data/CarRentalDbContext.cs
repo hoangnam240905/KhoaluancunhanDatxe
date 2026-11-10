@@ -28,6 +28,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
     public DbSet<InspectionDispute> InspectionDisputes => Set<InspectionDispute>();
     public DbSet<UserDocument> UserDocuments => Set<UserDocument>();
+    public DbSet<VehicleChange> VehicleChanges => Set<VehicleChange>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -281,6 +282,19 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<VehicleChange>(e =>
+        {
+            e.ToTable("VehicleChanges");
+            e.HasKey(x => x.VehicleChangeId);
+            e.Property(x => x.Reason).HasMaxLength(20);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.PriceDifference).HasPrecision(18, 2);
+            e.HasIndex(x => x.BookingId);
+            e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.OldVehicle).WithMany().HasForeignKey(x => x.OldVehicleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.NewVehicle).WithMany().HasForeignKey(x => x.NewVehicleId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserDocument>(e =>
@@ -1125,6 +1139,44 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
                 if (!columns.Contains(name))
                     Database.ExecuteSqlRaw($"ALTER TABLE {table} ADD COLUMN {name} {type} NULL");
         }
+    }
+
+    /// <summary>Vehicle change appendix (plan1.md Phần I), for databases created before it existed.</summary>
+    public void EnsureSqliteVehicleChangesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "VehicleChanges" (
+                "VehicleChangeId" INTEGER NOT NULL CONSTRAINT "PK_VehicleChanges" PRIMARY KEY AUTOINCREMENT,
+                "BookingId" INTEGER NOT NULL,
+                "OldVehicleId" INTEGER NOT NULL,
+                "NewVehicleId" INTEGER NOT NULL,
+                "OldTypeId" INTEGER NOT NULL,
+                "NewTypeId" INTEGER NOT NULL,
+                "Reason" TEXT NOT NULL,
+                "Note" TEXT NULL,
+                "DuringTrip" INTEGER NOT NULL,
+                "OldOdometerKm" TEXT NULL,
+                "OldFuelLevel" TEXT NULL,
+                "NewOdometerKm" TEXT NULL,
+                "NewFuelLevel" TEXT NULL,
+                "RemainingDays" INTEGER NOT NULL,
+                "PriceDifference" TEXT NOT NULL,
+                "CustomerAgreed" INTEGER NOT NULL,
+                "ApprovedByUserId" INTEGER NULL,
+                "ApprovedByName" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_VehicleChanges_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE CASCADE,
+                CONSTRAINT "FK_VehicleChanges_Vehicles_OldVehicleId" FOREIGN KEY ("OldVehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_VehicleChanges_Vehicles_NewVehicleId" FOREIGN KEY ("NewVehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_VehicleChanges_BookingId" ON "VehicleChanges" ("BookingId");""");
     }
 
     /// <summary>Licence / ID-card photos (plan1.md Phần F), for databases created before it existed.</summary>

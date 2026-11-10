@@ -778,6 +778,34 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<VehicleInspectionResponse>(JsonOptions), null);
     }
 
+    // ---- Vehicle change (plan1.md Phần I) ----
+
+    public async Task<(VehicleChangeOptionsResponse? Data, string? Error)> GetVehicleChangeOptionsAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/dispatch/bookings/{bookingId}/vehicle-change-options");
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không tải được danh sách xe thay thế.");
+        return (await response.Content.ReadFromJsonAsync<VehicleChangeOptionsResponse>(JsonOptions), null);
+    }
+
+    public async Task<(VehicleChangeResponse? Data, string? Error)> ChangeVehicleAsync(int bookingId, ChangeVehicleRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/vehicle-change");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không đổi được xe.");
+        return (await response.Content.ReadFromJsonAsync<VehicleChangeResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<VehicleChangeResponse>> GetVehicleChangesAsync(int bookingId)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/bookings/{bookingId}/vehicle-changes");
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<VehicleChangeResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
     public async Task<List<InspectionDisputeResponse>> GetInspectionDisputesAsync(int? bookingId = null, string? status = null)
     {
         var parts = new List<string>();

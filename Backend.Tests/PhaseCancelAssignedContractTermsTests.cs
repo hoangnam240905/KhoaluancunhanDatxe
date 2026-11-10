@@ -259,6 +259,11 @@ public class PhaseCancelAssignedContractTermsTests
         Assert.Null(error);
         Assert.Equal(24, contract!.CancelMinHours);
         Assert.Equal(ContractTerms.Build(24), contract.Terms);
+        // plan1.md Phần C: 9 original terms + 4 on changing the vehicle + 1 on the self-drive licence.
+        Assert.Equal(14, contract.Terms.Count);
+        Assert.Contains(contract.Terms, t => t.StartsWith("Trong thời gian thuê, khách hàng được yêu cầu đổi xe"));
+        Assert.Contains(contract.Terms, t => t.StartsWith("Với đơn tự lái, khách hàng phải có bằng lái phù hợp"));
+        Assert.DoesNotContain(contract.Terms, t => t.Contains("không phải trả thêm"));
         Assert.Contains(contract.Terms!, t => t.Contains("tối thiểu 24 giờ"));
     }
 

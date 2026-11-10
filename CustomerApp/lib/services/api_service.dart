@@ -691,6 +691,19 @@ class ApiService {
     );
   }
 
+  /// "Phụ lục đổi xe" of a booking (plan1.md Phần I).
+  Future<List<VehicleChange>> getVehicleChanges(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/vehicle-changes'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => VehicleChange.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<RentalContract> createContract(int bookingId) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/contract'),

@@ -9,6 +9,7 @@ public class ContractModel(CarRentalApiClient api, AuthSession auth) : RolePageM
 {
     public BookingResponse? Booking { get; set; }
     public ContractResponse? Contract { get; set; }
+    public IReadOnlyList<VehicleChangeResponse> VehicleChanges { get; set; } = [];
     public string? UserName => auth.FullName;
     public ContractView? Presentation { get; private set; }
     public string ViewState { get; private set; } = "missing";
@@ -152,6 +153,7 @@ public class ContractModel(CarRentalApiClient api, AuthSession auth) : RolePageM
             }
 
             Contract = contract;
+            VehicleChanges = await api.GetVehicleChangesAsync(data.BookingId);
             Presentation = ContractUi.From(data, contract);
             ViewState = ContractUi.ViewState(contract?.Status);
             CanIssue = contract is null && BookingDetailUi.AllowsDeposit(data.Status);

@@ -18,7 +18,8 @@ public class DispatchController(
     IncidentService incidents,
     VehicleInspectionService inspections,
     DriverVerificationService driverVerification,
-    CustomerLicenseService customerLicences) : ControllerBase
+    CustomerLicenseService customerLicences,
+    VehicleChangeService vehicleChanges) : ControllerBase
 {
     // ---- Self-drive customer licences (plan1.md Phần E) ----
 
@@ -157,6 +158,23 @@ public class DispatchController(
     {
         var (inspection, error) = await dispatchService.VerifyReturnAsync(id, CurrentUserId(), request.Result, request.Note);
         return inspection is null ? BadRequest(new { message = error }) : Ok(inspection);
+    }
+
+    // ---- Vehicle change (plan1.md Phần I) ----
+
+    /// <summary>Free cars for the rest of the rental: same type first; other types (with price difference) only when none.</summary>
+    [HttpGet("bookings/{id:int}/vehicle-change-options")]
+    public async Task<ActionResult<VehicleChangeOptionsResponse>> VehicleChangeOptions(int id)
+    {
+        var (data, error) = await vehicleChanges.GetOptionsAsync(id);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    [HttpPost("bookings/{id:int}/vehicle-change")]
+    public async Task<ActionResult<VehicleChangeResponse>> ChangeVehicle(int id, ChangeVehicleRequest request)
+    {
+        var (data, error) = await vehicleChanges.ApplyAsync(id, CurrentUserId(), request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
     private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

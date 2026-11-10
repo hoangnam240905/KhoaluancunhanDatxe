@@ -60,6 +60,7 @@ builder.Services.AddScoped<UserDocumentService>();
 builder.Services.AddScoped<DriverVerificationService>();
 builder.Services.AddScoped<CustomerLicenseService>();
 builder.Services.AddScoped<VehicleInspectionService>();
+builder.Services.AddScoped<VehicleChangeService>();
 builder.Services.AddScoped<BookingFeeService>();
 builder.Services.AddScoped<AdminCustomerService>();
 builder.Services.AddScoped<CustomerProfileService>();
@@ -194,6 +195,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteActorColumns();
     db.EnsureSqliteInspectionDisputesTable();
     db.EnsureSqliteUserDocumentsTable();
+    db.EnsureSqliteVehicleChangesTable();
     DbSeeder.Seed(db);
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))

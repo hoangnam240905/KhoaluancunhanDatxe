@@ -15,7 +15,8 @@ namespace Backend.Controllers;
 public class BookingsController(
     BookingService bookingService,
     VehicleInspectionService inspections,
-    InvoiceService invoices) : ControllerBase
+    InvoiceService invoices,
+    VehicleChangeService vehicleChanges) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<BookingResponse>>> GetAll([FromQuery] string? status)
@@ -104,6 +105,25 @@ public class BookingsController(
             return Forbid();
 
         return Ok(await inspections.GetByBookingAsync(id));
+    }
+
+    /// <summary>"Phụ lục đổi xe" of a booking (plan1.md Phần I). Owner, the trip driver, admin or dispatcher.</summary>
+    [HttpGet("{id:int}/vehicle-changes")]
+    public async Task<ActionResult<IReadOnlyList<Backend.DTOs.Dispatch.VehicleChangeResponse>>> GetVehicleChanges(int id)
+    {
+        var booking = await bookingService.GetBookingByIdAsync(id);
+        if (booking is null) return NotFound();
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var allowed = role switch
+        {
+            RoleNames.Driver => booking.Assignment?.DriverId == userId,
+            RoleNames.Customer => booking.CustomerId == userId,
+            RoleNames.Admin or RoleNames.Dispatcher => true,
+            _ => false
+        };
+        return allowed ? Ok(await vehicleChanges.ListAsync(id)) : Forbid();
     }
 
     /// <summary>Deposit receipts + trip invoice of a booking (same HTML as the emails). Owner, admin or dispatcher.</summary>

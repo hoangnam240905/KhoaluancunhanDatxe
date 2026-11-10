@@ -176,6 +176,29 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
     }
 
+    /// <summary>Free cars for a vehicle change (plan1.md Phần I): same type first, other types only when none.</summary>
+    public async Task<IActionResult> OnGetVehicleChangeOptionsAsync(int id)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        var (data, error) = await api.GetVehicleChangeOptionsAsync(id);
+        return data is null ? ActionFail(error ?? "Không tải được danh sách xe thay thế.") : new JsonResult(new { ok = true, options = data }, JsonOpts);
+    }
+
+    /// <summary>Dispatcher changes the car; Backend records the appendix with the dispatcher's name and notifies customer + driver.</summary>
+    public async Task<IActionResult> OnPostChangeVehicleAsync(int id, int newVehicleId, string? reason, string? note,
+        decimal? oldOdometerKm, decimal? oldFuelLevel, decimal? newOdometerKm, decimal? newFuelLevel, bool customerAgreed)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (newVehicleId <= 0) return ActionFail("Vui lòng chọn xe thay thế.");
+        var (_, error) = await api.ChangeVehicleAsync(id, new ChangeVehicleRequest(
+            newVehicleId, reason, note, oldOdometerKm, oldFuelLevel, newOdometerKm, newFuelLevel, customerAgreed));
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
     /// <summary>Dispatcher marks the driver's dispute handled (after fixing the record); the driver is notified.</summary>
     public async Task<IActionResult> OnPostResolveDisputeAsync(int id, int disputeId, string? note)
     {

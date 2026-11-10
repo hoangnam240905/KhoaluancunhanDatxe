@@ -239,6 +239,14 @@
                             <p class="ct-note">@ContractUi.TermsNote(Model.Contract)</p>
                         </section>
 
+                        @if (Model.VehicleChanges.Count > 0)
+                        {
+                            <section class="ct-sec">
+                                <h3>Phụ lục đổi xe</h3>
+                                <partial name="_VehicleChangeAppendix" model="Model.VehicleChanges" />
+                            </section>
+                        }
+
                         <section class="ct-sec">
                             <h3>8. Xác nhận hợp đồng</h3>
                             <div class="ct-issued">Chưa ký — khách hàng cần xác nhận nội dung hợp đồng.</div>

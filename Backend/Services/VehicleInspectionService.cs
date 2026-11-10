@@ -67,7 +67,9 @@ public class VehicleInspectionService(CarRentalDbContext db)
                 .Where(i => i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover)
                 .Select(i => i.OdometerKm)
                 .FirstOrDefaultAsync();
-            error = VehicleInspectionRules.ValidateReturnVsHandover(odometerKm, handoverOdo);
+            // After a mid-trip vehicle change the current car started at its reading at the change (plan1.md Phần I).
+            var segmentStart = await VehicleChangeService.SegmentStartKmAsync(db, bookingId, handoverOdo);
+            error = VehicleInspectionRules.ValidateReturnVsHandover(odometerKm, segmentStart);
             if (error is not null)
                 return (null, error);
 

@@ -34,6 +34,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _creatingPayment = false;
   bool _contractBusy = false;
   List<InvoiceDocument> _invoices = [];
+  List<VehicleChange> _vehicleChanges = [];
 
   static const _paymentMethods = ['Cash', 'BankTransfer', 'MoMo', 'VNPay'];
 
@@ -125,12 +126,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       } catch (_) {
         invoices = [];
       }
+      List<VehicleChange> vehicleChanges = [];
+      try {
+        vehicleChanges = await widget.api.getVehicleChanges(_booking.bookingId);
+      } catch (_) {
+        vehicleChanges = [];
+      }
       if (!mounted) return;
       setState(() {
         _booking = booking;
         _payments = payments;
         _contract = contract;
         _invoices = invoices;
+        _vehicleChanges = vehicleChanges;
         _paymentsLoading = false;
       });
     } catch (e) {
@@ -550,6 +558,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             _assignmentSection(b),
             const SizedBox(height: 16),
 
+            // Phụ lục đổi xe (nếu có)
+            if (_vehicleChanges.isNotEmpty) ...[
+              AppCard(child: _vehicleChangesSection()),
+              const SizedBox(height: 16),
+            ],
+
             // Hợp đồng điện tử
             _contractSection(),
             const SizedBox(height: 16),
@@ -843,6 +857,60 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ),
       ],
     );
+  }
+
+  Widget _vehicleChangesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Phụ lục đổi xe',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < _vehicleChanges.length; i++) ...[
+          if (i > 0) const Divider(height: 24),
+          Text(
+            'Phụ lục số ${i + 1} · ${Formatters.dt(_vehicleChanges[i].createdAt)}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ..._vehicleChangeRows(_vehicleChanges[i]),
+        ],
+        const Text(
+          'Phụ lục là một phần của hợp đồng, không làm mất hiệu lực hợp đồng gốc. '
+          'Chênh lệch giá (nếu có) được cộng/trừ khi kết thúc chuyến.',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _vehicleChangeRows(VehicleChange c) {
+    String km(double? v) => v == null ? '—' : v.toStringAsFixed(0);
+    final diff = c.priceDifference == 0
+        ? 'Không phát sinh (cùng loại xe)'
+        : '${c.priceDifference > 0 ? '+' : ''}${Formatters.vnd(c.priceDifference)} cho ${c.remainingDays} ngày còn lại'
+            '${c.customerAgreed ? ' · đã đồng ý' : ''}';
+    return [
+      _row('Xe cũ', '${c.oldVehicle} (${c.oldTypeName})'),
+      _row('Xe thay thế', '${c.newVehicle} (${c.newTypeName})'),
+      _row(
+        'Lý do',
+        c.note == null || c.note!.isEmpty
+            ? c.reasonLabel
+            : '${c.reasonLabel} — ${c.note}',
+      ),
+      _row('Thời điểm', c.duringTrip ? 'Giữa chuyến' : 'Trước khi giao xe'),
+      if (c.duringTrip) ...[
+        _row('Xe cũ khi đổi',
+            '${km(c.oldOdometerKm)} km · nhiên liệu ${km(c.oldFuelLevel)}%'),
+        _row('Xe mới khi giao',
+            '${km(c.newOdometerKm)} km · nhiên liệu ${km(c.newFuelLevel)}%'),
+      ],
+      _row('Chênh lệch giá', diff),
+      _row('Người duyệt', c.approvedByName ?? 'Điều phối viên'),
+    ];
   }
 
   Widget _feesSection(Booking b) {

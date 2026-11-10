@@ -474,6 +474,9 @@
         if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
             a.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Trả xe</button>`);
         }
+        if (t.bookingStatus === "Assigned" || t.bookingStatus === "InProgress") {
+            a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-vehicle-change="${t.id}">🔁 Đổi xe</button>`);
+        }
         if (t.settlement === "pending" || t.status === "completed") {
             a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-settle="${t.id}">💰 Quyết toán</button>`);
         }
@@ -742,6 +745,59 @@
         state.modal = "precheck";
     }
 
+    // ---- Đổi xe (plan1.md Phần I) ----
+    function vehicleOption(v) {
+        const diff = Number(v.priceDifference || 0);
+        const diffText = diff > 0 ? ` · +${money(diff)}` : diff < 0 ? ` · ${money(diff)}` : "";
+        return `<option value="${v.vehicleId}" data-diff="${diff}">${esc(v.brand)} ${esc(v.model)} · ${esc(v.licensePlate)} (${esc(v.typeName)}, ${v.currentKm} km)${diffText}</option>`;
+    }
+
+    async function vehicleChangeForm(t) {
+        if (!t) return;
+        const url = handlers.vehicleChangeOptions + (handlers.vehicleChangeOptions.includes("?") ? "&" : "?") + "id=" + t.id;
+        const { ok, data } = await getJson(url);
+        if (!ok) { toast((data && data.error) || "Không tải được danh sách xe thay thế."); return; }
+        const o = data.options;
+        const list = o.sameType.length ? o.sameType : o.otherTypes;
+        const pickBox = list.length
+            ? `<label class="mk-field" style="grid-column:1/-1"><span>Xe thay thế *</span>
+                    <select name="vehicle" data-vc-vehicle><option value="">— Chọn xe —</option>${list.map(vehicleOption).join("")}</select></label>`
+            : `<p class="mk-note" style="grid-column:1/-1;color:#b91c1c">Không còn xe nào trống lịch cho thời gian thuê còn lại.</p>`;
+        const typeNote = o.sameType.length
+            ? `<p class="mk-note">Xe cùng loại <strong>${esc(o.currentTypeName)}</strong> còn trống lịch ${o.remainingDays} ngày còn lại: không phát sinh chênh lệch giá.</p>`
+            : (o.otherTypes.length ? `<p class="mk-note">⚠️ Hết xe cùng loại ${esc(o.currentTypeName)}. Chỉ chọn xe khác loại khi khách đồng ý; chênh lệch tính cho ${o.remainingDays} ngày còn lại.</p>` : "");
+        const readings = o.duringTrip ? `
+                <label class="mk-field"><span>Km xe cũ lúc đổi *</span><input name="oldOdo" inputmode="decimal" autocomplete="off" placeholder="${o.segmentStartKm != null ? "≥ " + o.segmentStartKm : ""}" /></label>
+                <label class="mk-field"><span>Nhiên liệu xe cũ (%) *</span><input name="oldFuel" inputmode="decimal" autocomplete="off" /></label>
+                <label class="mk-field"><span>Km xe mới lúc giao *</span><input name="newOdo" inputmode="decimal" autocomplete="off" /></label>
+                <label class="mk-field"><span>Nhiên liệu xe mới (%) *</span><input name="newFuel" inputmode="decimal" autocomplete="off" /></label>` : "";
+        const agree = o.sameType.length ? "" : `
+                <label class="mk-field" style="grid-column:1/-1">
+                    <span><input type="checkbox" name="agreed" /> Khách đã đồng ý chênh lệch giá (đã gọi điện xác nhận)</span></label>`;
+        openModal(`
+            <h2>Đổi xe · Đơn #${t.id}</h2>
+            <dl class="mk-dl">
+                <div><dt>Xe hiện tại</dt><dd>${esc(o.currentVehicle)} (${esc(o.currentTypeName)})</dd></div>
+                <div><dt>Thời điểm</dt><dd>${o.duringTrip ? "Giữa chuyến (đang thuê)" : "Trước khi giao xe"}</dd></div>
+            </dl>
+            ${typeNote}
+            <form id="opVehicleChangeForm" data-id="${t.id}" class="op-form-grid">
+                ${pickBox}
+                <label class="mk-field"><span>Lý do *</span>
+                    <select name="reason"><option value="">— Chọn —</option><option value="Breakdown">Xe gặp sự cố kỹ thuật</option><option value="NeedChange">Khách thay đổi nhu cầu</option></select></label>
+                <label class="mk-field"><span>Ghi chú</span><input name="note" maxlength="500" /></label>
+                ${readings}
+                ${agree}
+            </form>
+            <p class="mk-note">${o.duringTrip ? "Đổi giữa chuyến: km chuyến = km chặng xe cũ + km chặng xe mới." : (t.mode === "WithDriver" ? "Biên bản trước giao của xe cũ (nếu có) sẽ bị bỏ, cần ghi lại cho xe mới." : "")} Lý do "sự cố" chuyển xe cũ sang bảo dưỡng. Hệ thống lưu tên bạn là người duyệt và báo cho khách${t.mode === "WithDriver" ? " và tài xế" : ""}.</p>
+            <p class="mk-note" id="opVehicleChangeError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opVehicleChangeForm" class="mk-btn mk-btn-success" ${list.length ? "" : "disabled"}>Xác nhận đổi xe</button>
+            </div>`);
+        state.modal = "vehicleChange";
+    }
+
     async function returnForm(t) {
         if (t.mode !== "SelfDrive") {
             toast("WithDriver complete: thiếu API dispatcher — không ghi Backend. (Mock UI only.)");
@@ -970,6 +1026,8 @@
             closeModal();
             return;
         }
+        const vc = e.target.closest("[data-vehicle-change]");
+        if (vc) { vehicleChangeForm(trip(vc.dataset.vehicleChange)); return; }
         const pc = e.target.closest("[data-precheck]");
         if (pc) { precheckForm(trip(pc.dataset.precheck)); return; }
         const ho = e.target.closest("[data-handover]");
@@ -1055,6 +1113,38 @@
             closeModal();
             await reloadFromServer();
             render();
+            return;
+        }
+        if (e.target.id === "opVehicleChangeForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opVehicleChangeError");
+            const sel = form.querySelector("[data-vc-vehicle]");
+            if (!sel || !sel.value) { box.textContent = "Vui lòng chọn xe thay thế."; return; }
+            if (!data.get("reason")) { box.textContent = "Vui lòng chọn lý do đổi xe."; return; }
+            const diff = Number(sel.selectedOptions[0].dataset.diff || 0);
+            if (diff !== 0 && !data.get("agreed")) { box.textContent = "Cần xác nhận khách đã đồng ý chênh lệch giá."; return; }
+            const fields = { newVehicleId: sel.value, reason: data.get("reason"), note: data.get("note"), customerAgreed: data.get("agreed") ? "true" : "false" };
+            if (form.querySelector("[name=oldOdo]")) {
+                const nums = { oldOdometerKm: "oldOdo", oldFuelLevel: "oldFuel", newOdometerKm: "newOdo", newFuelLevel: "newFuel" };
+                for (const [k, n] of Object.entries(nums)) {
+                    const v = String(data.get(n) || "").trim();
+                    if (v === "" || !Number.isFinite(Number(v)) || Number(v) < 0) { box.textContent = "Đổi giữa chuyến: nhập số km và mức nhiên liệu của cả xe cũ và xe mới."; return; }
+                    if (k.endsWith("FuelLevel") && Number(v) > 100) { box.textContent = "Mức nhiên liệu phải từ 0 đến 100."; return; }
+                    fields[k] = v;
+                }
+            }
+            const url = handlers.changeVehicle + (handlers.changeVehicle.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, fields);
+            if (!ok) { box.textContent = (res && res.error) || "Không đổi được xe."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã đổi xe. Khách hàng đã được thông báo.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated) renderDrawer(updated);
             return;
         }
         if (e.target.id === "opDisputeForm") {

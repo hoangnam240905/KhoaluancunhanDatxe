@@ -1023,3 +1023,78 @@ class CustomerLicense {
             .toList(),
       );
 }
+
+/// One "Phụ lục đổi xe" entry (plan1.md Phần I): the dispatcher replaced the car of the booking.
+class VehicleChange {
+  final int vehicleChangeId;
+  final String oldVehicle;
+  final String newVehicle;
+  final String oldTypeName;
+  final String newTypeName;
+  final String reason;
+  final String? note;
+  final bool duringTrip;
+  final double? oldOdometerKm;
+  final double? oldFuelLevel;
+  final double? newOdometerKm;
+  final double? newFuelLevel;
+  final int remainingDays;
+  final double priceDifference;
+  final bool customerAgreed;
+  final String? approvedByName;
+  final DateTime createdAt;
+
+  const VehicleChange({
+    required this.vehicleChangeId,
+    required this.oldVehicle,
+    required this.newVehicle,
+    required this.oldTypeName,
+    required this.newTypeName,
+    required this.reason,
+    required this.duringTrip,
+    required this.remainingDays,
+    required this.priceDifference,
+    required this.customerAgreed,
+    required this.createdAt,
+    this.note,
+    this.oldOdometerKm,
+    this.oldFuelLevel,
+    this.newOdometerKm,
+    this.newFuelLevel,
+    this.approvedByName,
+  });
+
+  String get reasonLabel => switch (reason) {
+        'Breakdown' => 'Xe gặp sự cố kỹ thuật',
+        'NeedChange' => 'Khách hàng thay đổi nhu cầu',
+        _ => reason,
+      };
+
+  static double? _num(dynamic v) => v == null ? null : (v as num).toDouble();
+
+  factory VehicleChange.fromJson(Map<String, dynamic> json) {
+    final created = json['createdAt'] as String?;
+    return VehicleChange(
+      vehicleChangeId: json['vehicleChangeId'] as int? ?? 0,
+      oldVehicle: json['oldVehicle'] as String? ?? '',
+      newVehicle: json['newVehicle'] as String? ?? '',
+      oldTypeName: json['oldTypeName'] as String? ?? '',
+      newTypeName: json['newTypeName'] as String? ?? '',
+      reason: json['reason'] as String? ?? '',
+      note: json['note'] as String?,
+      duringTrip: json['duringTrip'] as bool? ?? false,
+      oldOdometerKm: _num(json['oldOdometerKm']),
+      oldFuelLevel: _num(json['oldFuelLevel']),
+      newOdometerKm: _num(json['newOdometerKm']),
+      newFuelLevel: _num(json['newFuelLevel']),
+      remainingDays: json['remainingDays'] as int? ?? 0,
+      priceDifference: _num(json['priceDifference']) ?? 0,
+      customerAgreed: json['customerAgreed'] as bool? ?? false,
+      approvedByName: json['approvedByName'] as String?,
+      // Backend stores UTC without a zone suffix.
+      createdAt: created == null
+          ? DateTime.now()
+          : DateTime.parse(created.endsWith('Z') ? created : '${created}Z'),
+    );
+  }
+}

@@ -340,6 +340,17 @@ public static class CustomerLicenseStatuses
     public const string Rejected = "Rejected";
 }
 
+/// <summary>Why the dispatcher changed the car during a rental (plan1.md Phần I, contract terms 10–13).</summary>
+public static class VehicleChangeReasons
+{
+    /// <summary>The car broke down / has a technical problem: the old car goes to maintenance.</summary>
+    public const string Breakdown = "Breakdown";
+    /// <summary>The customer's needs changed.</summary>
+    public const string NeedChange = "NeedChange";
+
+    public static bool IsValid(string? value) => value is Breakdown or NeedChange;
+}
+
 /// <summary>Driver licence check (plan1.md Phần D, step 2): only Verified drivers can be assigned.</summary>
 public static class DriverVerificationStatuses
 {
@@ -385,6 +396,8 @@ public static class BookingFeeTypes
     public const string Fuel = "Fuel";
     public const string Damage = "Damage";
     public const string Other = "Other";
+    /// <summary>Price difference when the car was changed to another type (plan1.md Phần I).</summary>
+    public const string VehicleChange = "VehicleChange";
 
     public static bool IsIncludedInBase(string? feeType) =>
         feeType == ExtraKm;
@@ -398,7 +411,7 @@ public static class BookingFeeTypes
         }
 
         var trimmed = feeType.Trim();
-        if (trimmed is LateFee or ExtraKm or Fuel or Damage or Other)
+        if (trimmed is LateFee or ExtraKm or Fuel or Damage or Other or VehicleChange)
         {
             resolved = trimmed;
             return true;
