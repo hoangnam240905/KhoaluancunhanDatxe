@@ -77,7 +77,7 @@
       "id": "danh-gia",
       "category": "Đánh giá",
       "keywords": ["danh gia", "review", "cham diem", "nhan xet", "danh gia sao"],
-      "answer": "Sau khi chuyến có tài xế hoàn thành, bạn đánh giá chuyến đi trên trang chi tiết đơn.",
+      "answer": "Sau khi chuyến hoàn thành (có tài xế hoặc tự lái), bạn đánh giá chuyến đi trên trang chi tiết đơn.",
       "links": [{ "text": "Đơn đặt của tôi", "url": "/Customer/Bookings" }]
     },
     {
@@ -141,8 +141,8 @@
       "id": "giay-to",
       "category": "Giấy tờ, bằng lái",
       "keywords": ["giay to", "bang lai", "giay phep lai xe", "hang b", "moi co bang", "khach nuoc ngoai", "nguoi nuoc ngoai", "cccd", "can mang", "thu tuc"],
-      "answer": "",
-      "links": [],
+      "answer": "Thuê có tài xế không cần bằng lái. Thuê tự lái: khai bằng lái và gửi ảnh 2 mặt trong Hồ sơ (web) hoặc Tài khoản → Bằng lái xe (app), điều phối duyệt một lần. Hạng bằng phải đủ cho loại xe theo Luật 36/2024: hạng B lái xe đến 8 chỗ (không tính ghế lái), xe 16 chỗ cần D1; bằng B1 cấp trước 2025 còn hạn vẫn dùng được, B1 cấp từ 2025 là bằng mô tô. Bằng phải còn hạn đến ngày trả xe và mang bằng gốc khi nhận xe. Hệ thống chưa có quy định riêng cho khách nước ngoài.",
+      "links": [{"text": "Hồ sơ cá nhân", "url": "/Customer/Profile"}],
       "ruleTopic": true
     },
     {
@@ -165,8 +165,8 @@
       "id": "su-co",
       "category": "Bảo hiểm, sự cố",
       "keywords": ["bao hiem", "va quet", "tai nan", "thung lop", "hong xe", "hong giua duong", "mat chia khoa", "vet xuoc", "su co", "boi thuong"],
-      "answer": "",
-      "links": [],
+      "answer": "Chuyến có tài xế: tài xế báo sự cố trên app. Thuê tự lái: gọi điều phối để điều phối ghi sự cố. Xe hỏng thì điều phối có thể đổi xe: ưu tiên xe cùng loại (không phát sinh tiền), hết xe cùng loại mới đổi loại khác khi bạn đồng ý chênh lệch giá; việc đổi xe được ghi thành phụ lục hợp đồng. Chi phí hư hỏng (nếu có) được ghi khi quyết toán sau chuyến. Hệ thống chưa có thông tin về bảo hiểm.",
+      "links": [{"text": "Đơn đặt của tôi", "url": "/Customer/Bookings"}],
       "ruleTopic": true
     },
     {
@@ -189,8 +189,8 @@
       "id": "doi-lich",
       "category": "Giờ nhận, đổi ngày, gia hạn",
       "keywords": ["nhan xe luc", "gio sang", "gia han", "doi ngay", "doi ngay thue", "tra som", "tra xe som", "them 1 ngay", "them mot ngay"],
-      "answer": "",
-      "links": [],
+      "answer": "Giờ nhận và trả xe do bạn chọn khi đặt đơn, điều phối xác nhận nếu còn xe phù hợp. Hệ thống chưa có chức năng đổi ngày hay gia hạn đơn đã đặt: bạn có thể hủy đơn (nếu còn trong thời hạn hủy) rồi đặt đơn mới với ngày giờ khác.",
+      "links": [{"text": "Đơn đặt của tôi", "url": "/Customer/Bookings"}],
       "ruleTopic": true
     },
     {
@@ -205,8 +205,8 @@
       "id": "bao-duong-xe",
       "category": "Bảo dưỡng xe",
       "keywords": ["bao duong", "dang bao duong", "dang bao tri"],
-      "answer": "",
-      "links": [],
+      "answer": "Xe đang bảo dưỡng không hiện trong danh sách xe trống và không được phân công cho đơn. Hệ thống tự cảnh báo xe đến hạn bảo dưỡng theo số km hoặc số ngày; xe hỏng giữa chuyến được chuyển sang bảo dưỡng khi điều phối đổi xe cho bạn.",
+      "links": [{"text": "Tìm xe", "url": "/Search"}],
       "ruleTopic": true
     }
   ]

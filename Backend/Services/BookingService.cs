@@ -411,7 +411,10 @@ public class BookingService(
             .Include(b => b.TripAssignment)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId);
 
-        if (booking is null || booking.Status != BookingStatuses.Completed || booking.TripAssignment is null)
+        // With a driver: the trip's driver is rated too. Self-drive: the review is about the car and the service.
+        var selfDrive = RentalModes.TryResolve(booking?.RentalMode, out var mode) && mode == RentalModes.SelfDrive;
+        if (booking is null || booking.Status != BookingStatuses.Completed
+            || (booking.TripAssignment is null && !(selfDrive && booking.AssignedVehicleId is not null)))
             return (null, "Không thể đánh giá đơn này.");
 
         if (await db.Reviews.AnyAsync(r => r.BookingId == bookingId))
@@ -421,7 +424,7 @@ public class BookingService(
         {
             BookingId = bookingId,
             CustomerId = customerId,
-            DriverId = booking.TripAssignment.DriverId,
+            DriverId = booking.TripAssignment?.DriverId,
             Rating = request.Rating,
             ComfortRating = request.ComfortRating,
             CleanlinessRating = request.CleanlinessRating,
@@ -433,7 +436,7 @@ public class BookingService(
 
         db.Reviews.Add(review);
 
-        var driver = await db.Drivers.FindAsync(booking.TripAssignment.DriverId);
+        var driver = booking.TripAssignment is null ? null : await db.Drivers.FindAsync(booking.TripAssignment.DriverId);
         if (driver is not null)
         {
             var reviews = await db.Reviews.Where(r => r.DriverId == driver.DriverId).Select(r => (decimal)r.Rating).ToListAsync();
@@ -585,7 +588,7 @@ public class BookingService(
         review.PerformanceRating,
         review.ValueRating,
         review.CustomerId,
-        review.DriverId);
+        review.DriverId ?? 0);
 
     private static bool HasActiveDeposit(Booking b)
         => (b.Payments ?? []).Any(p =>

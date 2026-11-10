@@ -9,8 +9,9 @@ import '../config/api_config.dart';
 
 /// Minimal SignalR JSON client (negotiate + WebSocket). Avoids extra packages.
 class RealtimeService {
-  /// DEMO TEMP: SignalR client off. Set true next week to restore.
-  static const bool enabled = false;
+  /// Realtime is on (it was switched off only for one demo week in September).
+  /// Never connects inside `flutter test`, where real sockets / retry timers would hang the tests.
+  static final bool enabled = !kIsWeb && !Platform.environment.containsKey('FLUTTER_TEST');
 
   static const _rs = '\u001e';
 
@@ -28,10 +29,16 @@ class RealtimeService {
 
   void removeListener(VoidCallback cb) => _listeners.remove(cb);
 
+  Timer? _debounce;
+
+  /// Several events often arrive together (status + payment + assignment): reload the screens once.
   void _notify() {
-    for (final cb in List<VoidCallback>.from(_listeners)) {
-      cb();
-    }
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      for (final cb in List<VoidCallback>.from(_listeners)) {
+        cb();
+      }
+    });
   }
 
   Future<void> connect(String token) async {
@@ -44,6 +51,7 @@ class RealtimeService {
 
   Future<void> disconnect() async {
     _closedByUs = true;
+    _debounce?.cancel();
     _retry = 0;
     await _socket?.close();
     _socket = null;

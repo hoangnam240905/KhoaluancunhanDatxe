@@ -6,6 +6,10 @@
     var cfg = window.carRentalRealtime;
     if (!cfg || !cfg.hubUrl || !cfg.accessToken)
         return;
+    // A page can include this script twice (site layout + customer bell): keep one connection.
+    if (window.__carRentalRealtimeStarted)
+        return;
+    window.__carRentalRealtimeStarted = true;
 
     var RS = String.fromCharCode(0x1e);
     var retry = 0;

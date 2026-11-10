@@ -1221,6 +1221,67 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
                 Database.ExecuteSqlRaw($"ALTER TABLE IncidentReports ADD COLUMN {name} {type} NULL");
     }
 
+    /// <summary>
+    /// Self-drive bookings can be reviewed too, so Reviews.DriverId must accept null. SQLite cannot drop NOT NULL in
+    /// place: the table is rebuilt once from its own stored DDL (all columns and rows kept, indexes recreated).
+    /// </summary>
+    public void EnsureSqliteReviewsOptionalDriver()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var connection = Database.GetDbConnection();
+        string? tableSql;
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'Reviews'";
+            tableSql = cmd.ExecuteScalar() as string;
+        }
+        if (tableSql is null)
+            return;
+        var notNull = System.Text.RegularExpressions.Regex.Match(tableSql, "\"DriverId\"\\s+INTEGER\\s+NOT\\s+NULL",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!notNull.Success)
+            return;
+
+        var columns = new List<string>();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Reviews')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add("\"" + reader.GetString(1) + "\"");
+        }
+        var indexes = new List<string>();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'Reviews' AND sql IS NOT NULL";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                indexes.Add(reader.GetString(0));
+        }
+
+        var newSql = tableSql.Remove(notNull.Index, notNull.Length).Insert(notNull.Index, "\"DriverId\" INTEGER NULL");
+        var firstParen = newSql.IndexOf('(');
+        newSql = "CREATE TABLE \"Reviews_new\" " + newSql[firstParen..];
+        var list = string.Join(", ", columns);
+
+        Database.ExecuteSqlRaw("PRAGMA foreign_keys = OFF");
+        using (var tx = Database.BeginTransaction())
+        {
+            Database.ExecuteSqlRaw(newSql);
+            Database.ExecuteSqlRaw($"INSERT INTO \"Reviews_new\" ({list}) SELECT {list} FROM \"Reviews\"");
+            Database.ExecuteSqlRaw("DROP TABLE \"Reviews\"");
+            Database.ExecuteSqlRaw("ALTER TABLE \"Reviews_new\" RENAME TO \"Reviews\"");
+            foreach (var index in indexes)
+                Database.ExecuteSqlRaw(index);
+            tx.Commit();
+        }
+        Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON");
+    }
+
     /// <summary>Vehicle change appendix (plan1.md Phần I), for databases created before it existed.</summary>
     public void EnsureSqliteVehicleChangesTable()
     {

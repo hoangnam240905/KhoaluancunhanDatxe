@@ -186,8 +186,8 @@
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 <script src="~/js/drivex.js" asp-append-version="true"></script>
-@* DEMO TEMP: SignalR client off. Next week: remove `false &&` to restore. *@
-@if (false && Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
+@* Realtime (SignalR). realtime.js keeps a single connection even if the customer bell includes it too. *@
+@if (Auth.IsLoggedIn && !string.IsNullOrEmpty(Auth.Token))
 {
     <script>
         window.carRentalRealtime = {

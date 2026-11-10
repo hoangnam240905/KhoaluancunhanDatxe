@@ -273,10 +273,10 @@ public class PhaseGap3PortalReviewTests
     }
 
     [Fact]
-    public async Task Self_drive_without_assignment_cannot_be_reviewed()
+    public async Task Self_drive_with_its_car_can_be_reviewed_without_a_driver_but_not_without_a_car()
     {
         using var iso = new IsolatedCarRentalDb();
-        var booking = new Booking
+        Booking SelfDrive(int? vehicleId) => new()
         {
             CustomerId = 3,
             VehicleTypeId = 1,
@@ -287,15 +287,22 @@ public class PhaseGap3PortalReviewTests
             TotalAmount = 1,
             Status = BookingStatuses.Completed,
             RentalMode = RentalModes.SelfDrive,
-            AssignedVehicleId = 2,
+            AssignedVehicleId = vehicleId,
             CreatedAt = DateTime.UtcNow
         };
-        iso.Db.Bookings.Add(booking);
+        var withCar = SelfDrive(2);
+        var noCar = SelfDrive(null);
+        iso.Db.Bookings.AddRange(withCar, noCar);
         iso.Db.SaveChanges();
+        var service = new BookingService(iso.Db, new PricingService());
 
-        var (result, _) = await new BookingService(iso.Db, new PricingService()).CreateReviewAsync(
-            booking.BookingId, 3, new CreateReviewRequest(5, "self"));
-        Assert.Null(result);
+        var (result, error) = await service.CreateReviewAsync(withCar.BookingId, 3, new CreateReviewRequest(5, "Xe sạch, giao đúng giờ"));
+        Assert.True(result is not null, error);
+        Assert.Equal(0, result!.DriverId);
+        Assert.Null(iso.Db.Reviews.Single(r => r.BookingId == withCar.BookingId).DriverId);
+
+        var (blocked, _) = await service.CreateReviewAsync(noCar.BookingId, 3, new CreateReviewRequest(5, "x"));
+        Assert.Null(blocked);
     }
 
     [Fact]

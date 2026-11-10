@@ -147,6 +147,41 @@ public class PhaseDispatcherIncidentTests
     }
 
     [Fact]
+    public void Old_reviews_table_is_rebuilt_so_self_drive_reviews_fit_keeping_rows_and_unique_index()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var db = iso.Db;
+        db.Database.OpenConnection();
+        db.Database.ExecuteSqlRaw("DROP TABLE \"Reviews\"");
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE "Reviews" (
+                "ReviewId" INTEGER NOT NULL CONSTRAINT "PK_Reviews" PRIMARY KEY AUTOINCREMENT,
+                "BookingId" INTEGER NOT NULL, "CustomerId" INTEGER NOT NULL, "DriverId" INTEGER NOT NULL,
+                "Rating" INTEGER NOT NULL, "Comment" TEXT NULL, "CreatedAt" TEXT NOT NULL,
+                "ComfortRating" INTEGER NULL, "CleanlinessRating" INTEGER NULL, "PerformanceRating" INTEGER NULL, "ValueRating" INTEGER NULL)
+            """);
+        db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX \"IX_Reviews_BookingId\" ON \"Reviews\" (\"BookingId\")");
+        db.Database.ExecuteSqlRaw($"""
+            INSERT INTO "Reviews" ("BookingId","CustomerId","DriverId","Rating","Comment","CreatedAt")
+            VALUES (2, 4, {DriverId}, 4, 'Tốt', '2026-09-20 10:00:00')
+            """);
+
+        db.EnsureSqliteReviewsOptionalDriver();
+        db.EnsureSqliteReviewsOptionalDriver(); // idempotent
+
+        db.ChangeTracker.Clear();
+        var old = Assert.Single(db.Reviews);
+        Assert.Equal(DriverId, old.DriverId);
+        Assert.Equal("Tốt", old.Comment);
+        // A review without a driver now fits; the unique index on BookingId is still there.
+        db.Reviews.Add(new Backend.Entities.Review { BookingId = 1, CustomerId = 3, Rating = 5, CreatedAt = DateTime.UtcNow });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+        db.Reviews.Add(new Backend.Entities.Review { BookingId = 1, CustomerId = 3, Rating = 3, CreatedAt = DateTime.UtcNow });
+        Assert.Throws<DbUpdateException>(() => db.SaveChanges());
+    }
+
+    [Fact]
     public async Task Api_only_dispatcher_can_record_incidents()
     {
         using var factory = new IsolatedApiFactory();

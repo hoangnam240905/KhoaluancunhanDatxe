@@ -226,7 +226,7 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
             RevenueNote);
     }
 
-    // ---------- reviews (only trips with a driver have reviews: Review.DriverId is required) ----------
+    // ---------- reviews (self-drive reviews have no driver) ----------
 
     internal sealed record ReviewRow(
         int ReviewId, int BookingId, int Rating, string? Comment, DateTime CreatedAt,
@@ -246,7 +246,7 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
                 // Vehicle of the trip: the assignment's car, else the booked car.
                 Vehicle = r.Booking.TripAssignment != null ? r.Booking.TripAssignment.Vehicle : r.Booking.AssignedVehicle,
                 CustomerName = r.Customer.User.FullName,
-                DriverName = r.Driver.User.FullName
+                DriverName = r.Driver != null ? r.Driver.User.FullName : null
             })
             .Select(r => new
             {
@@ -260,7 +260,7 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
 
         return rows.Select(r => new ReviewRow(
             r.ReviewId, r.BookingId, r.Rating, r.Comment, r.CreatedAt,
-            r.VehicleId, r.VehicleLabel, r.CustomerName, r.DriverName)).ToList();
+            r.VehicleId, r.VehicleLabel, r.CustomerName, r.DriverName ?? "")).ToList();
     }
 
     private static DashboardReviews BuildReviews(IReadOnlyList<ReviewRow> rows)
@@ -507,8 +507,8 @@ public class DashboardService(CarRentalDbContext db, MaintenanceAlertService ale
             .ToDictionary(x => x.Key, x => x.Count);
 
         var ratings = (await db.Reviews.AsNoTracking()
-            .Where(r => r.CreatedAt >= fromUtc && r.CreatedAt <= toUtc)
-            .GroupBy(r => r.DriverId)
+            .Where(r => r.CreatedAt >= fromUtc && r.CreatedAt <= toUtc && r.DriverId != null)
+            .GroupBy(r => r.DriverId!.Value)
             .Select(g => new { g.Key, Avg = g.Average(r => (decimal)r.Rating) })
             .ToListAsync())
             .ToDictionary(x => x.Key, x => Math.Round(x.Avg, 2));

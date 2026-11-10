@@ -17,8 +17,10 @@ public static class ReviewUi
     public const string CommentTooLong = "Nhận xét không được vượt quá 500 ký tự.";
     public const string RatingRequired = "Vui lòng chọn số sao đánh giá.";
 
+    /// <summary>Completed trip with a driver, or a completed self-drive rental (reviewed for the car / service).</summary>
     public static bool CanOfferReview(BookingResponse booking) =>
-        booking.Status == "Completed" && booking.Assignment is not null;
+        booking.Status == "Completed"
+        && (booking.Assignment is not null || (booking.RentalMode == "SelfDrive" && booking.AssignedVehicle is not null));
 
     public static ReviewView From(BookingResponse booking, ReviewResponse? review = null)
     {

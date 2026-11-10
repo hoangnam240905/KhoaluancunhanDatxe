@@ -198,6 +198,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteUserDocumentsTable();
     db.EnsureSqliteVehicleChangesTable();
     db.EnsureSqliteIncidentReportsOptionalDriver();
+    db.EnsureSqliteReviewsOptionalDriver();
     DbSeeder.Seed(db);
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))

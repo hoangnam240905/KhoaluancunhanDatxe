@@ -59,11 +59,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     _loadPayments();
   }
 
+  /// With a driver: the trip (and driver) is rated. Self-drive: the car and the service.
   bool get _canReview =>
       !_reviewed &&
       _booking.status == 'Completed' &&
-      !_booking.isSelfDrive &&
-      _booking.assignment != null;
+      (_booking.assignment != null ||
+          (_booking.isSelfDrive && _booking.assignedVehicle != null));
 
   bool get _rentalModeValid =>
       _booking.rentalMode == 'WithDriver' || _booking.rentalMode == 'SelfDrive';
@@ -1862,14 +1863,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Widget _reviewSection() {
-    if (_booking.isSelfDrive && _booking.status == 'Completed') {
-      return const AppCard(
-        child: Text(
-          'Đơn tự lái không đánh giá tài xế trên hệ thống hiện tại.',
-          style: TextStyle(color: AppColors.muted),
-        ),
-      );
-    }
     if (!_canReview && !_reviewed) return const SizedBox.shrink();
     if (_reviewed) {
       return const AppCard(

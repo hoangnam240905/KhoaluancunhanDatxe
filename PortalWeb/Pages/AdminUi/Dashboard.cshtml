@@ -302,10 +302,151 @@
                                     <small>@BookingDetailUi.Day(r.CreatedAt)</small>
                                 </div>
                                 <p>@(string.IsNullOrWhiteSpace(r.Comment) ? "(Không có nhận xét)" : r.Comment)</p>
-                                <small>@r.VehicleLabel · KH @r.CustomerName · TX @r.DriverName · đơn #@r.BookingId</small>
+                                <small>@r.VehicleLabel · KH @r.CustomerName · @(string.IsNullOrEmpty(r.DriverName) ? "Tự lái" : "TX " + r.DriverName) · đơn #@r.BookingId</small>
                             </div>
                         }
                     </div>
+                }
+            </div>
+        </div>
+        @* Fleet use, driver performance, recommendation effect, maintenance alerts (already returned by GET /api/admin/dashboard). *@
+            var fleet = d.Vehicles;
+            var inService = Math.Max(0, fleet.Total - fleet.Inactive);
+            decimal? utilization = inService == 0 ? null : Math.Round(fleet.Rented * 100m / inService, 1);
+            var rec = d.Recommendation;
+            var drivers = d.Drivers.Performance
+                .OrderByDescending(x => x.CompletedAssignments)
+                .ThenBy(x => x.FullName)
+                .Take(8)
+                .ToList();
+            string Pct(decimal? v) => v is decimal x ? (x * 100).ToString("0.#", viN) + "%" : "—";
+        <div class="aui-grid-2 equal">
+            <div class="aui-card aui-card-pad" data-panel="fleet-utilization">
+                <div class="aui-card-head">
+                    <div>
+                        <h3 class="aui-card-title">Tỷ lệ sử dụng xe</h3>
+                        <p class="aui-card-sub">Xe đang thuê / xe đang khai thác (không tính xe ngừng hoạt động)</p>
+                    </div>
+                </div>
+                @if (inService == 0)
+                {
+                    <div class="aui-empty"><p>Chưa có xe đang khai thác.</p></div>
+                }
+                else
+                {
+                    <div style="display:flex;align-items:baseline;gap:.5rem;margin-bottom:.5rem">
+                        <strong style="font-size:2rem">@(utilization?.ToString("0.#", viN))%</strong>
+                        <span class="aui-card-sub">@fleet.Rented / @inService xe đang thuê</span>
+                    </div>
+                    <div class="aui-progress" role="progressbar" aria-valuenow="@(utilization ?? 0)" aria-valuemin="0" aria-valuemax="100">
+                        <span style="width:@((utilization ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span>
+                    </div>
+                    <div class="aui-legend" style="margin-top:.75rem">
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#16A34A"></span>Sẵn sàng: @fleet.Available</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#2563EB"></span>Đang thuê: @fleet.Rented</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#D97706"></span>Bảo dưỡng: @fleet.Maintenance</span>
+                        <span class="aui-legend-item"><span class="aui-legend-dot" style="background:#94A3B8"></span>Ngừng: @fleet.Inactive</span>
+                    </div>
+                    <p class="aui-card-sub" style="margin-top:.5rem">@fleet.SnapshotNote</p>
+                }
+            </div>
+            <div class="aui-card aui-card-pad" data-panel="recommendation">
+                <div class="aui-card-head">
+                    <div>
+                        <h3 class="aui-card-title">Hiệu quả gợi ý xe</h3>
+                        <p class="aui-card-sub">Đơn đặt từ trang Gợi ý trong kỳ</p>
+                    </div>
+                </div>
+                @if (rec.TotalBookings == 0)
+                {
+                    <div class="aui-empty"><p>Chưa có đơn trong kỳ.</p></div>
+                }
+                else
+                {
+                    <div style="display:flex;align-items:baseline;gap:.5rem;margin-bottom:.5rem">
+                        <strong style="font-size:2rem">@Pct(rec.AttributionShare)</strong>
+                        <span class="aui-card-sub">@rec.RecommendedBookings / @rec.TotalBookings đơn đến từ gợi ý</span>
+                    </div>
+                    <div class="aui-progress"><span style="width:@(((rec.AttributionShare ?? 0) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></span></div>
+                    <dl class="aui-kv" style="margin-top:.75rem">
+                        <div><dt>Đơn từ gợi ý đã hoàn thành</dt><dd>@rec.RecommendedCompletedBookings</dd></div>
+                        <div><dt>Điểm đánh giá TB (đơn từ gợi ý)</dt><dd>@(rec.AverageRatingRecommendedReviewed is decimal ar ? ar.ToString("0.0#", viN) + " ★" : "—")</dd></div>
+                    </dl>
+                    <p class="aui-card-sub" style="margin-top:.5rem">@rec.MetricNote</p>
+                }
+            </div>
+        </div>
+        <div class="aui-grid-2 equal">
+            <div class="aui-card" data-panel="driver-performance">
+                <div class="aui-card-head aui-card-pad">
+                    <div>
+                        <h3 class="aui-card-title">Hiệu suất tài xế</h3>
+                        <p class="aui-card-sub">Chuyến trong kỳ · @d.Drivers.Available rảnh / @d.Drivers.Busy đang chạy / @d.Drivers.Offline nghỉ</p>
+                    </div>
+                </div>
+                @if (drivers.Count == 0)
+                {
+                    <div class="aui-empty"><p>Chưa có tài xế.</p></div>
+                }
+                else
+                {
+                    <div class="aui-table-wrap">
+                        <table class="aui-table">
+                            <thead>
+                                <tr>
+                                    <th>Tài xế</th>
+                                    <th class="num">Hoàn thành</th>
+                                    <th class="num">Hủy</th>
+                                    <th class="num">Tỷ lệ HT</th>
+                                    <th class="num">Sự cố</th>
+                                    <th class="num">Đánh giá</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var r in drivers)
+                            {
+                                <tr>
+                                    <td><strong>@r.FullName</strong></td>
+                                    <td class="num">@r.CompletedAssignments</td>
+                                    <td class="num">@r.CancelledAssignments</td>
+                                    <td class="num">@Pct(r.AssignmentCompletionRate)</td>
+                                    <td class="num">@(r.IncidentCount > 0 ? r.IncidentCount.ToString() : "0")</td>
+                                    <td class="num">@(r.AverageReviewRating is decimal rr ? rr.ToString("0.0#", viN) + " ★" : "—")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="aui-card aui-card-pad" data-panel="maintenance-alerts">
+                <div class="aui-card-head">
+                    <div>
+                        <h3 class="aui-card-title">Cảnh báo bảo dưỡng</h3>
+                        <p class="aui-card-sub">Xe đến hạn theo km hoặc số ngày từ lần bảo dưỡng trước</p>
+                    </div>
+                    <a class="aui-btn aui-btn-sm aui-btn-ghost" asp-page="/AdminUi/Maintenance">Bảo trì</a>
+                </div>
+                @if (d.Maintenance.AlertCount == 0)
+                {
+                    <div class="aui-empty"><p>Không có xe đến hạn bảo dưỡng.</p></div>
+                }
+                else
+                {
+                    <p><span class="aui-badge amber">@d.Maintenance.AlertCount xe cần bảo dưỡng</span></p>
+                    <ul style="list-style:none;padding:0;margin:0;display:grid;gap:.5rem">
+                        @foreach (var a in d.Maintenance.Alerts.Take(6))
+                        {
+                            <li style="border-bottom:1px solid var(--aui-border, #E2E8F0);padding-bottom:.4rem">
+                                <strong>@a.LicensePlate</strong> · @a.Reason
+                                <br /><small class="aui-card-sub">@(a.KmSinceLastMaintenance is int km ? km.ToString("#,0", viN) + " km" : "— km") · @a.DaysSinceLastMaintenance ngày từ lần bảo dưỡng trước</small>
+                            </li>
+                        }
+                    </ul>
+                    @if (d.Maintenance.AlertCount > 6)
+                    {
+                        <p class="aui-card-sub" style="margin-top:.5rem">và @(d.Maintenance.AlertCount - 6) xe khác — xem ở trang Bảo trì.</p>
+                    }
                 }
             </div>
         </div>

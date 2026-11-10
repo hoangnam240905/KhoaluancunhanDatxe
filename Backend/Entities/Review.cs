@@ -5,7 +5,8 @@ public class Review
     public int ReviewId { get; set; }
     public int BookingId { get; set; }
     public int CustomerId { get; set; }
-    public int DriverId { get; set; }
+    /// <summary>Null for a self-drive booking (no driver): the review is about the car and the service.</summary>
+    public int? DriverId { get; set; }
     public byte Rating { get; set; }
     public int? ComfortRating { get; set; }
     public int? CleanlinessRating { get; set; }
@@ -16,5 +17,5 @@ public class Review
 
     public Booking Booking { get; set; } = null!;
     public Customer Customer { get; set; } = null!;
-    public Driver Driver { get; set; } = null!;
+    public Driver? Driver { get; set; }
 }

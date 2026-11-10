@@ -237,18 +237,8 @@ public class ChatbotExtendedTests
     [InlineData("Giá thuê xe đã bao gồm phí giao xe chưa?")]
     [InlineData("Có giao xe tận nhà hoặc sân bay không?")]
     [InlineData("Nếu trả xe muộn 2 tiếng thì tính thêm bao nhiêu tiền?")]
-    [InlineData("Xe có bảo hiểm không?")]
-    [InlineData("Nếu va quẹt thì sao?")]
-    [InlineData("Xe thủng lốp giữa đường thì làm gì?")]
     [InlineData("Khi trả xe thì tiền cọc được hoàn lại trong bao lâu?")]
     [InlineData("Tôi có thể nhận xe ở TP.HCM và trả ở địa điểm khác không?")]
-    [InlineData("Tôi muốn nhận xe lúc 6 giờ sáng, có được không?")]
-    [InlineData("Đổi ngày thuê có phải đặt lại không?")]
-    [InlineData("Tôi muốn gia hạn thêm 1 ngày")]
-    [InlineData("Xe này có đang được bảo dưỡng không?")]
-    [InlineData("Tôi cần bằng lái hạng B để thuê xe 7 chỗ tự lái phải không?")]
-    [InlineData("Khách nước ngoài có thuê xe tự lái được không?")]
-    [InlineData("Tôi cần chuẩn bị giấy tờ gì để thuê xe?")]
     [InlineData("Thuê xe có tài xế thì tài xế có chờ suốt chuyến đi không?")]
     [InlineData("Tiền ăn, nghỉ của tài xế do ai chi trả?")]
     [InlineData("Hotline bao nhiêu?")]
@@ -259,6 +249,29 @@ public class ChatbotExtendedTests
         var r = await Ask(iso, question);
         Assert.Equal("unknown", r.Kind);
         Assert.StartsWith(ChatbotService.Unknown, r.Reply);
+        Assert.Empty(r.Vehicles);
+    }
+
+    // ---------- K-C answered from what the system really does (licence check, incidents + vehicle change,
+    // maintenance, booking rules); company policies (fees, insurance terms, hours…) stay "chưa có thông tin" ----------
+
+    [Theory]
+    [InlineData("Xe có bảo hiểm không?", "chưa có thông tin về bảo hiểm")]
+    [InlineData("Nếu va quẹt thì sao?", "đổi xe")]
+    [InlineData("Xe thủng lốp giữa đường thì làm gì?", "gọi điều phối")]
+    [InlineData("Tôi muốn nhận xe lúc 6 giờ sáng, có được không?", "do bạn chọn khi đặt đơn")]
+    [InlineData("Đổi ngày thuê có phải đặt lại không?", "chưa có chức năng đổi ngày")]
+    [InlineData("Tôi muốn gia hạn thêm 1 ngày", "gia hạn")]
+    [InlineData("Xe này có đang được bảo dưỡng không?", "Xe đang bảo dưỡng không hiện")]
+    [InlineData("Tôi cần bằng lái hạng B để thuê xe 7 chỗ tự lái phải không?", "hạng B lái xe đến 8 chỗ")]
+    [InlineData("Khách nước ngoài có thuê xe tự lái được không?", "khách nước ngoài")]
+    [InlineData("Tôi cần chuẩn bị giấy tờ gì để thuê xe?", "mang bằng gốc")]
+    public async Task K_C_rules_the_system_implements_are_answered(string question, string expected)
+    {
+        using var iso = Setup();
+        var r = await Ask(iso, question);
+        Assert.Equal("faq", r.Kind);
+        Assert.Contains(expected, r.Reply);
         Assert.Empty(r.Vehicles);
     }
 

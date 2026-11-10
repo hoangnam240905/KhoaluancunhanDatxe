@@ -345,6 +345,11 @@
                 return p.tripStatus === "Accepted" ? `Tài xế đã nhận chuyến #${id}.` : null;
             case "IncidentReported":
                 return `⚠️ Sự cố trên chuyến #${id}${p.incidentType ? ": " + p.incidentType : ""}.`;
+            // Two-sided vehicle check (plan1.md Phần A): what the driver sends to the dispatcher.
+            case "InspectionDisputeRaised":
+                return `⚠️ Tài xế báo sai lệch biên bản trước giao chuyến #${id}.`;
+            case "DispatcherReminded":
+                return `🔔 Tài xế chuyến #${id} đang chờ biên bản kiểm tra trước giao.`;
             default:
                 return null;
         }
@@ -361,7 +366,8 @@
         const evt = e.detail || {};
         const text = realtimeText(evt);
         if (!text) return;
-        const key = `${evt.eventType}:${evt.bookingId}:${(evt.payload || {}).status || (evt.payload || {}).tripStatus || ""}`;
+        // "round" lets a second dispute / reminder on the same trip toast again.
+        const key = `${evt.eventType}:${evt.bookingId}:${(evt.payload || {}).status || (evt.payload || {}).tripStatus || ""}:${(evt.payload || {}).round || ""}`;
         if (!toasted.has(key)) {
             toasted.add(key);
             toast(text);
