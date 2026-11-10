@@ -628,11 +628,16 @@ class ApiService {
     required int bookingId,
     required String reason,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel'),
-      headers: await _headers(auth: true),
-      body: jsonEncode({'reason': reason}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel'),
+          headers: await _headers(auth: true),
+          body: jsonEncode({
+            'cancellationReason': reason,
+            'reason': reason,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
