@@ -125,6 +125,38 @@ class ApiService {
   }
 
   /// Driver sign-up (plan1.md Phần D): the account starts "Chờ xác minh".
+  /// Sends an OTP by email when the account exists (the API never says whether it does).
+  Future<String> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/forgot-password'),
+      headers: await _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return _successMessage(response, 'Nếu email tồn tại, mã OTP đã được gửi.');
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/reset-password'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(_errorMessage(response));
+    }
+  }
+
   Future<AuthResponse> registerDriver({
     required String fullName,
     required String email,
@@ -315,6 +347,41 @@ class ApiService {
     return DriverProfile.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  // ---- Notifications (history; realtime only pushes new ones) ----
+
+  Future<List<DriverNotification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(DriverNotification.fromJson)
+        .toList();
+  }
+
+  Future<DriverNotification> markNotificationRead(int id) async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/$id/read'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return DriverNotification.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/read-all'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 
   Future<List<DriverBooking>> getMyTrips() async {

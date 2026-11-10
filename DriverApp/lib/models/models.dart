@@ -580,3 +580,40 @@ class VehicleChange {
     );
   }
 }
+
+/// One row of the driver's notification history (GET /api/notifications).
+class DriverNotification {
+  final int notificationId;
+  final String title;
+  final String message;
+  final String? type;
+  final bool isRead;
+  final DateTime createdAt;
+  final int? bookingId;
+
+  const DriverNotification({
+    required this.notificationId,
+    required this.title,
+    required this.message,
+    required this.isRead,
+    required this.createdAt,
+    this.type,
+    this.bookingId,
+  });
+
+  factory DriverNotification.fromJson(Map<String, dynamic> json) {
+    final created = json['createdAt'] as String?;
+    return DriverNotification(
+      notificationId: json['notificationId'] as int? ?? 0,
+      title: json['title'] as String? ?? 'Thông báo',
+      message: json['message'] as String? ?? '',
+      type: json['type'] as String?,
+      isRead: json['isRead'] as bool? ?? false,
+      // Backend stores UTC without a zone suffix.
+      createdAt: created == null
+          ? DateTime.now()
+          : DateTime.parse(created.endsWith('Z') ? created : '${created}Z'),
+      bookingId: json['bookingId'] as int?,
+    );
+  }
+}

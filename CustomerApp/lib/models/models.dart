@@ -1098,3 +1098,45 @@ class VehicleChange {
     );
   }
 }
+
+/// A car in the customer's "Xe yêu thích" (GET /api/favorites returns VehicleResponse rows).
+class FavoriteVehicle {
+  final int vehicleId;
+  final int typeId;
+  final String typeName;
+  final String licensePlate;
+  final String brand;
+  final String model;
+  final int year;
+  final String? color;
+  final String status;
+  final double pricePerDay;
+
+  const FavoriteVehicle({
+    required this.vehicleId,
+    required this.typeId,
+    required this.typeName,
+    required this.licensePlate,
+    required this.brand,
+    required this.model,
+    required this.year,
+    required this.status,
+    required this.pricePerDay,
+    this.color,
+  });
+
+  String get title => '$brand $model'.trim();
+
+  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) => FavoriteVehicle(
+        vehicleId: json['vehicleId'] as int? ?? 0,
+        typeId: json['typeId'] as int? ?? 0,
+        typeName: json['typeName'] as String? ?? '',
+        licensePlate: json['licensePlate'] as String? ?? '',
+        brand: json['brand'] as String? ?? '',
+        model: json['model'] as String? ?? '',
+        year: json['year'] as int? ?? 0,
+        color: json['color'] as String?,
+        status: json['status'] as String? ?? '',
+        pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
+      );
+}

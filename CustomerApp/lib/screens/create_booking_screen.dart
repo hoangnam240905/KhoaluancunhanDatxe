@@ -20,6 +20,8 @@ class CreateBookingScreen extends StatefulWidget {
   final DateTime? initialStart;
   final DateTime? initialEnd;
   final bool fromRecommendation;
+  /// Opened from "Xe yêu thích": preselect this car when it is free.
+  final int? initialVehicleId;
 
   const CreateBookingScreen({
     super.key,
@@ -33,6 +35,7 @@ class CreateBookingScreen extends StatefulWidget {
     this.initialStart,
     this.initialEnd,
     this.fromRecommendation = false,
+    this.initialVehicleId,
   });
 
   @override
@@ -46,6 +49,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   Vehicle? _vehicle;
   DriverOption? _driver;
   List<Vehicle> _vehicles = [];
+  Set<int> _favoriteIds = {};
   List<DriverOption> _drivers = [];
   bool _loadingVehicles = false;
   bool _loadingDrivers = false;
@@ -119,6 +123,30 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
   }
 
+  Future<void> _toggleFavorite(Vehicle vehicle) async {
+    final wasFavorite = _favoriteIds.contains(vehicle.vehicleId);
+    setState(() {
+      wasFavorite
+          ? _favoriteIds.remove(vehicle.vehicleId)
+          : _favoriteIds.add(vehicle.vehicleId);
+    });
+    try {
+      wasFavorite
+          ? await widget.api.removeFavorite(vehicle.vehicleId)
+          : await widget.api.addFavorite(vehicle.vehicleId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        wasFavorite
+            ? _favoriteIds.add(vehicle.vehicleId)
+            : _favoriteIds.remove(vehicle.vehicleId);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   Future<void> _loadVehicles() async {
     final typeId = _type?.typeId;
     if (typeId == null) {
@@ -133,10 +161,24 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     setState(() => _loadingVehicles = true);
     try {
       final all = await widget.api.getVehicles(status: 'Available');
+      Set<int> favorites = _favoriteIds;
+      try {
+        favorites = (await widget.api.getFavorites()).map((f) => f.vehicleId).toSet();
+      } catch (_) {
+        // Not logged in / offline: the list still works, just without hearts filled in.
+      }
       if (!mounted) return;
-      final filtered = all.where((v) => v.typeId == typeId).toList();
+      final filtered = all.where((v) => v.typeId == typeId).toList()
+        // Favourite cars first.
+        ..sort((a, b) => (favorites.contains(b.vehicleId) ? 1 : 0) - (favorites.contains(a.vehicleId) ? 1 : 0));
       setState(() {
+        _favoriteIds = favorites;
         _vehicles = filtered;
+        if (_vehicle == null && widget.initialVehicleId != null) {
+          for (final v in filtered) {
+            if (v.vehicleId == widget.initialVehicleId) _vehicle = v;
+          }
+        }
         if (_vehicle != null &&
             filtered.every((v) => v.vehicleId != _vehicle!.vehicleId)) {
           _vehicle = null;
@@ -762,6 +804,18 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         vehicle.label,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
+                    ),
+                    IconButton(
+                      tooltip: _favoriteIds.contains(vehicle.vehicleId)
+                          ? 'Bỏ yêu thích'
+                          : 'Thêm vào xe yêu thích',
+                      icon: Icon(
+                        _favoriteIds.contains(vehicle.vehicleId)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.redAccent,
+                      ),
+                      onPressed: () => _toggleFavorite(vehicle),
                     ),
                   ],
                 ),

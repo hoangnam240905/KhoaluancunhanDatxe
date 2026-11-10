@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
 import 'license_screen.dart';
+import 'favorites_screen.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'notifications_screen.dart';
@@ -545,6 +546,27 @@ class _AccountScreenState extends State<AccountScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => LicenseScreen(api: widget.api),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          AppCard(
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.favorite_border),
+                              title: const Text(
+                                'Xe yêu thích',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              subtitle: const Text(
+                                'Xe đã lưu bằng nút trái tim, đặt lại nhanh',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FavoritesScreen(api: widget.api),
                                 ),
                               ),
                             ),

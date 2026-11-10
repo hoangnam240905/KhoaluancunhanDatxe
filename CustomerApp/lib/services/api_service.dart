@@ -442,6 +442,42 @@ class ApiService {
     );
   }
 
+  // ---- Xe yêu thích (same API as the web page) ----
+
+  Future<List<FavoriteVehicle>> getFavorites() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(FavoriteVehicle.fromJson)
+        .toList();
+  }
+
+  Future<void> addFavorite(int vehicleId) async {
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
+  }
+
+  Future<void> removeFavorite(int vehicleId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
+  }
+
   Future<List<VehicleTypeRecommendation>> getRecommended({
     required DateTime startDate,
     required DateTime endDate,

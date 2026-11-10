@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
+import 'notifications_screen.dart';
 import 'trip_detail_screen.dart';
 
 class TripsScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class TripsScreen extends StatefulWidget {
 
 class _TripsScreenState extends State<TripsScreen> {
   List<DriverBooking> _trips = [];
+  int _unread = 0;
   bool _loading = true;
   String? _error;
 
@@ -50,6 +52,24 @@ class _TripsScreenState extends State<TripsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    _loadUnread();
+  }
+
+  Future<void> _loadUnread() async {
+    try {
+      final items = await widget.api.getNotifications();
+      if (mounted) setState(() => _unread = items.where((n) => !n.isRead).length);
+    } catch (_) {
+      // The bell still opens the list; only the badge is missing.
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => NotificationsScreen(api: widget.api)),
+    );
+    _load();
   }
 
   Future<void> _open(DriverBooking trip) async {
@@ -77,6 +97,15 @@ class _TripsScreenState extends State<TripsScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Thông báo',
+            onPressed: _openNotifications,
+            icon: Badge(
+              isLabelVisible: _unread > 0,
+              label: Text(_unread > 99 ? '99+' : '$_unread'),
+              child: const Icon(Icons.notifications_outlined),
+            ),
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
