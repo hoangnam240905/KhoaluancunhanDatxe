@@ -48,7 +48,7 @@ class _BookingsScreenState extends State<BookingsScreen>
   }
 
   void _onRealtime() {
-    if (widget.isLoggedIn) _load();
+    if (widget.isLoggedIn && mounted && !_loading) _load();
   }
 
   @override

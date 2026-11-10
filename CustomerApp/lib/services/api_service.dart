@@ -253,10 +253,12 @@ class ApiService {
   }
 
   Future<UserProfile> getMe() async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
-      headers: await _headers(auth: true),
-    );
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/auth/me'),
+          headers: await _headers(auth: true),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     return UserProfile.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
@@ -293,9 +295,9 @@ class ApiService {
   }
 
   Future<List<VehicleType>> getVehicleTypes() async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/vehicle-types'),
-    );
+    final response = await http
+        .get(Uri.parse('${ApiConfig.baseUrl}/api/vehicle-types'))
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
@@ -389,7 +391,7 @@ class ApiService {
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/api/vehicles',
     ).replace(queryParameters: status == null ? null : {'status': status});
-    final response = await http.get(uri);
+    final response = await http.get(uri).timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
@@ -530,10 +532,12 @@ class ApiService {
   }
 
   Future<List<Booking>> getBookings() async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/bookings'),
-      headers: await _headers(auth: true),
-    );
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/bookings'),
+          headers: await _headers(auth: true),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final list = jsonDecode(response.body) as List<dynamic>;
     return list

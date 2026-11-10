@@ -51,16 +51,23 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        widget.api.getVehicleTypes(),
-        widget.api.getVehicles(status: 'Available'),
-      ]);
-      _types = results[0] as List<VehicleType>;
-      _vehicles = results[1] as List<Vehicle>;
+      final types = await widget.api.getVehicleTypes();
+      if (!mounted) return;
+      setState(() {
+        _types = types;
+        _loading = false;
+      });
+      // Tải danh sách xe chạy ngầm để map ID chi tiết, không chặn UI màn hình chính
+      widget.api.getVehicles(status: 'Available').then((v) {
+        if (mounted) setState(() => _vehicles = v);
+      }).catchError((_) {});
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _loading = false;
+        });
+      }
     }
   }
 
