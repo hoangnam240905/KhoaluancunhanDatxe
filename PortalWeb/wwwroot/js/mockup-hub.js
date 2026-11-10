@@ -117,7 +117,7 @@
         const bits = [`<button type="button" class="mk-btn mk-btn-ghost" data-act="detail" data-id="${b.id}">👁 Xem chi tiết</button>`];
         if (b.status === "Pending") {
             bits.push(b.licensePending
-                ? `<a class="mk-btn mk-btn-success" href="/Mockup/CustomerLicenses" title="Duyệt bằng lái của khách trước">Duyệt bằng lái khách</a>`
+                ? `<a class="mk-btn mk-btn-success" href="/DieuPhoi/CustomerLicenses" title="Duyệt bằng lái của khách trước">Duyệt bằng lái khách</a>`
                 : `<button type="button" class="mk-btn mk-btn-success" data-act="confirm" data-id="${b.id}">✓ Xác nhận đơn</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}">✕ Không duyệt</button>`);
         }
@@ -127,7 +127,7 @@
         if (b.status === "Assigned") {
             // With-driver: the dispatcher records the pre-handover check on Vận hành chuyến; the driver starts the trip (plan1.md Phần A).
             bits.push(b.mode === "WithDriver"
-                ? `<a class="mk-btn mk-btn-info" href="/Mockup/Trips">Kiểm tra trước giao</a>`
+                ? `<a class="mk-btn mk-btn-info" href="/DieuPhoi/Trips">Kiểm tra trước giao</a>`
                 : `<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
             // Backend rejects once the start time has passed; the message is shown as a toast.

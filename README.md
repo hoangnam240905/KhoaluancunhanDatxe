@@ -8,7 +8,7 @@ Snapshot Tuần 3 + PHASE 4 Group 1–3: `Tuan 3.md`. Bổ sung A–F2 và harde
 
 ## Tổng quan
 
-Sản phẩm: **Web Admin**, **Web điều phối**, **Website/App khách**, **App tài xế** — cùng một REST API và một SQLite runtime.
+Sản phẩm: **một website PortalWeb** (khách hàng `/`, điều phối viên `/DieuPhoi`, quản trị `/Admin` — đăng nhập xong tự vào đúng khu), **CustomerApp** (khách), **DriverApp** (tài xế) — cùng một REST API và một SQLite runtime. (Ba web cũ CustomerWeb / DispatcherWeb / AdminWeb đã gộp hết vào PortalWeb và được xóa khỏi repo; xem lịch sử git nếu cần.)
 
 | Thành phần | Vai trò |
 |------------|---------|
@@ -16,9 +16,6 @@ Sản phẩm: **Web Admin**, **Web điều phối**, **Website/App khách**, **A
 | `Recommender/` | Python FastAPI — chấm điểm gợi ý loại xe (**không** truy cập DB) |
 | `Backend.Tests/` | xunit (isolated SQLite) |
 | `PortalWeb/` | Web tổng hợp + **cổng đăng nhập web chính** (`:5180`) |
-| `AdminWeb/` | Web Admin (`:5258`) — không login riêng; redirect PortalWeb |
-| `DispatcherWeb/` | Web điều phối (`:5206`) — **có login riêng** (role Dispatcher) |
-| `CustomerWeb/` | Web khách (`:5162`) — login qua PortalWeb; vẫn có Register |
 | `CustomerApp/` | Flutter: khách hàng và tài xế (`RoleRouter`) |
 | `DriverApp/` | Flutter: chỉ tài xế |
 | `Database/` | Script SQL Server (không bắt buộc khi chạy SQLite) |
@@ -97,14 +94,11 @@ Trạng thái trong bảng dưới: **Đã triển khai** = có trong source cu�
 | DriverApp | Driver | Login; trips; Accept rồi Start; complete **form** km/fuel/ngoại thất/kỹ thuật; báo sự cố; status; realtime native | auth, drivers/*, incidents | Đã triển khai |
 | PortalWeb | Customer | Login/register; home gợi ý; đặt có quote; list/chi tiết; cọc; simulate pay; hợp đồng; **Review** WithDriver | như Customer + contract + `/Customer/Bookings/Review/{id}` | Đã triển khai |
 | PortalWeb | Admin | Dashboard; CRUD xe + giấy tờ + bảo trì; Giá; Tài xế; **Customer CRUD**; Payments; Hợp đồng; list đơn; hủy | vehicles, maintenance, admin/*, dashboard, contracts | Đã triển khai |
-| PortalWeb | Dispatcher | Confirm; Assign **+ alternatives khi conflict**; Handover/Complete SelfDrive **không gửi body** | dispatch/* | Đã triển khai (form km: CHƯA trên Portal) |
-| AdminWeb | Admin | Mirror Admin + Inspections + Incidents + Customer CRUD. **Không Login** | cùng API Admin | Có UI; cookie `CarRentalAdminAuth` không được set từ page |
-| DispatcherWeb | Dispatcher | Login riêng; Confirm; Assign + alternatives; form Handover/Complete (km/fuel/condition); Inspections; Incidents | dispatch/* + VehicleConditionRequest | Đã triển khai |
-| CustomerWeb | Customer | Register local; Login **redirect Portal**; gợi ý; quote+đặt; cọc; simulate pay; hợp đồng; Review Completed | như Portal Customer + Review | Đã triển khai |
+| PortalWeb | Dispatcher | `/DieuPhoi`: Tổng quan (dữ liệu thật), Đặt thuê & Xác nhận (Hub), Vận hành chuyến (kiểm tra trước giao đơn có tài xế, giao/nhận xe tự lái có tick kiểm tra bằng gốc, xử lý sai lệch, sự cố), Biên bản kiểm xe (xác nhận phiếu trả), Lịch, Xác minh tài xế, Duyệt bằng lái khách, Thông báo | dispatch/*, documents, customer-licenses, driver-verifications | Đã triển khai |
 | Recommender | — | FastAPI `POST /recommend`, `GET /health` | `:8001` | Đã triển khai |
 | Database | — | SQLite + EnsureCreated + ALTER idempotent; script SQL Server `Database/` | — | Đã triển khai |
 
-**Không có trong source (limitation):** Refund/Balance/settlement runtime; gateway MoMo/VNPay thật; GPS; đơn giá Late/Fuel/Damage; Admin tạo payment; POST inspection/fee công khai; RefreshToken/JWT blacklist; DriverVehicle; chữ ký số/PKI; FCM; Redis; utilization theo giờ; CTR/impression gợi ý; login riêng AdminWeb; Customer self-cancel; Google Sign-In native trên CustomerApp Windows (dùng Portal GIS); Gmail SMTP/Google OAuth thật nếu chưa cấu hình secret.
+**Không có trong source (limitation):** Refund/Balance/settlement runtime; gateway MoMo/VNPay thật; GPS; đơn giá Late/Fuel/Damage; Admin tạo payment; POST inspection/fee công khai; RefreshToken/JWT blacklist; DriverVehicle; chữ ký số/PKI; FCM; Redis; utilization theo giờ; CTR/impression gợi ý; Customer self-cancel; Google Sign-In native trên CustomerApp Windows (dùng Portal GIS); Gmail SMTP/Google OAuth thật nếu chưa cấu hình secret.
 
 ---
 
@@ -114,7 +108,7 @@ Trạng thái trong bảng dưới: **Đã triển khai** = có trong source cu�
 
 **Driver:** Login (DriverApp bắt buộc role Driver; CustomerApp RoleRouter). GET me; PATCH status Available/Busy/Offline. GET trips **của mình**. Accept (Assigned → Accepted) / Start (**chỉ** Accepted → InProgress) / Complete. Complete trên DriverApp gửi odometer, fuel 0–100, ngoại thất, kỹ thuật, notes → Return inspection; `CurrentKm` cập nhật nếu km hợp lệ. Báo sự cố trên assignment của mình. `GET /api/bookings/{id}` chỉ khi assignment của mình; list `GET /api/bookings` → 403. Không Handover, không tạo booking/payment.
 
-**Dispatcher:** Login Portal hoặc DispatcherWeb. Confirm Pending→Confirmed. Assign: overlap + **buffer 2 giờ**; conflict trả alternatives xe/tài. Critical section `BEGIN IMMEDIATE`. Một Driver không có nhiều open assignment (Assigned/Accepted/InProgress). Handover/Complete SelfDrive. Xem inspections/incidents (DispatcherWeb). Không PUT pricing. Không GET `/api/admin/payments` / dashboard.
+**Dispatcher:** Login Portal → `/DieuPhoi`. Confirm Pending→Confirmed. Assign: overlap + **buffer 2 giờ**; conflict trả alternatives xe/tài. Critical section `BEGIN IMMEDIATE`. Một Driver không có nhiều open assignment (Assigned/Accepted/InProgress). Handover/Complete SelfDrive. Xem biên bản kiểm xe / sự cố trên `/DieuPhoi`. Không PUT pricing. Không GET `/api/admin/payments` / dashboard.
 
 **Admin:** Login **PortalWeb** → `/Admin`. Dashboard (`GET /api/admin/dashboard`). CRUD xe (giấy tờ, Year, biển số unique) / loại xe / tài xế; Customer CRUD + khóa + vô hiệu hóa; ghi bảo trì + alert; Payments GET; hợp đồng list; hủy đơn Pending/Confirmed. Xe đến hạn bảo trì **không nhận lịch mới** (hold/assign/recommend/alternative) — **không** tự đổi `Vehicle.Status`. Xe đang hold hoặc open assignment **không** xóa/vô hiệu hóa.
 
@@ -150,27 +144,9 @@ Chi tiết Tuần 3: `Tuan 3.md` mục 31. Bổ sung A–F2 + hardening: `Tuan 4
 | `/Admin/Payments` | GET | Admin | GET admin payments | Đọc |
 | `/Admin/Contracts` | GET | Admin | GET admin contracts | Đọc |
 | `/Admin/Bookings` | GET, POST Cancel | Admin | PATCH Cancelled | Chỉ Pending/Confirmed; void contract nếu có |
-| `/Dispatcher` | GET, POST Confirm/Handover/Complete | Dispatcher | dispatch | Handover/Complete **không body** |
-| `/Dispatcher/Assign/{id}` | GET, POST | Dispatcher | assign; alternatives khi 409/400 conflict | TripAssignment hoặc AssignedVehicleId |
+| `/DieuPhoi` (+ `/Hub`, `/Trips`, `/Inspections`, `/Schedule`, `/Drivers`, `/CustomerLicenses`, `/Notifications`, `/Settings`) | GET + handler JSON | Dispatcher | dispatch/*, documents, driver-verifications, customer-licenses | Trang nằm trong `Pages/Mockup` nhưng phục vụ ở `/DieuPhoi` (cấu hình trong `PortalWeb/Program.cs`); link cũ `/Mockup/...` tự chuyển sang `/DieuPhoi/...` |
 
-Portal **CHƯA CÓ:** form km Dispatcher; Login AdminWeb; trang Incidents/Inspections (AdminWeb/DispatcherWeb mới có).
-
-### DispatcherWeb `:5206`
-
-| Route | API | Ghi chú |
-|-------|-----|---------|
-| `/Account/Login` | login | Chỉ Role Dispatcher |
-| `/` Confirm; `/Assign/{id}` | confirm/assign | Alternatives khi conflict |
-| `/Handover/{id}` `/Complete/{id}` | handover/complete + 4–6 field | SelfDrive |
-| `/Inspections` `/Incidents` | GET dispatch inspections/incidents | Đọc |
-
-### CustomerWeb `:5162`
-
-Như Portal Customer + `/Bookings/Review/{id}`. Login page: **CHƯA CÓ** (redirect Portal). Cookie `CarRentalAuth` độc lập với Portal.
-
-### AdminWeb `:5258`
-
-Mirror Portal Admin + `/Inspections` + `/Incidents` + Customer Create/Edit. Login: **CHƯA CÓ**. Cookie `CarRentalAdminAuth` **không** được Page nào `SetAuth`. Session độc lập với Portal.
+Trang `Đăng nhập` chỉ hiện ô "Tài khoản demo" khi chạy `Development`; triển khai thật (Production) thì ô này tự ẩn.
 
 ---
 
@@ -294,7 +270,7 @@ Python: `Recommender/tests/test_recommend.py`. Flutter: vài unit test model (kh
 
 Không ghi coverage % — repo không chạy coverage tool trong quy trình hiện tại.
 
-Build Release Backend + AdminWeb + PortalWeb + CustomerWeb + DispatcherWeb đã xác nhận ở freeze.
+Build Release Backend + PortalWeb (+ `flutter analyze` / `flutter test` cho CustomerApp, DriverApp).
 
 ---
 
@@ -307,7 +283,6 @@ Build Release Backend + AdminWeb + PortalWeb + CustomerWeb + DispatcherWeb đã 
 - Dashboard đo **cọc Paid mô phỏng**, không phải toàn bộ doanh thu thuê.
 - SelfDrive **không** review (cần TripAssignment) — rule hiện tại.
 - Customer **chưa** self-cancel (chỉ Admin/Dispatcher PATCH Pending/Confirmed → Cancelled).
-- AdminWeb / CustomerWeb session (cookie) độc lập với Portal; AdminWeb không có Login page.
 - `RegistrationNumber` unique ở service; **chưa** unique index DB.
 - `fromRecommendation` là query flag — client có thể gửi mà không đi từ UI gợi ý.
 - Flutter Web **không** SignalR (`kIsWeb`).
@@ -321,21 +296,21 @@ Build Release Backend + AdminWeb + PortalWeb + CustomerWeb + DispatcherWeb đã 
 
 ## 12. API vs UI
 
-| Chức năng | Backend | PortalWeb | AdminWeb | CustomerApp | DriverApp | DispatcherWeb | CustomerWeb |
-|-----------|---------|-----------|----------|-------------|-----------|---------------|-------------|
-| Login | Có | Có | Redirect Portal | Có | Có (Driver) | Có (Dispatcher) | Redirect Portal |
-| Gợi ý Python | Có | Home | Không | Home | Không | Không | Home |
-| Cọc + simulate Paid/Failed | Có | Details | Không | Chi tiết | Không | Không | Details |
-| Hợp đồng + simulate-sign | Có | Details + Admin list | List | Chi tiết | Không | Không | Details |
-| Buffer 2h + alternatives | Có | Assign UI | Không | Không | Không | Assign UI | Không |
-| SignalR | Hub | realtime.js | realtime.js | native (không web) | native (không web) | realtime.js | realtime.js |
-| Driver complete form km/fuel/exterior/technical | API | Không | Không | complete **không body** | **Có form** | Form SelfDrive | Không |
-| Incident | Có | Không page | `/Incidents` | Không | Có | `/Incidents` | Không |
-| Dashboard | Có | `/Admin` | `/` | Không | Không | Không | Không |
-| Review | Có | `/Customer/Bookings/Review` | Không | Chi tiết WithDriver | Không | Không | `/Bookings/Review` |
-| Customer CRUD | Có | `/Admin/Customers` | `/Customers` | Không | Không | Không | Không |
-| Giấy tờ xe / Year | Có | Vehicles Create/Edit | Vehicles Create/Edit | Không | Không | Không | Không |
-| Gateway / Refund / Balance | Không | Không | Không | Không | Không | Không | Không |
+| Chức năng | Backend | PortalWeb | CustomerApp | DriverApp |
+|-----------|---------|-----------|-------------|-----------|
+| Login | Có | Có | Có | Có (Driver) |
+| Gợi ý Python | Có | Home | Home | Không |
+| Cọc + simulate Paid/Failed | Có | Details | Chi tiết | Không |
+| Hợp đồng + simulate-sign | Có | Details + Admin list | Chi tiết | Không |
+| Buffer 2h + alternatives | Có | Assign UI | Không | Không |
+| SignalR | Hub | realtime.js | native (không web) | native (không web) |
+| Driver complete form km/fuel/exterior/technical | API | Không | complete **không body** | **Có form** |
+| Incident | Có | Không page | Không | Có |
+| Dashboard | Có | `/Admin` | Không | Không |
+| Review | Có | `/Customer/Bookings/Review` | Chi tiết WithDriver | Không |
+| Customer CRUD | Có | `/Admin/Customers` | Không | Không |
+| Giấy tờ xe / Year | Có | Vehicles Create/Edit | Không | Không |
+| Gateway / Refund / Balance | Không | Không | Không | Không |
 
 ---
 
@@ -428,7 +403,7 @@ Forgot password luôn trả: `Nếu email tồn tại, mã OTP đã được g�
 
 CustomerApp Windows: nút Google hướng dẫn dùng Portal. Native Android/iOS cần thêm `google_sign_in` + google-services (chưa gắn trong repo).
 
-AdminWeb / DispatcherWeb / DriverApp: **không** thêm Google Customer login.
+DriverApp: **không** thêm Google Customer login.
 
 ## Database (SQL Server — tùy chọn)
 

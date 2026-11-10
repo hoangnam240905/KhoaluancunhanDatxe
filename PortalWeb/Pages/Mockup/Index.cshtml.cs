@@ -102,13 +102,13 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var inMaintenance = fleet?.Vehicles.Count(v => v.VehicleStatus == "Maintenance") ?? 0;
 
         Kpis.Add(new("📋", "Đơn chờ xác nhận", pending.ToString(),
-            pickupToday > 0 ? $"{pickupToday} đơn nhận xe hôm nay" : "Cần xác nhận để phân công", "/Mockup/Hub"));
+            pickupToday > 0 ? $"{pickupToday} đơn nhận xe hôm nay" : "Cần xác nhận để phân công", "/DieuPhoi/Hub"));
         Kpis.Add(new("🚗", "Chuyến đang thực hiện", running.ToString(),
-            overdue > 0 ? $"{overdue} chuyến quá giờ trả" : "Không có chuyến quá giờ trả", "/Mockup/Trips"));
+            overdue > 0 ? $"{overdue} chuyến quá giờ trả" : "Không có chuyến quá giờ trả", "/DieuPhoi/Trips"));
         Kpis.Add(new("👨‍✈️", "Tài xế khả dụng", $"{free} / {activeDrivers.Count}",
-            activeDrivers.Count == 0 ? "Chưa có tài xế" : $"{free * 100 / activeDrivers.Count}% khả dụng", "/Mockup/Schedule"));
+            activeDrivers.Count == 0 ? "Chưa có tài xế" : $"{free * 100 / activeDrivers.Count}% khả dụng", "/DieuPhoi/Schedule"));
         Kpis.Add(new("🛠", "Cảnh báo bảo trì", Alerts.Count.ToString(),
-            $"{inMaintenance} xe đang bảo trì", "/Mockup/Schedule"));
+            $"{inMaintenance} xe đang bảo trì", "/DieuPhoi/Schedule"));
     }
 
     /// <summary>What the dispatcher should do next, from booking states and open incidents.</summary>
@@ -121,28 +121,28 @@ public class IndexModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             switch (b.Status)
             {
                 case "Pending" when b.StartDate >= nowVn.AddHours(-2):
-                    tasks.Add(new("🔴", $"Xác nhận đơn #{b.BookingId}", $"{b.CustomerName} · {b.VehicleTypeName}", when, "/Mockup/Hub", b.StartDate));
+                    tasks.Add(new("🔴", $"Xác nhận đơn #{b.BookingId}", $"{b.CustomerName} · {b.VehicleTypeName}", when, "/DieuPhoi/Hub", b.StartDate));
                     break;
                 case "Confirmed" when b.StartDate >= nowVn.AddHours(-2):
                     tasks.Add(new("🔵", $"Phân công đơn #{b.BookingId}",
                         b.HasActiveDeposit ? $"{b.CustomerName} · đã đặt cọc" : $"{b.CustomerName} · chờ khách ký hợp đồng và đặt cọc",
-                        when, "/Mockup/Hub", b.StartDate));
+                        when, "/DieuPhoi/Hub", b.StartDate));
                     break;
                 case "Assigned" when b.StartDate < nowVn:
-                    tasks.Add(new("🟠", $"Đơn #{b.BookingId} quá giờ nhận xe", $"{b.CustomerName} · {VehicleOf(b)}", when, "/Mockup/Trips", b.StartDate));
+                    tasks.Add(new("🟠", $"Đơn #{b.BookingId} quá giờ nhận xe", $"{b.CustomerName} · {VehicleOf(b)}", when, "/DieuPhoi/Trips", b.StartDate));
                     break;
                 case "Assigned" when b.StartDate <= nowVn.AddHours(24):
-                    tasks.Add(new("🟡", $"Giao xe đơn #{b.BookingId}", $"{b.CustomerName} · {VehicleOf(b)}", when, "/Mockup/Trips", b.StartDate));
+                    tasks.Add(new("🟡", $"Giao xe đơn #{b.BookingId}", $"{b.CustomerName} · {VehicleOf(b)}", when, "/DieuPhoi/Trips", b.StartDate));
                     break;
                 case "InProgress" when b.EndDate < nowVn:
-                    tasks.Add(new("🟠", $"Đơn #{b.BookingId} quá giờ trả xe", $"{b.CustomerName} · hạn {b.EndDate:dd/MM HH:mm}", when, "/Mockup/Trips", b.EndDate));
+                    tasks.Add(new("🟠", $"Đơn #{b.BookingId} quá giờ trả xe", $"{b.CustomerName} · hạn {b.EndDate:dd/MM HH:mm}", when, "/DieuPhoi/Trips", b.EndDate));
                     break;
             }
         }
         foreach (var i in OpenIncidents)
         {
             var at = UiDisplay.ToVietnam(i.CreatedAt);
-            tasks.Add(new("⚠️", $"Sự cố đơn #{i.BookingId}", $"{i.DriverName} · {i.IncidentType}", at.ToString("dd/MM HH:mm"), "/Mockup/Trips", DateTime.MinValue));
+            tasks.Add(new("⚠️", $"Sự cố đơn #{i.BookingId}", $"{i.DriverName} · {i.IncidentType}", at.ToString("dd/MM HH:mm"), "/DieuPhoi/Trips", DateTime.MinValue));
         }
         Tasks = tasks.OrderBy(t => t.SortKey).Take(6).ToList();
     }

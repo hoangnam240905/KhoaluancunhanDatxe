@@ -366,7 +366,7 @@
                     <p class="mk-note">Không có API media / ảnh biên bản.</p>
                 </div>
                 <div class="insp-actions">
-                    <button type="button" class="mk-btn mk-btn-ghost" data-edit="${r.id}">Chỉnh sửa (thiếu API)</button>
+                    ${r.type === "precheck" ? `<a class="mk-btn mk-btn-ghost" href="/DieuPhoi/Trips" title="Biên bản trước giao sửa được tới khi tài xế xác nhận">Sửa ở Vận hành chuyến</a>` : ""}
                     <button type="button" class="mk-btn mk-btn-ghost" data-print="${r.id}">In biên bản</button>
                 </div>
                 <p class="mk-note">Người lập: ${esc(r.inspector)} · ${r.datetime}</p>
@@ -469,11 +469,7 @@
             await openById(open.dataset.open);
             return;
         }
-        const edit = e.target.closest("[data-edit]");
-        if (edit) {
-            toast("Thiếu API chỉnh sửa biên bản độc lập — không ghi Backend.");
-            return;
-        }
+
         const pr = e.target.closest("[data-print]");
         if (pr) {
             const r = records.find((x) => x.id === Number(pr.dataset.print));

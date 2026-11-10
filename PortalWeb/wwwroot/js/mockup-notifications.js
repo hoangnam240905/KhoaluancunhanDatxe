@@ -101,7 +101,7 @@
             body: n.message,
             bookingId: n.bookingId ?? null,
             booking: n.bookingId ? `#${n.bookingId}` : "—",
-            href: toTrips ? "/Mockup/Trips" : "/Mockup/Hub",
+            href: toTrips ? "/DieuPhoi/Trips" : "/DieuPhoi/Hub",
             action: toTrips ? "Xem chuyến đang chạy" : "Xem đơn thuê",
             createdAt: n.createdAt
         };
@@ -166,7 +166,7 @@
     function badgeType(t) { return `<span class="mk-badge mk-badge-gray">${TYPE[t].label}</span>`; }
 
     function actionHref(n) {
-        if (n.bookingId > 0 && n.href === "/Mockup/Hub") return "/Mockup/Hub?id=" + n.bookingId;
+        if (n.bookingId > 0 && n.href === "/DieuPhoi/Hub") return "/DieuPhoi/Hub?id=" + n.bookingId;
         return n.href;
     }
 
@@ -323,7 +323,7 @@
 
     function goDetail(id) {
         if (els.list) openDrawer(id);
-        else window.location.href = "/Mockup/Notifications?mo=" + id;
+        else window.location.href = "/DieuPhoi/Notifications?mo=" + id;
     }
 
     // ---------- realtime ----------

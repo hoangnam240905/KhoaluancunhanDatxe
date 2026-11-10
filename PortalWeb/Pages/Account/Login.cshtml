@@ -1,5 +1,6 @@
 @page
 @model PortalWeb.Pages.Account.LoginModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
     ViewData["Title"] = "Đăng nhập";
     ViewData["AuthShell"] = true;
@@ -96,13 +97,17 @@
                 </form>
             }
 
-            <details class="ax-demo">
-                <summary>Tài khoản demo</summary>
-                Admin: <code>admin@carrental.vn</code><br />
-                Điều phối: <code>dispatcher@carrental.vn</code><br />
-                Khách hàng: <code>customer1@gmail.com</code><br />
-                Mật khẩu: <code>Password123!</code>
-            </details>
+            @* Demo accounts are shown only when running locally (Development); never on a public server. *@
+            @if (Env.IsDevelopment())
+            {
+                <details class="ax-demo">
+                    <summary>Tài khoản demo</summary>
+                    Admin: <code>admin@carrental.vn</code><br />
+                    Điều phối: <code>dispatcher@carrental.vn</code><br />
+                    Khách hàng: <code>customer1@gmail.com</code><br />
+                    Mật khẩu: <code>Password123!</code>
+                </details>
+            }
 
             <p class="ax-foot">Chưa có tài khoản? <a asp-page="/Account/Register">Đăng ký ngay</a></p>
         </div>
