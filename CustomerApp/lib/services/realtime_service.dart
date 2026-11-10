@@ -9,8 +9,7 @@ import '../config/api_config.dart';
 
 /// Minimal SignalR JSON client (negotiate + WebSocket). Avoids extra packages.
 class RealtimeService {
-  /// DEMO TEMP: SignalR client off. Set true next week to restore.
-  static const bool enabled = false;
+  static const bool enabled = true;
 
   static const _rs = '\u001e';
 

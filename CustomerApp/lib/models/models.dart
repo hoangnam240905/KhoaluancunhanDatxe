@@ -165,15 +165,15 @@ class DriverOption {
   });
 
   factory DriverOption.fromJson(Map<String, dynamic> json) => DriverOption(
-        driverId: json['driverId'] as int,
-        fullName: json['fullName'] as String? ?? 'Tài xế',
-        phone: json['phone'] as String?,
-        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
-        totalTrips: json['totalTrips'] as int? ?? 0,
-        licenseNumber: json['licenseNumber'] as String? ?? '',
-        availabilityStatus: json['availabilityStatus'] as String? ?? '',
-        canSelect: json['canSelect'] as bool? ?? true,
-      );
+    driverId: json['driverId'] as int,
+    fullName: json['fullName'] as String? ?? 'Tài xế',
+    phone: json['phone'] as String?,
+    averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+    totalTrips: json['totalTrips'] as int? ?? 0,
+    licenseNumber: json['licenseNumber'] as String? ?? '',
+    availabilityStatus: json['availabilityStatus'] as String? ?? '',
+    canSelect: json['canSelect'] as bool? ?? true,
+  );
 }
 
 class DriverBusyPeriod {
@@ -211,14 +211,14 @@ class DriverSchedule {
   });
 
   factory DriverSchedule.fromJson(Map<String, dynamic> json) => DriverSchedule(
-        driverId: json['driverId'] as int,
-        fullName: json['fullName'] as String? ?? 'Tài xế',
-        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
-        totalTrips: json['totalTrips'] as int? ?? 0,
-        busy: (json['busy'] as List<dynamic>? ?? [])
-            .map((e) => DriverBusyPeriod.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    driverId: json['driverId'] as int,
+    fullName: json['fullName'] as String? ?? 'Tài xế',
+    averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+    totalTrips: json['totalTrips'] as int? ?? 0,
+    busy: (json['busy'] as List<dynamic>? ?? [])
+        .map((e) => DriverBusyPeriod.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class VehicleTypeRecommendation {
@@ -741,14 +741,14 @@ class ChatbotVehicle {
   });
 
   factory ChatbotVehicle.fromJson(Map<String, dynamic> json) => ChatbotVehicle(
-        vehicleId: json['vehicleId'] as int,
-        name: json['name'] as String? ?? 'Xe',
-        typeName: json['typeName'] as String?,
-        seats: json['seats'] as int?,
-        licensePlate: json['licensePlate'] as String?,
-        days: json['days'] as int?,
-        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
-      );
+    vehicleId: json['vehicleId'] as int,
+    name: json['name'] as String? ?? 'Xe',
+    typeName: json['typeName'] as String?,
+    seats: json['seats'] as int?,
+    licensePlate: json['licensePlate'] as String?,
+    days: json['days'] as int?,
+    totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+  );
 }
 
 class ChatbotLink {
@@ -758,9 +758,9 @@ class ChatbotLink {
   ChatbotLink({required this.text, required this.url});
 
   factory ChatbotLink.fromJson(Map<String, dynamic> json) => ChatbotLink(
-        text: json['text'] as String? ?? 'Mở liên kết',
-        url: json['url'] as String? ?? '/',
-      );
+    text: json['text'] as String? ?? 'Mở liên kết',
+    url: json['url'] as String? ?? '/',
+  );
 }
 
 class ChatbotReply {
@@ -783,27 +783,27 @@ class ChatbotReply {
   });
 
   factory ChatbotReply.fromJson(Map<String, dynamic> json) => ChatbotReply(
-        kind: json['kind'] as String? ?? '',
-        reply: json['reply'] as String? ?? '',
-        vehicles: (json['vehicles'] as List<dynamic>? ?? [])
-            .map((e) => ChatbotVehicle.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        links: (json['links'] as List<dynamic>? ?? [])
-            .map((e) => ChatbotLink.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        start: (json['search'] as Map<String, dynamic>?)?['start'] == null
-            ? null
-            : DateTime.parse(
-                (json['search'] as Map<String, dynamic>)['start'] as String,
-              ),
-        end: (json['search'] as Map<String, dynamic>?)?['end'] == null
-            ? null
-            : DateTime.parse(
-                (json['search'] as Map<String, dynamic>)['end'] as String,
-              ),
-        rentalMode: (json['search'] as Map<String, dynamic>?)?['rentalMode']
-            as String?,
-      );
+    kind: json['kind'] as String? ?? '',
+    reply: json['reply'] as String? ?? '',
+    vehicles: (json['vehicles'] as List<dynamic>? ?? [])
+        .map((e) => ChatbotVehicle.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    links: (json['links'] as List<dynamic>? ?? [])
+        .map((e) => ChatbotLink.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    start: (json['search'] as Map<String, dynamic>?)?['start'] == null
+        ? null
+        : DateTime.parse(
+            (json['search'] as Map<String, dynamic>)['start'] as String,
+          ),
+    end: (json['search'] as Map<String, dynamic>?)?['end'] == null
+        ? null
+        : DateTime.parse(
+            (json['search'] as Map<String, dynamic>)['end'] as String,
+          ),
+    rentalMode:
+        (json['search'] as Map<String, dynamic>?)?['rentalMode'] as String?,
+  );
 }
 
 class TripAssignment {
@@ -1065,10 +1065,10 @@ class VehicleChange {
   });
 
   String get reasonLabel => switch (reason) {
-        'Breakdown' => 'Xe gặp sự cố kỹ thuật',
-        'NeedChange' => 'Khách hàng thay đổi nhu cầu',
-        _ => reason,
-      };
+    'Breakdown' => 'Xe gặp sự cố kỹ thuật',
+    'NeedChange' => 'Khách hàng thay đổi nhu cầu',
+    _ => reason,
+  };
 
   static double? _num(dynamic v) => v == null ? null : (v as num).toDouble();
 
@@ -1110,7 +1110,9 @@ class FavoriteVehicle {
   final int year;
   final String? color;
   final String status;
+  final int seatCapacity;
   final double pricePerDay;
+  final String? primaryImageUrl;
 
   const FavoriteVehicle({
     required this.vehicleId,
@@ -1121,13 +1123,16 @@ class FavoriteVehicle {
     required this.model,
     required this.year,
     required this.status,
+    required this.seatCapacity,
     required this.pricePerDay,
     this.color,
+    this.primaryImageUrl,
   });
 
   String get title => '$brand $model'.trim();
 
-  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) => FavoriteVehicle(
+  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) =>
+      FavoriteVehicle(
         vehicleId: json['vehicleId'] as int? ?? 0,
         typeId: json['typeId'] as int? ?? 0,
         typeName: json['typeName'] as String? ?? '',
@@ -1137,6 +1142,8 @@ class FavoriteVehicle {
         year: json['year'] as int? ?? 0,
         color: json['color'] as String?,
         status: json['status'] as String? ?? '',
+        seatCapacity: json['seatCapacity'] as int? ?? 0,
         pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
+        primaryImageUrl: json['primaryImageUrl'] as String?,
       );
 }

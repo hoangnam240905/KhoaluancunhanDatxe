@@ -7,7 +7,6 @@ import '../utils/booking_pricing.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
 import 'booking_detail_screen.dart';
-import 'license_screen.dart';
 
 class CreateBookingScreen extends StatefulWidget {
   final ApiService api;
@@ -20,8 +19,6 @@ class CreateBookingScreen extends StatefulWidget {
   final DateTime? initialStart;
   final DateTime? initialEnd;
   final bool fromRecommendation;
-  /// Opened from "Xe yêu thích": preselect this car when it is free.
-  final int? initialVehicleId;
 
   const CreateBookingScreen({
     super.key,
@@ -35,7 +32,6 @@ class CreateBookingScreen extends StatefulWidget {
     this.initialStart,
     this.initialEnd,
     this.fromRecommendation = false,
-    this.initialVehicleId,
   });
 
   @override
@@ -49,7 +45,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   Vehicle? _vehicle;
   DriverOption? _driver;
   List<Vehicle> _vehicles = [];
-  Set<int> _favoriteIds = {};
   List<DriverOption> _drivers = [];
   bool _loadingVehicles = false;
   bool _loadingDrivers = false;
@@ -69,10 +64,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   String? _quoteError;
   bool _quoteRequested = false;
   bool _driversRequested = false;
-
-  /// Self-drive (plan1.md Phần E): the customer's licence decides which types they may book.
-  CustomerLicense? _licence;
-  bool _licenceRequested = false;
 
   @override
   void initState() {
@@ -123,30 +114,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
   }
 
-  Future<void> _toggleFavorite(Vehicle vehicle) async {
-    final wasFavorite = _favoriteIds.contains(vehicle.vehicleId);
-    setState(() {
-      wasFavorite
-          ? _favoriteIds.remove(vehicle.vehicleId)
-          : _favoriteIds.add(vehicle.vehicleId);
-    });
-    try {
-      wasFavorite
-          ? await widget.api.removeFavorite(vehicle.vehicleId)
-          : await widget.api.addFavorite(vehicle.vehicleId);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        wasFavorite
-            ? _favoriteIds.add(vehicle.vehicleId)
-            : _favoriteIds.remove(vehicle.vehicleId);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    }
-  }
-
   Future<void> _loadVehicles() async {
     final typeId = _type?.typeId;
     if (typeId == null) {
@@ -161,24 +128,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     setState(() => _loadingVehicles = true);
     try {
       final all = await widget.api.getVehicles(status: 'Available');
-      Set<int> favorites = _favoriteIds;
-      try {
-        favorites = (await widget.api.getFavorites()).map((f) => f.vehicleId).toSet();
-      } catch (_) {
-        // Not logged in / offline: the list still works, just without hearts filled in.
-      }
       if (!mounted) return;
-      final filtered = all.where((v) => v.typeId == typeId).toList()
-        // Favourite cars first.
-        ..sort((a, b) => (favorites.contains(b.vehicleId) ? 1 : 0) - (favorites.contains(a.vehicleId) ? 1 : 0));
+      final filtered = all.where((v) => v.typeId == typeId).toList();
       setState(() {
-        _favoriteIds = favorites;
         _vehicles = filtered;
-        if (_vehicle == null && widget.initialVehicleId != null) {
-          for (final v in filtered) {
-            if (v.vehicleId == widget.initialVehicleId) _vehicle = v;
-          }
-        }
         if (_vehicle != null &&
             filtered.every((v) => v.vehicleId != _vehicle!.vehicleId)) {
           _vehicle = null;
@@ -292,68 +245,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     });
   }
 
-  Future<void> _loadLicence() async {
-    try {
-      final licence = await widget.api.getMyLicense(endDate: _end);
-      if (mounted) setState(() => _licence = licence);
-    } catch (_) {
-      // Backend still checks the licence when the booking is sent.
-    }
-  }
-
-  Future<void> _openLicence() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => LicenseScreen(api: widget.api)),
-    );
-    _loadLicence();
-  }
-
-  /// Why the selected type cannot be booked self-drive (KH-0 when no licence yet); null when it can.
-  String? _selfDriveBlock(VehicleType type) {
-    if (_rentalMode != 'SelfDrive' || _licence == null) return null;
-    if (!_licence!.isDeclared) {
-      return 'Hãy cung cấp bằng lái phù hợp với xe bạn chọn (xe ${type.seatCapacity} chỗ cần bằng ${_licence!.typeOf(type.typeId)?.minLicenseClass ?? 'B'} trở lên).';
-    }
-    final e = _licence!.typeOf(type.typeId);
-    return e == null || e.canDrive ? null : e.reason;
-  }
-
-  Widget _licenceBanner() {
-    final l = _licence;
-    if (_rentalMode != 'SelfDrive' || l == null) return const SizedBox.shrink();
-    final String? text = !l.isDeclared
-        ? 'Hãy cung cấp bằng lái để xem các loại xe bạn được phép lái.'
-        : l.licenseStatus == 'Rejected'
-        ? 'Bằng lái chưa được chấp nhận${l.reviewNote == null ? '' : ' (lý do: ${l.reviewNote})'}. Vui lòng gửi lại ảnh bằng lái.'
-        : l.licenseStatus == 'Pending'
-        ? 'Bằng lái đang chờ điều phối duyệt. Bạn vẫn đặt được; đơn tự lái được xác nhận sau khi bằng lái được duyệt.'
-        : null;
-    if (text == null) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.warningSoft,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(text, style: const TextStyle(color: Color(0xFF92400E))),
-          TextButton(
-            onPressed: _openLicence,
-            child: const Text('Cập nhật bằng lái'),
-          ),
-        ],
-      ),
-    );
-  }
-
   String? _validateSubmit() {
     if (_type == null) return 'Vui lòng chọn loại xe.';
-    final licenceBlock = _selfDriveBlock(_type!);
-    if (licenceBlock != null) return licenceBlock;
     if (_start == null || _end == null) {
       return 'Vui lòng chọn thời gian nhận và trả xe.';
     }
@@ -529,12 +422,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
         if (mounted) _loadQuote();
       });
     }
-    if (_rentalMode == 'SelfDrive' && !_licenceRequested) {
-      _licenceRequested = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadLicence();
-      });
-    }
     if (_rentalMode != 'SelfDrive' &&
         _type != null &&
         _start != null &&
@@ -646,7 +533,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             _quoteError = null;
             _quoteRequested = false;
             _driversRequested = false;
-            _licenceRequested = false;
           }),
         ),
       ],
@@ -665,84 +551,65 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
-        _licenceBanner(),
         ..._types.map((type) {
           final selected = _type?.typeId == type.typeId;
-          final block = _licence != null && _licence!.isDeclared
-              ? _selfDriveBlock(type)
-              : null;
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Opacity(
-              opacity: block == null ? 1 : 0.5,
-              child: AppCard(
-                onTap: block != null
-                    ? () => ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(block)))
-                    : () {
-                        setState(() {
-                          _type = type;
-                          _vehicle = null;
-                          _quote = null;
-                          _quoteError = null;
-                          _quoteRequested = false;
-                          _driversRequested = false;
-                        });
-                        _loadVehicles();
-                      },
-                child: Row(
-                  children: [
-                    Icon(
-                      selected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color: selected ? AppColors.primary : AppColors.muted,
-                    ),
-                    const SizedBox(width: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 56,
+            child: AppCard(
+              onTap: () {
+                setState(() {
+                  _type = type;
+                  _vehicle = null;
+                  _quote = null;
+                  _quoteError = null;
+                  _quoteRequested = false;
+                  _driversRequested = false;
+                });
+                _loadVehicles();
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: selected ? AppColors.primary : AppColors.muted,
+                  ),
+                  const SizedBox(width: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 56,
+                      height: 42,
+                      child: VehicleImage(
+                        imageUrl: type.imageUrl,
+                        typeName: type.typeName,
+                        seatCapacity: type.seatCapacity,
                         height: 42,
-                        child: VehicleImage(
-                          imageUrl: type.imageUrl,
-                          typeName: type.typeName,
-                          seatCapacity: type.seatCapacity,
-                          height: 42,
-                          borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type.typeName,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            type.typeName,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
+                        Text(
+                          '${type.seatCapacity} chỗ · ${Formatters.vnd(type.pricePerDay)}/ngày · ${Formatters.vnd(type.pricePerKm)}/km',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
                           ),
-                          Text(
-                            '${type.seatCapacity} chỗ · ${Formatters.vnd(type.pricePerDay)}/ngày · ${Formatters.vnd(type.pricePerKm)}/km',
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 13,
-                            ),
-                          ),
-                          if (block != null)
-                            Text(
-                              block,
-                              style: const TextStyle(
-                                color: AppColors.danger,
-                                fontSize: 12,
-                              ),
-                            ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );
@@ -804,18 +671,6 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                         vehicle.label,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: _favoriteIds.contains(vehicle.vehicleId)
-                          ? 'Bỏ yêu thích'
-                          : 'Thêm vào xe yêu thích',
-                      icon: Icon(
-                        _favoriteIds.contains(vehicle.vehicleId)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: Colors.redAccent,
-                      ),
-                      onPressed: () => _toggleFavorite(vehicle),
                     ),
                   ],
                 ),

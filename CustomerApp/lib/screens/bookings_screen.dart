@@ -48,7 +48,7 @@ class _BookingsScreenState extends State<BookingsScreen>
   }
 
   void _onRealtime() {
-    if (widget.isLoggedIn) _load();
+    if (widget.isLoggedIn && mounted && !_loading) _load();
   }
 
   @override
@@ -83,9 +83,13 @@ class _BookingsScreenState extends State<BookingsScreen>
   List<Booking> _filterByTab(int index) {
     switch (index) {
       case 1: // Chờ duyệt
-        return _bookings.where((b) => b.status == 'Pending' || b.status == 'Confirmed').toList();
+        return _bookings
+            .where((b) => b.status == 'Pending' || b.status == 'Confirmed')
+            .toList();
       case 2: // Đang diễn ra
-        return _bookings.where((b) => b.status == 'Assigned' || b.status == 'InProgress').toList();
+        return _bookings
+            .where((b) => b.status == 'Assigned' || b.status == 'InProgress')
+            .toList();
       case 3: // Hoàn thành
         return _bookings.where((b) => b.status == 'Completed').toList();
       case 4: // Đã hủy
@@ -108,7 +112,10 @@ class _BookingsScreenState extends State<BookingsScreen>
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.muted,
                 indicatorColor: AppColors.primary,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
                 tabs: _filterTabs.map((title) => Tab(text: title)).toList(),
               )
             : null,
@@ -118,7 +125,8 @@ class _BookingsScreenState extends State<BookingsScreen>
               child: AppEmptyState(
                 icon: Icons.lock_outline,
                 title: 'Đăng nhập để xem đơn',
-                subtitle: 'Đơn thuê của bạn sẽ xuất hiện tại đây sau khi đăng nhập.',
+                subtitle:
+                    'Đơn thuê của bạn sẽ xuất hiện tại đây sau khi đăng nhập.',
                 actionLabel: 'Đăng nhập ngay',
                 onAction: () => Navigator.push(
                   context,
@@ -127,16 +135,20 @@ class _BookingsScreenState extends State<BookingsScreen>
               ),
             )
           : _loading
-              ? const Center(child: AppLoading(message: 'Đang tải danh sách đơn thuê...'))
-              : _error != null
-                  ? Center(child: AppErrorState(message: _error!, onRetry: _load))
-                  : TabBarView(
-                      controller: _tabController,
-                      children: List.generate(
-                        _filterTabs.length,
-                        (index) => _buildBookingList(_filterByTab(index)),
-                      ),
-                    ),
+          ? const Center(
+              child: AppLoading(message: 'Đang tải danh sách đơn thuê...'),
+            )
+          : _error != null
+          ? Center(
+              child: AppErrorState(message: _error!, onRetry: _load),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: List.generate(
+                _filterTabs.length,
+                (index) => _buildBookingList(_filterByTab(index)),
+              ),
+            ),
     );
   }
 
@@ -191,7 +203,8 @@ class _BookingsScreenState extends State<BookingsScreen>
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => BookingDetailScreen(api: widget.api, booking: b),
+                  builder: (_) =>
+                      BookingDetailScreen(api: widget.api, booking: b),
                 ),
               );
               _load();
@@ -204,33 +217,43 @@ class _BookingsScreenState extends State<BookingsScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '#${b.bookingId}',
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '#${b.bookingId}',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            b.vehicleTypeName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                b.vehicleTypeName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       StatusChip(status: b.status),
                     ],
                   ),
@@ -238,32 +261,50 @@ class _BookingsScreenState extends State<BookingsScreen>
                   // Lộ trình
                   Row(
                     children: [
-                      const Icon(Icons.circle, size: 8, color: AppColors.primary),
+                      const Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           b.pickupAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 3),
-                    child: Container(height: 12, width: 2, color: const Color(0xFFCBD5E1)),
+                    child: Container(
+                      height: 12,
+                      width: 2,
+                      color: const Color(0xFFCBD5E1),
+                    ),
                   ),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 10, color: AppColors.danger),
+                      const Icon(
+                        Icons.location_on,
+                        size: 10,
+                        color: AppColors.danger,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           b.dropoffAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
@@ -272,37 +313,56 @@ class _BookingsScreenState extends State<BookingsScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Khởi hành: ${Formatters.rentalDt(b.startDate)}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            Formatters.rentalModeLabel(b.rentalMode),
-                            style: const TextStyle(
-                              color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Khởi hành: ${Formatters.rentalDt(b.startDate)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              Formatters.rentalModeLabel(b.rentalMode),
+                              style: const TextStyle(
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('Tổng chi phí', style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                          Text(
-                            Formatters.vnd(b.finalAmount ?? b.totalAmount),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.primary,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Tổng chi phí',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
                             ),
-                          ),
-                        ],
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                Formatters.vnd(b.finalAmount ?? b.totalAmount),
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

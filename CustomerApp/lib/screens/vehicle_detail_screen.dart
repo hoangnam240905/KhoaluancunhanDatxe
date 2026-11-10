@@ -12,6 +12,7 @@ class VehicleDetailScreen extends StatefulWidget {
   final VehicleType vehicleType;
   final List<VehicleType> allTypes;
   final bool isLoggedIn;
+  final int? vehicleId;
   final String? initialRentalMode;
 
   const VehicleDetailScreen({
@@ -20,6 +21,7 @@ class VehicleDetailScreen extends StatefulWidget {
     required this.vehicleType,
     required this.allTypes,
     required this.isLoggedIn,
+    this.vehicleId,
     this.initialRentalMode,
   });
 
@@ -31,12 +33,51 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late String _rentalMode;
+  bool _favorite = false;
+  bool _favoriteBusy = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _rentalMode = widget.initialRentalMode ?? 'WithDriver';
+    _loadFavorite();
+  }
+
+  Future<void> _loadFavorite() async {
+    if (!widget.isLoggedIn || widget.vehicleId == null) return;
+    try {
+      final favorites = await widget.api.getFavorites();
+      if (mounted) {
+        setState(() => _favorite =
+            favorites.any((item) => item.vehicleId == widget.vehicleId));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (!widget.isLoggedIn || widget.vehicleId == null) {
+      if (!widget.isLoggedIn && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+      return;
+    }
+    setState(() => _favoriteBusy = true);
+    try {
+      await widget.api.setFavorite(widget.vehicleId!, !_favorite);
+      if (mounted) setState(() => _favorite = !_favorite);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
+    }
   }
 
   @override
@@ -81,6 +122,22 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
+            actions: [
+              IconButton(
+                onPressed: _favoriteBusy ? null : _toggleFavorite,
+                icon: _favoriteBusy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        _favorite ? Icons.favorite : Icons.favorite_border,
+                        color: _favorite ? Colors.redAccent : Colors.white,
+                      ),
+                tooltip: 'Yêu thích',
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -365,7 +422,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        Expanded(
+          child: Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.text)),
       ],
     );
@@ -529,7 +589,10 @@ class _PriceTextRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        Expanded(
+          child: Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.text)),
       ],
     );

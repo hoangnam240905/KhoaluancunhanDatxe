@@ -33,10 +33,12 @@ class DriverShell extends StatefulWidget {
 class _DriverShellState extends State<DriverShell> {
   int _index = 0;
   DriverVerification? _verification;
+  late final List<Widget?> _pageCache = List<Widget?>.filled(5, null);
 
   @override
   void initState() {
     super.initState();
+    _pageCache[0] = TripsScreen(api: widget.api, userName: widget.userName);
     widget.api.connectRealtime();
     _loadVerification();
     if (widget.openVerificationOnStart) {
@@ -106,22 +108,30 @@ class _DriverShellState extends State<DriverShell> {
     bottomNavigationBar: _nav(),
   );
 
-  Widget _pages() => IndexedStack(
-      index: _index,
-      children: [
-        TripsScreen(api: widget.api, userName: widget.userName),
-        ScheduleScreen(api: widget.api),
-        IncidentsScreen(api: widget.api),
-        StatusScreen(api: widget.api),
-        AccountScreen(
+  Widget _pages() {
+    _pageCache[_index] ??= switch (_index) {
+      0 => TripsScreen(api: widget.api, userName: widget.userName),
+      1 => ScheduleScreen(api: widget.api),
+      2 => IncidentsScreen(api: widget.api),
+      3 => StatusScreen(api: widget.api),
+      4 => AccountScreen(
           api: widget.api,
           userName: widget.userName,
           darkMode: widget.darkMode,
           onDarkModeChanged: widget.onDarkModeChanged,
           onOpenVerification: _openVerification,
         ),
-      ],
+      _ => const SizedBox.shrink(),
+    };
+
+    return IndexedStack(
+      index: _index,
+      children: List<Widget>.generate(
+        _pageCache.length,
+        (i) => _pageCache[i] ?? const SizedBox.shrink(),
+      ),
     );
+  }
 
   Widget _nav() => NavigationBar(
       selectedIndex: _index,

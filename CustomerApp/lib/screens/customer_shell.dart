@@ -24,12 +24,18 @@ class CustomerShell extends StatefulWidget {
 
 class _CustomerShellState extends State<CustomerShell> {
   late int _index;
+  final Set<int> _loadedIndices = <int>{};
 
   @override
   void initState() {
     super.initState();
     _index = widget.initialIndex;
-    if (widget.isLoggedIn) widget.api.connectRealtime();
+    _loadedIndices.add(_index);
+    if (widget.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.api.connectRealtime();
+      });
+    }
   }
 
   @override
@@ -44,14 +50,25 @@ class _CustomerShellState extends State<CustomerShell> {
       body: IndexedStack(
         index: _index,
         children: [
-          HomeScreen(api: widget.api, userName: widget.userName),
-          BookingsScreen(api: widget.api, isLoggedIn: widget.isLoggedIn),
-          AccountScreen(api: widget.api, isLoggedIn: widget.isLoggedIn),
+          _loadedIndices.contains(0)
+              ? HomeScreen(api: widget.api, userName: widget.userName)
+              : const SizedBox.shrink(),
+          _loadedIndices.contains(1)
+              ? BookingsScreen(api: widget.api, isLoggedIn: widget.isLoggedIn)
+              : const SizedBox.shrink(),
+          _loadedIndices.contains(2)
+              ? AccountScreen(api: widget.api, isLoggedIn: widget.isLoggedIn)
+              : const SizedBox.shrink(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          setState(() {
+            _index = i;
+            _loadedIndices.add(i);
+          });
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
