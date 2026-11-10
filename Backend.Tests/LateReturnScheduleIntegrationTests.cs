@@ -68,12 +68,31 @@ public class LateReturnScheduleIntegrationTests
         }
     }
 
+    /// <summary>
+    /// Booking validation compares the start date with today in Vietnam, while these tests work with times around
+    /// DateTime.UtcNow (completion uses UtcNow). Between 00:00 and 07:00 Vietnam time UtcNow is still "yesterday",
+    /// so create with a valid Vietnam time, then put the intended times back.
+    /// </summary>
+    private static async Task<BookingResponse?> CreateWithTimesAsync(IsolatedCarRentalDb iso, BookingService bookings,
+        Func<DateTime, DateTime, CreateBookingRequest> request, DateTime start, DateTime end)
+    {
+        var validStart = Backend.Validation.VietnamTime.Now.AddMinutes(10);
+        var created = await bookings.CreateBookingAsync(3, request(validStart, validStart + (end - start)));
+        if (created is null)
+            return null;
+        var row = iso.Db.Bookings.Single(b => b.BookingId == created.BookingId);
+        row.StartDate = start;
+        row.EndDate = end;
+        iso.Db.SaveChanges();
+        return created;
+    }
+
     private static async Task<(int BookingId, int VehicleId)> StartSelfDriveInProgressAsync(
         IsolatedCarRentalDb iso, BookingService bookings, DispatchService dispatch)
     {
         var start = DateTime.UtcNow.AddMinutes(-30);
         var end = DateTime.UtcNow.AddHours(6);
-        var created = await bookings.CreateBookingAsync(3, SelfDrive(start, end));
+        var created = await CreateWithTimesAsync(iso, bookings, SelfDrive, start, end);
         Assert.NotNull(created);
         await dispatch.ConfirmBookingAsync(created.BookingId, 2);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
@@ -202,7 +221,7 @@ public class LateReturnScheduleIntegrationTests
         var (bookings, dispatch, drivers, _) = Services(iso);
         var start = DateTime.UtcNow.AddMinutes(-20);
         var end = DateTime.UtcNow.AddHours(6);
-        var created = await bookings.CreateBookingAsync(3, WithDriver(start, end));
+        var created = await CreateWithTimesAsync(iso, bookings, WithDriver, start, end);
         await dispatch.ConfirmBookingAsync(created!.BookingId, 2);
         TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
         var assigned = await dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(6, 2), 2);

@@ -3,11 +3,11 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
-import 'license_screen.dart';
-import 'favorites_screen.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'notifications_screen.dart';
+import 'favorites_screen.dart';
+import 'license_screen.dart';
 
 enum _ProfileTab {
   info('Thông tin cá nhân'),
@@ -529,48 +529,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         children: [
                           _buildPersonalInfoCard(),
                           const SizedBox(height: 14),
-                          // plan1.md Phần E: self-drive licence and its approval.
-                          AppCard(
-                            child: ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.credit_card_outlined),
-                              title: const Text(
-                                'Bằng lái xe (thuê tự lái)',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              subtitle: const Text(
-                                'Khai bằng lái, gửi ảnh 2 mặt, xem trạng thái duyệt',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LicenseScreen(api: widget.api),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          AppCard(
-                            child: ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.favorite_border),
-                              title: const Text(
-                                'Xe yêu thích',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              subtitle: const Text(
-                                'Xe đã lưu bằng nút trái tim, đặt lại nhanh',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => FavoritesScreen(api: widget.api),
-                                ),
-                              ),
-                            ),
-                          ),
+                          _buildQuickActionsCard(),
                           const SizedBox(height: 14),
                           _buildAccountStatusCard(),
                         ],
@@ -630,6 +589,40 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.favorite_outline, color: AppColors.primary),
+            title: const Text('Xe yêu thích'),
+            subtitle: const Text('Danh sách xe bạn đã lưu'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => FavoritesScreen(api: widget.api)),
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.badge_outlined, color: AppColors.primary),
+            title: const Text('Bằng lái xe (thuê tự lái)'),
+            subtitle: const Text('Khai bằng lái, gửi ảnh 2 mặt, xem trạng thái duyệt'),
+            trailing: const Icon(Icons.chevron_right),
+            // plan1.md Phần E: the full licence screen (class, number, expiry + photos + review status);
+            // a self-drive booking needs the declared licence, not only the photos.
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LicenseScreen(api: widget.api),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -996,6 +989,7 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );

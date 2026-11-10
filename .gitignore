@@ -36,6 +36,9 @@ Thumbs.db
 **/carrental.demo.db
 **/*.db-shm
 **/*.db-wal
+# Python
+**/.venv/
+**/.venv*/
 **/__pycache__/
 *.pyc
 # Build / test artifacts

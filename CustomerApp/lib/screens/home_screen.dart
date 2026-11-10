@@ -25,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<VehicleType> _types = [];
+  List<Vehicle> _vehicles = [];
   List<VehicleTypeRecommendation> _recommended = [];
   bool _loading = true;
   bool _recommendLoading = false;
@@ -50,11 +51,23 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      _types = await widget.api.getVehicleTypes();
+      final types = await widget.api.getVehicleTypes();
+      if (!mounted) return;
+      setState(() {
+        _types = types;
+        _loading = false;
+      });
+      // Tải danh sách xe chạy ngầm để map ID chi tiết, không chặn UI màn hình chính
+      widget.api.getVehicles(status: 'Available').then((v) {
+        if (mounted) setState(() => _vehicles = v);
+      }).catchError((_) {});
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -76,12 +89,20 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => VehicleDetailScreen(
           api: widget.api,
           vehicleType: type,
+          vehicleId: _vehicleIdForType(type.typeId),
           allTypes: _types,
           isLoggedIn: widget.isLoggedIn,
           initialRentalMode: _rentalMode,
         ),
       ),
     );
+  }
+
+  int? _vehicleIdForType(int typeId) {
+    for (final vehicle in _vehicles) {
+      if (vehicle.typeId == typeId) return vehicle.vehicleId;
+    }
+    return null;
   }
 
   void _openBooking({
@@ -264,16 +285,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      widget.isLoggedIn
-                                          ? 'Xin chào, ${widget.userName}'
-                                          : 'DriveX',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
+                                    Expanded(
+                                      child: Text(
+                                        widget.isLoggedIn
+                                            ? 'Xin chào, ${widget.userName}'
+                                            : 'DriveX',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -333,24 +356,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.auto_awesome_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 7),
-                            const Text(
-                              'Trợ lý AI',
-                              style: TextStyle(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_rounded,
                                 color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
+                                size: 24,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 7),
+                              const Text(
+                                'Trợ lý AI',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -704,13 +730,18 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  item.typeName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                Expanded(
+                  child: Text(
+                    item.typeName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,

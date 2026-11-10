@@ -18,12 +18,16 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('DriveX'), findsOneWidget);
   });
-  testWidgets('CustomerShell renders all tabs without errors', (WidgetTester tester) async {
+  testWidgets('CustomerShell renders all tabs without errors', (
+    WidgetTester tester,
+  ) async {
     final api = ApiService();
-    await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.light,
-      home: CustomerShell(api: api),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CustomerShell(api: api),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -38,7 +42,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   });
 
-  testWidgets('BookingDetailScreen renders without errors', (WidgetTester tester) async {
+  testWidgets('BookingDetailScreen renders without errors', (
+    WidgetTester tester,
+  ) async {
     final api = ApiService();
     final booking = Booking(
       bookingId: 4,
@@ -54,10 +60,12 @@ void main() {
       rentalMode: 'WithDriver',
       quotedDepositAmount: 600000,
     );
-    await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.light,
-      home: BookingDetailScreen(api: api, booking: booking),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: BookingDetailScreen(api: api, booking: booking),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
   });
