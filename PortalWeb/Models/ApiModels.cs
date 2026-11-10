@@ -185,7 +185,8 @@ public record DriverScheduleResponse(
     int TotalTrips = 0);
 public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string Brand, string Model, string Status, string? PrimaryImageUrl = null);
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
-public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null, int? CreatedByUserId = null, string? CreatedByName = null, string? CreatedByRole = null);
+public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null, int? CreatedByUserId = null, string? CreatedByName = null, string? CreatedByRole = null, string? UpdatedByName = null, string? UpdatedByRole = null, DateTime? UpdatedAt = null, string? VerificationStatus = null, string? VerificationNote = null, string? VerifiedByName = null, DateTime? VerifiedAt = null);
+public record InspectionDisputeResponse(int InspectionDisputeId, int BookingId, int InspectionId, string? RaisedByName, string Note, string Status, string? ResolvedByName, string? ResolutionNote, DateTime? ResolvedAt, DateTime CreatedAt);
 public record BookingQuoteResponse(
     int VehicleTypeId,
     string VehicleTypeName,

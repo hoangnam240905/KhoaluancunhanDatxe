@@ -29,6 +29,8 @@ public class ActorRecordingTests
         Assert.True(await drivers.AcceptTripAsync(DriverId, assignmentId));
         var bookingId = iso.Db.TripAssignments.Find(assignmentId)!.BookingId;
 
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
+
         var (ok, error) = await drivers.StartTripAsync(
             DriverId, assignmentId, TestDispatchReady.InspectionForBooking(iso.Db, bookingId));
 

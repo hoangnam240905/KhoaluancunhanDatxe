@@ -260,6 +260,15 @@
         const where = `<span class="mk-muted">KH: ${t.customer} · Điểm hẹn: ${t.pickup || "—"}</span>`;
         const btn = (cls, attr, label) => `<button type="button" class="mk-btn ${cls}" ${attr}="${t.id}">${label}</button>`;
 
+        if (t.dispute) {
+            return {
+                sev: 0, rank: 0, at: parseNaive(t.startIso), icon: "bi-exclamation-triangle-fill",
+                title: `Tài xế báo sai lệch biên bản #${t.id}`,
+                sub: `<span>${esc(t.dispute.note)}</span><span class="mk-muted">${esc(t.dispute.by)}</span>`,
+                time: hhmm(parseNaive(t.startIso)), note: "",
+                action: btn("mk-btn-primary", "data-precheck", "Xử lý sai lệch")
+            };
+        }
         if (hasIncident(t)) {
             return {
                 sev: 0, rank: 1, at: parseNaive(t.startIso), icon: "bi-exclamation-triangle-fill",
@@ -274,9 +283,11 @@
                 sev: 0, rank: 2, at: ts.at, icon: "bi-exclamation-triangle-fill",
                 title: self ? `Chờ giao xe quá ${fmtDur(ts.minutes)}` : `Tài xế chưa nhận chuyến, quá ${fmtDur(ts.minutes)}`,
                 sub: itemHead(t) + where, time: hhmm(ts.at), note: `quá ${fmtDur(ts.minutes)}`,
-                action: btn("mk-btn-primary", "data-handover", self
-                    ? `<i class="bi bi-key"></i> Giao xe ngay`
-                    : `<i class="bi bi-key"></i> Giao xe cho tài xế`)
+                action: self
+                    ? btn("mk-btn-primary", "data-handover", `<i class="bi bi-key"></i> Giao xe ngay`)
+                    : btn("mk-btn-primary", "data-precheck", t.pre
+                        ? `<i class="bi bi-hourglass-split"></i> Xem biên bản trước giao`
+                        : `<i class="bi bi-clipboard-check"></i> Kiểm tra trước giao`)
             };
         }
         if (ts && ts.kind === "returnLate") {
@@ -456,7 +467,9 @@
         }
         a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-inspect="${t.id}">📋 Inspection</button>`);
         if (t.canHandoverApi || t.status === "waitingHandover") {
-            a.push(`<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🚗 Giao xe</button>`);
+            a.push(t.mode === "SelfDrive"
+                ? `<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🚗 Giao xe</button>`
+                : `<button type="button" class="mk-btn mk-btn-primary" data-precheck="${t.id}">${t.pre ? "✏️ Sửa biên bản trước giao" : "📝 Kiểm tra trước giao"}</button>`);
         }
         if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
             a.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Trả xe</button>`);
@@ -503,7 +516,7 @@
                         <div><dt>Trạng thái hiện tại</dt><dd>${STATUS[t.status] || t.status} <span class="mk-muted">(${t.bookingStatus || ""})</span></dd></div>
                         <div><dt>Tình trạng xe</dt><dd>${t.vehicleState}</dd></div>
                     </dl>
-                    ${t.mode === "WithDriver" ? '<p class="mk-note">Có tài xế — hoàn thành trả xe qua API dispatcher chưa có (chỉ SelfDrive).</p>' : ""}
+                    ${t.mode === "WithDriver" ? '<p class="mk-note">Có tài xế: điều phối ghi biên bản trước giao, tài xế xác nhận trên app để bắt đầu chuyến và gửi phiếu trả khi kết thúc.</p>' : ""}
                 </section>
                 <section class="mk-block">
                     <h3>Luồng vận hành</h3>
@@ -514,6 +527,7 @@
                     <ul class="mk-timeline">${(t.ops || []).map((o) => `<li class="${o.cls || ""}"><strong>${o.t}</strong> ${o.text}</li>`).join("") || "<li class='mk-muted'>Chưa có sự kiện</li>"}</ul>
                 </section>
                 ${t.ret ? `<section class="mk-block"><h3>Tình trạng xe (trả)</h3>${condBlock(t.ret, t.handover, t.mode)}</section>` : ""}
+                ${t.pre && !t.handover ? `<section class="mk-block"><h3>Biên bản kiểm tra trước giao</h3>${condBlock(t.pre, null, t.mode)}${t.pre.edited ? `<p class="mk-note">Người sửa: ${esc(t.pre.edited)}</p>` : ""}<p class="mk-note">${t.dispute ? "⚠️ Tài xế báo sai lệch: " + esc(t.dispute.note) : "Chờ tài xế kiểm tra xe thật và xác nhận để bắt đầu chuyến."}</p></section>` : ""}
                 ${t.handover && !t.ret ? `<section class="mk-block"><h3>Biên bản giao xe</h3>${condBlock(t.handover, null, t.mode)}</section>` : ""}
                 ${t.incident ? `<p class="mk-note">⚠️ ${t.incident.summary} · ${t.incident.time}</p>` : ""}
             </div>`;
@@ -640,6 +654,72 @@
                 <p class="mk-note" style="color:#b91c1c">Lỗi mạng khi tải dữ liệu xe.</p>
                 <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
         }
+    }
+
+    // With-driver trip (plan1.md Phần A): the dispatcher records the car before handover; the driver
+    // confirms it in the app (that starts the trip) or reports a mismatch, which shows up here.
+    const COND_OPTIONS = ["Tốt", "Vấn đề nhỏ", "Cần kiểm tra", "Vấn đề nghiêm trọng"];
+    function condSelect(name, current) {
+        const opts = COND_OPTIONS.map((o) => `<option${o === current ? " selected" : ""}>${o}</option>`).join("");
+        const extra = current && !COND_OPTIONS.includes(current) ? `<option selected>${esc(current)}</option>` : "";
+        return `<select name="${name}" required><option value="">— Chọn —</option>${extra}${opts}</select>`;
+    }
+
+    async function precheckForm(t) {
+        if (!t) return;
+        if (!t.canHandoverApi) {
+            toast("Chỉ ghi kiểm tra trước giao khi đơn đã phân công tài xế và chuyến chưa bắt đầu.");
+            return;
+        }
+        let info = null;
+        try {
+            const url = new URL(handlers.handoverInfo, location.origin);
+            url.searchParams.set("id", String(t.id));
+            const res = await fetch(url.toString(), { headers: { Accept: "application/json" }, credentials: "same-origin" });
+            info = await res.json().catch(() => null);
+        } catch { /* show the form anyway */ }
+        const pre = t.pre;
+        const km = pre ? pre.odo : (info && isValidKm(info.currentKm) ? Number(info.currentKm) : "");
+        const fuel = pre ? pre.fuel : (info && isValidFuelPercent(info.fuelLevel) ? Number(info.fuelLevel) : "");
+        const disputeBox = t.dispute ? `
+            <div class="mk-block" style="border-left:3px solid #b91c1c;padding-left:.6rem">
+                <strong>⚠️ Tài xế báo sai lệch</strong>
+                <p style="margin:.3rem 0">${esc(t.dispute.note)}</p>
+                <p class="mk-note">${esc(t.dispute.by)}</p>
+                <form id="opDisputeForm" data-id="${t.id}" data-dispute-id="${t.dispute.id}">
+                    <label class="mk-field"><span>Ghi chú xử lý (không bắt buộc)</span>
+                        <input name="note" maxlength="500" placeholder="Ví dụ: đã ghi lại vết trầy cửa sau" /></label>
+                    <p class="mk-note">Sửa biên bản bên dưới (nếu cần) rồi bấm "Đã giải quyết" để báo tài xế kiểm tra lại.</p>
+                    <div class="mk-actions"><button type="submit" class="mk-btn mk-btn-success">Đã giải quyết</button></div>
+                </form>
+            </div>` : "";
+        openModal(`
+            <h2>${pre ? "Sửa biên bản kiểm tra trước giao" : "Kiểm tra xe trước giao"}</h2>
+            <dl class="mk-dl">
+                <div><dt>Đơn</dt><dd>#${t.id} · Có tài xế</dd></div>
+                <div><dt>Xe</dt><dd>${esc((info && info.vehicle) || t.vehicle || "—")} · ${esc((info && info.plate) || t.plate || "—")}</dd></div>
+                <div><dt>Tài xế</dt><dd>${esc(t.driver || "—")}</dd></div>
+                ${pre ? `<div><dt>Người lập</dt><dd>${esc(pre.by)} · ${pre.createdAt || pre.at}</dd></div>` : ""}
+                ${pre && pre.edited ? `<div><dt>Người sửa</dt><dd>${esc(pre.edited)}</dd></div>` : ""}
+            </dl>
+            ${disputeBox}
+            <form id="opPrecheckForm" data-id="${t.id}" class="op-form-grid">
+                <label class="mk-field"><span>Số KM *</span>
+                    <input name="odo" type="text" inputmode="decimal" value="${km}" autocomplete="off" /></label>
+                <label class="mk-field"><span>Mức nhiên liệu (%) *</span>
+                    <input name="fuel" type="text" inputmode="decimal" value="${fuel}" autocomplete="off" /></label>
+                <label class="mk-field"><span>Ngoại thất *</span>${condSelect("exterior", pre && pre.exterior !== "—" ? pre.exterior : "")}</label>
+                <label class="mk-field"><span>Kỹ thuật *</span>${condSelect("tech", pre && pre.tech !== "—" ? pre.tech : "")}</label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span>
+                    <input name="note" maxlength="500" value="${esc(pre ? pre.note : "")}" /></label>
+            </form>
+            <p class="mk-note">Chuyến chưa bắt đầu khi lưu. Tài xế kiểm tra xe thật trên app: đúng thì bắt đầu chuyến, sai thì báo sai lệch về đây. Hệ thống lưu tên bạn là người lập / người sửa.</p>
+            <p class="mk-note" id="opPrecheckError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opPrecheckForm" class="mk-btn mk-btn-success">${pre ? "Lưu thay đổi" : "Lưu biên bản trước giao"}</button>
+            </div>`);
+        state.modal = "precheck";
     }
 
     async function returnForm(t) {
@@ -870,8 +950,14 @@
             closeModal();
             return;
         }
+        const pc = e.target.closest("[data-precheck]");
+        if (pc) { precheckForm(trip(pc.dataset.precheck)); return; }
         const ho = e.target.closest("[data-handover]");
-        if (ho) { handoverForm(trip(ho.dataset.handover)); return; }
+        if (ho) {
+            const ht = trip(ho.dataset.handover);
+            if (ht && ht.mode !== "SelfDrive") precheckForm(ht); else handoverForm(ht);
+            return;
+        }
         const handoverSubmit = e.target.closest("[data-handover-submit]");
         if (handoverSubmit) {
             if (handoverSubmit.disabled || !state.handoverPayload) return;
@@ -922,6 +1008,44 @@
     });
 
     document.body.addEventListener("submit", async (e) => {
+        if (e.target.id === "opPrecheckForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opPrecheckError");
+            const odo = String(data.get("odo") || "").trim();
+            const fuel = String(data.get("fuel") || "").trim();
+            if (odo === "" || !Number.isFinite(Number(odo)) || Number(odo) < 0) { box.textContent = "Vui lòng nhập số km hợp lệ."; return; }
+            if (fuel === "" || !Number.isFinite(Number(fuel)) || Number(fuel) < 0 || Number(fuel) > 100) { box.textContent = "Mức nhiên liệu phải từ 0 đến 100."; return; }
+            if (!data.get("exterior") || !data.get("tech")) { box.textContent = "Vui lòng chọn tình trạng ngoại thất và kỹ thuật."; return; }
+            const url = handlers.preHandover + (handlers.preHandover.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, {
+                odometerKm: odo, fuelLevel: fuel,
+                exteriorCondition: data.get("exterior"), technicalCondition: data.get("tech"), notes: data.get("note")
+            });
+            if (!ok) { box.textContent = (res && res.error) || "Không lưu được biên bản trước giao."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã lưu biên bản trước giao. Chờ tài xế xác nhận.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
+        if (e.target.id === "opDisputeForm") {
+            e.preventDefault();
+            const form = e.target;
+            const url = handlers.resolveDispute + (handlers.resolveDispute.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, {
+                disputeId: form.dataset.disputeId, note: new FormData(form).get("note")
+            });
+            if (!ok) { toast((res && res.error) || "Không cập nhật được báo sai lệch."); return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã báo tài xế kiểm tra lại biên bản.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
         if (e.target.id === "opIncidentForm") {
             e.preventDefault();
             const form = e.target;

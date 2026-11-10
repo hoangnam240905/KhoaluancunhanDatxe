@@ -20,6 +20,19 @@ public class VehicleInspection
     public string? CreatedByName { get; set; }
     public string? CreatedByRole { get; set; }
 
+    /// <summary>Last edit (only a PreHandover can be edited, until the driver confirms it).</summary>
+    public int? UpdatedByUserId { get; set; }
+    public string? UpdatedByName { get; set; }
+    public string? UpdatedByRole { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>Dispatcher's check of a driver's return report: Pending / Confirmed / Mismatch; null = not needed.</summary>
+    public string? VerificationStatus { get; set; }
+    public string? VerificationNote { get; set; }
+    public int? VerifiedByUserId { get; set; }
+    public string? VerifiedByName { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+
     public Booking Booking { get; set; } = null!;
     public Vehicle Vehicle { get; set; } = null!;
 }

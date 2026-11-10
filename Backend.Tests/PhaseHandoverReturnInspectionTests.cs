@@ -196,6 +196,7 @@ public class PhaseHandoverReturnInspectionTests
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId).AssignmentId;
         Assert.False(await drivers.StartTripAsync(6, assignmentId));
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(BookingStatuses.InProgress, iso.Db.Bookings.Find(created.BookingId)!.Status);
 
@@ -212,8 +213,10 @@ public class PhaseHandoverReturnInspectionTests
         Assert.Equal("Máy êm", stored.TechnicalCondition);
         Assert.Equal("Sự cố nhỏ", stored.Notes);
         Assert.Equal(previousKm + 25, iso.Db.Vehicles.Find(2)!.CurrentKm);
-        Assert.False(iso.Db.VehicleInspections.Any(i =>
-            i.BookingId == created.BookingId && i.InspectionType == VehicleInspectionTypes.Handover));
+        // Starting without own numbers = the driver accepted the dispatcher's pre-handover record (plan1.md Phần A).
+        Assert.Single(iso.Db.VehicleInspections.Where(i =>
+            i.BookingId == created.BookingId && i.InspectionType == VehicleInspectionTypes.Handover
+            && i.CreatedByRole == RoleNames.Driver));
     }
 
     private static async Task<BookingResponse> ReadyAssignedSelfDriveAsync(

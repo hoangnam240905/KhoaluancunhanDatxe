@@ -14,6 +14,8 @@ public static class VehicleInspectionRules
     public const string NotesTooLong = "Ghi chú quá dài.";
     public const string OdometerBelowCurrent = "Số km trả xe không được nhỏ hơn số km hiện tại của xe.";
     public const string OdometerBelowHandover = "Số km trả xe không được nhỏ hơn số km lúc giao xe.";
+    public const string PreHandoverConditionRequired = "Vui lòng nhập tình trạng ngoại thất và kỹ thuật của xe.";
+    public const string PreHandoverOdometerBelowCurrent = "Số km kiểm tra không được nhỏ hơn số km hiện tại của xe.";
 
     public const int ConditionMaxLength = 100;
     public const int NotesMaxLength = 500;

@@ -26,6 +26,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ChatbotMessage> ChatbotMessages => Set<ChatbotMessage>();
     public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
+    public DbSet<InspectionDispute> InspectionDisputes => Set<InspectionDispute>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -279,6 +280,18 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<InspectionDispute>(e =>
+        {
+            e.ToTable("InspectionDisputes");
+            e.HasKey(x => x.InspectionDisputeId);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.ResolutionNote).HasMaxLength(500);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.HasIndex(x => x.BookingId);
+            e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Inspection).WithMany().HasForeignKey(x => x.InspectionId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<FavoriteVehicle>(e =>
@@ -1052,7 +1065,10 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
 
         Database.OpenConnection();
         AddColumns("VehicleInspections",
-            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"));
+            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"),
+            ("UpdatedByUserId", "INTEGER"), ("UpdatedByName", "TEXT"), ("UpdatedByRole", "TEXT"), ("UpdatedAt", "TEXT"),
+            ("VerificationStatus", "TEXT"), ("VerificationNote", "TEXT"), ("VerifiedByUserId", "INTEGER"),
+            ("VerifiedByName", "TEXT"), ("VerifiedAt", "TEXT"));
         AddColumns("IncidentReports",
             ("ResolvedByUserId", "INTEGER"), ("ResolvedByName", "TEXT"), ("ResolvedByRole", "TEXT"),
             ("ResolvedAt", "TEXT"), ("ResolutionNote", "TEXT"));
@@ -1076,6 +1092,36 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
                 if (!columns.Contains(name))
                     Database.ExecuteSqlRaw($"ALTER TABLE {table} ADD COLUMN {name} {type} NULL");
         }
+    }
+
+    /// <summary>Driver disputes of the dispatcher's pre-handover check (plan1.md Phần A), for older databases.</summary>
+    public void EnsureSqliteInspectionDisputesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "InspectionDisputes" (
+                "InspectionDisputeId" INTEGER NOT NULL CONSTRAINT "PK_InspectionDisputes" PRIMARY KEY AUTOINCREMENT,
+                "BookingId" INTEGER NOT NULL,
+                "InspectionId" INTEGER NOT NULL,
+                "RaisedByUserId" INTEGER NULL,
+                "RaisedByName" TEXT NULL,
+                "Note" TEXT NOT NULL,
+                "Status" TEXT NOT NULL,
+                "ResolvedByUserId" INTEGER NULL,
+                "ResolvedByName" TEXT NULL,
+                "ResolutionNote" TEXT NULL,
+                "ResolvedAt" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_InspectionDisputes_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_InspectionDisputes_VehicleInspections_InspectionId" FOREIGN KEY ("InspectionId") REFERENCES "VehicleInspections" ("InspectionId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_InspectionDisputes_BookingId" ON "InspectionDisputes" ("BookingId");""");
     }
 
     /// <summary>Customers' favourite vehicles (heart button), for databases created before it existed.</summary>

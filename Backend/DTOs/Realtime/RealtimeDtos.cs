@@ -10,6 +10,11 @@ public static class RealtimeEventTypes
     public const string PaymentStatusChanged = "PaymentStatusChanged";
     public const string ContractStatusChanged = "ContractStatusChanged";
     public const string IncidentReported = "IncidentReported";
+    // Two-sided vehicle check on with-driver trips (plan1.md Phần A).
+    public const string PreHandoverRecorded = "PreHandoverRecorded";
+    public const string InspectionDisputeRaised = "InspectionDisputeRaised";
+    public const string InspectionDisputeResolved = "InspectionDisputeResolved";
+    public const string DispatcherReminded = "DispatcherReminded";
 }
 
 public static class RealtimeEntityTypes
@@ -21,6 +26,8 @@ public static class RealtimeEntityTypes
     public const string Payment = "Payment";
     public const string Contract = "Contract";
     public const string Incident = "Incident";
+    public const string Inspection = "Inspection";
+    public const string InspectionDispute = "InspectionDispute";
 }
 
 public static class RealtimeGroups

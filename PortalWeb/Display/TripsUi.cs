@@ -13,19 +13,21 @@ public static class TripsUi
         IReadOnlyList<VehicleInspectionResponse> inspections,
         IncidentResponse? openIncident,
         DispatchDriverStatusResponse? fleetDriver,
-        decimal? lastKnownFuel = null)
+        decimal? lastKnownFuel = null,
+        InspectionDisputeResponse? openDispute = null)
     {
         var mode = string.IsNullOrWhiteSpace(b.RentalMode) ? "WithDriver" : b.RentalMode;
         var isSelf = string.Equals(mode, "SelfDrive", StringComparison.OrdinalIgnoreCase);
         var vehicle = FormatVehicle(b);
         var plate = b.AssignedVehicle?.LicensePlate ?? b.Assignment?.LicensePlate ?? "—";
         var driver = b.Assignment?.DriverName;
+        var preHandover = PickInspection(inspections, "PreHandover");
         var handover = PickInspection(inspections, "Handover");
         var ret = PickInspection(inspections, "Return");
         var status = MapUiStatus(b, isSelf, handover, openIncident);
         var settlement = MapSettlement(b, status);
         var progress = EstimateProgress(status);
-        var ops = BuildOps(b, handover, ret, openIncident);
+        var ops = BuildOps(b, handover, ret, openIncident, preHandover, openDispute);
 
         return new
         {
@@ -55,6 +57,13 @@ public static class TripsUi
             settlement,
             // No live GPS API — pins stay presentation-only / hidden.
             pin = new { x = 0, y = 0, show = false },
+            pre = ToCond(preHandover),
+            dispute = openDispute is null ? null : new
+            {
+                id = openDispute.InspectionDisputeId,
+                note = openDispute.Note,
+                by = UiDisplay.Actor(openDispute.RaisedByName, "Driver", openDispute.CreatedAt)
+            },
             handover = ToCond(handover),
             ret = ToCond(ret),
             incident = openIncident is null ? null : ToIncident(openIncident),
@@ -190,7 +199,9 @@ public static class TripsUi
             tech = string.IsNullOrWhiteSpace(i.TechnicalCondition) ? "—" : i.TechnicalCondition,
             note = i.Notes ?? "",
             at = FmtUtc(i.ActualAt),
-            by = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole)
+            by = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole),
+            createdAt = FmtUtc(i.CreatedAt),
+            edited = i.UpdatedAt is null ? null : UiDisplay.Actor(i.UpdatedByName, i.UpdatedByRole, i.UpdatedAt)
         };
     }
 
@@ -241,14 +252,23 @@ public static class TripsUi
         BookingResponse b,
         VehicleInspectionResponse? handover,
         VehicleInspectionResponse? ret,
-        IncidentResponse? incident)
+        IncidentResponse? incident,
+        VehicleInspectionResponse? preHandover = null,
+        InspectionDisputeResponse? dispute = null)
     {
         var ops = new List<object>();
         if (string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase)
             || b.Assignment is not null)
             ops.Add(new { t = FmtUtc(b.Assignment?.AssignedAt ?? b.CreatedAt), text = "✓ Đã phân công", cls = "done" });
+        if (preHandover is not null)
+            ops.Add(new { t = FmtUtc(preHandover.CreatedAt), text = "✓ Điều phối kiểm tra trước giao", cls = "done" });
+        if (dispute is not null)
+            ops.Add(new { t = FmtUtc(dispute.CreatedAt), text = "⚠️ Tài xế báo sai lệch biên bản", cls = "warn" });
         if (handover is not null)
-            ops.Add(new { t = FmtUtc(handover.ActualAt), text = "✓ Giao xe (biên bản)", cls = "done" });
+            ops.Add(new { t = FmtUtc(handover.ActualAt),
+                text = string.Equals(handover.CreatedByRole, "Driver", StringComparison.Ordinal)
+                    ? "✓ Tài xế xác nhận tình trạng xe, bắt đầu chuyến"
+                    : "✓ Giao xe (biên bản)", cls = "done" });
         if (b.Assignment is not null
             && string.Equals(b.Assignment.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
             ops.Add(new { t = FmtUtc(b.Assignment.AssignedAt), text = "✓ Tài xế nhận chuyến", cls = "done" });

@@ -2,6 +2,7 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Drivers;
+using Backend.DTOs.Realtime;
 using Backend.Entities;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -97,6 +98,75 @@ public class DriverService(
         return true;
     }
 
+    public const string PreHandoverMissing =
+        "Chưa có biên bản kiểm tra trước giao của điều phối. Bấm \"Nhắc điều phối\" để báo điều phối ghi biên bản.";
+    public const string DisputeOpen = "Đang chờ điều phối xử lý sai lệch biên bản trước giao.";
+    public const string DisputeNoteRequired = "Vui lòng ghi rõ điểm sai lệch.";
+    public const string DisputeNoteTooLong = "Ghi chú sai lệch tối đa 500 ký tự.";
+    public const string AlreadyHasPreHandover = "Điều phối đã ghi biên bản trước giao, vui lòng mở chuyến để kiểm tra.";
+    public const string TripNotWaitingToStart = "Chuyến này không còn ở bước chờ bắt đầu.";
+
+    /// <summary>
+    /// Driver says the dispatcher's pre-handover record does not match the real car: opens a dispute,
+    /// tells the dispatchers. The trip does not start and the assignment stays as it is.
+    /// </summary>
+    public async Task<(InspectionDispute? Dispute, string? Error)> RaiseDisputeAsync(
+        int driverId, int assignmentId, string? note)
+    {
+        var text = note?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return (null, DisputeNoteRequired);
+        if (text.Length > 500)
+            return (null, DisputeNoteTooLong);
+
+        var assignment = await db.TripAssignments
+            .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
+        if (assignment is null || assignment.Status is not (TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted))
+            return (null, TripNotWaitingToStart);
+        var preHandover = await inspections.GetPreHandoverAsync(assignment.BookingId);
+        if (preHandover is null)
+            return (null, PreHandoverMissing);
+        if (await HasOpenDisputeAsync(assignment.BookingId))
+            return (null, DisputeOpen);
+
+        var actor = await ActorLookup.FindAsync(db, driverId);
+        var dispute = new InspectionDispute
+        {
+            BookingId = assignment.BookingId,
+            InspectionId = preHandover.InspectionId,
+            RaisedByUserId = actor?.UserId,
+            RaisedByName = actor?.Name,
+            Note = text,
+            Status = InspectionDisputeStatuses.Open,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.InspectionDisputes.Add(dispute);
+        await db.SaveChangesAsync();
+
+        var round = await db.InspectionDisputes.CountAsync(d => d.BookingId == assignment.BookingId);
+        await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.InspectionDisputeRaised,
+            RealtimeEntityTypes.InspectionDispute, dispute.InspectionDisputeId, assignment.BookingId, driverId, round);
+        return (dispute, null);
+    }
+
+    /// <summary>"Nhắc điều phối": the driver is waiting for the pre-handover record.</summary>
+    public async Task<string?> RemindDispatcherAsync(int driverId, int assignmentId)
+    {
+        var assignment = await db.TripAssignments
+            .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
+        if (assignment is null || assignment.Status is not (TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted))
+            return TripNotWaitingToStart;
+        if (await inspections.GetPreHandoverAsync(assignment.BookingId) is not null)
+            return AlreadyHasPreHandover;
+
+        await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.DispatcherReminded,
+            RealtimeEntityTypes.TripAssignment, assignment.AssignmentId, assignment.BookingId, driverId, 1);
+        return null;
+    }
+
+    private Task<bool> HasOpenDisputeAsync(int bookingId)
+        => db.InspectionDisputes.AnyAsync(d => d.BookingId == bookingId && d.Status == InspectionDisputeStatuses.Open);
+
     public async Task<bool> StartTripAsync(int driverId, int assignmentId)
     {
         var (ok, _) = await StartTripAsync(driverId, assignmentId, null);
@@ -115,21 +185,30 @@ public class DriverService(
         if (!BookingStateTransitionRules.CanTransition(assignment.Booking.Status, BookingStatuses.InProgress))
             return (false, BookingStateTransitionRules.InvalidTransition);
 
-        if (request is not null)
-        {
-            var (inspection, error) = await inspections.AddAsync(
-                assignment.BookingId,
-                VehicleInspectionTypes.Handover,
-                request.OdometerKm,
-                request.FuelLevel,
-                request.Condition,
-                request.Notes,
-                request.ExteriorCondition,
-                request.TechnicalCondition,
-                driverId);
-            if (inspection is null)
-                return (false, error ?? "Không thể lưu biên bản kiểm tra đầu chuyến.");
-        }
+        // Two-sided check (plan1.md Phần A): the dispatcher records the car first, the driver confirms
+        // it matches the real car. Starting = confirming; a mismatch goes through RaiseDisputeAsync instead.
+        var preHandover = await inspections.GetPreHandoverAsync(assignment.BookingId);
+        if (preHandover is null)
+            return (false, PreHandoverMissing);
+        if (await HasOpenDisputeAsync(assignment.BookingId))
+            return (false, DisputeOpen);
+
+        // The driver's own numbers when sent; otherwise they accepted the dispatcher's record as it is.
+        var source = request ?? new VehicleConditionRequest(
+            preHandover.OdometerKm, preHandover.FuelLevel, preHandover.Condition, preHandover.Notes,
+            preHandover.ExteriorCondition, preHandover.TechnicalCondition);
+        var (inspection, error) = await inspections.AddAsync(
+            assignment.BookingId,
+            VehicleInspectionTypes.Handover,
+            source.OdometerKm,
+            source.FuelLevel,
+            source.Condition,
+            source.Notes,
+            source.ExteriorCondition,
+            source.TechnicalCondition,
+            driverId);
+        if (inspection is null)
+            return (false, error ?? "Không thể lưu biên bản kiểm tra đầu chuyến.");
 
         assignment.Status = TripAssignmentStatuses.InProgress;
         assignment.StartedAt = DateTime.UtcNow;
@@ -189,6 +268,8 @@ public class DriverService(
             driverId);
         if (inspection is null)
             return (false, inspectError ?? "Không thể ghi nhận trả xe.");
+        // The trip completes now; the dispatcher checks the driver's return report afterwards (plan1.md Phần A).
+        inspection.VerificationStatus = InspectionVerificationStatuses.Pending;
 
         var actualKm = VehicleInspectionRules.ResolveActualKm(handover?.OdometerKm, request?.OdometerKm);
         await fees.ApplyCompletionAsync(assignment.Booking, actualKm, handover, inspection);

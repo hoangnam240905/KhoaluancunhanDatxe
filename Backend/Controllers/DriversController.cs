@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
+using Backend.DTOs.Dispatch;
 using Backend.DTOs.Drivers;
 using Backend.DTOs.Incidents;
 using Backend.Services;
@@ -99,6 +100,28 @@ public class DriversController(
         return ok
             ? Ok(new { message = request is null ? "Đã bắt đầu chuyến." : "Đã lưu biên bản đầu chuyến và bắt đầu chuyến." })
             : BadRequest(new { message = error ?? "Không thể bắt đầu chuyến." });
+    }
+
+    /// <summary>"Báo sai lệch": the dispatcher's pre-handover record does not match the real car.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("trips/{assignmentId:int}/dispute")]
+    public async Task<IActionResult> RaiseDispute(int assignmentId, RaiseDisputeRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (dispute, error) = await driverService.RaiseDisputeAsync(userId, assignmentId, request.Note);
+        return dispute is null
+            ? BadRequest(new { message = error })
+            : Ok(new { message = "Đã báo sai lệch cho điều phối.", disputeId = dispute.InspectionDisputeId });
+    }
+
+    /// <summary>"Nhắc điều phối": no pre-handover record yet.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("trips/{assignmentId:int}/remind-dispatcher")]
+    public async Task<IActionResult> RemindDispatcher(int assignmentId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var error = await driverService.RemindDispatcherAsync(userId, assignmentId);
+        return error is null ? Ok(new { message = "Đã nhắc điều phối." }) : BadRequest(new { message = error });
     }
 
     [Authorize(Roles = RoleNames.Driver)]

@@ -62,11 +62,12 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
 
         var (fleet, _) = await api.GetFleetStatusAsync();
         var fleetDriver = fleet?.Drivers.FirstOrDefault(d => d.DriverId == booking.Assignment?.DriverId);
+        var dispute = (await api.GetInspectionDisputesAsync(id, "Open")).FirstOrDefault();
 
         return new JsonResult(new
         {
             ok = true,
-            trip = TripsUi.ToTripRow(booking, inspections, open, fleetDriver)
+            trip = TripsUi.ToTripRow(booking, inspections, open, fleetDriver, null, dispute)
         });
     }
 
@@ -131,6 +132,42 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var (data, error) = await api.HandoverBookingAsync(id, condition);
         if (data is null) return ActionFail(error ?? "Giao xe thất bại (SelfDrive).");
         return await ActionOkTripAsync(data);
+    }
+
+    /// <summary>
+    /// With-driver trip: dispatcher records (or corrects after a dispute) the car before handover.
+    /// The trip starts only when the driver confirms it in the app (plan1.md Phần A).
+    /// </summary>
+    public async Task<IActionResult> OnPostPreHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel,
+        string? exteriorCondition, string? technicalCondition, string? notes)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (odometerKm is null) return ActionFail("Vui lòng nhập số km hợp lệ.");
+        if (fuelLevel is null or < 0 or > 100) return ActionFail("Mức nhiên liệu phải từ 0 đến 100.");
+
+        var (_, error) = await api.SavePreHandoverAsync(id, new VehicleConditionRequest
+        {
+            OdometerKm = odometerKm,
+            FuelLevel = fuelLevel,
+            ExteriorCondition = exteriorCondition,
+            TechnicalCondition = technicalCondition,
+            Notes = notes
+        });
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
+    /// <summary>Dispatcher marks the driver's dispute handled (after fixing the record); the driver is notified.</summary>
+    public async Task<IActionResult> OnPostResolveDisputeAsync(int id, int disputeId, string? note)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        var (_, error) = await api.ResolveInspectionDisputeAsync(disputeId, note);
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
     }
 
     /// <summary>Dispatcher closes an open incident; Backend records who did it from the login token.</summary>
@@ -210,8 +247,12 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             var inspectionsTask = api.GetDispatchInspectionsAsync();
             var fleetTask = api.GetFleetStatusAsync();
             var driversTask = api.GetDriversAsync(null);
+            var disputesTask = api.GetInspectionDisputesAsync(null, "Open");
 
-            await Task.WhenAll(bookingsTask, incidentsTask, inspectionsTask, fleetTask, driversTask);
+            await Task.WhenAll(bookingsTask, incidentsTask, inspectionsTask, fleetTask, driversTask, disputesTask);
+            var openDisputes = (await disputesTask)
+                .GroupBy(d => d.BookingId)
+                .ToDictionary(g => g.Key, g => g.First());
 
             var bookings = await bookingsTask;
             var (incidents, incErr) = await incidentsTask;
@@ -252,7 +293,8 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                     decimal? lastFuel = null;
                     if (vid is int vehicleId)
                         fuelByVehicle.TryGetValue(vehicleId, out lastFuel);
-                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd, lastFuel);
+                    openDisputes.TryGetValue(b.BookingId, out var dispute);
+                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd, lastFuel, dispute);
                 })
                 .Cast<object>()
                 .ToList();
@@ -365,10 +407,11 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var (incidents, _) = await api.GetDispatchIncidentsAsync(data.BookingId);
         var open = incidents.FirstOrDefault(i =>
             string.Equals(i.Status, "Open", StringComparison.OrdinalIgnoreCase));
+        var dispute = (await api.GetInspectionDisputesAsync(data.BookingId, "Open")).FirstOrDefault();
         return new JsonResult(new
         {
             ok = true,
-            trip = TripsUi.ToTripRow(data, inspections, open, null)
+            trip = TripsUi.ToTripRow(data, inspections, open, null, null, dispute)
         });
     }
 

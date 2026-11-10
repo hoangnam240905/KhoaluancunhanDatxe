@@ -164,6 +164,7 @@ public class PhaseCancelAssignedContractTermsTests
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == first).AssignmentId;
 
         Assert.True(await s.Drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await s.Drivers.StartTripAsync(6, assignmentId));
         var done = await s.Drivers.CompleteTripAsync(
             6, assignmentId, TestDispatchReady.InspectionForBooking(iso.Db, first, extraKm: 30));

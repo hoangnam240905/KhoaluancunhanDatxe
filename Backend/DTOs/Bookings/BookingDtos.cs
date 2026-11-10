@@ -98,7 +98,14 @@ public record VehicleInspectionResponse(
     string? TechnicalCondition = null,
     int? CreatedByUserId = null,
     string? CreatedByName = null,
-    string? CreatedByRole = null);
+    string? CreatedByRole = null,
+    string? UpdatedByName = null,
+    string? UpdatedByRole = null,
+    DateTime? UpdatedAt = null,
+    string? VerificationStatus = null,
+    string? VerificationNote = null,
+    string? VerifiedByName = null,
+    DateTime? VerifiedAt = null);
 
 public record BookingFeeResponse(
     int FeeId,

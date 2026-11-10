@@ -18,7 +18,10 @@ public static class NotificationFanout
         var booking = await db.Bookings.AsNoTracking()
             .Where(b => b.BookingId == bookingId)
             .Select(b => new NotificationBookingInfo(
-                b.BookingId, b.CustomerId, b.Customer.User.FullName, b.StartDate, b.PickupAddress))
+                b.BookingId, b.CustomerId, b.Customer.User.FullName, b.StartDate, b.PickupAddress,
+                b.TripAssignment != null && b.TripAssignment.Status != TripAssignmentStatuses.Cancelled
+                    ? b.TripAssignment.DriverId
+                    : (int?)null))
             .FirstOrDefaultAsync(ct);
         if (booking is null)
             return 0;
@@ -38,7 +41,8 @@ public static class NotificationFanout
                     .Where(u => u.Role.RoleName == RoleNames.Dispatcher)
                     .Select(u => u.UserId)
                     .ToListAsync(ct),
-                // Customer shares its primary key with User.
+                // Driver and Customer share their primary key with User.
+                NotificationRecipient.TripDriver => booking.DriverId is int driverUserId ? [driverUserId] : [],
                 _ => [booking.CustomerId]
             };
 

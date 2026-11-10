@@ -158,6 +158,27 @@ public static class RealtimeNotify
             RealtimeAudience.ForDriver(driverId),
             new Dictionary<string, object?> { ["incidentType"] = incidentType });
 
+    /// <summary>
+    /// Pre-handover check events between the dispatcher and the trip's driver. <paramref name="round"/> counts
+    /// how many times it happened on this booking, so a second dispute still reaches the inbox.
+    /// </summary>
+    public static Task InspectionCheck(
+        IRealtimePublisher? realtime,
+        string eventType,
+        string entityType,
+        int entityId,
+        int bookingId,
+        int driverId,
+        int round)
+        => Publish(
+            realtime,
+            eventType,
+            entityType,
+            entityId,
+            bookingId,
+            RealtimeAudience.ForDriver(driverId),
+            new Dictionary<string, object?> { ["driverId"] = driverId, ["round"] = round });
+
     private static Task Publish(
         IRealtimePublisher? realtime,
         string eventType,

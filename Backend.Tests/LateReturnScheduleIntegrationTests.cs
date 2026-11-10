@@ -209,6 +209,7 @@ public class LateReturnScheduleIntegrationTests
         Assert.Null(assigned.Error);
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId).AssignmentId;
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
 
         var complete = await drivers.CompleteTripAsync(

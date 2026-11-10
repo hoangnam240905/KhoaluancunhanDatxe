@@ -295,6 +295,8 @@ public static class ScheduleConflictTypes
 
 public static class VehicleInspectionTypes
 {
+    /// <summary>Dispatcher's check before a with-driver trip; the driver confirms it (→ Handover) or disputes it.</summary>
+    public const string PreHandover = "PreHandover";
     public const string Handover = "Handover";
     public const string Return = "Return";
 
@@ -307,7 +309,7 @@ public static class VehicleInspectionTypes
         }
 
         var trimmed = inspectionType.Trim();
-        if (trimmed is Handover or Return)
+        if (trimmed is PreHandover or Handover or Return)
         {
             resolved = trimmed;
             return true;
@@ -316,6 +318,20 @@ public static class VehicleInspectionTypes
         resolved = string.Empty;
         return false;
     }
+}
+
+/// <summary>Dispatcher's check of a return report sent by the driver (stored codes; shown in Vietnamese).</summary>
+public static class InspectionVerificationStatuses
+{
+    public const string Pending = "Pending";
+    public const string Confirmed = "Confirmed";
+    public const string Mismatch = "Mismatch";
+}
+
+public static class InspectionDisputeStatuses
+{
+    public const string Open = "Open";
+    public const string Resolved = "Resolved";
 }
 
 public static class BookingFeeTypes

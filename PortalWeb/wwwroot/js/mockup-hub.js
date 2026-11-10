@@ -119,7 +119,10 @@
             bits.push(`<button type="button" class="mk-btn mk-btn-primary" data-act="assign" data-id="${b.id}">Phân công xe & tài xế</button>`);
         }
         if (b.status === "Assigned") {
-            bits.push(`<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
+            // With-driver: the dispatcher records the pre-handover check on Vận hành chuyến; the driver starts the trip (plan1.md Phần A).
+            bits.push(b.mode === "WithDriver"
+                ? `<a class="mk-btn mk-btn-info" href="/Mockup/Trips">Kiểm tra trước giao</a>`
+                : `<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
             // Backend rejects once the start time has passed; the message is shown as a toast.
             bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}" data-confirm="Hủy đơn #${b.id} đã phân công? Xe và tài xế sẽ được trả về, hợp đồng hết hiệu lực.">✕ Hủy đơn</button>`);

@@ -224,6 +224,7 @@ public class PhaseDRealtimeTests
             && e.EntityId == assignmentId);
 
         capture.Clear();
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.Contains(capture.Events, e => e.EventType == RealtimeEventTypes.TripStatusChanged);
         Assert.Contains(capture.Events, e => e.EventType == RealtimeEventTypes.BookingStatusChanged);

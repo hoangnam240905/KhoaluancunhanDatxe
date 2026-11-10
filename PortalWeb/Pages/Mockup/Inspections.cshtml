@@ -106,6 +106,7 @@ else
 </div>
 <div class="insp-print" id="inspPrint" hidden></div>
 <div class="mk-toast" id="inspToast"></div>
+<form id="inspAntiForgery" class="d-none">@Html.AntiForgeryToken()</form>
 
 @section Scripts {
     <script>
@@ -113,7 +114,8 @@ else
         window.__INSPECTIONS_READY__ = @(Model.HasBootstrap ? "true" : "false");
         window.__INSPECTIONS_HANDLERS__ = {
             reload: '@Url.Page("/Mockup/Inspections", "Reload")',
-            detail: '@Url.Page("/Mockup/Inspections", "Detail")'
+            detail: '@Url.Page("/Mockup/Inspections", "Detail")',
+            verify: '@Url.Page("/Mockup/Inspections", "Verify")'
         };
         window.__INSPECTIONS_SSR_METRICS__ = {
             total: @Model.MetricTotal,

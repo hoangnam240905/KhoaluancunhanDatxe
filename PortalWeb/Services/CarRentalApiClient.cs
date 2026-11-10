@@ -629,6 +629,47 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<List<IncidentResponse>>(JsonOptions) ?? [], null);
     }
 
+    // ---- Two-sided vehicle check on with-driver trips (plan1.md Phần A) ----
+
+    public async Task<(VehicleInspectionResponse? Data, string? Error)> SavePreHandoverAsync(int bookingId, VehicleConditionRequest condition)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/pre-handover");
+        request.Content = JsonContent.Create(condition);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được biên bản trước giao.");
+        return (await response.Content.ReadFromJsonAsync<VehicleInspectionResponse>(JsonOptions), null);
+    }
+
+    public async Task<List<InspectionDisputeResponse>> GetInspectionDisputesAsync(int? bookingId = null, string? status = null)
+    {
+        var parts = new List<string>();
+        if (bookingId is int bid) parts.Add($"bookingId={bid}");
+        if (!string.IsNullOrWhiteSpace(status)) parts.Add($"status={Uri.EscapeDataString(status)}");
+        var url = "/api/dispatch/inspection-disputes" + (parts.Count == 0 ? "" : "?" + string.Join("&", parts));
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return [];
+        return await response.Content.ReadFromJsonAsync<List<InspectionDisputeResponse>>(JsonOptions) ?? [];
+    }
+
+    public async Task<(InspectionDisputeResponse? Data, string? Error)> ResolveInspectionDisputeAsync(int disputeId, string? note)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/inspection-disputes/{disputeId}/resolve");
+        request.Content = JsonContent.Create(new { note });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không cập nhật được báo sai lệch.");
+        return (await response.Content.ReadFromJsonAsync<InspectionDisputeResponse>(JsonOptions), null);
+    }
+
+    public async Task<(VehicleInspectionResponse? Data, string? Error)> VerifyReturnAsync(int inspectionId, string result, string? note)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/inspections/{inspectionId}/verify");
+        request.Content = JsonContent.Create(new { result, note });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả đối chiếu.");
+        return (await response.Content.ReadFromJsonAsync<VehicleInspectionResponse>(JsonOptions), null);
+    }
+
     public async Task<(IncidentResponse? Data, string? Error)> ResolveIncidentAsync(int incidentId, string? note)
     {
         using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/incidents/{incidentId}/resolve");

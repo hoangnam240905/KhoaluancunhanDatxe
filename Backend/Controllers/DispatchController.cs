@@ -73,6 +73,38 @@ public class DispatchController(
         return booking is null ? BadRequest(new { message = error ?? "Không thể hoàn thành đơn." }) : Ok(booking);
     }
 
+    /// <summary>With-driver trip: record (or, after a dispute, correct) the check before handover.</summary>
+    [HttpPost("bookings/{id:int}/pre-handover")]
+    public async Task<ActionResult<VehicleInspectionResponse>> PreHandover(
+        int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VehicleConditionRequest? request)
+    {
+        var (inspection, error) = await dispatchService.SavePreHandoverAsync(id, CurrentUserId(), request);
+        return inspection is null ? BadRequest(new { message = error }) : Ok(inspection);
+    }
+
+    [HttpGet("inspection-disputes")]
+    public async Task<ActionResult<List<InspectionDisputeResponse>>> GetDisputes(
+        [FromQuery] int? bookingId, [FromQuery] string? status)
+        => Ok(await dispatchService.GetDisputesAsync(bookingId, status));
+
+    [HttpPost("inspection-disputes/{id:int}/resolve")]
+    public async Task<ActionResult<InspectionDisputeResponse>> ResolveDispute(
+        int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ResolveDisputeRequest? request)
+    {
+        var (dispute, error) = await dispatchService.ResolveDisputeAsync(id, CurrentUserId(), request?.Note);
+        return dispute is null ? BadRequest(new { message = error }) : Ok(dispute);
+    }
+
+    /// <summary>Check a driver's return report: Confirmed, or Mismatch (+ note → incident).</summary>
+    [HttpPost("inspections/{id:int}/verify")]
+    public async Task<ActionResult<VehicleInspectionResponse>> VerifyReturn(int id, VerifyReturnRequest request)
+    {
+        var (inspection, error) = await dispatchService.VerifyReturnAsync(id, CurrentUserId(), request.Result, request.Note);
+        return inspection is null ? BadRequest(new { message = error }) : Ok(inspection);
+    }
+
+    private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet("incidents")]
     public async Task<ActionResult<List<IncidentResponse>>> GetIncidents(
         [FromQuery] int? bookingId,

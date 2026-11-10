@@ -63,6 +63,7 @@ public class PhaseP0VehicleDeleteProtectionTests
 
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId).AssignmentId;
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.InProgress,
             iso.Db.TripAssignments.Find(assignmentId)!.Status);
@@ -185,6 +186,7 @@ public class PhaseP0VehicleDeleteProtectionTests
 
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == trip.BookingId).AssignmentId;
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         var inProgressInactive = await SetInactiveAsync(iso, vehicles, tripId);
         Assert.Equal(400, inProgressInactive.StatusCode);

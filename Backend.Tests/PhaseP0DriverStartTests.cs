@@ -41,6 +41,7 @@ public class PhaseP0DriverStartTests
         var (drivers, dispatch, _) = Services(iso);
         var assignmentId = await AssignAsync(iso, dispatch);
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         var assignment = iso.Db.TripAssignments.Find(assignmentId)!;
         Assert.Equal(TripAssignmentStatuses.InProgress, assignment.Status);
@@ -98,6 +99,8 @@ public class PhaseP0DriverStartTests
         Assert.False(await drivers.AcceptTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.Accepted, iso.Db.TripAssignments.Find(assignmentId)!.Status);
 
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
+
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.False(await drivers.AcceptTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.InProgress, iso.Db.TripAssignments.Find(assignmentId)!.Status);
@@ -110,6 +113,7 @@ public class PhaseP0DriverStartTests
         var (drivers, dispatch, _) = Services(iso);
         var assignmentId = await AssignAsync(iso, dispatch);
         Assert.True(await drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await drivers.StartTripAsync(6, assignmentId));
         Assert.False(await drivers.StartTripAsync(6, assignmentId));
         Assert.Equal(TripAssignmentStatuses.InProgress, iso.Db.TripAssignments.Find(assignmentId)!.Status);
@@ -194,6 +198,7 @@ public class PhaseP0DriverStartTests
             Authed(HttpMethod.Post, $"/api/drivers/trips/{assignmentId}/accept", driverB))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
             Authed(HttpMethod.Post, $"/api/drivers/trips/{assignmentId}/accept", driverA))).StatusCode);
+        await TestDispatchReady.EnsurePreHandoverHttpAsync(client, dispatcher, booking.BookingId);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(
             Authed(HttpMethod.Post, $"/api/drivers/trips/{assignmentId}/start", driverB))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(
@@ -210,6 +215,8 @@ public class PhaseP0DriverStartTests
         var bookingId = iso.Db.TripAssignments.Find(assignmentId)!.BookingId;
         var handoversBefore = iso.Db.VehicleInspections.Count(i =>
             i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover);
+
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
 
         var (ok, error) = await drivers.StartTripAsync(
             6, assignmentId, TestDispatchReady.InspectionForBooking(iso.Db, bookingId));
