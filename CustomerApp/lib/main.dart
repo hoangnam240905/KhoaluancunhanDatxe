@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final valid = auth != null && auth.expiresAt.isAfter(DateTime.now());
-    if (valid && (auth.role == 'Customer' || auth.role == 'Driver')) {
+    if (valid && auth.role == 'Customer') {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => RoleRouter.homeFor(_api, auth)),
       );

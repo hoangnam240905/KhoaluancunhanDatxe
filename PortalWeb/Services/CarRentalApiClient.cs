@@ -76,22 +76,6 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (true, null);
     }
 
-    public async Task<(AuthResponse? Data, string? Error)> GoogleLoginAsync(string idToken)
-    {
-        var response = await http.PostAsJsonAsync("/api/auth/google", new GoogleLoginRequest(idToken));
-        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Đăng nhập Google thất bại.");
-        return (await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions), null);
-    }
-
-    public async Task<LoginOptionsResponse> GetLoginOptionsAsync()
-    {
-        var response = await http.GetAsync("/api/auth/login-options");
-        if (!response.IsSuccessStatusCode)
-            return new LoginOptionsResponse(false, null);
-        return await response.Content.ReadFromJsonAsync<LoginOptionsResponse>(JsonOptions)
-               ?? new LoginOptionsResponse(false, null);
-    }
-
     public async Task<List<VehicleTypeResponse>> GetVehicleTypesAsync()
     {
         var response = await http.GetAsync("/api/vehicle-types");
@@ -711,9 +695,11 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             : [];
     }
 
-    public async Task<List<CustomerLicenseResponse>> GetCustomerLicensesAsync(string? status)
+    /// <param name="asAdmin">Admin reviews through /api/admin/customers (same rules, same service).</param>
+    public async Task<List<CustomerLicenseResponse>> GetCustomerLicensesAsync(string? status, bool asAdmin = false)
     {
-        var url = "/api/dispatch/customer-licenses" + (string.IsNullOrWhiteSpace(status) ? "" : $"?status={Uri.EscapeDataString(status)}");
+        var url = (asAdmin ? "/api/admin/customers/licenses" : "/api/dispatch/customer-licenses")
+            + (string.IsNullOrWhiteSpace(status) ? "" : $"?status={Uri.EscapeDataString(status)}");
         using var request = CreateRequest(HttpMethod.Get, url);
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode
@@ -721,16 +707,21 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
             : [];
     }
 
-    public async Task<CustomerLicenseResponse?> GetCustomerLicenseAsync(int customerId)
+    public async Task<CustomerLicenseResponse?> GetCustomerLicenseAsync(int customerId, bool asAdmin = false)
     {
-        using var request = CreateRequest(HttpMethod.Get, $"/api/dispatch/customer-licenses/{customerId}");
+        using var request = CreateRequest(HttpMethod.Get, asAdmin
+            ? $"/api/admin/customers/{customerId}/license"
+            : $"/api/dispatch/customer-licenses/{customerId}");
         var response = await http.SendAsync(request);
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions) : null;
     }
 
-    public async Task<(CustomerLicenseResponse? Data, string? Error)> ReviewCustomerLicenseAsync(int customerId, bool approve, string? reason)
+    public async Task<(CustomerLicenseResponse? Data, string? Error)> ReviewCustomerLicenseAsync(
+        int customerId, bool approve, string? reason, bool asAdmin = false)
     {
-        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/customer-licenses/{customerId}/review");
+        using var request = CreateRequest(HttpMethod.Post, asAdmin
+            ? $"/api/admin/customers/{customerId}/license/review"
+            : $"/api/dispatch/customer-licenses/{customerId}/review");
         request.Content = JsonContent.Create(new { approve, reason });
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả duyệt bằng lái.");

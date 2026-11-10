@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
+import 'timed_http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
@@ -216,7 +216,7 @@ class ApiService {
     request.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: fileName),
     );
-    final response = await http.Response.fromStream(await request.send());
+    final response = await http.Response.fromStream(await http.send(request));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 

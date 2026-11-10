@@ -164,21 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 )
                               : const Text('Đăng nhập'),
                         ),
-                        const SizedBox(height: 8),
-                        OutlinedButton(
-                          onPressed: _loading
-                              ? null
-                              : () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Đăng nhập Google trên Windows/desktop dùng Portal Web (http://localhost:5180). Android/iOS cần Google ClientId và cấu hình native.',
-                                      ),
-                                    ),
-                                  );
-                                },
-                          child: const Text('Tiếp tục với Google'),
-                        ),
                         TextButton(
                           onPressed: _loading
                               ? null

@@ -2,10 +2,17 @@
 @model PortalWeb.Pages.Mockup.CustomerLicensesModel
 @using PortalWeb.Display
 @{
-    Layout = "_MockupLayout";
+    Layout = Model.IsAdmin ? "_AdminUiLayout" : "_MockupLayout";
     ViewData["Title"] = "Duyệt bằng lái khách";
     ViewData["Nav"] = "customer-licenses";
     string[] sides = ["LicenseFront", "LicenseBack"];
+}
+@section Styles {
+    @* Admin opens this page in the admin layout; the body uses the dispatcher workspace styles. *@
+    @if (Model.IsAdmin)
+    {
+        <link rel="stylesheet" href="~/css/mockup-hub.css" asp-append-version="true" />
+    }
 }
 
 <section class="mk-hub-head">

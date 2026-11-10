@@ -10,8 +10,30 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize(Roles = RoleNames.Admin)]
 [Route("api/admin/customers")]
-public class AdminCustomersController(AdminCustomerService customers) : ControllerBase
+public class AdminCustomersController(AdminCustomerService customers, CustomerLicenseService licences) : ControllerBase
 {
+    // ---- Self-drive licences (plan1.md Phần E): admin can review like a dispatcher ----
+
+    /// <summary>status: Pending (default) / Approved / Rejected / All.</summary>
+    [HttpGet("licenses")]
+    public async Task<ActionResult<List<CustomerLicenseResponse>>> Licenses([FromQuery] string? status)
+        => Ok(await licences.ListAsync(status));
+
+    [HttpGet("{id:int}/license")]
+    public async Task<ActionResult<CustomerLicenseResponse>> License(int id)
+    {
+        var data = await licences.GetAsync(id);
+        return data is null ? NotFound(new { message = CustomerLicenseService.NotFound }) : Ok(data);
+    }
+
+    [HttpPost("{id:int}/license/review")]
+    public async Task<ActionResult<CustomerLicenseResponse>> ReviewLicense(int id, ReviewCustomerLicenseRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (data, error) = await licences.ReviewAsync(id, userId, request.Approve, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [HttpGet]
     public async Task<ActionResult<AdminCustomerListResponse>> GetAll(
         [FromQuery] string? keyword,

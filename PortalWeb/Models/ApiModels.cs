@@ -10,8 +10,6 @@ public record VerifyEmailRequest(string Email, string Otp);
 public record ResendVerificationRequest(string Email);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Email, string Otp, string NewPassword, string? ConfirmPassword);
-public record GoogleLoginRequest(string IdToken);
-public record LoginOptionsResponse(bool GoogleEnabled, string? GoogleClientId);
 public record UserProfileResponse(int UserId, string Email, string FullName, string? Phone, string Role);
 
 /// <summary>Step 4.4: Customer self-profile including V7 recommendation fields.</summary>
