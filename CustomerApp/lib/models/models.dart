@@ -143,76 +143,6 @@ class Vehicle {
   String get label => '$licensePlate · $brand $model';
 }
 
-class FavoriteVehicle {
-  final int vehicleId;
-  final int typeId;
-  final String typeName;
-  final String licensePlate;
-  final String brand;
-  final String model;
-  final int year;
-  final String? color;
-  final String status;
-  final int seatCapacity;
-  final double pricePerDay;
-  final String? primaryImageUrl;
-
-  FavoriteVehicle({
-    required this.vehicleId,
-    required this.typeId,
-    required this.typeName,
-    required this.licensePlate,
-    required this.brand,
-    required this.model,
-    required this.year,
-    required this.status,
-    required this.seatCapacity,
-    required this.pricePerDay,
-    this.color,
-    this.primaryImageUrl,
-  });
-
-  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) =>
-      FavoriteVehicle(
-        vehicleId: json['vehicleId'] as int,
-        typeId: json['typeId'] as int,
-        typeName: json['typeName'] as String? ?? 'Xe',
-        licensePlate: json['licensePlate'] as String? ?? '',
-        brand: json['brand'] as String? ?? '',
-        model: json['model'] as String? ?? '',
-        year: json['year'] as int? ?? 0,
-        color: json['color'] as String?,
-        status: json['status'] as String? ?? '',
-        seatCapacity: json['seatCapacity'] as int? ?? 0,
-        pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
-        primaryImageUrl: json['primaryImageUrl'] as String?,
-      );
-}
-
-class UserDocument {
-  final int userDocumentId;
-  final String documentType;
-  final String status;
-  final String? rejectReason;
-  final DateTime createdAt;
-
-  UserDocument({
-    required this.userDocumentId,
-    required this.documentType,
-    required this.status,
-    required this.createdAt,
-    this.rejectReason,
-  });
-
-  factory UserDocument.fromJson(Map<String, dynamic> json) => UserDocument(
-        userDocumentId: json['userDocumentId'] as int,
-        documentType: json['documentType'] as String? ?? '',
-        status: json['status'] as String? ?? 'Pending',
-        rejectReason: json['rejectReason'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
-}
-
 class DriverOption {
   final int driverId;
   final String fullName;
@@ -235,15 +165,15 @@ class DriverOption {
   });
 
   factory DriverOption.fromJson(Map<String, dynamic> json) => DriverOption(
-        driverId: json['driverId'] as int,
-        fullName: json['fullName'] as String? ?? 'Tài xế',
-        phone: json['phone'] as String?,
-        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
-        totalTrips: json['totalTrips'] as int? ?? 0,
-        licenseNumber: json['licenseNumber'] as String? ?? '',
-        availabilityStatus: json['availabilityStatus'] as String? ?? '',
-        canSelect: json['canSelect'] as bool? ?? true,
-      );
+    driverId: json['driverId'] as int,
+    fullName: json['fullName'] as String? ?? 'Tài xế',
+    phone: json['phone'] as String?,
+    averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+    totalTrips: json['totalTrips'] as int? ?? 0,
+    licenseNumber: json['licenseNumber'] as String? ?? '',
+    availabilityStatus: json['availabilityStatus'] as String? ?? '',
+    canSelect: json['canSelect'] as bool? ?? true,
+  );
 }
 
 class DriverBusyPeriod {
@@ -281,14 +211,14 @@ class DriverSchedule {
   });
 
   factory DriverSchedule.fromJson(Map<String, dynamic> json) => DriverSchedule(
-        driverId: json['driverId'] as int,
-        fullName: json['fullName'] as String? ?? 'Tài xế',
-        averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
-        totalTrips: json['totalTrips'] as int? ?? 0,
-        busy: (json['busy'] as List<dynamic>? ?? [])
-            .map((e) => DriverBusyPeriod.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    driverId: json['driverId'] as int,
+    fullName: json['fullName'] as String? ?? 'Tài xế',
+    averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0,
+    totalTrips: json['totalTrips'] as int? ?? 0,
+    busy: (json['busy'] as List<dynamic>? ?? [])
+        .map((e) => DriverBusyPeriod.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class VehicleTypeRecommendation {
@@ -811,14 +741,14 @@ class ChatbotVehicle {
   });
 
   factory ChatbotVehicle.fromJson(Map<String, dynamic> json) => ChatbotVehicle(
-        vehicleId: json['vehicleId'] as int,
-        name: json['name'] as String? ?? 'Xe',
-        typeName: json['typeName'] as String?,
-        seats: json['seats'] as int?,
-        licensePlate: json['licensePlate'] as String?,
-        days: json['days'] as int?,
-        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
-      );
+    vehicleId: json['vehicleId'] as int,
+    name: json['name'] as String? ?? 'Xe',
+    typeName: json['typeName'] as String?,
+    seats: json['seats'] as int?,
+    licensePlate: json['licensePlate'] as String?,
+    days: json['days'] as int?,
+    totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+  );
 }
 
 class ChatbotLink {
@@ -828,9 +758,9 @@ class ChatbotLink {
   ChatbotLink({required this.text, required this.url});
 
   factory ChatbotLink.fromJson(Map<String, dynamic> json) => ChatbotLink(
-        text: json['text'] as String? ?? 'Mở liên kết',
-        url: json['url'] as String? ?? '/',
-      );
+    text: json['text'] as String? ?? 'Mở liên kết',
+    url: json['url'] as String? ?? '/',
+  );
 }
 
 class ChatbotReply {
@@ -853,27 +783,27 @@ class ChatbotReply {
   });
 
   factory ChatbotReply.fromJson(Map<String, dynamic> json) => ChatbotReply(
-        kind: json['kind'] as String? ?? '',
-        reply: json['reply'] as String? ?? '',
-        vehicles: (json['vehicles'] as List<dynamic>? ?? [])
-            .map((e) => ChatbotVehicle.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        links: (json['links'] as List<dynamic>? ?? [])
-            .map((e) => ChatbotLink.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        start: (json['search'] as Map<String, dynamic>?)?['start'] == null
-            ? null
-            : DateTime.parse(
-                (json['search'] as Map<String, dynamic>)['start'] as String,
-              ),
-        end: (json['search'] as Map<String, dynamic>?)?['end'] == null
-            ? null
-            : DateTime.parse(
-                (json['search'] as Map<String, dynamic>)['end'] as String,
-              ),
-        rentalMode: (json['search'] as Map<String, dynamic>?)?['rentalMode']
-            as String?,
-      );
+    kind: json['kind'] as String? ?? '',
+    reply: json['reply'] as String? ?? '',
+    vehicles: (json['vehicles'] as List<dynamic>? ?? [])
+        .map((e) => ChatbotVehicle.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    links: (json['links'] as List<dynamic>? ?? [])
+        .map((e) => ChatbotLink.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    start: (json['search'] as Map<String, dynamic>?)?['start'] == null
+        ? null
+        : DateTime.parse(
+            (json['search'] as Map<String, dynamic>)['start'] as String,
+          ),
+    end: (json['search'] as Map<String, dynamic>?)?['end'] == null
+        ? null
+        : DateTime.parse(
+            (json['search'] as Map<String, dynamic>)['end'] as String,
+          ),
+    rentalMode:
+        (json['search'] as Map<String, dynamic>?)?['rentalMode'] as String?,
+  );
 }
 
 class TripAssignment {
@@ -946,4 +876,274 @@ class DriverBooking extends Booking {
   );
 
   int? get assignmentId => assignment?.assignmentId;
+}
+
+/// One photo of the licence and its review (plan1.md Phần F).
+class UserDocument {
+  final int userDocumentId;
+  final String documentType;
+  final String status;
+  final String? rejectReason;
+
+  const UserDocument({
+    required this.userDocumentId,
+    required this.documentType,
+    required this.status,
+    this.rejectReason,
+  });
+
+  factory UserDocument.fromJson(Map<String, dynamic> json) => UserDocument(
+    userDocumentId: json['userDocumentId'] as int? ?? 0,
+    documentType: json['documentType'] as String? ?? '',
+    status: json['status'] as String? ?? '',
+    rejectReason: json['rejectReason'] as String?,
+  );
+}
+
+class LicenseClassOption {
+  final String code;
+  final String label;
+  final int maxSeats;
+
+  const LicenseClassOption({
+    required this.code,
+    required this.label,
+    required this.maxSeats,
+  });
+
+  factory LicenseClassOption.fromJson(Map<String, dynamic> json) =>
+      LicenseClassOption(
+        code: json['code'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        maxSeats: json['maxSeats'] as int? ?? 0,
+      );
+}
+
+/// Whether the customer's licence may drive a vehicle type self-drive (plan1.md Phần E).
+class SelfDriveTypeEligibility {
+  final int typeId;
+  final String typeName;
+  final int seatCapacity;
+  final String minLicenseClass;
+  final bool canDrive;
+  final String? reason;
+
+  const SelfDriveTypeEligibility({
+    required this.typeId,
+    required this.typeName,
+    required this.seatCapacity,
+    required this.minLicenseClass,
+    required this.canDrive,
+    this.reason,
+  });
+
+  factory SelfDriveTypeEligibility.fromJson(Map<String, dynamic> json) =>
+      SelfDriveTypeEligibility(
+        typeId: json['typeId'] as int? ?? 0,
+        typeName: json['typeName'] as String? ?? '',
+        seatCapacity: json['seatCapacity'] as int? ?? 0,
+        minLicenseClass: json['minLicenseClass'] as String? ?? '',
+        canDrive: json['canDrive'] as bool? ?? false,
+        reason: json['reason'] as String?,
+      );
+}
+
+/// The customer's self-drive licence file. licenseStatus: None / Pending / Approved / Rejected.
+class CustomerLicense {
+  final String? licenseNumber;
+  final String? licenseClass;
+  final String? licenseClassLabel;
+  final DateTime? licenseIssueDate;
+  final DateTime? licenseExpiry;
+  final String licenseStatus;
+  final String photoStatus;
+  final List<UserDocument> documents;
+  final String? reviewedByName;
+  final String? reviewNote;
+  final bool licenseExpiringSoon;
+  final bool licenseExpired;
+  final List<SelfDriveTypeEligibility> vehicleTypes;
+
+  const CustomerLicense({
+    required this.licenseStatus,
+    required this.photoStatus,
+    required this.documents,
+    required this.vehicleTypes,
+    this.licenseNumber,
+    this.licenseClass,
+    this.licenseClassLabel,
+    this.licenseIssueDate,
+    this.licenseExpiry,
+    this.reviewedByName,
+    this.reviewNote,
+    this.licenseExpiringSoon = false,
+    this.licenseExpired = false,
+  });
+
+  bool get isDeclared => licenseStatus != 'None';
+
+  UserDocument? documentOf(String type) {
+    for (final d in documents) {
+      if (d.documentType == type) return d;
+    }
+    return null;
+  }
+
+  SelfDriveTypeEligibility? typeOf(int typeId) {
+    for (final t in vehicleTypes) {
+      if (t.typeId == typeId) return t;
+    }
+    return null;
+  }
+
+  factory CustomerLicense.fromJson(Map<String, dynamic> json) =>
+      CustomerLicense(
+        licenseNumber: json['licenseNumber'] as String?,
+        licenseClass: json['licenseClass'] as String?,
+        licenseClassLabel: json['licenseClassLabel'] as String?,
+        licenseIssueDate: DateTime.tryParse(
+          json['licenseIssueDate']?.toString() ?? '',
+        ),
+        licenseExpiry: DateTime.tryParse(
+          json['licenseExpiry']?.toString() ?? '',
+        ),
+        licenseStatus: json['licenseStatus'] as String? ?? 'None',
+        photoStatus: json['photoStatus'] as String? ?? 'Missing',
+        documents: (json['documents'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(UserDocument.fromJson)
+            .toList(),
+        reviewedByName: json['reviewedByName'] as String?,
+        reviewNote: json['reviewNote'] as String?,
+        licenseExpiringSoon: json['licenseExpiringSoon'] as bool? ?? false,
+        licenseExpired: json['licenseExpired'] as bool? ?? false,
+        vehicleTypes: (json['vehicleTypes'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SelfDriveTypeEligibility.fromJson)
+            .toList(),
+      );
+}
+
+/// One "Phụ lục đổi xe" entry (plan1.md Phần I): the dispatcher replaced the car of the booking.
+class VehicleChange {
+  final int vehicleChangeId;
+  final String oldVehicle;
+  final String newVehicle;
+  final String oldTypeName;
+  final String newTypeName;
+  final String reason;
+  final String? note;
+  final bool duringTrip;
+  final double? oldOdometerKm;
+  final double? oldFuelLevel;
+  final double? newOdometerKm;
+  final double? newFuelLevel;
+  final int remainingDays;
+  final double priceDifference;
+  final bool customerAgreed;
+  final String? approvedByName;
+  final DateTime createdAt;
+
+  const VehicleChange({
+    required this.vehicleChangeId,
+    required this.oldVehicle,
+    required this.newVehicle,
+    required this.oldTypeName,
+    required this.newTypeName,
+    required this.reason,
+    required this.duringTrip,
+    required this.remainingDays,
+    required this.priceDifference,
+    required this.customerAgreed,
+    required this.createdAt,
+    this.note,
+    this.oldOdometerKm,
+    this.oldFuelLevel,
+    this.newOdometerKm,
+    this.newFuelLevel,
+    this.approvedByName,
+  });
+
+  String get reasonLabel => switch (reason) {
+    'Breakdown' => 'Xe gặp sự cố kỹ thuật',
+    'NeedChange' => 'Khách hàng thay đổi nhu cầu',
+    _ => reason,
+  };
+
+  static double? _num(dynamic v) => v == null ? null : (v as num).toDouble();
+
+  factory VehicleChange.fromJson(Map<String, dynamic> json) {
+    final created = json['createdAt'] as String?;
+    return VehicleChange(
+      vehicleChangeId: json['vehicleChangeId'] as int? ?? 0,
+      oldVehicle: json['oldVehicle'] as String? ?? '',
+      newVehicle: json['newVehicle'] as String? ?? '',
+      oldTypeName: json['oldTypeName'] as String? ?? '',
+      newTypeName: json['newTypeName'] as String? ?? '',
+      reason: json['reason'] as String? ?? '',
+      note: json['note'] as String?,
+      duringTrip: json['duringTrip'] as bool? ?? false,
+      oldOdometerKm: _num(json['oldOdometerKm']),
+      oldFuelLevel: _num(json['oldFuelLevel']),
+      newOdometerKm: _num(json['newOdometerKm']),
+      newFuelLevel: _num(json['newFuelLevel']),
+      remainingDays: json['remainingDays'] as int? ?? 0,
+      priceDifference: _num(json['priceDifference']) ?? 0,
+      customerAgreed: json['customerAgreed'] as bool? ?? false,
+      approvedByName: json['approvedByName'] as String?,
+      // Backend stores UTC without a zone suffix.
+      createdAt: created == null
+          ? DateTime.now()
+          : DateTime.parse(created.endsWith('Z') ? created : '${created}Z'),
+    );
+  }
+}
+
+/// A car in the customer's "Xe yêu thích" (GET /api/favorites returns VehicleResponse rows).
+class FavoriteVehicle {
+  final int vehicleId;
+  final int typeId;
+  final String typeName;
+  final String licensePlate;
+  final String brand;
+  final String model;
+  final int year;
+  final String? color;
+  final String status;
+  final int seatCapacity;
+  final double pricePerDay;
+  final String? primaryImageUrl;
+
+  const FavoriteVehicle({
+    required this.vehicleId,
+    required this.typeId,
+    required this.typeName,
+    required this.licensePlate,
+    required this.brand,
+    required this.model,
+    required this.year,
+    required this.status,
+    required this.seatCapacity,
+    required this.pricePerDay,
+    this.color,
+    this.primaryImageUrl,
+  });
+
+  String get title => '$brand $model'.trim();
+
+  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) =>
+      FavoriteVehicle(
+        vehicleId: json['vehicleId'] as int? ?? 0,
+        typeId: json['typeId'] as int? ?? 0,
+        typeName: json['typeName'] as String? ?? '',
+        licensePlate: json['licensePlate'] as String? ?? '',
+        brand: json['brand'] as String? ?? '',
+        model: json['model'] as String? ?? '',
+        year: json['year'] as int? ?? 0,
+        color: json['color'] as String?,
+        status: json['status'] as String? ?? '',
+        seatCapacity: json['seatCapacity'] as int? ?? 0,
+        pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
+        primaryImageUrl: json['primaryImageUrl'] as String?,
+      );
 }

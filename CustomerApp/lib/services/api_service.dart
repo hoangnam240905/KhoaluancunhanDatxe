@@ -303,47 +303,58 @@ class ApiService {
         .toList();
   }
 
-  Future<List<Vehicle>> getVehicles({String? status}) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/vehicles',
-    ).replace(queryParameters: status == null ? null : {'status': status});
-    final response = await http.get(uri);
-    if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final list = jsonDecode(response.body) as List<dynamic>;
-    return list
-        .map((e) => Vehicle.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
+  // ---- Self-drive licence (plan1.md Phần E) + photos (Phần F) ----
 
-  Future<List<FavoriteVehicle>> getFavorites() async {
+  Future<CustomerLicense> getMyLicense({DateTime? endDate}) async {
+    final query = endDate == null
+        ? ''
+        : '?endDate=${Uri.encodeQueryComponent(endDate.toIso8601String())}';
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/favorites'),
+      Uri.parse('${ApiConfig.baseUrl}/api/customers/me/license$query'),
       headers: await _headers(auth: true),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final list = jsonDecode(response.body) as List<dynamic>;
-    return list
-        .map((e) => FavoriteVehicle.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return CustomerLicense.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
-  Future<void> setFavorite(int vehicleId, bool favorite) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId');
-    final response = favorite
-        ? await http.put(uri, headers: await _headers(auth: true))
-        : await http.delete(uri, headers: await _headers(auth: true));
-    if (response.statusCode != 204) throw Exception(_errorMessage(response));
-  }
-
-  Future<List<UserDocument>> getMyDocuments() async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/documents/me'),
+  Future<CustomerLicense> updateMyLicense({
+    required String licenseNumber,
+    required String licenseClass,
+    DateTime? licenseIssueDate,
+    required DateTime licenseExpiry,
+  }) async {
+    String day(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/customers/me/license'),
       headers: await _headers(auth: true),
+      body: jsonEncode({
+        'licenseNumber': licenseNumber,
+        'licenseClass': licenseClass,
+        'licenseIssueDate': licenseIssueDate == null
+            ? null
+            : day(licenseIssueDate),
+        'licenseExpiry': day(licenseExpiry),
+      }),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    final list = jsonDecode(response.body) as List<dynamic>;
+    return CustomerLicense.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<LicenseClassOption>> getLicenseClasses() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/license-classes'),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
     return list
-        .map((e) => UserDocument.fromJson(e as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .map(LicenseClassOption.fromJson)
         .toList();
   }
 
@@ -357,13 +368,33 @@ class ApiService {
       'POST',
       Uri.parse('${ApiConfig.baseUrl}/api/documents'),
     );
-    if (token != null) request.headers['Authorization'] = '******';
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.fields['type'] = type;
     request.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: fileName),
     );
     final response = await http.Response.fromStream(await request.send());
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  String documentFileUrl(int documentId) =>
+      '${ApiConfig.baseUrl}/api/documents/$documentId/file';
+
+  Future<Map<String, String>> authHeaders() async {
+    final token = await authService.getToken();
+    return token == null ? {} : {'Authorization': 'Bearer $token'};
+  }
+
+  Future<List<Vehicle>> getVehicles({String? status}) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/vehicles',
+    ).replace(queryParameters: status == null ? null : {'status': status});
+    final response = await http.get(uri);
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => Vehicle.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<DriverOption>> getAvailableDrivers({
@@ -409,6 +440,62 @@ class ApiService {
     return DriverSchedule.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  // ---- Xe yêu thích (same API as the web page) ----
+
+  Future<List<FavoriteVehicle>> getFavorites() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(FavoriteVehicle.fromJson)
+        .toList();
+  }
+
+  Future<void> setFavorite(int vehicleId, bool favorite) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId');
+    final response = favorite
+        ? await http.put(uri, headers: await _headers(auth: true))
+        : await http.delete(uri, headers: await _headers(auth: true));
+    if (response.statusCode != 204) throw Exception(_errorMessage(response));
+  }
+
+  Future<List<UserDocument>> getMyDocuments() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/documents/me'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => UserDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> addFavorite(int vehicleId) async {
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
+  }
+
+  Future<void> removeFavorite(int vehicleId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(_errorMessage(response));
+    }
   }
 
   Future<List<VehicleTypeRecommendation>> getRecommended({
@@ -658,6 +745,19 @@ class ApiService {
     return RentalContract.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  /// "Phụ lục đổi xe" of a booking (plan1.md Phần I).
+  Future<List<VehicleChange>> getVehicleChanges(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/vehicle-changes'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => VehicleChange.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<RentalContract> createContract(int bookingId) async {
