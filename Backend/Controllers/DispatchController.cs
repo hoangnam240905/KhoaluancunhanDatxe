@@ -16,8 +16,41 @@ namespace Backend.Controllers;
 public class DispatchController(
     DispatchService dispatchService,
     IncidentService incidents,
-    VehicleInspectionService inspections) : ControllerBase
+    VehicleInspectionService inspections,
+    DriverVerificationService driverVerification) : ControllerBase
 {
+    // ---- Driver licence verification (plan1.md Phần D) ----
+
+    /// <summary>status: Pending (default) / Verified / Rejected / All.</summary>
+    [HttpGet("driver-verifications")]
+    public async Task<ActionResult<List<Backend.DTOs.Drivers.DriverVerificationResponse>>> DriverVerifications([FromQuery] string? status)
+        => Ok(await driverVerification.ListAsync(status));
+
+    [HttpGet("driver-verifications/{driverId:int}")]
+    public async Task<ActionResult<Backend.DTOs.Drivers.DriverVerificationResponse>> DriverVerification(int driverId)
+    {
+        var data = await driverVerification.GetAsync(driverId);
+        return data is null ? NotFound(new { message = DriverVerificationService.NotFound }) : Ok(data);
+    }
+
+    /// <summary>Step 1: accept the photos (driver is asked to come to the office) or reject them with a reason.</summary>
+    [HttpPost("driver-verifications/{driverId:int}/photos")]
+    public async Task<ActionResult<Backend.DTOs.Drivers.DriverVerificationResponse>> ReviewDriverPhotos(
+        int driverId, Backend.DTOs.Drivers.ReviewDriverPhotosRequest request)
+    {
+        var (data, error) = await driverVerification.ReviewPhotosAsync(driverId, CurrentUserId(), request.Accept, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    /// <summary>Step 2: the original licence was checked at the office — verified, or not (reason required).</summary>
+    [HttpPost("driver-verifications/{driverId:int}/verify")]
+    public async Task<ActionResult<Backend.DTOs.Drivers.DriverVerificationResponse>> VerifyDriver(
+        int driverId, Backend.DTOs.Drivers.VerifyDriverRequest request)
+    {
+        var (data, error) = await driverVerification.VerifyAsync(driverId, CurrentUserId(), request.Verified, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [HttpGet("fleet-status")]
     public async Task<ActionResult<DispatchFleetStatusResponse>> FleetStatus()
         => Ok(await dispatchService.GetFleetStatusAsync());

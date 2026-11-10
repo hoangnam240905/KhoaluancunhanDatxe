@@ -11,7 +11,7 @@ namespace Backend.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/documents")]
-public class DocumentsController(UserDocumentService documents) : ControllerBase
+public class DocumentsController(UserDocumentService documents, DriverVerificationService driverVerification) : ControllerBase
 {
     /// <summary>Upload one side of a document (multipart: type, file).</summary>
     [HttpPost]
@@ -21,7 +21,11 @@ public class DocumentsController(UserDocumentService documents) : ControllerBase
     {
         await using var stream = file?.OpenReadStream();
         var (document, error) = await documents.UploadAsync(CurrentUserId(), type, stream, file?.Length ?? 0);
-        return document is null ? BadRequest(new { message = error }) : Ok(document);
+        if (document is null)
+            return BadRequest(new { message = error });
+        if (User.IsInRole(RoleNames.Driver))
+            await driverVerification.NotifyDispatchersIfReadyAsync(CurrentUserId());
+        return Ok(document);
     }
 
     /// <summary>My newest photo of each type, with its review status.</summary>

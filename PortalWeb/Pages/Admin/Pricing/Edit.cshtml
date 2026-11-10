@@ -55,6 +55,16 @@
         <input asp-for="Input.SelfDriveDepositAmount" class="form-control" type="number" step="1" min="0" />
         <span asp-validation-for="Input.SelfDriveDepositAmount" class="text-danger"></span>
     </div>
+    <div class="col-md-6">
+        <label class="form-label">Hạng bằng lái tối thiểu (Luật 36/2024)</label>
+        <select asp-for="Input.MinLicenseClass" class="form-select">
+            <option value="B">B — xe đến 8 chỗ (không kể ghế lái)</option>
+            <option value="D1">D1 — trên 8 đến 16 chỗ</option>
+            <option value="D2">D2 — trên 16 đến 29 chỗ</option>
+            <option value="D">D — trên 29 chỗ</option>
+        </select>
+        <small class="text-muted">Tài xế và khách tự lái phải có hạng bằng này trở lên (bằng cũ còn hạn được tính tương đương).</small>
+    </div>
     <div class="col-12">
         <button type="submit" class="btn btn-primary">Lưu giá</button>
         <a asp-page="Index" class="btn btn-secondary">Quay lại</a>

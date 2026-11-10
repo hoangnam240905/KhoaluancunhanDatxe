@@ -30,6 +30,8 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         public decimal WithDriverDepositAmount { get; set; }
         [Required, Range(0, double.MaxValue, ErrorMessage = "Giá không được âm.")]
         public decimal SelfDriveDepositAmount { get; set; }
+        /// <summary>Lowest licence class for this type (B / D1 / D2 / D, Luật 36/2024 — plan1.md Phần D).</summary>
+        public string? MinLicenseClass { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync(int id)
@@ -52,7 +54,7 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         var body = new UpdateVehicleTypePricingRequest(
             Input.PricePerDay, Input.PricePerKm, Input.DriverFeePerDay,
             Input.SelfDrivePricePerDay, Input.SelfDriveIncludedKmPerDay, Input.SelfDriveExtraKmPrice,
-            Input.WithDriverDepositAmount, Input.SelfDriveDepositAmount);
+            Input.WithDriverDepositAmount, Input.SelfDriveDepositAmount, Input.MinLicenseClass);
         var (data, error) = await api.UpdateVehicleTypePricingAsync(id, body);
         if (data is null) { ErrorMessage = error; return Page(); }
         return RedirectToPage("Index");
@@ -72,6 +74,7 @@ public class EditModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
             SelfDrivePricePerDay = t.SelfDrivePricePerDay,
             SelfDriveIncludedKmPerDay = t.SelfDriveIncludedKmPerDay,
             SelfDriveExtraKmPrice = t.SelfDriveExtraKmPrice,
+            MinLicenseClass = t.MinLicenseClass,
             WithDriverDepositAmount = t.WithDriverDepositAmount,
             SelfDriveDepositAmount = t.SelfDriveDepositAmount
         };

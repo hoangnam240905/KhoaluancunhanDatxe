@@ -210,7 +210,9 @@ public class AdminPricingPaymentTests
         Assert.DoesNotContain("SelfDriveExtraKmPrice", names);
         Assert.DoesNotContain("WithDriverDepositAmount", names);
         Assert.DoesNotContain("SelfDriveDepositAmount", names);
-        Assert.Equal(7, names.Count);
+        // plan1.md Phần D/E: the minimum licence class is public (not a price) so customers see which types they may drive.
+        Assert.Contains("MinLicenseClass", names);
+        Assert.Equal(8, names.Count);
     }
 
     [Fact]

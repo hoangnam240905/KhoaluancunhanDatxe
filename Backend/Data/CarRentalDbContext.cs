@@ -1086,6 +1086,9 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
         AddColumns("IncidentReports",
             ("ResolvedByUserId", "INTEGER"), ("ResolvedByName", "TEXT"), ("ResolvedByRole", "TEXT"),
             ("ResolvedAt", "TEXT"), ("ResolutionNote", "TEXT"));
+        AddColumns("VehicleTypes", ("MinLicenseClass", "TEXT"));
+        AddColumns("Drivers",
+            ("VerifiedByUserId", "INTEGER"), ("VerifiedByName", "TEXT"), ("VerifiedAt", "TEXT"), ("VerificationNote", "TEXT"));
         AddColumns("MaintenanceRecords",
             ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"),
             ("CompletedByUserId", "INTEGER"), ("CompletedByName", "TEXT"), ("CompletedByRole", "TEXT"));

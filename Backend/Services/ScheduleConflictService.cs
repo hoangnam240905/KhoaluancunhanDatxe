@@ -193,7 +193,8 @@ public class ScheduleConflictService(CarRentalDbContext db)
         DateTime start,
         DateTime end,
         int? excludeDriverId = null,
-        int? excludeBookingId = null)
+        int? excludeBookingId = null,
+        VehicleType? qualifyFor = null)
     {
         var query = db.Drivers
             .Include(d => d.User)
@@ -205,6 +206,9 @@ public class ScheduleConflictService(CarRentalDbContext db)
         var available = new List<Driver>();
         foreach (var driver in candidates)
         {
+            // plan1.md Phần D: verified, licence valid through the trip, class covers the vehicle type.
+            if (qualifyFor is not null && DriverQualification.ReasonFor(driver, qualifyFor, end) is not null)
+                continue;
             if (!await HasDriverConflictAsync(driver.DriverId, start, end, excludeBookingId))
                 available.Add(driver);
         }

@@ -16,6 +16,8 @@ public class VehicleType
     public string? Description { get; set; }
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Lowest licence class that may drive this type (B / D1 / D2 / D, Luật 36/2024); null = from seats.</summary>
+    public string? MinLicenseClass { get; set; }
 
     public ICollection<Vehicle> Vehicles { get; set; } = [];
     public ICollection<Booking> Bookings { get; set; } = [];

@@ -65,11 +65,11 @@ public record AdminVehicleTypeResponse(
     decimal PricePerDay, decimal PricePerKm, decimal DriverFeePerDay,
     decimal SelfDrivePricePerDay, decimal SelfDriveIncludedKmPerDay, decimal SelfDriveExtraKmPrice,
     decimal WithDriverDepositAmount, decimal SelfDriveDepositAmount,
-    string? Description, string? ImageUrl, bool IsActive);
+    string? Description, string? ImageUrl, bool IsActive, string? MinLicenseClass = null);
 public record UpdateVehicleTypePricingRequest(
     decimal PricePerDay, decimal PricePerKm, decimal DriverFeePerDay,
     decimal SelfDrivePricePerDay, decimal SelfDriveIncludedKmPerDay, decimal SelfDriveExtraKmPrice,
-    decimal WithDriverDepositAmount, decimal SelfDriveDepositAmount);
+    decimal WithDriverDepositAmount, decimal SelfDriveDepositAmount, string? MinLicenseClass = null);
 public record VehicleTypeRecommendationResponse(
     int VehicleTypeId, string TypeName, decimal Score, decimal AvgRating, decimal PricePerDay, int AvailableCount);
 public record VehicleResponse(
@@ -187,6 +187,7 @@ public record AssignedVehicleResponse(int VehicleId, string LicensePlate, string
 public record BookingFeeResponse(int FeeId, string FeeType, string? Description, decimal Amount, DateTime CreatedAt);
 public record VehicleInspectionResponse(int InspectionId, int BookingId, int VehicleId, string InspectionType, DateTime ActualAt, decimal? OdometerKm, decimal? FuelLevel, string? Condition, string? Notes, DateTime CreatedAt, string? ExteriorCondition = null, string? TechnicalCondition = null, int? CreatedByUserId = null, string? CreatedByName = null, string? CreatedByRole = null, string? UpdatedByName = null, string? UpdatedByRole = null, DateTime? UpdatedAt = null, string? VerificationStatus = null, string? VerificationNote = null, string? VerifiedByName = null, DateTime? VerifiedAt = null);
 public record UserDocumentResponse(int UserDocumentId, int UserId, string? UserName, string DocumentType, string ContentType, long SizeBytes, string Status, string? ReviewedByName, DateTime? ReviewedAt, string? RejectReason, DateTime CreatedAt);
+public record DriverVerificationResponse(int DriverId, string FullName, string Email, string? Phone, string? LicenseNumber, string? LicenseClass, string? LicenseClassLabel, DateOnly? LicenseIssueDate, DateOnly? LicenseExpiry, string? IdNumber, string VerificationStatus, string PhotoStatus, IReadOnlyList<string> MissingDocuments, IReadOnlyList<UserDocumentResponse> Documents, string? VerifiedByName, DateTime? VerifiedAt, string? VerificationNote, bool LicenseExpiringSoon, bool LicenseExpired, bool LicenseInfoComplete, bool IsActive);
 public record InspectionDisputeResponse(int InspectionDisputeId, int BookingId, int InspectionId, string? RaisedByName, string Note, string Status, string? ResolvedByName, string? ResolutionNote, DateTime? ResolvedAt, DateTime CreatedAt);
 public record BookingQuoteResponse(
     int VehicleTypeId,
@@ -342,9 +343,9 @@ public record IncidentResponse(
 public record ResolveIncidentRequest(string? Note);
 public record ChangePasswordRequest(string OldPassword, string NewPassword);
 public record CreateVehicleTypeRequest(string TypeName, decimal PricePerDay, decimal PricePerKm);
-public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive);
-public record CreateAdminDriverRequest(string FullName, string Email, string Phone, string Password);
-public record UpdateAdminDriverRequest(string? FullName, string? Phone, string? Status);
+public record AdminDriverResponse(int DriverId, string FullName, string Email, string? Phone, string LicenseNumber, DateOnly LicenseExpiry, string Status, decimal AverageRating, int TotalTrips, bool IsActive, string? LicenseClass = null, DateOnly? LicenseIssueDate = null, string? IdNumber = null, DateOnly? DateOfBirth = null, string? Address = null, string? AvatarUrl = null, double? ExperienceYears = null, double? OnTimeRate = null, double? TotalDistanceKm = null, string VerificationStatus = "Pending");
+public record CreateAdminDriverRequest(string FullName, string Email, string Phone, string Password, string? LicenseClass = null, DateOnly? LicenseIssueDate = null, string? IdNumber = null, string? LicenseNumber = null, DateOnly? LicenseExpiry = null);
+public record UpdateAdminDriverRequest(string? FullName, string? Phone, string? Status, string? LicenseClass = null, DateOnly? LicenseIssueDate = null, string? IdNumber = null, string? LicenseNumber = null, DateOnly? LicenseExpiry = null);
 public record AdminCustomerResponse(int CustomerId, string FullName, string Email, string? Phone, bool IsLocked, DateTime CreatedAt, bool IsActive = true, string? Address = null, string? IdNumber = null, DateOnly? DateOfBirth = null, string? LockReason = null, DateTime? LockedAt = null, int? LockedByUserId = null, string? LockedByName = null, string? InactiveReason = null, DateTime? InactivatedAt = null, int? InactivatedByUserId = null, string? InactivatedByName = null);
 public record AdminCustomerListResponse(List<AdminCustomerResponse> Items, int Total, int Page, int PageSize);
 public record LockCustomerRequest(bool IsLocked, string? Reason = null);

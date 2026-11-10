@@ -335,7 +335,8 @@ public class DriverService(
     {
         var error = CustomerRegistrationRules.ValidateAdminDriver(
             request.FullName, request.Email, request.Phone, request.Password,
-            out var fullName, out var email, out var phone);
+            out var fullName, out var email, out var phone)
+            ?? ValidateLicence(request.LicenseClass, request.LicenseNumber);
         if (error is not null)
             return (null, error, StatusCodes.Status400BadRequest);
 
@@ -366,8 +367,9 @@ public class DriverService(
         var driver = new Driver
         {
             DriverId = user.UserId,
-            LicenseNumber = $"DRV-{user.UserId:D6}",
-            LicenseExpiry = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10)),
+            // No made-up licence: empty until entered; the driver cannot be assigned before it is verified.
+            LicenseNumber = request.LicenseNumber?.Trim().ToUpperInvariant() ?? string.Empty,
+            LicenseExpiry = request.LicenseExpiry ?? DateOnly.MinValue,
             Status = DriverStatuses.Available,
             AverageRating = 0,
             TotalTrips = 0,
@@ -381,7 +383,7 @@ public class DriverService(
             ExperienceYears = request.ExperienceYears,
             OnTimeRate = request.OnTimeRate,
             TotalDistanceKm = request.TotalDistanceKm,
-            VerificationStatus = TrimOrNull(request.VerificationStatus) ?? "Pending"
+            VerificationStatus = NormalizeVerification(request.VerificationStatus) ?? DriverVerificationStatuses.Pending
         };
         db.Drivers.Add(driver);
         await db.SaveChangesAsync();
@@ -397,6 +399,8 @@ public class DriverService(
             .FirstOrDefaultAsync(d => d.DriverId == driverId);
         if (driver is null)
             return (null, "Không tìm thấy tài xế.", StatusCodes.Status404NotFound);
+        if (ValidateLicence(request.LicenseClass, request.LicenseNumber) is string licenceError)
+            return (null, licenceError, StatusCodes.Status400BadRequest);
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
             driver.User.FullName = CustomerRegistrationRules.NormalizeFullName(request.FullName);
@@ -457,8 +461,29 @@ public class DriverService(
         driver.Address, driver.AvatarUrl, driver.ExperienceYears, driver.OnTimeRate,
         driver.TotalDistanceKm, driver.VerificationStatus);
 
+    private static string? ValidateLicence(string? licenceClass, string? licenceNumber)
+    {
+        if (!string.IsNullOrWhiteSpace(licenceClass) && Validation.LicenseClasses.Find(licenceClass) is null)
+            return DriverVerificationService.LicenseClassInvalid;
+        if (licenceNumber is { Length: > 30 })
+            return DriverVerificationService.LicenseNumberTooLong;
+        return null;
+    }
+
+    private static string? NormalizeVerification(string? value) => TrimOrNull(value) switch
+    {
+        null => null,
+        var v when string.Equals(v, DriverVerificationStatuses.Verified, StringComparison.OrdinalIgnoreCase) => DriverVerificationStatuses.Verified,
+        var v when string.Equals(v, DriverVerificationStatuses.Rejected, StringComparison.OrdinalIgnoreCase) => DriverVerificationStatuses.Rejected,
+        _ => DriverVerificationStatuses.Pending
+    };
+
     private static void ApplyProfile(Driver driver, UpdateAdminDriverRequest request)
     {
+        if (request.LicenseNumber is not null)
+            driver.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
+        if (request.LicenseExpiry is not null)
+            driver.LicenseExpiry = request.LicenseExpiry.Value;
         if (request.LicenseClass is not null)
             driver.LicenseClass = TrimOrNull(request.LicenseClass);
         if (request.LicenseIssueDate is not null)
@@ -478,7 +503,7 @@ public class DriverService(
         if (request.TotalDistanceKm is not null)
             driver.TotalDistanceKm = request.TotalDistanceKm;
 
-        var status = TrimOrNull(request.VerificationStatus);
+        var status = NormalizeVerification(request.VerificationStatus);
         if (status is not null)
             driver.VerificationStatus = status;
     }

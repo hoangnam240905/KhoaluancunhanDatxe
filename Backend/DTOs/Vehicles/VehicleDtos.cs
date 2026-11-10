@@ -7,7 +7,8 @@ public record VehicleTypeResponse(
     decimal PricePerDay,
     decimal PricePerKm,
     string? Description,
-    string? ImageUrl);
+    string? ImageUrl,
+    string? MinLicenseClass = null);
 
 public record AdminVehicleTypeResponse(
     int TypeId,
@@ -23,7 +24,8 @@ public record AdminVehicleTypeResponse(
     decimal SelfDriveDepositAmount,
     string? Description,
     string? ImageUrl,
-    bool IsActive);
+    bool IsActive,
+    string? MinLicenseClass = null);
 
 public record CreateVehicleTypeRequest(
     string? TypeName,
@@ -38,7 +40,8 @@ public record UpdateVehicleTypePricingRequest(
     decimal? SelfDriveIncludedKmPerDay,
     decimal? SelfDriveExtraKmPrice,
     decimal? WithDriverDepositAmount,
-    decimal? SelfDriveDepositAmount);
+    decimal? SelfDriveDepositAmount,
+    string? MinLicenseClass = null);
 
 public record VehicleBusyPeriodResponse(DateTime StartDate, DateTime EndDate);
 

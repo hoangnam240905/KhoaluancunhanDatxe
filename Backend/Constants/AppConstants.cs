@@ -328,6 +328,14 @@ public static class InspectionVerificationStatuses
     public const string Mismatch = "Mismatch";
 }
 
+/// <summary>Driver licence check (plan1.md Phần D, step 2): only Verified drivers can be assigned.</summary>
+public static class DriverVerificationStatuses
+{
+    public const string Pending = "Pending";
+    public const string Verified = "Verified";
+    public const string Rejected = "Rejected";
+}
+
 /// <summary>Sides of the documents a driver / self-drive customer photographs (plan1.md Phần F).</summary>
 public static class UserDocumentTypes
 {

@@ -95,6 +95,7 @@ public static class DemoRichSeeder
     {
         TypeName = name,
         SeatCapacity = seats,
+        MinLicenseClass = Validation.LicenseClasses.MinimumForSeats(seats),
         PricePerDay = day,
         PricePerKm = km,
         DriverFeePerDay = PricingDefaults.DriverFeePerDay(day),
@@ -184,6 +185,9 @@ public static class DemoRichSeeder
             {
                 DriverId = id,
                 LicenseNumber = d.License,
+                // Old B2 for cars; driver12 holds D2 for the 29-seat bus. Sample drivers are verified (plan1.md Phần D).
+                LicenseClass = d.Email == "driver12@carrental.vn" ? "D2" : "B2",
+                VerificationStatus = DriverVerificationStatuses.Verified,
                 LicenseExpiry = expiry,
                 Status = d.Status,
                 AverageRating = 0,

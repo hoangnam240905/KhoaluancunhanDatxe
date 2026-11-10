@@ -125,6 +125,57 @@ public class AuthService(
         return (new RegisterPendingResponse(email, otpService.SentMessage, true), null);
     }
 
+    /// <summary>
+    /// Driver sign-up from the app (plan1.md Phần D): the account works at once but stays "Chờ xác minh",
+    /// so it cannot be assigned until a dispatcher checks the licence. No e-mail code: the identity is
+    /// checked in person with the original licence and ID card.
+    /// </summary>
+    public async Task<(AuthResponse? Data, string? Error)> RegisterDriverAsync(Backend.DTOs.Drivers.RegisterDriverRequest request)
+    {
+        if (!string.IsNullOrEmpty(request.ConfirmPassword) && request.ConfirmPassword != request.Password)
+            return (null, CustomerRegistrationRules.ConfirmPasswordMismatch);
+        var error = CustomerRegistrationRules.ValidateAdminDriver(
+            request.FullName, request.Email, request.Phone, request.Password,
+            out var fullName, out var email, out var phone);
+        if (error is not null)
+            return (null, error);
+        if (await db.Users.AnyAsync(u => u.Email.ToLower() == email))
+            return (null, CustomerRegistrationRules.EmailInUse);
+        if (await db.Users.AnyAsync(u => u.Phone == phone))
+            return (null, CustomerRegistrationRules.PhoneInUse);
+        var role = await db.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleNames.Driver);
+        if (role is null)
+            return (null, "Đăng ký không thành công.");
+
+        var user = new User
+        {
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            FullName = fullName,
+            Phone = phone,
+            RoleId = role.RoleId,
+            IsActive = true,
+            IsEmailVerified = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        db.Drivers.Add(new Driver
+        {
+            DriverId = user.UserId,
+            LicenseNumber = string.Empty,
+            LicenseExpiry = DateOnly.MinValue,
+            Status = DriverStatuses.Offline,
+            IsActive = true,
+            VerificationStatus = DriverVerificationStatuses.Pending
+        });
+        DriverVerificationService.AddWelcomeNotification(db, user.UserId);
+        await db.SaveChangesAsync();
+
+        user.Role = role;
+        return (IssueAuth(user), null);
+    }
+
     public async Task<(AuthResponse? Data, string? Error)> VerifyEmailAsync(VerifyEmailRequest request)
     {
         var email = EmailOtpService.NormalizeEmail(request.Email);

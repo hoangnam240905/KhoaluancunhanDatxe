@@ -57,6 +57,7 @@ builder.Services.AddSingleton(new DocumentStorage(
         ? documentRoot
         : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "documents")));
 builder.Services.AddScoped<UserDocumentService>();
+builder.Services.AddScoped<DriverVerificationService>();
 builder.Services.AddScoped<VehicleInspectionService>();
 builder.Services.AddScoped<BookingFeeService>();
 builder.Services.AddScoped<AdminCustomerService>();
@@ -106,6 +107,7 @@ builder.Services.AddSingleton<IRealtimePublisher>(sp => new NotifyingRealtimePub
     sp.GetRequiredService<SignalRRealtimePublisher>(), sp.GetRequiredService<NotificationQueue>(),
     sp.GetRequiredService<Backend.Services.Invoices.InvoiceMailQueue>()));
 builder.Services.AddHostedService<NotificationWriter>();
+builder.Services.AddHostedService<Backend.Services.Notifications.LicenseExpiryNotifier>();
 builder.Services.AddScoped<Backend.Services.Invoices.InvoiceService>();
 builder.Services.AddScoped<Backend.Services.Invoices.InvoiceMailService>();
 builder.Services.AddHostedService<Backend.Services.Invoices.InvoiceMailWriter>();
@@ -195,6 +197,7 @@ using (var scope = app.Services.CreateScope())
     VehicleModelImages.Seed(db); // plan1.md Giai đoạn 5: photo of each car's real model (idempotent)
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);
+    DriverLicenseBackfill.Run(db); // plan1.md Phần D: licence classes + verification for existing data (idempotent)
     db.FillVehicleTypePricingDefaults();
     db.ReconcileOpenAssignmentResourceStatus();
 

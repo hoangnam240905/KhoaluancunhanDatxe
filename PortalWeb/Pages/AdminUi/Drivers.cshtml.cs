@@ -1,3 +1,4 @@
+using PortalWeb.Display;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortalWeb.Models;
@@ -54,7 +55,13 @@ public class DriversModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         if (driver is null)
             return new JsonResult(new { message = "Không tìm thấy tài xế." }) { StatusCode = 404 };
 
-        return new JsonResult(new { driver });
+        // Licence / ID photos (plan1.md Phần F) — newest of each side.
+        var documents = (await api.GetDocumentsAsync(id))
+            .GroupBy(d => d.DocumentType)
+            .Select(g => g.OrderByDescending(d => d.UserDocumentId).First())
+            .Select(d => new { d.UserDocumentId, d.DocumentType, label = UiDisplay.DocumentType(d.DocumentType), status = UiDisplay.DocumentStatus(d.Status), d.RejectReason, d.ReviewedByName })
+            .ToList();
+        return new JsonResult(new { driver, documents });
     }
 
     public async Task<IActionResult> OnPostCreateAsync()

@@ -35,6 +35,16 @@ public class AuthController(AuthService authService) : ControllerBase
             : Ok(result);
     }
 
+    /// <summary>Driver sign-up (DriverApp). Returns a login token; the driver then declares the licence and sends photos.</summary>
+    [HttpPost("register-driver")]
+    public async Task<ActionResult<AuthResponse>> RegisterDriver(Backend.DTOs.Drivers.RegisterDriverRequest request)
+    {
+        var (result, error) = await authService.RegisterDriverAsync(request);
+        return result is null
+            ? BadRequest(new { message = error ?? "Đăng ký không thành công." })
+            : Ok(result);
+    }
+
     [HttpPost("verify-email")]
     public async Task<ActionResult<AuthResponse>> VerifyEmail(VerifyEmailRequest request)
     {

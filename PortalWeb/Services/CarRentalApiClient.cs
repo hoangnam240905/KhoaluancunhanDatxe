@@ -682,6 +682,36 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<UserDocumentResponse>(JsonOptions), null);
     }
 
+    // ---- Driver licence verification (plan1.md Phần D) ----
+
+    public async Task<List<DriverVerificationResponse>> GetDriverVerificationsAsync(string? status)
+    {
+        var url = "/api/dispatch/driver-verifications" + (string.IsNullOrWhiteSpace(status) ? "" : $"?status={Uri.EscapeDataString(status)}");
+        using var request = CreateRequest(HttpMethod.Get, url);
+        var response = await http.SendAsync(request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<List<DriverVerificationResponse>>(JsonOptions) ?? []
+            : [];
+    }
+
+    public async Task<(DriverVerificationResponse? Data, string? Error)> ReviewDriverPhotosAsync(int driverId, bool accept, string? reason)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/driver-verifications/{driverId}/photos");
+        request.Content = JsonContent.Create(new { accept, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả duyệt ảnh.");
+        return (await response.Content.ReadFromJsonAsync<DriverVerificationResponse>(JsonOptions), null);
+    }
+
+    public async Task<(DriverVerificationResponse? Data, string? Error)> VerifyDriverAsync(int driverId, bool verified, string? reason)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/driver-verifications/{driverId}/verify");
+        request.Content = JsonContent.Create(new { verified, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được kết quả xác minh.");
+        return (await response.Content.ReadFromJsonAsync<DriverVerificationResponse>(JsonOptions), null);
+    }
+
     // ---- Two-sided vehicle check on with-driver trips (plan1.md Phần A) ----
 
     public async Task<(VehicleInspectionResponse? Data, string? Error)> SavePreHandoverAsync(int bookingId, VehicleConditionRequest condition)

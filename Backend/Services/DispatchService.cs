@@ -74,7 +74,8 @@ public class DispatchService(
     private async Task<bool> HasConfirmableDriverAsync(Booking booking)
     {
         var drivers = await schedule.FindAssignableDriversAsync(
-            booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+            booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId,
+            qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
         foreach (var driver in drivers)
         {
             if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
@@ -175,7 +176,8 @@ public class DispatchService(
         if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
         {
             var drivers = await schedule.FindAssignableDriversAsync(
-                booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+                booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId,
+                qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
                 if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
@@ -417,6 +419,9 @@ public class DispatchService(
             .FirstOrDefaultAsync(d => d.DriverId == request.DriverId && d.IsActive && d.Status == DriverStatuses.Available);
         if (driver is null)
             return AssignTripResult.Fail("Tài xế không khả dụng.");
+        var vehicleType = await db.VehicleTypes.FindAsync(booking.VehicleTypeId);
+        if (vehicleType is not null && DriverQualification.ReasonFor(driver, vehicleType, booking.EndDate) is string notQualified)
+            return AssignTripResult.Fail(notQualified);
         if (await driverService.HasOpenAssignmentAsync(request.DriverId.Value))
         {
             return AssignTripResult.FromConflict(await BuildConflictAsync(
@@ -564,7 +569,8 @@ public class DispatchService(
         if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
         {
             var drivers = await schedule.FindAssignableDriversAsync(
-                booking.StartDate, booking.EndDate, excludeDriverId, booking.BookingId);
+                booking.StartDate, booking.EndDate, excludeDriverId, booking.BookingId,
+                await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
                 if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
