@@ -19,7 +19,8 @@ public class DispatchController(
     VehicleInspectionService inspections,
     DriverVerificationService driverVerification,
     CustomerLicenseService customerLicences,
-    VehicleChangeService vehicleChanges) : ControllerBase
+    VehicleChangeService vehicleChanges,
+    SettlementService settlements) : ControllerBase
 {
     // ---- Self-drive customer licences (plan1.md Phần E) ----
 
@@ -158,6 +159,16 @@ public class DispatchController(
     {
         var (inspection, error) = await dispatchService.VerifyReturnAsync(id, CurrentUserId(), request.Result, request.Note);
         return inspection is null ? BadRequest(new { message = error }) : Ok(inspection);
+    }
+
+    /// <summary>Close the settlement of a completed trip: extra fees typed now + balance/refund payment.</summary>
+    [HttpPost("bookings/{id:int}/settle")]
+    public async Task<ActionResult<BookingResponse>> Settle(
+        int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] SettleBookingRequest? request)
+    {
+        var (data, error, notFound) = await settlements.SettleAsync(id, CurrentUserId(), request);
+        if (notFound) return NotFound(new { message = error });
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
     // ---- Vehicle change (plan1.md Phần I) ----

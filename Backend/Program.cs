@@ -61,6 +61,7 @@ builder.Services.AddScoped<DriverVerificationService>();
 builder.Services.AddScoped<CustomerLicenseService>();
 builder.Services.AddScoped<VehicleInspectionService>();
 builder.Services.AddScoped<VehicleChangeService>();
+builder.Services.AddScoped<SettlementService>();
 builder.Services.AddScoped<BookingFeeService>();
 builder.Services.AddScoped<AdminCustomerService>();
 builder.Services.AddScoped<CustomerProfileService>();

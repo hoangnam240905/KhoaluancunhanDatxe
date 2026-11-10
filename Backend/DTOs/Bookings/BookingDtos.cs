@@ -82,7 +82,15 @@ public record BookingResponse(
     DateTime? CustomerCancelDeadline = null,
     string? CustomerLicenseStatus = null,
     string? OriginalLicenseCheckedByName = null,
-    DateTime? OriginalLicenseCheckedAt = null);
+    DateTime? OriginalLicenseCheckedAt = null,
+    string? SettlementStatus = null,
+    DateTime? SettledAt = null,
+    string? SettledByName = null,
+    string? SettlementNote = null,
+    decimal PaidAmount = 0);
+
+/// <summary>Dispatcher closes the settlement of a completed trip; fees typed here are added on top of the final amount.</summary>
+public record SettleBookingRequest(decimal? ExtraFuel, decimal? Damage, decimal? Other, string? Note, string? PaymentMethod);
 
 public record CancelBookingRequest(string? CancellationReason);
 

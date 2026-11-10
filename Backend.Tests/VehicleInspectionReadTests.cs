@@ -127,22 +127,27 @@ public class VehicleInspectionReadTests
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        // plan1.md Phần E appended the self-drive licence fields at the end.
-        Assert.Equal("OriginalLicenseCheckedAt", names[^1]);
-        Assert.Equal("OriginalLicenseCheckedByName", names[^2]);
-        Assert.Equal("CustomerLicenseStatus", names[^3]);
-        Assert.Equal("CustomerCancelDeadline", names[^4]);
-        Assert.Equal("CustomerCanCancel", names[^5]);
-        Assert.Equal("RequestedDriverName", names[^6]);
-        Assert.Equal("RequestedDriverId", names[^7]);
-        Assert.Equal("CancellationReason", names[^8]);
-        Assert.Equal("HasActiveDeposit", names[^9]);
-        Assert.Equal("Review", names[^10]);
-        Assert.Equal("Inspections", names[^11]);
-        Assert.Equal("TotalFees", names[^12]);
-        Assert.Equal("FinalBaseAmount", names[^13]);
-        Assert.Equal("Fees", names[^14]);
-        Assert.Equal("FinalAmount", names[^15]);
+        // Settlement fields (plan quyết toán) come last, after the Phần E self-drive licence fields.
+        Assert.Equal("PaidAmount", names[^1]);
+        Assert.Equal("SettlementNote", names[^2]);
+        Assert.Equal("SettledByName", names[^3]);
+        Assert.Equal("SettledAt", names[^4]);
+        Assert.Equal("SettlementStatus", names[^5]);
+        Assert.Equal("OriginalLicenseCheckedAt", names[^6]);
+        Assert.Equal("OriginalLicenseCheckedByName", names[^7]);
+        Assert.Equal("CustomerLicenseStatus", names[^8]);
+        Assert.Equal("CustomerCancelDeadline", names[^9]);
+        Assert.Equal("CustomerCanCancel", names[^10]);
+        Assert.Equal("RequestedDriverName", names[^11]);
+        Assert.Equal("RequestedDriverId", names[^12]);
+        Assert.Equal("CancellationReason", names[^13]);
+        Assert.Equal("HasActiveDeposit", names[^14]);
+        Assert.Equal("Review", names[^15]);
+        Assert.Equal("Inspections", names[^16]);
+        Assert.Equal("TotalFees", names[^17]);
+        Assert.Equal("FinalBaseAmount", names[^18]);
+        Assert.Equal("Fees", names[^19]);
+        Assert.Equal("FinalAmount", names[^20]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

@@ -39,6 +39,12 @@ public class Booking
     public int? OriginalLicenseCheckedByUserId { get; set; }
     public string? OriginalLicenseCheckedByName { get; set; }
     public DateTime? OriginalLicenseCheckedAt { get; set; }
+    /// <summary>Settlement after the trip (plan quyết toán): null/"Pending" until the dispatcher closes it, then "Settled".</summary>
+    public string? SettlementStatus { get; set; }
+    public DateTime? SettledAt { get; set; }
+    public int? SettledByUserId { get; set; }
+    public string? SettledByName { get; set; }
+    public string? SettlementNote { get; set; }
 
     public Customer Customer { get; set; } = null!;
     public VehicleType VehicleType { get; set; } = null!;

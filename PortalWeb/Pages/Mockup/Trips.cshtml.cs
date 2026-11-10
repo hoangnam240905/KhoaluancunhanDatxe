@@ -176,6 +176,18 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
     }
 
+    /// <summary>Dispatcher closes the settlement of a completed trip (extra fees + balance / refund).</summary>
+    public async Task<IActionResult> OnPostSettleAsync(int id, decimal? extraFuel, decimal? damage, decimal? other,
+        string? note, string? paymentMethod)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (new[] { extraFuel, damage, other }.Any(v => v is < 0)) return ActionFail("Phí nhập tay không được âm.");
+        var (data, error) = await api.SettleBookingAsync(id, new SettleBookingRequest(extraFuel, damage, other, note, paymentMethod));
+        if (error is not null || data is null) return ActionFail(error ?? "Không chốt được quyết toán.");
+        return await ActionOkTripAsync(data);
+    }
+
     /// <summary>Free cars for a vehicle change (plan1.md Phần I): same type first, other types only when none.</summary>
     public async Task<IActionResult> OnGetVehicleChangeOptionsAsync(int id)
     {
@@ -380,7 +392,6 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                 {
                     "Dispatcher WithDriver complete/return (chỉ SelfDrive: POST /api/dispatch/bookings/{id}/complete)",
                     "Dispatcher create/update incident status (chỉ GET /api/dispatch/incidents)",
-                    "Settlement close / quyết toán chốt (không có endpoint)",
                     "Live GPS / map pins (không có endpoint)"
                 },
                 warnings

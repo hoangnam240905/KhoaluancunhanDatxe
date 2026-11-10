@@ -1105,7 +1105,8 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             ("DriverLicenseIssueDate", "TEXT"), ("LicenseReviewedByUserId", "INTEGER"), ("LicenseReviewedByName", "TEXT"),
             ("LicenseReviewedAt", "TEXT"), ("LicenseReviewNote", "TEXT"));
         AddColumns("Bookings",
-            ("OriginalLicenseCheckedByUserId", "INTEGER"), ("OriginalLicenseCheckedByName", "TEXT"), ("OriginalLicenseCheckedAt", "TEXT"));
+            ("OriginalLicenseCheckedByUserId", "INTEGER"), ("OriginalLicenseCheckedByName", "TEXT"), ("OriginalLicenseCheckedAt", "TEXT"),
+            ("SettlementStatus", "TEXT"), ("SettledAt", "TEXT"), ("SettledByUserId", "INTEGER"), ("SettledByName", "TEXT"), ("SettlementNote", "TEXT"));
         // Needs a NOT NULL default so existing customers start as "None" (no licence declared).
         var customerColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var cmd = Database.GetDbConnection().CreateCommand())

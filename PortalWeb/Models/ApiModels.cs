@@ -271,7 +271,13 @@ public record BookingResponse(
     DateTime? CustomerCancelDeadline = null,
     string? CustomerLicenseStatus = null,
     string? OriginalLicenseCheckedByName = null,
-    DateTime? OriginalLicenseCheckedAt = null);
+    DateTime? OriginalLicenseCheckedAt = null,
+    string? SettlementStatus = null,
+    DateTime? SettledAt = null,
+    string? SettledByName = null,
+    string? SettlementNote = null,
+    decimal PaidAmount = 0);
+public record SettleBookingRequest(decimal? ExtraFuel, decimal? Damage, decimal? Other, string? Note, string? PaymentMethod);
 public record TripAssignmentResponse(int AssignmentId, int DriverId, string DriverName, string? DriverPhone, int VehicleId, string LicensePlate, string Status, DateTime AssignedAt);
 public record UpdateBookingStatusRequest(string Status, string? Note);
 public record CancelBookingRequest(string? CancellationReason);

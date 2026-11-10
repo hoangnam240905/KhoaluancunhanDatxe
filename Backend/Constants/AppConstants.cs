@@ -341,6 +341,14 @@ public static class CustomerLicenseStatuses
 }
 
 /// <summary>Why the dispatcher changed the car during a rental (plan1.md Phần I, contract terms 10–13).</summary>
+public static class SettlementStatuses
+{
+    public const string Pending = "Pending";
+    public const string Settled = "Settled";
+
+    public static bool IsSettled(string? value) => value == Settled;
+}
+
 public static class VehicleChangeReasons
 {
     /// <summary>The car broke down / has a technical problem: the old car goes to maintenance.</summary>

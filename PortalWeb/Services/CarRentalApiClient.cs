@@ -778,6 +778,15 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         return (await response.Content.ReadFromJsonAsync<VehicleInspectionResponse>(JsonOptions), null);
     }
 
+    public async Task<(BookingResponse? Data, string? Error)> SettleBookingAsync(int bookingId, SettleBookingRequest body)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/settle");
+        request.Content = JsonContent.Create(body);
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không chốt được quyết toán.");
+        return (await response.Content.ReadFromJsonAsync<BookingResponse>(JsonOptions), null);
+    }
+
     // ---- Vehicle change (plan1.md Phần I) ----
 
     public async Task<(VehicleChangeOptionsResponse? Data, string? Error)> GetVehicleChangeOptionsAsync(int bookingId)

@@ -907,32 +907,48 @@
     }
 
     function settlementForm(t) {
-        const c = t.charges || { base: t.totalAmount || 0, deposit: t.depositAmount || 0, extraKm: 0, extraFuel: 0, damage: 0, other: 0 };
+        const c = t.charges || { base: t.totalAmount || 0, deposit: t.depositAmount || 0, paid: 0, extraKm: 0, extraFuel: 0, damage: 0, other: 0 };
         const total = Number(c.base || 0) + Number(c.extraFuel || 0) + Number(c.damage || 0) + Number(c.other || 0);
-        const remain = total - Number(c.deposit || 0);
+        const paid = Number(c.paid || 0);
+        const remain = total - paid;
+        const settled = t.settlement === "settled";
+        const remainText = (v) => v > 0 ? "Thu thêm " + money(v) : v < 0 ? "Hoàn lại " + money(-v) : "0 ₫";
+        const form = settled ? `
+            <p class="mk-note">✓ Đã quyết toán · ${esc(t.settledBy || "")}${t.settlementNote ? " · " + esc(t.settlementNote) : ""}</p>` : `
+            <form id="opSettleForm" data-id="${t.id}" data-total="${total}" data-paid="${paid}" class="op-form-grid">
+                <label class="mk-field"><span>Nhiên liệu bổ sung (₫)</span><input name="extraFuel" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Hư hỏng (₫)</span><input name="damage" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Phí khác (₫)</span><input name="other" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Phương thức thu / hoàn</span>
+                    <select name="paymentMethod"><option value="Cash">Tiền mặt</option><option value="BankTransfer">Chuyển khoản</option><option value="MoMo">MoMo</option><option value="VNPay">VNPay</option></select></label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span><input name="note" maxlength="500" placeholder="Ví dụ: trầy cản sau, khách đồng ý bồi thường" /></label>
+            </form>
+            <p class="mk-note">Sau khi chốt: tổng mới <strong data-settle-total>${money(total)}</strong> · <strong data-settle-remain>${remainText(remain)}</strong>. Hệ thống ghi khoản thu thêm / hoàn lại (mô phỏng), lưu tên bạn và báo cho khách.</p>
+            <p class="mk-note" id="opSettleError" style="color:#b91c1c"></p>`;
         openModal(`
             <h2>Quyết toán chuyến thuê</h2>
-            <p class="mk-note">Số tiền lấy từ Booking/Fees API khi có. <strong>Chốt quyết toán</strong> không có endpoint — chỉ presentation.</p>
+            <p class="mk-note">Tổng đã gồm km vượt, trả muộn, nhiên liệu và chênh lệch đổi xe (chốt lúc trả xe). Nhập thêm phí phát sinh (nếu có) rồi chốt.</p>
             <ol class="mk-note" style="padding-left:1.1rem">
                 <li>Đơn #${t.id} · ${MODE_LABEL[t.mode] || t.mode}</li>
                 <li>Xe: ${t.vehicle} ${t.plate}</li>
                 <li>Khách: ${t.customer}</li>
                 <li>Tổng (API): ${t.totalAmountText || money(total)}</li>
-                <li>Cọc: ${t.depositAmountText || money(c.deposit)}</li>
+                <li>Cọc theo báo giá: ${t.depositAmountText || money(c.deposit)}</li>
             </ol>
             <table class="op-settle">
                 <tr><th>Giá thuê cơ bản</th><td>${money(c.base)}</td></tr>
-                <tr><th>Tiền cọc</th><td>${money(c.deposit)}</td></tr>
                 <tr><th>Phí nhiên liệu</th><td>${money(c.extraFuel)}</td></tr>
                 <tr><th>Hư hỏng</th><td>${money(c.damage)}</td></tr>
                 <tr><th>Khác</th><td>${money(c.other)}</td></tr>
                 <tr class="total"><th>Tổng cộng</th><td>${money(total)}</td></tr>
-                <tr><th>Còn lại</th><td>${money(remain)}</td></tr>
+                <tr><th>Khách đã thanh toán</th><td>${money(paid)}</td></tr>
+                <tr><th>Còn lại</th><td>${settled ? "Đã tất toán" : remainText(remain)}</td></tr>
             </table>
             <p>${settleBadge(t.settlement)}</p>
+            ${form}
             <div class="mk-actions">
                 <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
-                <button type="button" class="mk-btn mk-btn-success" data-close-settle="${t.id}">✓ Chốt quyết toán (mock)</button>
+                ${settled ? "" : `<button type="submit" form="opSettleForm" class="mk-btn mk-btn-success">✓ Chốt quyết toán</button>`}
             </div>`);
         state.modal = "settle";
     }
@@ -1020,12 +1036,6 @@
             return;
         }
 
-        const settleDone = e.target.closest("[data-close-settle]");
-        if (settleDone) {
-            toast("Chốt quyết toán — thiếu API. Không đổi trạng thái Backend.");
-            closeModal();
-            return;
-        }
         const vc = e.target.closest("[data-vehicle-change]");
         if (vc) { vehicleChangeForm(trip(vc.dataset.vehicleChange)); return; }
         const pc = e.target.closest("[data-precheck]");
@@ -1091,6 +1101,21 @@
         }
     });
 
+    document.body.addEventListener("input", (e) => {
+        if (!e.target.matches || !e.target.matches("[data-settle-input]")) return;
+        const form = e.target.form;
+        let total = Number(form.dataset.total || 0);
+        form.querySelectorAll("[data-settle-input]").forEach((i) => {
+            const v = Number(String(i.value || "0").replace(/[.,\s]/g, ""));
+            if (Number.isFinite(v) && v > 0) total += v;
+        });
+        const remain = total - Number(form.dataset.paid || 0);
+        const t = document.querySelector("[data-settle-total]");
+        const r = document.querySelector("[data-settle-remain]");
+        if (t) t.textContent = money(total);
+        if (r) r.textContent = remain > 0 ? "Thu thêm " + money(remain) : remain < 0 ? "Hoàn lại " + money(-remain) : "0 ₫";
+    });
+
     document.body.addEventListener("submit", async (e) => {
         if (e.target.id === "opPrecheckForm") {
             e.preventDefault();
@@ -1113,6 +1138,35 @@
             closeModal();
             await reloadFromServer();
             render();
+            return;
+        }
+        if (e.target.id === "opSettleForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opSettleError");
+            const fields = { note: data.get("note"), paymentMethod: data.get("paymentMethod") };
+            for (const k of ["extraFuel", "damage", "other"]) {
+                const v = String(data.get(k) || "0").replace(/[.,\s]/g, "");
+                if (!/^\d+$/.test(v)) { box.textContent = "Phí nhập tay phải là số tiền không âm."; return; }
+                fields[k] = v;
+            }
+            const btn = document.querySelector('button[form="opSettleForm"]');
+            if (btn) btn.disabled = true;
+            const url = handlers.settle + (handlers.settle.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, fields);
+            if (!ok) {
+                box.textContent = (res && res.error) || "Không chốt được quyết toán.";
+                if (btn) btn.disabled = false;
+                return;
+            }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã quyết toán. Khách hàng đã được thông báo.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated && state.selectedId === updated.id) renderDrawer(updated);
             return;
         }
         if (e.target.id === "opVehicleChangeForm") {

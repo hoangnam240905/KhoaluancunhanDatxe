@@ -550,7 +550,12 @@ public class BookingService(
             // plan1.md Phần E: self-drive bookings show whether the customer's licence is approved yet.
             rentalMode == RentalModes.SelfDrive ? b.Customer.LicenseStatus : null,
             b.OriginalLicenseCheckedByName,
-            b.OriginalLicenseCheckedAt);
+            b.OriginalLicenseCheckedAt,
+            b.Status == BookingStatuses.Completed ? b.SettlementStatus ?? SettlementStatuses.Pending : null,
+            b.SettledAt,
+            b.SettledByName,
+            b.SettlementNote,
+            SettlementService.PaidAmount(b.Payments ?? []));
     }
 
     /// <summary>

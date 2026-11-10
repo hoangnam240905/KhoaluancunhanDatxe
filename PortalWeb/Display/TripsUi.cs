@@ -74,6 +74,8 @@ public static class TripsUi
             depositAmount = b.QuotedDepositAmount ?? 0m,
             depositAmountText = Money(b.QuotedDepositAmount ?? 0m),
             hasActiveDeposit = b.HasActiveDeposit,
+            settledBy = b.SettledAt is DateTime settledAt ? UiDisplay.Actor(b.SettledByName, "Dispatcher", settledAt) : null,
+            settlementNote = b.SettlementNote,
             ops,
             canHandoverApi = string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase),
             canCompleteApi = string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase)
@@ -144,10 +146,7 @@ public static class TripsUi
         if (!string.Equals(b.Status, "Completed", StringComparison.OrdinalIgnoreCase)
             && uiStatus != "completed")
             return "none";
-        // No dedicated settlement-close API — Completed trips show as pending until fees/payments imply settled.
-        if (b.FinalAmount is > 0 || (b.Fees?.Count ?? 0) > 0)
-            return "pending";
-        return "pending";
+        return string.Equals(b.SettlementStatus, "Settled", StringComparison.OrdinalIgnoreCase) ? "settled" : "pending";
     }
 
     private static int EstimateProgress(string status) => status switch
@@ -234,13 +233,16 @@ public static class TripsUi
             return null;
         var damage = b.Fees?.Where(f => f.FeeType.Contains("Damage", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
         var fuel = b.Fees?.Where(f => f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
+        // Extra km is already inside the base amount (see Backend BookingFeeTypes.IsIncludedInBase).
         var other = b.Fees?.Where(f =>
             !f.FeeType.Contains("Damage", StringComparison.OrdinalIgnoreCase)
-            && !f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
+            && !f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(f.FeeType, "ExtraKm", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
         return new Dictionary<string, object?>
         {
             ["base"] = b.FinalBaseAmount ?? b.TotalAmount,
             ["deposit"] = b.QuotedDepositAmount ?? 0m,
+            ["paid"] = b.PaidAmount,
             ["extraKm"] = 0,
             ["extraFuel"] = fuel,
             ["damage"] = damage,
