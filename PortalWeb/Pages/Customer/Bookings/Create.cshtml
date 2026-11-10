@@ -59,6 +59,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                         <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -122,6 +123,12 @@
                             <p class="cb-note" data-rebook-notice style="color:#b45309;margin:.35rem 0 0">@notice</p>
                         }
                     </div>
+                }
+                @if (Model.LicenceWarning is not null)
+                {
+                    <p class="cb-note" role="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.6rem .8rem;border-radius:10px">
+                        @Model.LicenceWarning <a href="/Customer/Profile#giay-to">Cập nhật bằng lái</a>
+                    </p>
                 }
                 <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
                 <input type="hidden" asp-for="Input.VehicleTypeId" />

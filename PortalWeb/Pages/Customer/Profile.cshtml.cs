@@ -23,6 +23,36 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public string? PasswordSuccess { get; private set; }
     public bool ShowPasswordPanel { get; private set; }
 
+    /// <summary>Newest licence photo of each side (plan1.md Phần F); needed only for self-drive rentals.</summary>
+    public List<UserDocumentResponse> Documents { get; private set; } = [];
+    [TempData] public string? DocumentMessage { get; set; }
+    [TempData] public string? DocumentError { get; set; }
+
+    public UserDocumentResponse? DocumentOf(string type) => Documents.FirstOrDefault(d => d.DocumentType == type);
+
+    /// <summary>Self-drive licence and its approval (plan1.md Phần E).</summary>
+    public CustomerLicenseResponse? License { get; private set; }
+    public List<LicenseClassOption> LicenseClasses { get; private set; } = [];
+
+    public static string LicenseStatusLabel(string? status) => status switch
+    {
+        "Approved" => "Đã duyệt",
+        "Pending" => "Chờ điều phối duyệt",
+        "Rejected" => "Chưa được chấp nhận",
+        _ => "Chưa khai"
+    };
+
+    /// <summary>Save the declared licence; a change sends it back for approval.</summary>
+    public async Task<IActionResult> OnPostSaveLicenseAsync(string? licenseNumber, string? licenseClass, DateOnly? licenseIssueDate, DateOnly? licenseExpiry)
+    {
+        var denied = RequireRole(auth, "Customer");
+        if (denied is not null) return denied;
+        var (_, error) = await api.UpdateMyLicenseAsync(licenseNumber, licenseClass, licenseIssueDate, licenseExpiry);
+        if (error is null) DocumentMessage = "Đã lưu thông tin bằng lái. Gửi đủ ảnh 2 mặt để điều phối duyệt.";
+        else DocumentError = error;
+        return RedirectToPage(null, null, "giay-to");
+    }
+
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Presentation.FullName) ? (auth.FullName ?? "") : Presentation.FullName;
 
@@ -78,7 +108,37 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        return await LoadProfileAsync() ?? Page();
+        var result = await LoadProfileAsync();
+        var docsTask = api.GetMyDocumentsAsync();
+        var licenseTask = api.GetMyLicenseAsync();
+        var classesTask = api.GetLicenseClassesAsync();
+        await Task.WhenAll(docsTask, licenseTask, classesTask);
+        Documents = docsTask.Result;
+        License = licenseTask.Result;
+        // Self-drive customers may hold any car licence, including an old B1; the new B1 is a motorcycle licence.
+        LicenseClasses = classesTask.Result.Where(c => c.MaxSeats > 0).ToList();
+        return result ?? Page();
+    }
+
+    /// <summary>Upload one side of the driver's licence; the dispatcher reviews it.</summary>
+    public async Task<IActionResult> OnPostUploadDocumentAsync(string? type, IFormFile? file)
+    {
+        var denied = RequireRole(auth, "Customer");
+        if (denied is not null) return denied;
+        if (type is not ("LicenseFront" or "LicenseBack"))
+            DocumentError = "Loại giấy tờ không hợp lệ.";
+        else if (file is null || file.Length == 0)
+            DocumentError = "Vui lòng chọn ảnh.";
+        else if (file.Length > 5 * 1024 * 1024)
+            DocumentError = "Ảnh tối đa 5 MB.";
+        else
+        {
+            await using var stream = file.OpenReadStream();
+            var (_, error) = await api.UploadDocumentAsync(type, stream, file.FileName, file.ContentType);
+            if (error is null) DocumentMessage = $"Đã gửi ảnh {UiDisplay.DocumentType(type).ToLowerInvariant()}, chờ điều phối duyệt.";
+            else DocumentError = error;
+        }
+        return RedirectToPage(null, null, "giay-to");
     }
 
     public async Task<IActionResult> OnPostSaveProfileAsync()

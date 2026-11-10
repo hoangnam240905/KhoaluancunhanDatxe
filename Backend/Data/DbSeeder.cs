@@ -31,19 +31,22 @@ public static class DbSeeder
         db.SaveChanges();
 
         db.Customers.AddRange(
-            new Customer { CustomerId = 3, Address = "123 Nguyen Hue, Q1, TP.HCM", IdNumber = "079123456789", DateOfBirth = new DateOnly(1995, 3, 15) },
-            new Customer { CustomerId = 4, Address = "456 Le Loi, Q3, TP.HCM", IdNumber = "079987654321", DateOfBirth = new DateOnly(1990, 8, 22) });
+            // Sample self-drive customers already hold an approved class B licence (plan1.md Phần E).
+            new Customer { CustomerId = 3, Address = "123 Nguyen Hue, Q1, TP.HCM", IdNumber = "079123456789", DateOfBirth = new DateOnly(1995, 3, 15), DriverLicenseNumber = "790300000003", DriverLicenseClass = "B", DriverLicenseExpiry = new DateOnly(2034, 12, 31), LicenseStatus = CustomerLicenseStatuses.Approved },
+            new Customer { CustomerId = 4, Address = "456 Le Loi, Q3, TP.HCM", IdNumber = "079987654321", DateOfBirth = new DateOnly(1990, 8, 22), DriverLicenseNumber = "790400000004", DriverLicenseClass = "B", DriverLicenseExpiry = new DateOnly(2034, 12, 31), LicenseStatus = CustomerLicenseStatuses.Approved });
 
         db.Drivers.AddRange(
-            new Driver { DriverId = 5, LicenseNumber = "B2-123456789", LicenseExpiry = new DateOnly(2028, 12, 31), Status = DriverStatuses.Available, AverageRating = 4.80m, TotalTrips = 120 },
-            new Driver { DriverId = 6, LicenseNumber = "B2-987654321", LicenseExpiry = new DateOnly(2027, 6, 30), Status = DriverStatuses.Available, AverageRating = 4.50m, TotalTrips = 85 },
-            new Driver { DriverId = 7, LicenseNumber = "B2-555666777", LicenseExpiry = new DateOnly(2029, 1, 15), Status = DriverStatuses.Offline, AverageRating = 4.90m, TotalTrips = 200 });
+            // Sample drivers are already verified (plan1.md Phần D): old B2 licences cover cars up to 9 seats,
+            // driver 7 holds D1 (16-seat van).
+            new Driver { DriverId = 5, LicenseNumber = "B2-123456789", LicenseClass = "B2", LicenseExpiry = new DateOnly(2028, 12, 31), Status = DriverStatuses.Available, AverageRating = 4.80m, TotalTrips = 120, VerificationStatus = DriverVerificationStatuses.Verified },
+            new Driver { DriverId = 6, LicenseNumber = "B2-987654321", LicenseClass = "B2", LicenseExpiry = new DateOnly(2027, 6, 30), Status = DriverStatuses.Available, AverageRating = 4.50m, TotalTrips = 85, VerificationStatus = DriverVerificationStatuses.Verified },
+            new Driver { DriverId = 7, LicenseNumber = "790555666777", LicenseClass = "D1", LicenseExpiry = new DateOnly(2029, 1, 15), Status = DriverStatuses.Offline, AverageRating = 4.90m, TotalTrips = 200, VerificationStatus = DriverVerificationStatuses.Verified });
         db.SaveChanges();
 
         db.VehicleTypes.AddRange(
             new VehicleType
             {
-                TypeName = "4 chỗ - Sedan", SeatCapacity = 4, PricePerDay = 800000, PricePerKm = 12000,
+                TypeName = "4 chỗ - Sedan", SeatCapacity = 4, MinLicenseClass = "B", PricePerDay = 800000, PricePerKm = 12000,
                 DriverFeePerDay = PricingDefaults.DriverFeePerDay(800000),
                 SelfDrivePricePerDay = 800000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
                 SelfDriveExtraKmPrice = 12000,
@@ -53,7 +56,7 @@ public static class DbSeeder
             },
             new VehicleType
             {
-                TypeName = "7 chỗ - SUV", SeatCapacity = 7, PricePerDay = 1200000, PricePerKm = 15000,
+                TypeName = "7 chỗ - SUV", SeatCapacity = 7, MinLicenseClass = "B", PricePerDay = 1200000, PricePerKm = 15000,
                 DriverFeePerDay = PricingDefaults.DriverFeePerDay(1200000),
                 SelfDrivePricePerDay = 1200000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
                 SelfDriveExtraKmPrice = 15000,
@@ -63,7 +66,7 @@ public static class DbSeeder
             },
             new VehicleType
             {
-                TypeName = "16 chỗ - Van", SeatCapacity = 16, PricePerDay = 2500000, PricePerKm = 20000,
+                TypeName = "16 chỗ - Van", SeatCapacity = 16, MinLicenseClass = "D1", PricePerDay = 2500000, PricePerKm = 20000,
                 DriverFeePerDay = PricingDefaults.DriverFeePerDay(2500000),
                 SelfDrivePricePerDay = 2500000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
                 SelfDriveExtraKmPrice = 20000,
@@ -73,7 +76,7 @@ public static class DbSeeder
             },
             new VehicleType
             {
-                TypeName = "Limousine 9 chỗ", SeatCapacity = 9, PricePerDay = 3500000, PricePerKm = 25000,
+                TypeName = "Limousine 9 chỗ", SeatCapacity = 9, MinLicenseClass = "B", PricePerDay = 3500000, PricePerKm = 25000,
                 DriverFeePerDay = PricingDefaults.DriverFeePerDay(3500000),
                 SelfDrivePricePerDay = 3500000, SelfDriveIncludedKmPerDay = PricingDefaults.IncludedKmPerDay,
                 SelfDriveExtraKmPrice = 25000,

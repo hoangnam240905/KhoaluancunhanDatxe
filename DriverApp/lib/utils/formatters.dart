@@ -6,6 +6,10 @@ class Formatters {
   static final dateTime = DateFormat('dd/MM/yyyy HH:mm');
 
   static String dt(DateTime value) => dateTime.format(value.toLocal());
+  static final _day = DateFormat('dd/MM/yyyy');
+
+  /// Calendar date (licence dates have no time); '—' when missing.
+  static String date(DateTime? value) => value == null ? '—' : _day.format(value);
 
   static String rentalDt(DateTime value) {
     final wall = DateTime(

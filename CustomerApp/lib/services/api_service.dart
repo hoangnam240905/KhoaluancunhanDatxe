@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
@@ -312,6 +313,57 @@ class ApiService {
     return list
         .map((e) => Vehicle.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<FavoriteVehicle>> getFavorites() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/favorites'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => FavoriteVehicle.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> setFavorite(int vehicleId, bool favorite) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/favorites/$vehicleId');
+    final response = favorite
+        ? await http.put(uri, headers: await _headers(auth: true))
+        : await http.delete(uri, headers: await _headers(auth: true));
+    if (response.statusCode != 204) throw Exception(_errorMessage(response));
+  }
+
+  Future<List<UserDocument>> getMyDocuments() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/documents/me'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => UserDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> uploadDocument(
+    String type,
+    Uint8List bytes,
+    String fileName,
+  ) async {
+    final token = await authService.getToken();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/api/documents'),
+    );
+    if (token != null) request.headers['Authorization'] = '******';
+    request.fields['type'] = type;
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 
   Future<List<DriverOption>> getAvailableDrivers({

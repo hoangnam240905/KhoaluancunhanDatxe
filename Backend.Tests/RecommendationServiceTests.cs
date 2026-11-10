@@ -15,8 +15,9 @@ public class RecommendationServiceTests
     private static BookingService Bookings(IsolatedCarRentalDb iso)
         => new(iso.Db, new PricingService());
 
-    private static readonly DateTime Start = new(2026, 11, 1, 8, 0, 0);
-    private static readonly DateTime End = new(2026, 11, 3, 18, 0, 0);
+    // Relative to today: a fixed date turns into "past" and booking creation starts failing.
+    private static readonly DateTime Start = DateTime.Today.AddDays(30).AddHours(8);
+    private static readonly DateTime End = Start.AddDays(2).AddHours(10);
 
     [Fact]
     public async Task Rejects_invalid_range_and_filters()

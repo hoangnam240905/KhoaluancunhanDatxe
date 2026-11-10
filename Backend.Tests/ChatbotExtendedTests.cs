@@ -196,6 +196,20 @@ public class ChatbotExtendedTests
         Assert.All(r.Vehicles, v => Assert.Equal(7, v.Seats));
     }
 
+    [Fact]
+    public async Task A_car_set_to_maintenance_is_not_offered_like_on_the_search_page()
+    {
+        using var iso = Setup();
+        iso.Db.Vehicles.Find(1)!.Status = VehicleStatuses.Maintenance; // no open record, status only
+        iso.Db.SaveChanges();
+
+        var r = await Ask(iso, "Từ 22 đến 25 còn xe 4 chỗ nào trống?");
+
+        Assert.Equal("search", r.Kind);
+        Assert.DoesNotContain(r.Vehicles, v => v.VehicleId == 1);
+        Assert.Contains(r.Vehicles, v => v.VehicleId == 2);
+    }
+
     // ---------- K-B: app FAQ ----------
 
     [Theory]

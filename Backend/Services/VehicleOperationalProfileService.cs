@@ -93,19 +93,6 @@ public class VehicleOperationalProfileService(
     }
 
     private static MaintenanceRecordResponse? MapMaintenance(Backend.Entities.MaintenanceRecord? record)
-        => record is null
-            ? null
-            : new MaintenanceRecordResponse(
-                record.MaintenanceId,
-                record.VehicleId,
-                record.MaintenanceType,
-                record.ScheduledDate,
-                record.CompletedDate,
-                record.OdometerAtMaintenance,
-                record.Cost,
-                record.Notes,
-                record.CreatedAt,
-                record.ScheduledOdometer,
-                record.NextMaintenanceDate,
-                record.NextMaintenanceOdometer);
+        => record is null ? null : VehicleMaintenanceService.Map(record);
+
 }

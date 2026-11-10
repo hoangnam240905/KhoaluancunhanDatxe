@@ -25,7 +25,11 @@ public record MaintenanceRecordResponse(
     DateTime CreatedAt,
     int? ScheduledOdometer = null,
     DateTime? NextMaintenanceDate = null,
-    int? NextMaintenanceOdometer = null);
+    int? NextMaintenanceOdometer = null,
+    string? CreatedByName = null,
+    string? CreatedByRole = null,
+    string? CompletedByName = null,
+    string? CompletedByRole = null);
 
 public record MaintenanceAlertResponse(
     int VehicleId,

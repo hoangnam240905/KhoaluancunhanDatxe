@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// DriveX dark operational tokens for DriverApp. Visual only — no business rules.
 class AppColors {
   static const primary = Color(0xFF2563EB);
   static const primaryDark = Color(0xFF0F1F3D);
@@ -8,7 +7,7 @@ class AppColors {
   static const bg = Color(0xFF0B1220);
   static const surface = Color(0xFF121A2B);
   static const text = Color(0xFFE8EEF8);
-  static const muted = Color(0xFF8B9BB4);
+  static const muted = Color(0xFF667085);
   static const border = Color(0xFF243049);
   static const success = Color(0xFF16A34A);
   static const danger = Color(0xFFDC2626);
@@ -19,46 +18,64 @@ class AppColors {
 }
 
 class AppTheme {
-  static ThemeData get light => dark;
+  static ThemeData get light => _build(Brightness.light);
+  static ThemeData get dark => _build(Brightness.dark);
 
-  static ThemeData get dark {
-    const scheme = ColorScheme.dark(
-      primary: AppColors.primary,
-      onPrimary: Colors.white,
-      secondary: AppColors.primary,
-      surface: AppColors.surface,
-      onSurface: AppColors.text,
-      error: AppColors.danger,
-    );
+  static ThemeData _build(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final background = isDark
+        ? const Color(0xFF0B1220)
+        : const Color(0xFFF4F7FC);
+    final surface = isDark ? const Color(0xFF121A2B) : Colors.white;
+    final text = isDark ? const Color(0xFFE8EEF8) : const Color(0xFF182230);
+    final muted = isDark ? const Color(0xFFACB9CC) : const Color(0xFF667085);
+    final border = isDark ? const Color(0xFF2A3850) : const Color(0xFFDCE3ED);
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: brightness,
+        ).copyWith(
+          primary: AppColors.primary,
+          secondary: AppColors.primary,
+          surface: surface,
+          onSurface: text,
+          onSurfaceVariant: muted,
+          outline: border,
+          outlineVariant: border,
+          error: isDark ? const Color(0xFFFF8A80) : const Color(0xFFB42318),
+        );
+
     return ThemeData(
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: scheme,
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.bg,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.text,
+      scaffoldBackgroundColor: background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: surface,
+        foregroundColor: text,
         elevation: 0,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: const Color(0xFF1E3A8A),
+        backgroundColor: surface,
+        indicatorColor: AppColors.primary.withValues(
+          alpha: isDark ? 0.30 : 0.13,
+        ),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.primary : AppColors.muted,
+            color: selected ? AppColors.primary : muted,
           );
         }),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: surface,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -77,11 +94,11 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.surface,
+        color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: border),
         ),
       ),
     );

@@ -19,6 +19,12 @@ public class Driver
     public double? OnTimeRate { get; set; }
     public double? TotalDistanceKm { get; set; }
     public string VerificationStatus { get; set; } = "Pending";
+    /// <summary>Dispatcher who checked the original licence at the office (step 2 of plan1.md Phần D).</summary>
+    public int? VerifiedByUserId { get; set; }
+    public string? VerifiedByName { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+    /// <summary>Why the original-licence check failed (shown to the driver).</summary>
+    public string? VerificationNote { get; set; }
 
     public User User { get; set; } = null!;
     public ICollection<TripAssignment> TripAssignments { get; set; } = [];

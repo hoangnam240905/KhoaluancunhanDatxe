@@ -69,7 +69,20 @@ public static class InspectionsUi
             // ActualAt is UTC (server clock) — show Vietnam time.
             datetime = Fmt(UiDisplay.ToVietnam(i.ActualAt)),
             dateIso = UiDisplay.ToVietnam(i.ActualAt).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            inspector = "—", // not in VehicleInspectionResponse
+            inspector = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole),
+            edited = i.UpdatedAt is null ? null : UiDisplay.Actor(i.UpdatedByName, i.UpdatedByRole, i.UpdatedAt),
+            // Dispatcher's check of a driver's return report (plan1.md Phần A); null = not needed.
+            verification = i.VerificationStatus,
+            verificationLabel = i.VerificationStatus switch
+            {
+                "Pending" => "Chờ điều phối xác nhận",
+                "Confirmed" => "Đã xác nhận đúng",
+                "Mismatch" => "Có lệch",
+                _ => null
+            },
+            verificationNote = i.VerificationNote,
+            verifiedBy = i.VerifiedAt is null ? null : UiDisplay.Actor(i.VerifiedByName, "Dispatcher", i.VerifiedAt),
+            canVerify = i.VerificationStatus == "Pending",
             customer = booking?.CustomerName ?? "—",
             driver,
             mode,
@@ -89,8 +102,12 @@ public static class InspectionsUi
         };
     }
 
-    public static string MapType(string? inspectionType) =>
-        string.Equals(inspectionType, "Return", StringComparison.OrdinalIgnoreCase) ? "checkin" : "checkout";
+    public static string MapType(string? inspectionType) => inspectionType switch
+    {
+        "Return" => "checkin",
+        "PreHandover" => "precheck",
+        _ => "checkout"
+    };
 
     private static string? DisplayCond(string? raw)
     {

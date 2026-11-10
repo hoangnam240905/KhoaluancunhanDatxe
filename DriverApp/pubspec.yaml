@@ -34,6 +34,7 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.3.3
   intl: ^0.20.2
+  image_picker: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +56,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/images/hero-car.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

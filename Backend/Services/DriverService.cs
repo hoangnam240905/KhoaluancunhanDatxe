@@ -2,6 +2,7 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Drivers;
+using Backend.DTOs.Realtime;
 using Backend.Entities;
 using Backend.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -97,16 +98,135 @@ public class DriverService(
         return true;
     }
 
+    public const string PreHandoverMissing =
+        "Chưa có biên bản kiểm tra trước giao của điều phối. Bấm \"Nhắc điều phối\" để báo điều phối ghi biên bản.";
+    public const string DisputeOpen = "Đang chờ điều phối xử lý sai lệch biên bản trước giao.";
+    public const string DisputeNoteRequired = "Vui lòng ghi rõ điểm sai lệch.";
+    public const string DisputeNoteTooLong = "Ghi chú sai lệch tối đa 500 ký tự.";
+    public const string AlreadyHasPreHandover = "Điều phối đã ghi biên bản trước giao, vui lòng mở chuyến để kiểm tra.";
+    public const string TripNotWaitingToStart = "Chuyến này không còn ở bước chờ bắt đầu.";
+
+    /// <summary>
+    /// Driver says the dispatcher's pre-handover record does not match the real car: opens a dispute,
+    /// tells the dispatchers. The trip does not start and the assignment stays as it is.
+    /// </summary>
+    public async Task<(InspectionDispute? Dispute, string? Error)> RaiseDisputeAsync(
+        int driverId, int assignmentId, string? note)
+    {
+        var text = note?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return (null, DisputeNoteRequired);
+        if (text.Length > 500)
+            return (null, DisputeNoteTooLong);
+
+        var assignment = await db.TripAssignments
+            .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
+        if (assignment is null || assignment.Status is not (TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted))
+            return (null, TripNotWaitingToStart);
+        var preHandover = await inspections.GetPreHandoverAsync(assignment.BookingId);
+        if (preHandover is null)
+            return (null, PreHandoverMissing);
+        if (await HasOpenDisputeAsync(assignment.BookingId))
+            return (null, DisputeOpen);
+
+        var actor = await ActorLookup.FindAsync(db, driverId);
+        var dispute = new InspectionDispute
+        {
+            BookingId = assignment.BookingId,
+            InspectionId = preHandover.InspectionId,
+            RaisedByUserId = actor?.UserId,
+            RaisedByName = actor?.Name,
+            Note = text,
+            Status = InspectionDisputeStatuses.Open,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.InspectionDisputes.Add(dispute);
+        await db.SaveChangesAsync();
+
+        var round = await db.InspectionDisputes.CountAsync(d => d.BookingId == assignment.BookingId);
+        await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.InspectionDisputeRaised,
+            RealtimeEntityTypes.InspectionDispute, dispute.InspectionDisputeId, assignment.BookingId, driverId, round);
+        return (dispute, null);
+    }
+
+    /// <summary>"Nhắc điều phối": the driver is waiting for the pre-handover record.</summary>
+    public async Task<string?> RemindDispatcherAsync(int driverId, int assignmentId)
+    {
+        var assignment = await db.TripAssignments
+            .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
+        if (assignment is null || assignment.Status is not (TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted))
+            return TripNotWaitingToStart;
+        if (await inspections.GetPreHandoverAsync(assignment.BookingId) is not null)
+            return AlreadyHasPreHandover;
+
+        await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.DispatcherReminded,
+            RealtimeEntityTypes.TripAssignment, assignment.AssignmentId, assignment.BookingId, driverId, 1);
+        return null;
+    }
+
+    /// <summary>Disputes on the driver's own trip, newest first (DriverApp shows open / resolved).</summary>
+    public async Task<List<DTOs.Dispatch.InspectionDisputeResponse>?> GetDisputesAsync(int driverId, int assignmentId)
+    {
+        var bookingId = await db.TripAssignments
+            .Where(t => t.AssignmentId == assignmentId && t.DriverId == driverId)
+            .Select(t => (int?)t.BookingId)
+            .FirstOrDefaultAsync();
+        if (bookingId is null)
+            return null;
+        var rows = await db.InspectionDisputes.AsNoTracking()
+            .Where(d => d.BookingId == bookingId.Value)
+            .OrderByDescending(d => d.InspectionDisputeId)
+            .ToListAsync();
+        return rows.Select(d => new DTOs.Dispatch.InspectionDisputeResponse(
+            d.InspectionDisputeId, d.BookingId, d.InspectionId, d.RaisedByName, d.Note, d.Status,
+            d.ResolvedByName, d.ResolutionNote, d.ResolvedAt, d.CreatedAt)).ToList();
+    }
+
+    private Task<bool> HasOpenDisputeAsync(int bookingId)
+        => db.InspectionDisputes.AnyAsync(d => d.BookingId == bookingId && d.Status == InspectionDisputeStatuses.Open);
+
     public async Task<bool> StartTripAsync(int driverId, int assignmentId)
+    {
+        var (ok, _) = await StartTripAsync(driverId, assignmentId, null);
+        return ok;
+    }
+
+    public async Task<(bool Ok, string? Error)> StartTripAsync(
+        int driverId, int assignmentId, VehicleConditionRequest? request)
     {
         var assignment = await db.TripAssignments
             .Include(t => t.Booking)
             .FirstOrDefaultAsync(t => t.AssignmentId == assignmentId && t.DriverId == driverId);
 
         if (assignment is null || assignment.Status != TripAssignmentStatuses.Accepted)
-            return false;
+            return (false, null);
         if (!BookingStateTransitionRules.CanTransition(assignment.Booking.Status, BookingStatuses.InProgress))
-            return false;
+            return (false, BookingStateTransitionRules.InvalidTransition);
+
+        // Two-sided check (plan1.md Phần A): the dispatcher records the car first, the driver confirms
+        // it matches the real car. Starting = confirming; a mismatch goes through RaiseDisputeAsync instead.
+        var preHandover = await inspections.GetPreHandoverAsync(assignment.BookingId);
+        if (preHandover is null)
+            return (false, PreHandoverMissing);
+        if (await HasOpenDisputeAsync(assignment.BookingId))
+            return (false, DisputeOpen);
+
+        // The driver's own numbers when sent; otherwise they accepted the dispatcher's record as it is.
+        var source = request ?? new VehicleConditionRequest(
+            preHandover.OdometerKm, preHandover.FuelLevel, preHandover.Condition, preHandover.Notes,
+            preHandover.ExteriorCondition, preHandover.TechnicalCondition);
+        var (inspection, error) = await inspections.AddAsync(
+            assignment.BookingId,
+            VehicleInspectionTypes.Handover,
+            source.OdometerKm,
+            source.FuelLevel,
+            source.Condition,
+            source.Notes,
+            source.ExteriorCondition,
+            source.TechnicalCondition,
+            driverId);
+        if (inspection is null)
+            return (false, error ?? "Không thể lưu biên bản kiểm tra đầu chuyến.");
 
         assignment.Status = TripAssignmentStatuses.InProgress;
         assignment.StartedAt = DateTime.UtcNow;
@@ -131,9 +251,8 @@ public class DriverService(
             assignment.Booking.Status,
             assignment.Booking.AssignedVehicleId,
             driverId);
-        return true;
+        return (true, null);
     }
-
     public async Task<(bool Ok, string? Error)> CompleteTripAsync(
         int driverId, int assignmentId, VehicleConditionRequest? request)
     {
@@ -163,9 +282,12 @@ public class DriverService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            driverId);
         if (inspection is null)
             return (false, inspectError ?? "Không thể ghi nhận trả xe.");
+        // The trip completes now; the dispatcher checks the driver's return report afterwards (plan1.md Phần A).
+        inspection.VerificationStatus = InspectionVerificationStatuses.Pending;
 
         var actualKm = VehicleInspectionRules.ResolveActualKm(handover?.OdometerKm, request?.OdometerKm);
         await fees.ApplyCompletionAsync(assignment.Booking, actualKm, handover, inspection);
@@ -231,7 +353,8 @@ public class DriverService(
     {
         var error = CustomerRegistrationRules.ValidateAdminDriver(
             request.FullName, request.Email, request.Phone, request.Password,
-            out var fullName, out var email, out var phone);
+            out var fullName, out var email, out var phone)
+            ?? ValidateLicence(request.LicenseClass, request.LicenseNumber);
         if (error is not null)
             return (null, error, StatusCodes.Status400BadRequest);
 
@@ -262,8 +385,9 @@ public class DriverService(
         var driver = new Driver
         {
             DriverId = user.UserId,
-            LicenseNumber = $"DRV-{user.UserId:D6}",
-            LicenseExpiry = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10)),
+            // No made-up licence: empty until entered; the driver cannot be assigned before it is verified.
+            LicenseNumber = request.LicenseNumber?.Trim().ToUpperInvariant() ?? string.Empty,
+            LicenseExpiry = request.LicenseExpiry ?? DateOnly.MinValue,
             Status = DriverStatuses.Available,
             AverageRating = 0,
             TotalTrips = 0,
@@ -277,7 +401,7 @@ public class DriverService(
             ExperienceYears = request.ExperienceYears,
             OnTimeRate = request.OnTimeRate,
             TotalDistanceKm = request.TotalDistanceKm,
-            VerificationStatus = TrimOrNull(request.VerificationStatus) ?? "Pending"
+            VerificationStatus = NormalizeVerification(request.VerificationStatus) ?? DriverVerificationStatuses.Pending
         };
         db.Drivers.Add(driver);
         await db.SaveChangesAsync();
@@ -293,6 +417,8 @@ public class DriverService(
             .FirstOrDefaultAsync(d => d.DriverId == driverId);
         if (driver is null)
             return (null, "Không tìm thấy tài xế.", StatusCodes.Status404NotFound);
+        if (ValidateLicence(request.LicenseClass, request.LicenseNumber) is string licenceError)
+            return (null, licenceError, StatusCodes.Status400BadRequest);
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
             driver.User.FullName = CustomerRegistrationRules.NormalizeFullName(request.FullName);
@@ -353,8 +479,29 @@ public class DriverService(
         driver.Address, driver.AvatarUrl, driver.ExperienceYears, driver.OnTimeRate,
         driver.TotalDistanceKm, driver.VerificationStatus);
 
+    private static string? ValidateLicence(string? licenceClass, string? licenceNumber)
+    {
+        if (!string.IsNullOrWhiteSpace(licenceClass) && Validation.LicenseClasses.Find(licenceClass) is null)
+            return DriverVerificationService.LicenseClassInvalid;
+        if (licenceNumber is { Length: > 30 })
+            return DriverVerificationService.LicenseNumberTooLong;
+        return null;
+    }
+
+    private static string? NormalizeVerification(string? value) => TrimOrNull(value) switch
+    {
+        null => null,
+        var v when string.Equals(v, DriverVerificationStatuses.Verified, StringComparison.OrdinalIgnoreCase) => DriverVerificationStatuses.Verified,
+        var v when string.Equals(v, DriverVerificationStatuses.Rejected, StringComparison.OrdinalIgnoreCase) => DriverVerificationStatuses.Rejected,
+        _ => DriverVerificationStatuses.Pending
+    };
+
     private static void ApplyProfile(Driver driver, UpdateAdminDriverRequest request)
     {
+        if (request.LicenseNumber is not null)
+            driver.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
+        if (request.LicenseExpiry is not null)
+            driver.LicenseExpiry = request.LicenseExpiry.Value;
         if (request.LicenseClass is not null)
             driver.LicenseClass = TrimOrNull(request.LicenseClass);
         if (request.LicenseIssueDate is not null)
@@ -374,7 +521,7 @@ public class DriverService(
         if (request.TotalDistanceKm is not null)
             driver.TotalDistanceKm = request.TotalDistanceKm;
 
-        var status = TrimOrNull(request.VerificationStatus);
+        var status = NormalizeVerification(request.VerificationStatus);
         if (status is not null)
             driver.VerificationStatus = status;
     }

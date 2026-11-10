@@ -11,15 +11,15 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
     private readonly ScheduleConflictService schedule = new(db);
 
     public Task<(MaintenanceRecordResponse? Data, string? Error, int Status)> CreateAsync(
-        int vehicleId, CreateMaintenanceRequest request)
-        => SqliteWriteLock.ExecuteAsync(db, () => CreateCoreAsync(vehicleId, request));
+        int vehicleId, CreateMaintenanceRequest request, int? actorUserId = null)
+        => SqliteWriteLock.ExecuteAsync(db, () => CreateCoreAsync(vehicleId, request, actorUserId));
 
     public Task<(MaintenanceRecordResponse? Data, string? Error, int Status)> CompleteAsync(
-        int vehicleId, int maintenanceId, CompleteMaintenanceRequest? request)
-        => SqliteWriteLock.ExecuteAsync(db, () => CompleteCoreAsync(vehicleId, maintenanceId, request));
+        int vehicleId, int maintenanceId, CompleteMaintenanceRequest? request, int? actorUserId = null)
+        => SqliteWriteLock.ExecuteAsync(db, () => CompleteCoreAsync(vehicleId, maintenanceId, request, actorUserId));
 
     private async Task<(MaintenanceRecordResponse? Data, string? Error, int Status)> CreateCoreAsync(
-        int vehicleId, CreateMaintenanceRequest request)
+        int vehicleId, CreateMaintenanceRequest request, int? actorUserId)
     {
         var vehicle = await db.Vehicles.FindAsync(vehicleId);
         if (vehicle is null)
@@ -56,6 +56,10 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
             Notes = request.Notes,
             CreatedAt = DateTime.UtcNow
         };
+        var creator = await ActorLookup.FindAsync(db, actorUserId);
+        record.CreatedByUserId = creator?.UserId;
+        record.CreatedByName = creator?.Name;
+        record.CreatedByRole = creator?.Role;
 
         db.MaintenanceRecords.Add(record);
         if (vehicle.Status == VehicleStatuses.Available)
@@ -66,7 +70,7 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
     }
 
     private async Task<(MaintenanceRecordResponse? Data, string? Error, int Status)> CompleteCoreAsync(
-        int vehicleId, int maintenanceId, CompleteMaintenanceRequest? request)
+        int vehicleId, int maintenanceId, CompleteMaintenanceRequest? request, int? actorUserId)
     {
         var vehicle = await db.Vehicles.FindAsync(vehicleId);
         if (vehicle is null)
@@ -84,6 +88,10 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
             return (null, "Số km bảo trì không được âm.", 400);
 
         record.CompletedDate = DateTime.UtcNow;
+        var completer = await ActorLookup.FindAsync(db, actorUserId);
+        record.CompletedByUserId = completer?.UserId;
+        record.CompletedByName = completer?.Name;
+        record.CompletedByRole = completer?.Role;
         if (request?.OdometerAtMaintenance is int odometer)
             record.OdometerAtMaintenance = odometer;
 
@@ -129,7 +137,7 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
             vehicle.Status = VehicleStatuses.Available;
     }
 
-    private static MaintenanceRecordResponse Map(MaintenanceRecord m) => new(
+    public static MaintenanceRecordResponse Map(MaintenanceRecord m) => new(
         m.MaintenanceId,
         m.VehicleId,
         m.MaintenanceType,
@@ -141,5 +149,9 @@ public class VehicleMaintenanceService(CarRentalDbContext db)
         m.CreatedAt,
         m.ScheduledOdometer,
         m.NextMaintenanceDate,
-        m.NextMaintenanceOdometer);
+        m.NextMaintenanceOdometer,
+        m.CreatedByName,
+        m.CreatedByRole,
+        m.CompletedByName,
+        m.CompletedByRole);
 }

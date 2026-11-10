@@ -151,6 +151,10 @@
     };
 
 
+    function esc(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     function antiforgery() {
         const input = document.querySelector("#opAntiForgery input[name='__RequestVerificationToken']");
         return input ? input.value : "";
@@ -256,6 +260,15 @@
         const where = `<span class="mk-muted">KH: ${t.customer} · Điểm hẹn: ${t.pickup || "—"}</span>`;
         const btn = (cls, attr, label) => `<button type="button" class="mk-btn ${cls}" ${attr}="${t.id}">${label}</button>`;
 
+        if (t.dispute) {
+            return {
+                sev: 0, rank: 0, at: parseNaive(t.startIso), icon: "bi-exclamation-triangle-fill",
+                title: `Tài xế báo sai lệch biên bản #${t.id}`,
+                sub: `<span>${esc(t.dispute.note)}</span><span class="mk-muted">${esc(t.dispute.by)}</span>`,
+                time: hhmm(parseNaive(t.startIso)), note: "",
+                action: btn("mk-btn-primary", "data-precheck", "Xử lý sai lệch")
+            };
+        }
         if (hasIncident(t)) {
             return {
                 sev: 0, rank: 1, at: parseNaive(t.startIso), icon: "bi-exclamation-triangle-fill",
@@ -270,9 +283,11 @@
                 sev: 0, rank: 2, at: ts.at, icon: "bi-exclamation-triangle-fill",
                 title: self ? `Chờ giao xe quá ${fmtDur(ts.minutes)}` : `Tài xế chưa nhận chuyến, quá ${fmtDur(ts.minutes)}`,
                 sub: itemHead(t) + where, time: hhmm(ts.at), note: `quá ${fmtDur(ts.minutes)}`,
-                action: btn("mk-btn-primary", "data-handover", self
-                    ? `<i class="bi bi-key"></i> Giao xe ngay`
-                    : `<i class="bi bi-key"></i> Giao xe cho tài xế`)
+                action: self
+                    ? btn("mk-btn-primary", "data-handover", `<i class="bi bi-key"></i> Giao xe ngay`)
+                    : btn("mk-btn-primary", "data-precheck", t.pre
+                        ? `<i class="bi bi-hourglass-split"></i> Xem biên bản trước giao`
+                        : `<i class="bi bi-clipboard-check"></i> Kiểm tra trước giao`)
             };
         }
         if (ts && ts.kind === "returnLate") {
@@ -442,20 +457,25 @@
             <div><span>⛽ Fuel</span><strong>${ret.fuel}%</strong></div>
             <div class="${warnEx ? "warn" : ""}"><span>🚗 Exterior</span><strong>${ret.exterior}${warnEx ? " ⚠️" : ""}</strong></div>
             <div class="${warnTech ? "warn" : ""}"><span>🔧 Technical</span><strong>${ret.tech}${warnTech ? " ⚠️" : ""}</strong></div>
-        </div>${km !== null ? `<p class="mk-note">Km thực tế: ${km.toLocaleString("vi-VN")} km = trả − giao (từ biên bản API).</p>` : ""}`;
+        </div>${ret.by ? `<p class="mk-note">Người lập: ${esc(ret.by)} · ${ret.at || ""}</p>` : ""}${km !== null ? `<p class="mk-note">Km thực tế: ${km.toLocaleString("vi-VN")} km = trả − giao (từ biên bản API).</p>` : ""}`;
     }
 
     function quickActions(t) {
         const a = [`<button type="button" class="mk-btn mk-btn-ghost" data-contact="${t.id}">📞 Liên hệ</button>`];
-        if (t.status === "inProgress" || t.status === "accepted" || t.status === "handedOver") {
+        if (t.bookingStatus === "Assigned" || t.bookingStatus === "InProgress") {
             a.push(`<button type="button" class="mk-btn mk-btn-danger" data-report="${t.id}">⚠️ Báo sự cố</button>`);
         }
         a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-inspect="${t.id}">📋 Inspection</button>`);
         if (t.canHandoverApi || t.status === "waitingHandover") {
-            a.push(`<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🚗 Giao xe</button>`);
+            a.push(t.mode === "SelfDrive"
+                ? `<button type="button" class="mk-btn mk-btn-primary" data-handover="${t.id}">🚗 Giao xe</button>`
+                : `<button type="button" class="mk-btn mk-btn-primary" data-precheck="${t.id}">${t.pre ? "✏️ Sửa biên bản trước giao" : "📝 Kiểm tra trước giao"}</button>`);
         }
         if (t.canCompleteApi || t.status === "handedOver" || t.status === "inProgress" || t.status === "returning" || t.status === "waitingHandover" || t.status === "accepted") {
             a.push(`<button type="button" class="mk-btn mk-btn-primary" data-return="${t.id}">↩ Trả xe</button>`);
+        }
+        if (t.bookingStatus === "Assigned" || t.bookingStatus === "InProgress") {
+            a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-vehicle-change="${t.id}">🔁 Đổi xe</button>`);
         }
         if (t.settlement === "pending" || t.status === "completed") {
             a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-settle="${t.id}">💰 Quyết toán</button>`);
@@ -499,7 +519,7 @@
                         <div><dt>Trạng thái hiện tại</dt><dd>${STATUS[t.status] || t.status} <span class="mk-muted">(${t.bookingStatus || ""})</span></dd></div>
                         <div><dt>Tình trạng xe</dt><dd>${t.vehicleState}</dd></div>
                     </dl>
-                    ${t.mode === "WithDriver" ? '<p class="mk-note">Có tài xế — hoàn thành trả xe qua API dispatcher chưa có (chỉ SelfDrive).</p>' : ""}
+                    ${t.mode === "WithDriver" ? '<p class="mk-note">Có tài xế: điều phối ghi biên bản trước giao, tài xế xác nhận trên app để bắt đầu chuyến và gửi phiếu trả khi kết thúc.</p>' : ""}
                 </section>
                 <section class="mk-block">
                     <h3>Luồng vận hành</h3>
@@ -510,6 +530,7 @@
                     <ul class="mk-timeline">${(t.ops || []).map((o) => `<li class="${o.cls || ""}"><strong>${o.t}</strong> ${o.text}</li>`).join("") || "<li class='mk-muted'>Chưa có sự kiện</li>"}</ul>
                 </section>
                 ${t.ret ? `<section class="mk-block"><h3>Tình trạng xe (trả)</h3>${condBlock(t.ret, t.handover, t.mode)}</section>` : ""}
+                ${t.pre && !t.handover ? `<section class="mk-block"><h3>Biên bản kiểm tra trước giao</h3>${condBlock(t.pre, null, t.mode)}${t.pre.edited ? `<p class="mk-note">Người sửa: ${esc(t.pre.edited)}</p>` : ""}<p class="mk-note">${t.dispute ? "⚠️ Tài xế báo sai lệch: " + esc(t.dispute.note) : "Chờ tài xế kiểm tra xe thật và xác nhận để bắt đầu chuyến."}</p></section>` : ""}
                 ${t.handover && !t.ret ? `<section class="mk-block"><h3>Biên bản giao xe</h3>${condBlock(t.handover, null, t.mode)}</section>` : ""}
                 ${t.incident ? `<p class="mk-note">⚠️ ${t.incident.summary} · ${t.incident.time}</p>` : ""}
             </div>`;
@@ -556,6 +577,25 @@
         btn.disabled = fuel === null || !isValidKm(state.handoverPayload.odometerKm);
     }
 
+    // plan1.md Phần E: the customer's declared licence + the "original checked" tick required to hand over.
+    function licenceCheckBlock(l) {
+        if (!l) return "";
+        const status = { Approved: "Đã duyệt", Pending: "Chờ duyệt", Rejected: "Chưa được chấp nhận", None: "Chưa khai" }[l.status] || l.status;
+        return `<div class="mk-block" style="border-left:3px solid #2563eb;padding-left:.6rem;margin-top:.6rem">
+            <h3>Bằng lái của khách</h3>
+            <dl class="mk-dl">
+                <div><dt>Số bằng</dt><dd>${esc(l.number || "—")}</dd></div>
+                <div><dt>Hạng</dt><dd>${esc(l.cls || "—")}</dd></div>
+                <div><dt>Hết hạn</dt><dd>${esc(l.expiry || "—")}${l.expired ? " (đã hết hạn)" : ""}</dd></div>
+                <div><dt>Duyệt</dt><dd>${esc(status)}</dd></div>
+            </dl>
+            <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:600">
+                <input type="checkbox" data-handover-licence-check style="margin-top:.25rem" />
+                <span>Đã kiểm tra bằng lái gốc: khớp số bằng, hạng và ảnh đã duyệt, còn hạn.</span>
+            </label>
+            <p class="mk-note">Không khớp hoặc hết hạn thì không giao xe; chuyển đơn để điều phối xử lý (hủy, hoàn cọc theo quy định). Hệ thống lưu tên bạn là người kiểm tra.</p>
+        </div>`;
+    }
     async function handoverForm(t) {
         if (!t.canHandoverApi) {
             toast("Chỉ giao xe khi đơn đã được gán xe.");
@@ -620,6 +660,7 @@
                 ${kmOk && !knownFuelOk ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
                 ${kmOk && knownFuelOk ? `<p class="mk-note">Nhiên liệu điền sẵn từ lần kiểm xe gần nhất (${Number(data.fuelLevel).toLocaleString("vi-VN")}%) — sửa lại nếu thực tế khác.</p>` : ""}
                 ${kmOk ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+                ${licenceCheckBlock(data.licence)}
                 <div class="mk-actions">
                     <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Hủy</button>
                     <button type="button" class="mk-btn mk-btn-success" data-handover-submit ${canConfirmNow ? "" : "disabled"}>Xác nhận giao xe</button>
@@ -636,6 +677,125 @@
                 <p class="mk-note" style="color:#b91c1c">Lỗi mạng khi tải dữ liệu xe.</p>
                 <div class="mk-actions"><button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button></div>`);
         }
+    }
+
+    // With-driver trip (plan1.md Phần A): the dispatcher records the car before handover; the driver
+    // confirms it in the app (that starts the trip) or reports a mismatch, which shows up here.
+    const COND_OPTIONS = ["Tốt", "Vấn đề nhỏ", "Cần kiểm tra", "Vấn đề nghiêm trọng"];
+    function condSelect(name, current) {
+        const opts = COND_OPTIONS.map((o) => `<option${o === current ? " selected" : ""}>${o}</option>`).join("");
+        const extra = current && !COND_OPTIONS.includes(current) ? `<option selected>${esc(current)}</option>` : "";
+        return `<select name="${name}" required><option value="">— Chọn —</option>${extra}${opts}</select>`;
+    }
+
+    async function precheckForm(t) {
+        if (!t) return;
+        if (!t.canHandoverApi) {
+            toast("Chỉ ghi kiểm tra trước giao khi đơn đã phân công tài xế và chuyến chưa bắt đầu.");
+            return;
+        }
+        let info = null;
+        try {
+            const url = new URL(handlers.handoverInfo, location.origin);
+            url.searchParams.set("id", String(t.id));
+            const res = await fetch(url.toString(), { headers: { Accept: "application/json" }, credentials: "same-origin" });
+            info = await res.json().catch(() => null);
+        } catch { /* show the form anyway */ }
+        const pre = t.pre;
+        const km = pre ? pre.odo : (info && isValidKm(info.currentKm) ? Number(info.currentKm) : "");
+        const fuel = pre ? pre.fuel : (info && isValidFuelPercent(info.fuelLevel) ? Number(info.fuelLevel) : "");
+        const disputeBox = t.dispute ? `
+            <div class="mk-block" style="border-left:3px solid #b91c1c;padding-left:.6rem">
+                <strong>⚠️ Tài xế báo sai lệch</strong>
+                <p style="margin:.3rem 0">${esc(t.dispute.note)}</p>
+                <p class="mk-note">${esc(t.dispute.by)}</p>
+                <form id="opDisputeForm" data-id="${t.id}" data-dispute-id="${t.dispute.id}">
+                    <label class="mk-field"><span>Ghi chú xử lý (không bắt buộc)</span>
+                        <input name="note" maxlength="500" placeholder="Ví dụ: đã ghi lại vết trầy cửa sau" /></label>
+                    <p class="mk-note">Sửa biên bản bên dưới (nếu cần) rồi bấm "Đã giải quyết" để báo tài xế kiểm tra lại.</p>
+                    <div class="mk-actions"><button type="submit" class="mk-btn mk-btn-success">Đã giải quyết</button></div>
+                </form>
+            </div>` : "";
+        openModal(`
+            <h2>${pre ? "Sửa biên bản kiểm tra trước giao" : "Kiểm tra xe trước giao"}</h2>
+            <dl class="mk-dl">
+                <div><dt>Đơn</dt><dd>#${t.id} · Có tài xế</dd></div>
+                <div><dt>Xe</dt><dd>${esc((info && info.vehicle) || t.vehicle || "—")} · ${esc((info && info.plate) || t.plate || "—")}</dd></div>
+                <div><dt>Tài xế</dt><dd>${esc(t.driver || "—")}</dd></div>
+                ${pre ? `<div><dt>Người lập</dt><dd>${esc(pre.by)} · ${pre.createdAt || pre.at}</dd></div>` : ""}
+                ${pre && pre.edited ? `<div><dt>Người sửa</dt><dd>${esc(pre.edited)}</dd></div>` : ""}
+            </dl>
+            ${disputeBox}
+            <form id="opPrecheckForm" data-id="${t.id}" class="op-form-grid">
+                <label class="mk-field"><span>Số KM *</span>
+                    <input name="odo" type="text" inputmode="decimal" value="${km}" autocomplete="off" /></label>
+                <label class="mk-field"><span>Mức nhiên liệu (%) *</span>
+                    <input name="fuel" type="text" inputmode="decimal" value="${fuel}" autocomplete="off" /></label>
+                <label class="mk-field"><span>Ngoại thất *</span>${condSelect("exterior", pre && pre.exterior !== "—" ? pre.exterior : "")}</label>
+                <label class="mk-field"><span>Kỹ thuật *</span>${condSelect("tech", pre && pre.tech !== "—" ? pre.tech : "")}</label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span>
+                    <input name="note" maxlength="500" value="${esc(pre ? pre.note : "")}" /></label>
+            </form>
+            <p class="mk-note">Chuyến chưa bắt đầu khi lưu. Tài xế kiểm tra xe thật trên app: đúng thì bắt đầu chuyến, sai thì báo sai lệch về đây. Hệ thống lưu tên bạn là người lập / người sửa.</p>
+            <p class="mk-note" id="opPrecheckError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opPrecheckForm" class="mk-btn mk-btn-success">${pre ? "Lưu thay đổi" : "Lưu biên bản trước giao"}</button>
+            </div>`);
+        state.modal = "precheck";
+    }
+
+    // ---- Đổi xe (plan1.md Phần I) ----
+    function vehicleOption(v) {
+        const diff = Number(v.priceDifference || 0);
+        const diffText = diff > 0 ? ` · +${money(diff)}` : diff < 0 ? ` · ${money(diff)}` : "";
+        return `<option value="${v.vehicleId}" data-diff="${diff}">${esc(v.brand)} ${esc(v.model)} · ${esc(v.licensePlate)} (${esc(v.typeName)}, ${v.currentKm} km)${diffText}</option>`;
+    }
+
+    async function vehicleChangeForm(t) {
+        if (!t) return;
+        const url = handlers.vehicleChangeOptions + (handlers.vehicleChangeOptions.includes("?") ? "&" : "?") + "id=" + t.id;
+        const { ok, data } = await getJson(url);
+        if (!ok) { toast((data && data.error) || "Không tải được danh sách xe thay thế."); return; }
+        const o = data.options;
+        const list = o.sameType.length ? o.sameType : o.otherTypes;
+        const pickBox = list.length
+            ? `<label class="mk-field" style="grid-column:1/-1"><span>Xe thay thế *</span>
+                    <select name="vehicle" data-vc-vehicle><option value="">— Chọn xe —</option>${list.map(vehicleOption).join("")}</select></label>`
+            : `<p class="mk-note" style="grid-column:1/-1;color:#b91c1c">Không còn xe nào trống lịch cho thời gian thuê còn lại.</p>`;
+        const typeNote = o.sameType.length
+            ? `<p class="mk-note">Xe cùng loại <strong>${esc(o.currentTypeName)}</strong> còn trống lịch ${o.remainingDays} ngày còn lại: không phát sinh chênh lệch giá.</p>`
+            : (o.otherTypes.length ? `<p class="mk-note">⚠️ Hết xe cùng loại ${esc(o.currentTypeName)}. Chỉ chọn xe khác loại khi khách đồng ý; chênh lệch tính cho ${o.remainingDays} ngày còn lại.</p>` : "");
+        const readings = o.duringTrip ? `
+                <label class="mk-field"><span>Km xe cũ lúc đổi *</span><input name="oldOdo" inputmode="decimal" autocomplete="off" placeholder="${o.segmentStartKm != null ? "≥ " + o.segmentStartKm : ""}" /></label>
+                <label class="mk-field"><span>Nhiên liệu xe cũ (%) *</span><input name="oldFuel" inputmode="decimal" autocomplete="off" /></label>
+                <label class="mk-field"><span>Km xe mới lúc giao *</span><input name="newOdo" inputmode="decimal" autocomplete="off" /></label>
+                <label class="mk-field"><span>Nhiên liệu xe mới (%) *</span><input name="newFuel" inputmode="decimal" autocomplete="off" /></label>` : "";
+        const agree = o.sameType.length ? "" : `
+                <label class="mk-field" style="grid-column:1/-1">
+                    <span><input type="checkbox" name="agreed" /> Khách đã đồng ý chênh lệch giá (đã gọi điện xác nhận)</span></label>`;
+        openModal(`
+            <h2>Đổi xe · Đơn #${t.id}</h2>
+            <dl class="mk-dl">
+                <div><dt>Xe hiện tại</dt><dd>${esc(o.currentVehicle)} (${esc(o.currentTypeName)})</dd></div>
+                <div><dt>Thời điểm</dt><dd>${o.duringTrip ? "Giữa chuyến (đang thuê)" : "Trước khi giao xe"}</dd></div>
+            </dl>
+            ${typeNote}
+            <form id="opVehicleChangeForm" data-id="${t.id}" class="op-form-grid">
+                ${pickBox}
+                <label class="mk-field"><span>Lý do *</span>
+                    <select name="reason"><option value="">— Chọn —</option><option value="Breakdown">Xe gặp sự cố kỹ thuật</option><option value="NeedChange">Khách thay đổi nhu cầu</option></select></label>
+                <label class="mk-field"><span>Ghi chú</span><input name="note" maxlength="500" /></label>
+                ${readings}
+                ${agree}
+            </form>
+            <p class="mk-note">${o.duringTrip ? "Đổi giữa chuyến: km chuyến = km chặng xe cũ + km chặng xe mới." : (t.mode === "WithDriver" ? "Biên bản trước giao của xe cũ (nếu có) sẽ bị bỏ, cần ghi lại cho xe mới." : "")} Lý do "sự cố" chuyển xe cũ sang bảo dưỡng. Hệ thống lưu tên bạn là người duyệt và báo cho khách${t.mode === "WithDriver" ? " và tài xế" : ""}.</p>
+            <p class="mk-note" id="opVehicleChangeError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opVehicleChangeForm" class="mk-btn mk-btn-success" ${list.length ? "" : "disabled"}>Xác nhận đổi xe</button>
+            </div>`);
+        state.modal = "vehicleChange";
     }
 
     async function returnForm(t) {
@@ -709,62 +869,121 @@
         }
     }
 
+    const INCIDENT_TYPES = { Accident: "Tai nạn / va chạm", VehicleIssue: "Xe hỏng / sự cố kỹ thuật", CustomerIssue: "Vấn đề với khách", Other: "Khác" };
+
+    /** nowVn() keeps Vietnam wall-clock time in the UTC fields. */
+    function nowLocalInput() {
+        const d = nowVn();
+        const p = (n) => String(n).padStart(2, "0");
+        return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+    }
+
+    /** Dispatcher records an incident reported by phone (customer of a self-drive booking, or the trip's driver). */
+    function reportIncidentForm(t) {
+        if (!t) return;
+        const who = t.mode === "SelfDrive" ? "khách tự lái" : "tài xế / khách";
+        openModal(`
+            <h2>Ghi sự cố · Đơn #${t.id}</h2>
+            <dl class="mk-dl">
+                <div><dt>Xe</dt><dd>${esc(t.vehicle)} · ${esc(t.plate)}</dd></div>
+                <div><dt>Hình thức</dt><dd>${MODE_LABEL[t.mode] || t.mode}${t.driver ? " · Tài xế " + esc(t.driver) : ""}</dd></div>
+            </dl>
+            <form id="opReportIncidentForm" data-id="${t.id}" class="op-form-grid">
+                <label class="mk-field"><span>Loại sự cố *</span>
+                    <select name="incidentType"><option value="">— Chọn —</option>${Object.entries(INCIDENT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
+                <label class="mk-field"><span>Thời điểm xảy ra</span><input type="datetime-local" name="occurredAt" value="${nowLocalInput()}" /></label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Mô tả *</span>
+                    <textarea name="description" rows="3" maxlength="500" class="mk-input" placeholder="Ví dụ: khách báo xe nổ lốp trên cao tốc, đang chờ cứu hộ"></textarea></label>
+            </form>
+            <p class="mk-note">Dùng khi ${who} gọi điện báo. Hệ thống lưu tên bạn là người báo${t.mode === "WithDriver" ? " và gửi thông báo cho tài xế" : ""}. Xe hỏng cần thay thì dùng thêm nút "Đổi xe".</p>
+            <p class="mk-note" id="opReportIncidentError" style="color:#b91c1c"></p>
+            <div class="mk-actions">
+                <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                <button type="submit" form="opReportIncidentForm" class="mk-btn mk-btn-danger">Ghi sự cố</button>
+            </div>`);
+        state.modal = "reportIncident";
+    }
+
     function incidentForm(t) {
         const i = t.incident;
         if (!i) {
-            toast("Chuyến này chưa có sự cố từ API. Dispatcher không có API tạo sự cố.");
+            reportIncidentForm(t);
             return;
         }
         openModal(`
             <h2>Báo cáo sự cố</h2>
-            <p class="mk-note">Dữ liệu từ GET /api/dispatch/incidents. Không có API cập nhật trạng thái sự cố cho dispatcher.</p>
             <dl class="mk-dl">
                 <div><dt>Mã đơn</dt><dd>#${t.id}</dd></div>
                 <div><dt>Xe</dt><dd>${t.vehicle}<br>${t.plate}</dd></div>
                 <div><dt>Người báo</dt><dd>${i.reporter}</dd></div>
                 <div><dt>Thời gian</dt><dd>${i.time}</dd></div>
-                <div><dt>Loại</dt><dd>${i.type}</dd></div>
-                <div><dt>Trạng thái API</dt><dd id="opIncStatus">${i.status}</dd></div>
+                <div><dt>Loại</dt><dd>${INCIDENT_TYPES[i.type] || esc(i.type)}</dd></div>
+                <div><dt>Trạng thái</dt><dd>${i.status}</dd></div>
+                ${i.resolvedBy ? `<div><dt>Người xử lý</dt><dd>${esc(i.resolvedBy)}</dd></div>` : ""}
             </dl>
-            <p>${i.desc || ""}</p>
-            <div class="op-photo">[ Ảnh hiện trường — không có API media ]</div>
-            <p class="mk-note" style="margin-top:.7rem">Nút trạng thái dưới đây chỉ đổi UI cục bộ — chưa gọi API.</p>
+            <p>${esc(i.desc || "")}</p>
+            ${i.resolutionNote ? `<p class="mk-note">Cách xử lý: ${esc(i.resolutionNote)}</p>` : ""}
+            ${i.apiStatus === "Open" ? `
+            <form id="opIncidentForm" data-id="${t.id}" data-incident-id="${i.id}" style="margin-top:.7rem">
+                <label for="opIncNote" style="display:block;font-weight:600;margin-bottom:.3rem">Cách xử lý <span style="color:#b91c1c">*</span></label>
+                <textarea id="opIncNote" name="note" rows="3" maxlength="500" class="mk-input" style="width:100%" required
+                    placeholder="Ví dụ: đã gọi tài xế, xe đi tiếp; đã gửi xe thay thế..."></textarea>
+                <p class="mk-note" id="opIncError" style="color:#b91c1c"></p>
+                <p class="mk-note">Hệ thống lưu tên bạn và thời điểm xử lý.</p>
+                <div class="mk-actions">
+                    <button type="submit" class="mk-btn mk-btn-success">Đã xử lý</button>
+                    <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
+                </div>
+            </form>` : `
             <div class="mk-actions" style="margin-top:.7rem">
-                <button type="button" class="mk-btn mk-btn-primary" data-inc-status="Tiếp nhận" data-for="${t.id}">Tiếp nhận</button>
-                <button type="button" class="mk-btn mk-btn-ghost" data-inc-status="Đang xử lý" data-for="${t.id}">Đang xử lý</button>
-                <button type="button" class="mk-btn mk-btn-success" data-inc-status="Đã xử lý" data-for="${t.id}">Đã xử lý</button>
                 <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
-            </div>`);
+            </div>`}`);
         state.modal = "incident";
     }
 
     function settlementForm(t) {
-        const c = t.charges || { base: t.totalAmount || 0, deposit: t.depositAmount || 0, extraKm: 0, extraFuel: 0, damage: 0, other: 0 };
+        const c = t.charges || { base: t.totalAmount || 0, deposit: t.depositAmount || 0, paid: 0, extraKm: 0, extraFuel: 0, damage: 0, other: 0 };
         const total = Number(c.base || 0) + Number(c.extraFuel || 0) + Number(c.damage || 0) + Number(c.other || 0);
-        const remain = total - Number(c.deposit || 0);
+        const paid = Number(c.paid || 0);
+        const remain = total - paid;
+        const settled = t.settlement === "settled";
+        const remainText = (v) => v > 0 ? "Thu thêm " + money(v) : v < 0 ? "Hoàn lại " + money(-v) : "0 ₫";
+        const form = settled ? `
+            <p class="mk-note">✓ Đã quyết toán · ${esc(t.settledBy || "")}${t.settlementNote ? " · " + esc(t.settlementNote) : ""}</p>` : `
+            <form id="opSettleForm" data-id="${t.id}" data-total="${total}" data-paid="${paid}" class="op-form-grid">
+                <label class="mk-field"><span>Nhiên liệu bổ sung (₫)</span><input name="extraFuel" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Hư hỏng (₫)</span><input name="damage" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Phí khác (₫)</span><input name="other" inputmode="numeric" value="0" data-settle-input /></label>
+                <label class="mk-field"><span>Phương thức thu / hoàn</span>
+                    <select name="paymentMethod"><option value="Cash">Tiền mặt</option><option value="BankTransfer">Chuyển khoản</option><option value="MoMo">MoMo</option><option value="VNPay">VNPay</option></select></label>
+                <label class="mk-field" style="grid-column:1/-1"><span>Ghi chú</span><input name="note" maxlength="500" placeholder="Ví dụ: trầy cản sau, khách đồng ý bồi thường" /></label>
+            </form>
+            <p class="mk-note">Sau khi chốt: tổng mới <strong data-settle-total>${money(total)}</strong> · <strong data-settle-remain>${remainText(remain)}</strong>. Hệ thống ghi khoản thu thêm / hoàn lại (mô phỏng), lưu tên bạn và báo cho khách.</p>
+            <p class="mk-note" id="opSettleError" style="color:#b91c1c"></p>`;
         openModal(`
             <h2>Quyết toán chuyến thuê</h2>
-            <p class="mk-note">Số tiền lấy từ Booking/Fees API khi có. <strong>Chốt quyết toán</strong> không có endpoint — chỉ presentation.</p>
+            <p class="mk-note">Tổng đã gồm km vượt, trả muộn, nhiên liệu và chênh lệch đổi xe (chốt lúc trả xe). Nhập thêm phí phát sinh (nếu có) rồi chốt.</p>
             <ol class="mk-note" style="padding-left:1.1rem">
                 <li>Đơn #${t.id} · ${MODE_LABEL[t.mode] || t.mode}</li>
                 <li>Xe: ${t.vehicle} ${t.plate}</li>
                 <li>Khách: ${t.customer}</li>
                 <li>Tổng (API): ${t.totalAmountText || money(total)}</li>
-                <li>Cọc: ${t.depositAmountText || money(c.deposit)}</li>
+                <li>Cọc theo báo giá: ${t.depositAmountText || money(c.deposit)}</li>
             </ol>
             <table class="op-settle">
                 <tr><th>Giá thuê cơ bản</th><td>${money(c.base)}</td></tr>
-                <tr><th>Tiền cọc</th><td>${money(c.deposit)}</td></tr>
                 <tr><th>Phí nhiên liệu</th><td>${money(c.extraFuel)}</td></tr>
                 <tr><th>Hư hỏng</th><td>${money(c.damage)}</td></tr>
                 <tr><th>Khác</th><td>${money(c.other)}</td></tr>
                 <tr class="total"><th>Tổng cộng</th><td>${money(total)}</td></tr>
-                <tr><th>Còn lại</th><td>${money(remain)}</td></tr>
+                <tr><th>Khách đã thanh toán</th><td>${money(paid)}</td></tr>
+                <tr><th>Còn lại</th><td>${settled ? "Đã tất toán" : remainText(remain)}</td></tr>
             </table>
             <p>${settleBadge(t.settlement)}</p>
+            ${form}
             <div class="mk-actions">
                 <button type="button" class="mk-btn mk-btn-ghost" data-close-modal>Đóng</button>
-                <button type="button" class="mk-btn mk-btn-success" data-close-settle="${t.id}">✓ Chốt quyết toán (mock)</button>
+                ${settled ? "" : `<button type="submit" form="opSettleForm" class="mk-btn mk-btn-success">✓ Chốt quyết toán</button>`}
             </div>`);
         state.modal = "settle";
     }
@@ -847,25 +1066,18 @@
             return;
         }
         const report = e.target.closest("[data-report]");
-        if (report) {
-            toast("Dispatcher không có API tạo sự cố (chỉ tài xế POST incidents). Không gắn cờ giả như dữ liệu thật.");
-            return;
-        }
-        const incSt = e.target.closest("[data-inc-status]");
-        if (incSt) {
-            toast(`UI only: «${incSt.dataset.incStatus}» — thiếu API cập nhật trạng thái sự cố dispatcher.`);
-            const box = document.getElementById("opIncStatus");
-            if (box) box.textContent = incSt.dataset.incStatus + " (local)";
-            return;
-        }
-        const settleDone = e.target.closest("[data-close-settle]");
-        if (settleDone) {
-            toast("Chốt quyết toán — thiếu API. Không đổi trạng thái Backend.");
-            closeModal();
-            return;
-        }
+        if (report) { reportIncidentForm(trip(report.dataset.report)); return; }
+
+        const vc = e.target.closest("[data-vehicle-change]");
+        if (vc) { vehicleChangeForm(trip(vc.dataset.vehicleChange)); return; }
+        const pc = e.target.closest("[data-precheck]");
+        if (pc) { precheckForm(trip(pc.dataset.precheck)); return; }
         const ho = e.target.closest("[data-handover]");
-        if (ho) { handoverForm(trip(ho.dataset.handover)); return; }
+        if (ho) {
+            const ht = trip(ho.dataset.handover);
+            if (ht && ht.mode !== "SelfDrive") precheckForm(ht); else handoverForm(ht);
+            return;
+        }
         const handoverSubmit = e.target.closest("[data-handover-submit]");
         if (handoverSubmit) {
             if (handoverSubmit.disabled || !state.handoverPayload) return;
@@ -875,11 +1087,17 @@
                 toast("Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
                 return;
             }
+            const licenceBox = document.querySelector("[data-handover-licence-check]");
+            if (licenceBox && !licenceBox.checked) {
+                toast("Vui lòng kiểm tra bằng lái gốc của khách và tick ô xác nhận.");
+                return;
+            }
             const url = handlers.handover + (handlers.handover.includes("?") ? "&" : "?") + "id=" + payload.id;
             handoverSubmit.disabled = true;
             const { ok, data: res } = await postForm(url, {
                 odometerKm: payload.odometerKm,
-                fuelLevel: payload.fuelLevel
+                fuelLevel: payload.fuelLevel,
+                originalLicenseChecked: licenceBox ? licenceBox.checked : false
             });
             if (!ok) {
                 toast((res && res.error) || "Giao xe thất bại.");
@@ -915,7 +1133,163 @@
         }
     });
 
+    document.body.addEventListener("input", (e) => {
+        if (!e.target.matches || !e.target.matches("[data-settle-input]")) return;
+        const form = e.target.form;
+        let total = Number(form.dataset.total || 0);
+        form.querySelectorAll("[data-settle-input]").forEach((i) => {
+            const v = Number(String(i.value || "0").replace(/[.,\s]/g, ""));
+            if (Number.isFinite(v) && v > 0) total += v;
+        });
+        const remain = total - Number(form.dataset.paid || 0);
+        const t = document.querySelector("[data-settle-total]");
+        const r = document.querySelector("[data-settle-remain]");
+        if (t) t.textContent = money(total);
+        if (r) r.textContent = remain > 0 ? "Thu thêm " + money(remain) : remain < 0 ? "Hoàn lại " + money(-remain) : "0 ₫";
+    });
+
     document.body.addEventListener("submit", async (e) => {
+        if (e.target.id === "opPrecheckForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opPrecheckError");
+            const odo = String(data.get("odo") || "").trim();
+            const fuel = String(data.get("fuel") || "").trim();
+            if (odo === "" || !Number.isFinite(Number(odo)) || Number(odo) < 0) { box.textContent = "Vui lòng nhập số km hợp lệ."; return; }
+            if (fuel === "" || !Number.isFinite(Number(fuel)) || Number(fuel) < 0 || Number(fuel) > 100) { box.textContent = "Mức nhiên liệu phải từ 0 đến 100."; return; }
+            if (!data.get("exterior") || !data.get("tech")) { box.textContent = "Vui lòng chọn tình trạng ngoại thất và kỹ thuật."; return; }
+            const url = handlers.preHandover + (handlers.preHandover.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, {
+                odometerKm: odo, fuelLevel: fuel,
+                exteriorCondition: data.get("exterior"), technicalCondition: data.get("tech"), notes: data.get("note")
+            });
+            if (!ok) { box.textContent = (res && res.error) || "Không lưu được biên bản trước giao."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã lưu biên bản trước giao. Chờ tài xế xác nhận.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
+        if (e.target.id === "opReportIncidentForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opReportIncidentError");
+            if (!data.get("incidentType")) { box.textContent = "Vui lòng chọn loại sự cố."; return; }
+            const desc = String(data.get("description") || "").trim();
+            if (!desc) { box.textContent = "Vui lòng mô tả sự cố."; return; }
+            const url = handlers.reportIncident + (handlers.reportIncident.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, { incidentType: data.get("incidentType"), description: desc, occurredAt: data.get("occurredAt") });
+            if (!ok) { box.textContent = (res && res.error) || "Không ghi được sự cố."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã ghi sự cố.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated && state.selectedId === updated.id) renderDrawer(updated);
+            return;
+        }
+        if (e.target.id === "opSettleForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opSettleError");
+            const fields = { note: data.get("note"), paymentMethod: data.get("paymentMethod") };
+            for (const k of ["extraFuel", "damage", "other"]) {
+                const v = String(data.get(k) || "0").replace(/[.,\s]/g, "");
+                if (!/^\d+$/.test(v)) { box.textContent = "Phí nhập tay phải là số tiền không âm."; return; }
+                fields[k] = v;
+            }
+            const btn = document.querySelector('button[form="opSettleForm"]');
+            if (btn) btn.disabled = true;
+            const url = handlers.settle + (handlers.settle.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, fields);
+            if (!ok) {
+                box.textContent = (res && res.error) || "Không chốt được quyết toán.";
+                if (btn) btn.disabled = false;
+                return;
+            }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã quyết toán. Khách hàng đã được thông báo.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated && state.selectedId === updated.id) renderDrawer(updated);
+            return;
+        }
+        if (e.target.id === "opVehicleChangeForm") {
+            e.preventDefault();
+            const form = e.target;
+            const data = new FormData(form);
+            const box = document.getElementById("opVehicleChangeError");
+            const sel = form.querySelector("[data-vc-vehicle]");
+            if (!sel || !sel.value) { box.textContent = "Vui lòng chọn xe thay thế."; return; }
+            if (!data.get("reason")) { box.textContent = "Vui lòng chọn lý do đổi xe."; return; }
+            const diff = Number(sel.selectedOptions[0].dataset.diff || 0);
+            if (diff !== 0 && !data.get("agreed")) { box.textContent = "Cần xác nhận khách đã đồng ý chênh lệch giá."; return; }
+            const fields = { newVehicleId: sel.value, reason: data.get("reason"), note: data.get("note"), customerAgreed: data.get("agreed") ? "true" : "false" };
+            if (form.querySelector("[name=oldOdo]")) {
+                const nums = { oldOdometerKm: "oldOdo", oldFuelLevel: "oldFuel", newOdometerKm: "newOdo", newFuelLevel: "newFuel" };
+                for (const [k, n] of Object.entries(nums)) {
+                    const v = String(data.get(n) || "").trim();
+                    if (v === "" || !Number.isFinite(Number(v)) || Number(v) < 0) { box.textContent = "Đổi giữa chuyến: nhập số km và mức nhiên liệu của cả xe cũ và xe mới."; return; }
+                    if (k.endsWith("FuelLevel") && Number(v) > 100) { box.textContent = "Mức nhiên liệu phải từ 0 đến 100."; return; }
+                    fields[k] = v;
+                }
+            }
+            const url = handlers.changeVehicle + (handlers.changeVehicle.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, fields);
+            if (!ok) { box.textContent = (res && res.error) || "Không đổi được xe."; return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã đổi xe. Khách hàng đã được thông báo.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            const updated = trip(Number(form.dataset.id));
+            if (updated) renderDrawer(updated);
+            return;
+        }
+        if (e.target.id === "opDisputeForm") {
+            e.preventDefault();
+            const form = e.target;
+            const url = handlers.resolveDispute + (handlers.resolveDispute.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, {
+                disputeId: form.dataset.disputeId, note: new FormData(form).get("note")
+            });
+            if (!ok) { toast((res && res.error) || "Không cập nhật được báo sai lệch."); return; }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã báo tài xế kiểm tra lại biên bản.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
+        if (e.target.id === "opIncidentForm") {
+            e.preventDefault();
+            const form = e.target;
+            const note = String(new FormData(form).get("note") || "").trim();
+            const box = document.getElementById("opIncError");
+            if (!note) {
+                if (box) box.textContent = "Vui lòng ghi cách xử lý sự cố.";
+                return;
+            }
+            const url = handlers.resolveIncident + (handlers.resolveIncident.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+            const { ok, data: res } = await postForm(url, { incidentId: form.dataset.incidentId, note });
+            if (!ok) {
+                if (box) box.textContent = (res && res.error) || "Không cập nhật được sự cố.";
+                return;
+            }
+            if (res.trip) upsertTrip(res.trip);
+            toast("Đã ghi nhận xử lý sự cố.");
+            closeModal();
+            await reloadFromServer();
+            render();
+            return;
+        }
         if (e.target.id === "opHandoverForm") {
             e.preventDefault();
             return;

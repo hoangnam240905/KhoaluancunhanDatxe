@@ -60,6 +60,7 @@ public class PhaseRecommendationStage3Tests
         var assignmentId = iso.Db.TripAssignments.Single(t => t.BookingId == id).AssignmentId;
 
         Assert.True(await s.Drivers.AcceptTripAsync(6, assignmentId));
+        TestDispatchReady.EnsurePreHandover(iso.Db, assignmentId);
         Assert.True(await s.Drivers.StartTripAsync(6, assignmentId));
 
         var rent = Assert.Single(Interactions(iso, Customer), i => i.InteractionType == InteractionLog.Rent);

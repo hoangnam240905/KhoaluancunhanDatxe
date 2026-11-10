@@ -15,5 +15,13 @@ public class MaintenanceRecord
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>Who opened and who completed the record (from the JWT user at the time).</summary>
+    public int? CreatedByUserId { get; set; }
+    public string? CreatedByName { get; set; }
+    public string? CreatedByRole { get; set; }
+    public int? CompletedByUserId { get; set; }
+    public string? CompletedByName { get; set; }
+    public string? CompletedByRole { get; set; }
+
     public Vehicle Vehicle { get; set; } = null!;
 }

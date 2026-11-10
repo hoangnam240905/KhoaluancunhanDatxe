@@ -16,7 +16,8 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
             .OrderBy(vt => vt.SeatCapacity)
             .Select(vt => new VehicleTypeResponse(
                 vt.TypeId, vt.TypeName, vt.SeatCapacity, vt.PricePerDay,
-                vt.PricePerKm, vt.Description, vt.ImageUrl))
+                vt.PricePerKm, vt.Description, vt.ImageUrl,
+                vt.MinLicenseClass ?? LicenseClasses.MinimumForSeats(vt.SeatCapacity)))
             .ToListAsync();
     }
 
@@ -153,7 +154,7 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         return vehicle is null ? null : MapVehicle(vehicle);
     }
 
-    private static VehicleResponse MapVehicle(Entities.Vehicle v) => new(
+    internal static VehicleResponse MapVehicle(Entities.Vehicle v) => new(
         v.VehicleId, v.TypeId, v.VehicleType.TypeName, v.LicensePlate,
         v.Brand, v.Model, v.Year, v.Color, v.Status, v.CurrentKm,
         v.RegistrationNumber, v.RegistrationExpiryDate,
@@ -386,6 +387,12 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         if (hasAssignment)
             return (false, VehicleOccupancyRules.CannotDeleteHistoric, StatusCodes.Status400BadRequest);
 
+        // Maintenance records keep the car's history (foreign key Restrict): say so instead of a generic error.
+        if (await db.MaintenanceRecords.AnyAsync(m => m.VehicleId == id))
+            return (false, VehicleOccupancyRules.CannotDeleteWithMaintenance, StatusCodes.Status400BadRequest);
+
+        // Photos belong to the car (their foreign key is Restrict); without this every car with a photo is undeletable.
+        db.VehicleImages.RemoveRange(await db.VehicleImages.Where(i => i.VehicleId == id).ToListAsync());
         db.Vehicles.Remove(vehicle);
         try
         {
@@ -433,6 +440,8 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         vt.SelfDriveExtraKmPrice = request.SelfDriveExtraKmPrice!.Value;
         vt.WithDriverDepositAmount = request.WithDriverDepositAmount!.Value;
         vt.SelfDriveDepositAmount = request.SelfDriveDepositAmount!.Value;
+        if (!string.IsNullOrWhiteSpace(request.MinLicenseClass))
+            vt.MinLicenseClass = request.MinLicenseClass.Trim().ToUpperInvariant();
 
         await db.SaveChangesAsync();
         return (MapAdmin(vt), null, StatusCodes.Status200OK);
@@ -505,6 +514,10 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
             || request.SelfDriveDepositAmount < 0)
             return "Giá không được âm.";
 
+        if (!string.IsNullOrWhiteSpace(request.MinLicenseClass)
+            && !LicenseClasses.VehicleMinimums.Contains(request.MinLicenseClass.Trim().ToUpperInvariant()))
+            return "Hạng bằng tối thiểu phải là B, D1, D2 hoặc D.";
+
         return null;
     }
 
@@ -522,7 +535,8 @@ public class VehicleService(CarRentalDbContext db, IRealtimePublisher? realtime 
         vt.SelfDriveDepositAmount ?? 0,
         vt.Description,
         vt.ImageUrl,
-        vt.IsActive);
+        vt.IsActive,
+        vt.MinLicenseClass ?? LicenseClasses.MinimumForSeats(vt.SeatCapacity));
 
     private static string? ValidateSpecs(CreateVehicleRequest request)
         => ValidateSpecs(

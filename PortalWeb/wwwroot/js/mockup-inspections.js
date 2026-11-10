@@ -13,7 +13,7 @@
     }
 
     const PAGE_SIZE = 10;
-    const TYPE = { checkout: "Giao xe", checkin: "Nhận xe" };
+    const TYPE = { precheck: "Trước giao", checkout: "Giao xe", checkin: "Nhận xe" };
     const COND = {
         good: { text: "Tốt", cls: "mk-badge-ok" },
         minor: { text: "Vấn đề nhỏ", cls: "mk-badge-warn" },
@@ -45,6 +45,64 @@
         reset: document.getElementById("inspReset")
     };
 
+    function esc(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // Return report sent by the driver: the dispatcher confirms it or marks a mismatch (plan1.md Phần A).
+    function verifyBlock(r) {
+        if (!r.verification) return "";
+        if (!r.canVerify) {
+            return `<div class="mk-block"><h3>Đối chiếu phiếu trả</h3>
+                <p><strong>${esc(r.verificationLabel)}</strong>${r.verifiedBy ? ` · Người xác nhận: ${esc(r.verifiedBy)}` : ""}</p>
+                ${r.verificationNote ? `<p class="mk-note">${esc(r.verificationNote)}</p>` : ""}</div>`;
+        }
+        return `<div class="mk-block"><h3>Đối chiếu phiếu trả</h3>
+            <p class="mk-note">Tài xế đã gửi phiếu trả, chuyến đã hoàn thành. Kiểm tra xe thật rồi xác nhận.</p>
+            <form id="inspVerifyForm" data-id="${r.id}">
+                <label class="mk-field"><span>Ghi chú (bắt buộc khi có lệch)</span>
+                    <input name="note" maxlength="500" placeholder="Ví dụ: bình xăng thực tế 20%, phiếu ghi 50%" /></label>
+                <p class="mk-note" id="inspVerifyError" style="color:#b91c1c"></p>
+                <div class="insp-actions">
+                    <button type="submit" class="mk-btn mk-btn-success" data-result="Confirmed">Xác nhận đúng</button>
+                    <button type="submit" class="mk-btn mk-btn-danger" data-result="Mismatch">Có lệch</button>
+                </div>
+                <p class="mk-note">"Có lệch" tạo sự cố cho chuyến; phí phát sinh xử lý thủ công. Hệ thống lưu tên bạn là người xác nhận.</p>
+            </form></div>`;
+    }
+
+    function antiforgery() {
+        const input = document.querySelector("#inspAntiForgery input[name='__RequestVerificationToken']");
+        return input ? input.value : "";
+    }
+
+    document.body.addEventListener("submit", async (e) => {
+        if (e.target.id !== "inspVerifyForm") return;
+        e.preventDefault();
+        const form = e.target;
+        const result = (e.submitter && e.submitter.dataset.result) || "Confirmed";
+        const note = String(new FormData(form).get("note") || "").trim();
+        const box = document.getElementById("inspVerifyError");
+        if (result === "Mismatch" && !note) { box.textContent = "Vui lòng ghi rõ điểm lệch."; return; }
+        const body = new URLSearchParams({ id: form.dataset.id, result, note, __RequestVerificationToken: antiforgery() });
+        const url = handlers.verify + (handlers.verify.includes("?") ? "&" : "?") + "id=" + form.dataset.id;
+        const res = await fetch(url, {
+            method: "POST", credentials: "same-origin",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", RequestVerificationToken: antiforgery() },
+            body: body.toString()
+        });
+        let data = null;
+        try { data = await res.json(); } catch { /* ignore */ }
+        if (!res.ok || !data || data.ok === false) { box.textContent = (data && data.error) || "Không lưu được kết quả đối chiếu."; return; }
+        if (data.record) {
+            const i = records.findIndex((x) => x.id === data.record.id);
+            if (i >= 0) records[i] = data.record;
+            openDrawer(data.record);
+        }
+        render();
+        toast(result === "Mismatch" ? "Đã ghi nhận có lệch và tạo sự cố." : "Đã xác nhận phiếu trả.");
+    });
+
     function kmText(n) { return Number(n || 0).toLocaleString("vi-VN") + " km"; }
 
     function toast(msg) {
@@ -62,7 +120,7 @@
     }
 
     function typeBadge(t) {
-        return `<span class="mk-badge ${t === "checkout" ? "mk-badge-ok" : "mk-badge-confirmed"}">${TYPE[t] || t}</span>`;
+        return `<span class="mk-badge ${t === "checkout" ? "mk-badge-ok" : t === "precheck" ? "mk-badge-warn" : "mk-badge-confirmed"}">${TYPE[t] || t}</span>`;
     }
     function condBadge(c) {
         const x = COND[c] || COND.good;
@@ -71,7 +129,8 @@
 
     function visible() {
         return records.filter((r) => {
-            if (filters.type && r.type !== filters.type) return false;
+            if (filters.type === "pendingReturn") { if (!r.canVerify) return false; }
+            else if (filters.type && r.type !== filters.type) return false;
             if (filters.vehicle && r.vehicle !== filters.vehicle) return false;
             if (filters.condition === "minorGroup") {
                 if (r.condition !== "minor" && r.condition !== "inspect") return false;
@@ -111,8 +170,10 @@
     function pills() {
         const items = [
             { v: "", t: "Tất cả" },
+            { v: "precheck", t: "Trước giao" },
             { v: "checkout", t: "Giao xe" },
-            { v: "checkin", t: "Nhận xe" }
+            { v: "checkin", t: "Nhận xe" },
+            { v: "pendingReturn", t: `Phiếu trả chờ xác nhận (${records.filter((r) => r.canVerify).length})` }
         ];
         els.pills.innerHTML = items.map((p) =>
             `<button type="button" class="mk-pill ${filters.type === p.v ? "is-on" : ""}" data-type="${p.v}">${p.t}</button>`
@@ -127,7 +188,9 @@
     }
 
     function rowHtml(r, stt) {
-        const typeLabel = r.type === "checkout" ? "Kiểm tra trước khi bàn giao xe (Handover)" : "Kiểm tra sau khi khách trả xe (Return)";
+        const typeLabel = r.type === "precheck" ? "Điều phối kiểm tra trước giao, chờ tài xế xác nhận"
+            : r.type === "checkout" ? "Kiểm tra lúc bàn giao xe"
+            : (r.verificationLabel ? `Kiểm tra khi trả xe · ${r.verificationLabel}` : "Kiểm tra khi trả xe");
         return `<tr>
             <td>${stt}</td>
             <td><strong>${r.booking}</strong></td>
@@ -138,7 +201,7 @@
             <td>${r.fuel}%</td>
             <td>${condBadge(r.condition)}</td>
             <td>${r.datetime}</td>
-            <td>${r.inspector}<div class="mk-muted">không có trong API</div></td>
+            <td>${r.inspector}</td>
             <td><button type="button" class="mk-btn mk-btn-ghost" data-open="${r.id}">Xem</button></td>
         </tr>`;
     }
@@ -293,6 +356,7 @@
                 </div>
                 ${issueBox(r)}
                 ${compare(r)}
+                ${verifyBlock(r)}
                 <div class="mk-block">
                     <h3>Ghi chú kiểm tra</h3>
                     <div class="insp-note-box">${(r.notes || "—").replace(/\n/g, "<br>")}</div>
@@ -302,10 +366,11 @@
                     <p class="mk-note">Không có API media / ảnh biên bản.</p>
                 </div>
                 <div class="insp-actions">
-                    <button type="button" class="mk-btn mk-btn-ghost" data-edit="${r.id}">Chỉnh sửa (thiếu API)</button>
+                    ${r.type === "precheck" ? `<a class="mk-btn mk-btn-ghost" href="/DieuPhoi/Trips" title="Biên bản trước giao sửa được tới khi tài xế xác nhận">Sửa ở Vận hành chuyến</a>` : ""}
                     <button type="button" class="mk-btn mk-btn-ghost" data-print="${r.id}">In biên bản</button>
                 </div>
-                <p class="mk-note">Người kiểm tra không có trên DTO Backend.</p>
+                <p class="mk-note">Người lập: ${esc(r.inspector)} · ${r.datetime}</p>
+                ${r.edited ? `<p class="mk-note">Người sửa: ${esc(r.edited)}</p>` : ""}
             </div>`;
     }
 
@@ -314,6 +379,7 @@
         els.print.innerHTML = `
             <h1>Biên bản kiểm xe</h1>
             <p>${r.booking} · ${TYPE[r.type]} · ${r.datetime}</p>
+            <p>Người lập: ${r.inspector}</p>
             <p>${r.vehicle} · ${r.plate}<br>Khách hàng: ${r.customer}</p>
             <p>Số km: ${kmText(r.km)} · Nhiên liệu: ${r.fuel}% · Tình trạng: ${(COND[r.condition] || COND.good).text}</p>
             <p>Ngoại thất: ${r.exterior} · Kỹ thuật: ${r.technical}</p>
@@ -403,11 +469,7 @@
             await openById(open.dataset.open);
             return;
         }
-        const edit = e.target.closest("[data-edit]");
-        if (edit) {
-            toast("Thiếu API chỉnh sửa biên bản độc lập — không ghi Backend.");
-            return;
-        }
+
         const pr = e.target.closest("[data-print]");
         if (pr) {
             const r = records.find((x) => x.id === Number(pr.dataset.print));

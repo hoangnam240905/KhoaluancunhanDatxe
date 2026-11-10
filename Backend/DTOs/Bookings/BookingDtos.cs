@@ -79,7 +79,18 @@ public record BookingResponse(
     int? RequestedDriverId = null,
     string? RequestedDriverName = null,
     bool CustomerCanCancel = false,
-    DateTime? CustomerCancelDeadline = null);
+    DateTime? CustomerCancelDeadline = null,
+    string? CustomerLicenseStatus = null,
+    string? OriginalLicenseCheckedByName = null,
+    DateTime? OriginalLicenseCheckedAt = null,
+    string? SettlementStatus = null,
+    DateTime? SettledAt = null,
+    string? SettledByName = null,
+    string? SettlementNote = null,
+    decimal PaidAmount = 0);
+
+/// <summary>Dispatcher closes the settlement of a completed trip; fees typed here are added on top of the final amount.</summary>
+public record SettleBookingRequest(decimal? ExtraFuel, decimal? Damage, decimal? Other, string? Note, string? PaymentMethod);
 
 public record CancelBookingRequest(string? CancellationReason);
 
@@ -95,7 +106,17 @@ public record VehicleInspectionResponse(
     string? Notes,
     DateTime CreatedAt,
     string? ExteriorCondition = null,
-    string? TechnicalCondition = null);
+    string? TechnicalCondition = null,
+    int? CreatedByUserId = null,
+    string? CreatedByName = null,
+    string? CreatedByRole = null,
+    string? UpdatedByName = null,
+    string? UpdatedByRole = null,
+    DateTime? UpdatedAt = null,
+    string? VerificationStatus = null,
+    string? VerificationNote = null,
+    string? VerifiedByName = null,
+    DateTime? VerifiedAt = null);
 
 public record BookingFeeResponse(
     int FeeId,
@@ -110,7 +131,8 @@ public record VehicleConditionRequest(
     string? Condition = null,
     string? Notes = null,
     string? ExteriorCondition = null,
-    string? TechnicalCondition = null);
+    string? TechnicalCondition = null,
+    bool? OriginalLicenseChecked = null);
 
 public record TripAssignmentResponse(
     int AssignmentId,

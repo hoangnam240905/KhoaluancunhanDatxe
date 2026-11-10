@@ -42,7 +42,7 @@ public static class RoleRoutes
     public static string HomeFor(string role) => role switch
     {
         "Admin" => "/Admin",
-        "Dispatcher" => "/Mockup",
+        "Dispatcher" => "/DieuPhoi",
         "Customer" => "/",
         _ => "/Account/Login"
     };

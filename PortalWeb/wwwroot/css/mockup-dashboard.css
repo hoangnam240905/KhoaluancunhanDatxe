@@ -267,3 +267,6 @@
     .dash-book { grid-template-columns: auto 1fr auto; }
     .dash-book .dash-thumb { display: none; }
 }
+
+/* Overview items are links to the page that handles them (live data). */
+a.dash-kpi, a.dash-task, a.dash-book, a.dash-drv, a.dash-vcell, a.dash-act, a.dash-note { text-decoration: none; color: inherit; }

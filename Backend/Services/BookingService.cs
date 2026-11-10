@@ -76,6 +76,11 @@ public class BookingService(
         {
             if (request.DriverId is int)
                 return (null, DriverEligibilityService.SelfDriveDriverNotAllowed);
+            // plan1.md Phần E: a declared licence of a class that covers the type, valid through the return date.
+            var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == customerId);
+            if (customer is not null
+                && CustomerLicenseService.SelfDriveBlockReason(customer, vehicleType, request.EndDate) is string licenceError)
+                return (null, licenceError);
         }
         else if (request.DriverId is int driverId)
         {
@@ -541,7 +546,16 @@ public class BookingService(
             b.RequestedDriverId,
             b.RequestedDriver?.User.FullName,
             customerCanCancel,
-            customerCancelDeadline);
+            customerCancelDeadline,
+            // plan1.md Phần E: self-drive bookings show whether the customer's licence is approved yet.
+            rentalMode == RentalModes.SelfDrive ? b.Customer.LicenseStatus : null,
+            b.OriginalLicenseCheckedByName,
+            b.OriginalLicenseCheckedAt,
+            b.Status == BookingStatuses.Completed ? b.SettlementStatus ?? SettlementStatuses.Pending : null,
+            b.SettledAt,
+            b.SettledByName,
+            b.SettlementNote,
+            SettlementService.PaidAmount(b.Payments ?? []));
     }
 
     /// <summary>

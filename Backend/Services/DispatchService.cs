@@ -3,6 +3,7 @@ using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Dispatch;
 using Backend.DTOs.Drivers;
+using Backend.DTOs.Realtime;
 using Backend.DTOs.Vehicles;
 using Backend.Entities;
 using Backend.Validation;
@@ -30,6 +31,16 @@ public class DispatchService(
         var dateError = BookingDateRules.ValidateNewRental(booking.StartDate, booking.EndDate);
         if (dateError is not null)
             return AssignTripResult.Fail(dateError);
+
+        if (ResolveMode(booking.RentalMode) == RentalModes.SelfDrive)
+        {
+            // plan1.md Phần E: self-drive is confirmed only once the customer's licence is approved.
+            var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == booking.CustomerId);
+            var type = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == booking.VehicleTypeId);
+            if (customer is not null && type is not null
+                && CustomerLicenseService.ConfirmBlockReason(customer, type, booking.EndDate) is string licenceBlock)
+                return AssignTripResult.Fail(licenceBlock);
+        }
 
         if (booking.AssignedVehicleId is int vehicleId and > 0)
         {
@@ -73,7 +84,8 @@ public class DispatchService(
     private async Task<bool> HasConfirmableDriverAsync(Booking booking)
     {
         var drivers = await schedule.FindAssignableDriversAsync(
-            booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+            booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId,
+            qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
         foreach (var driver in drivers)
         {
             if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
@@ -174,7 +186,8 @@ public class DispatchService(
         if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
         {
             var drivers = await schedule.FindAssignableDriversAsync(
-                booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId);
+                booking.StartDate, booking.EndDate, excludeBookingId: booking.BookingId,
+                qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
                 if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
@@ -233,6 +246,9 @@ public class DispatchService(
             .FirstOrDefaultAsync(b => b.BookingId == bookingId);
         if (booking is null)
             return Fail("Không tìm thấy đơn.");
+        // With-driver trips start from the driver's app after they confirm the dispatcher's pre-handover check.
+        if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
+            return Fail(WithDriverUsesPreHandover);
         if (!BookingStateTransitionRules.CanTransition(booking.Status, BookingStatuses.InProgress))
             return Fail("Chỉ giao xe khi đơn đã được gán xe.");
 
@@ -244,6 +260,7 @@ public class DispatchService(
         var readiness = await BookingDispatchReadinessRules.GetBlockReasonAsync(db, bookingId);
         if (readiness is not null)
             return Fail(readiness);
+
 
         // Prefer request fuel; else reuse last known level from vehicle inspections.
         // Do not invent 0 — if neither source has a valid level, inspection rules reject as before.
@@ -259,9 +276,19 @@ public class DispatchService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            dispatcherId);
         if (inspection is null)
             return Fail(inspectError ?? "Không thể ghi nhận giao xe.");
+
+        // plan1.md Phần E: the dispatcher checks the customer's original licence before handing over the car
+        // (after the report itself is valid; nothing is saved when this fails).
+        if (request?.OriginalLicenseChecked != true)
+            return Fail(OriginalLicenceNotChecked);
+        var licenceChecker = await ActorLookup.FindAsync(db, dispatcherId);
+        booking.OriginalLicenseCheckedByUserId = licenceChecker?.UserId;
+        booking.OriginalLicenseCheckedByName = licenceChecker?.Name;
+        booking.OriginalLicenseCheckedAt = DateTime.UtcNow;
 
         var oldStatus = booking.Status;
         booking.Status = BookingStatuses.InProgress;
@@ -332,7 +359,8 @@ public class DispatchService(
             request?.Condition,
             request?.Notes,
             request?.ExteriorCondition,
-            request?.TechnicalCondition);
+            request?.TechnicalCondition,
+            dispatcherId);
         if (inspection is null)
             return Fail(inspectError ?? "Không thể ghi nhận trả xe.");
 
@@ -411,6 +439,9 @@ public class DispatchService(
             .FirstOrDefaultAsync(d => d.DriverId == request.DriverId && d.IsActive && d.Status == DriverStatuses.Available);
         if (driver is null)
             return AssignTripResult.Fail("Tài xế không khả dụng.");
+        var vehicleType = await db.VehicleTypes.FindAsync(booking.VehicleTypeId);
+        if (vehicleType is not null && DriverQualification.ReasonFor(driver, vehicleType, booking.EndDate) is string notQualified)
+            return AssignTripResult.Fail(notQualified);
         if (await driverService.HasOpenAssignmentAsync(request.DriverId.Value))
         {
             return AssignTripResult.FromConflict(await BuildConflictAsync(
@@ -558,7 +589,8 @@ public class DispatchService(
         if (ResolveMode(booking.RentalMode) == RentalModes.WithDriver)
         {
             var drivers = await schedule.FindAssignableDriversAsync(
-                booking.StartDate, booking.EndDate, excludeDriverId, booking.BookingId);
+                booking.StartDate, booking.EndDate, excludeDriverId, booking.BookingId,
+                await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
                 if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
@@ -592,6 +624,179 @@ public class DispatchService(
         BookingStatuses.Pending => 3,
         _ => 9
     };
+
+    // ---- Two-sided vehicle check on with-driver trips (plan1.md Phần A) ----
+
+    public const string WithDriverUsesPreHandover =
+        "Đơn có tài xế: điều phối ghi \"Kiểm tra trước giao\", tài xế xác nhận trên app để bắt đầu chuyến.";
+    public const string OriginalLicenceNotChecked =
+        "Vui lòng kiểm tra bằng lái gốc của khách (đối chiếu thông tin và ảnh đã duyệt) rồi tick \"Đã kiểm tra bằng lái\". Không khớp hoặc hết hạn thì không giao xe.";
+    public const string PreHandoverSelfDrive = "Đơn tự lái giao xe trực tiếp cho khách, không cần kiểm tra trước giao.";
+    public const string PreHandoverNotAssigned = "Chỉ ghi kiểm tra trước giao khi đơn đã phân công tài xế và chuyến chưa bắt đầu.";
+    public const string PreHandoverLocked = "Tài xế đã xác nhận biên bản trước giao, không sửa được nữa.";
+    public const string DisputeNotFound = "Không tìm thấy báo sai lệch.";
+    public const string DisputeAlreadyResolved = "Báo sai lệch này đã được giải quyết.";
+    public const string ReturnNotPending = "Phiếu trả này không ở trạng thái chờ xác nhận.";
+    public const string ReturnResultInvalid = "Kết quả đối chiếu không hợp lệ.";
+    public const string MismatchNoteRequired = "Vui lòng ghi rõ điểm lệch.";
+    public const string NoteTooLong = "Ghi chú tối đa 500 ký tự.";
+
+    /// <summary>
+    /// Dispatcher records the car before a with-driver trip (km, fuel, exterior, technical), or corrects it
+    /// after a dispute — only until the driver confirms it. Never starts the trip.
+    /// </summary>
+    public async Task<(VehicleInspectionResponse? Inspection, string? Error)> SavePreHandoverAsync(
+        int bookingId, int dispatcherId, VehicleConditionRequest? request)
+    {
+        var booking = await db.Bookings
+            .Include(b => b.TripAssignment)
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId);
+        if (booking is null)
+            return (null, "Không tìm thấy đơn.");
+        if (ResolveMode(booking.RentalMode) != RentalModes.WithDriver)
+            return (null, PreHandoverSelfDrive);
+        if (booking.Status != BookingStatuses.Assigned
+            || booking.TripAssignment is not { } trip
+            || trip.Status is not (TripAssignmentStatuses.Assigned or TripAssignmentStatuses.Accepted))
+            return (null, PreHandoverNotAssigned);
+
+        request ??= new VehicleConditionRequest();
+        var existing = await inspections.GetPreHandoverAsync(bookingId);
+        if (existing is null)
+        {
+            var (created, error) = await inspections.AddAsync(
+                bookingId, VehicleInspectionTypes.PreHandover, request.OdometerKm, request.FuelLevel,
+                request.Condition, request.Notes, request.ExteriorCondition, request.TechnicalCondition, dispatcherId);
+            if (created is null)
+                return (null, error);
+            await db.SaveChangesAsync();
+            await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.PreHandoverRecorded,
+                RealtimeEntityTypes.Inspection, created.InspectionId, bookingId, trip.DriverId, 1);
+            return (VehicleInspectionService.ToResponse(created), null);
+        }
+
+        if (await inspections.GetHandoverAsync(bookingId) is not null)
+            return (null, PreHandoverLocked);
+        var updateError = await inspections.UpdatePreHandoverAsync(existing, request, dispatcherId);
+        if (updateError is not null)
+            return (null, updateError);
+        await db.SaveChangesAsync();
+        // The driver is told when the dispatcher marks the dispute resolved (ResolveDisputeAsync).
+        return (VehicleInspectionService.ToResponse(existing), null);
+    }
+
+    public async Task<(InspectionDisputeResponse? Dispute, string? Error)> ResolveDisputeAsync(
+        int disputeId, int dispatcherId, string? note)
+    {
+        var text = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (text is { Length: > 500 })
+            return (null, NoteTooLong);
+        var dispute = await db.InspectionDisputes.FirstOrDefaultAsync(d => d.InspectionDisputeId == disputeId);
+        if (dispute is null)
+            return (null, DisputeNotFound);
+        if (dispute.Status != InspectionDisputeStatuses.Open)
+            return (null, DisputeAlreadyResolved);
+
+        var actor = await ActorLookup.FindAsync(db, dispatcherId);
+        dispute.Status = InspectionDisputeStatuses.Resolved;
+        dispute.ResolvedByUserId = actor?.UserId;
+        dispute.ResolvedByName = actor?.Name;
+        dispute.ResolutionNote = text;
+        dispute.ResolvedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        var driverId = await db.TripAssignments
+            .Where(t => t.BookingId == dispute.BookingId && t.Status != TripAssignmentStatuses.Cancelled)
+            .Select(t => (int?)t.DriverId)
+            .FirstOrDefaultAsync();
+        if (driverId is int driver)
+        {
+            var round = await db.InspectionDisputes.CountAsync(d =>
+                d.BookingId == dispute.BookingId && d.InspectionDisputeId <= dispute.InspectionDisputeId);
+            await RealtimeNotify.InspectionCheck(realtime, RealtimeEventTypes.InspectionDisputeResolved,
+                RealtimeEntityTypes.InspectionDispute, dispute.InspectionDisputeId, dispute.BookingId, driver, round);
+        }
+        return (ToDisputeResponse(dispute), null);
+    }
+
+    public async Task<List<InspectionDisputeResponse>> GetDisputesAsync(int? bookingId, string? status)
+    {
+        var query = db.InspectionDisputes.AsNoTracking().AsQueryable();
+        if (bookingId is int id)
+            query = query.Where(d => d.BookingId == id);
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(d => d.Status == status.Trim());
+        var rows = await query.OrderByDescending(d => d.InspectionDisputeId).ToListAsync();
+        return rows.Select(ToDisputeResponse).ToList();
+    }
+
+    /// <summary>
+    /// Dispatcher checks a driver's return report once the car is back: "Confirmed" or "Mismatch" (+ note,
+    /// opens an incident). The booking stays Completed and fees are not recalculated (handled manually in v1).
+    /// </summary>
+    public async Task<(VehicleInspectionResponse? Inspection, string? Error)> VerifyReturnAsync(
+        int inspectionId, int dispatcherId, string? result, string? note)
+    {
+        var text = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (text is { Length: > 500 })
+            return (null, NoteTooLong);
+        var status = result?.Trim() switch
+        {
+            InspectionVerificationStatuses.Confirmed => InspectionVerificationStatuses.Confirmed,
+            InspectionVerificationStatuses.Mismatch => InspectionVerificationStatuses.Mismatch,
+            _ => null
+        };
+        if (status is null)
+            return (null, ReturnResultInvalid);
+        if (status == InspectionVerificationStatuses.Mismatch && text is null)
+            return (null, MismatchNoteRequired);
+
+        var inspection = await db.VehicleInspections.FirstOrDefaultAsync(i => i.InspectionId == inspectionId);
+        if (inspection is null
+            || inspection.InspectionType != VehicleInspectionTypes.Return
+            || inspection.VerificationStatus != InspectionVerificationStatuses.Pending)
+            return (null, ReturnNotPending);
+
+        var actor = await ActorLookup.FindAsync(db, dispatcherId);
+        inspection.VerificationStatus = status;
+        inspection.VerificationNote = text;
+        inspection.VerifiedByUserId = actor?.UserId;
+        inspection.VerifiedByName = actor?.Name;
+        inspection.VerifiedAt = DateTime.UtcNow;
+
+        if (status == InspectionVerificationStatuses.Mismatch)
+        {
+            var trip = await db.TripAssignments.AsNoTracking()
+                .Where(t => t.BookingId == inspection.BookingId)
+                .OrderByDescending(t => t.AssignmentId)
+                .FirstOrDefaultAsync();
+            if (trip is not null)
+            {
+                var description = $"Điều phối {actor?.Name ?? "(không rõ)"} đối chiếu phiếu trả xe: có lệch. {text}";
+                db.IncidentReports.Add(new IncidentReport
+                {
+                    BookingId = inspection.BookingId,
+                    AssignmentId = trip.AssignmentId,
+                    DriverId = trip.DriverId,
+                    IncidentType = IncidentTypes.VehicleIssue,
+                    Description = description.Length > 500 ? description[..500] : description,
+                    OccurredAt = DateTime.UtcNow,
+                    Status = IncidentStatuses.Open,
+                    CreatedAt = DateTime.UtcNow,
+                    ReportedByUserId = actor?.UserId,
+                    ReportedByName = actor?.Name,
+                    ReportedByRole = actor?.Role
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return (VehicleInspectionService.ToResponse(inspection), null);
+    }
+
+    private static InspectionDisputeResponse ToDisputeResponse(InspectionDispute d) => new(
+        d.InspectionDisputeId, d.BookingId, d.InspectionId, d.RaisedByName, d.Note, d.Status,
+        d.ResolvedByName, d.ResolutionNote, d.ResolvedAt, d.CreatedAt);
 
     private static string ResolveMode(string? rentalMode)
         => RentalModes.TryResolve(rentalMode, out var resolved) ? resolved : RentalModes.WithDriver;

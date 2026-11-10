@@ -327,6 +327,12 @@ body.aui-body {
   transform: translateX(100%); transition: transform .22s ease; display: flex; flex-direction: column;
 }
 .aui-drawer.is-open { transform: translateX(0); }
+.aui-drawer.is-compact {
+  top: 1rem; right: 1rem; width: min(520px, calc(100% - 2rem));
+  height: auto; max-height: calc(100% - 2rem); border-radius: 14px; overflow: hidden;
+}
+.aui-drawer.is-compact:not(.is-open) { transform: translateX(calc(100% + 2rem)); }
+.aui-drawer.is-compact .aui-drawer-body { flex: 0 1 auto; }
 .aui-drawer-head {
   display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start;
   padding: 1.15rem 1.2rem; border-bottom: 1px solid var(--aui-border);

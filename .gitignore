@@ -15,7 +15,6 @@
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
 **/pubspec.lock
-**/local.properties
 
 # Node.js
 **/node_modules/
@@ -39,13 +38,10 @@ Thumbs.db
 **/*.db-wal
 **/__pycache__/
 *.pyc
-
-# Python Virtual Environments
-**/.venv/
-**/venv/
-**/env/
-
-# Temp test artifacts & audit files
+# Build / test artifacts
 artifacts/
-_audit_*.txt
-*.txt.bak
+_build/
+
+# Archives
+*.rar
+*.zip

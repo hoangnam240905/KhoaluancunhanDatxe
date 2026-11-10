@@ -5,6 +5,7 @@ using Backend.Data;
 using Backend.DTOs.Bookings;
 using Backend.DTOs.Contracts;
 using Backend.DTOs.Payments;
+using Backend.DTOs.Vehicles;
 using Backend.Entities;
 
 namespace Backend.Tests;
@@ -83,7 +84,7 @@ internal static class TestDispatchReady
         string? notes = null,
         string exterior = "Ngoại thất tốt",
         string technical = "Kỹ thuật tốt")
-        => new(odometerKm, fuel, exterior, notes, exterior, technical);
+        => new(odometerKm, fuel, exterior, notes, exterior, technical, OriginalLicenseChecked: true);
 
     public static VehicleConditionRequest InspectionForVehicle(
         CarRentalDbContext db,
@@ -109,6 +110,48 @@ internal static class TestDispatchReady
             ?? db.TripAssignments.FirstOrDefault(t => t.BookingId == bookingId)?.VehicleId
             ?? throw new InvalidOperationException($"Booking {bookingId} has no assigned vehicle.");
         return InspectionForVehicle(db, vehicleId, extraKm, fuel, notes);
+    }
+
+    /// <summary>
+    /// With-driver trips need the dispatcher's pre-handover check before the driver can start
+    /// (plan1.md Phần A). Writes one at the vehicle's current km unless the booking already has it.
+    /// </summary>
+    public static void EnsurePreHandover(CarRentalDbContext db, int assignmentId)
+    {
+        var trip = db.TripAssignments.Find(assignmentId)
+            ?? throw new InvalidOperationException($"Missing assignment {assignmentId}.");
+        if (db.VehicleInspections.Any(i => i.BookingId == trip.BookingId && i.InspectionType == VehicleInspectionTypes.PreHandover))
+            return;
+        var km = db.Vehicles.Find(trip.VehicleId)!.CurrentKm;
+        db.VehicleInspections.Add(new VehicleInspection
+        {
+            BookingId = trip.BookingId,
+            VehicleId = trip.VehicleId,
+            InspectionType = VehicleInspectionTypes.PreHandover,
+            ActualAt = DateTime.UtcNow,
+            OdometerKm = km,
+            FuelLevel = 50m,
+            Condition = "Ngoại thất tốt",
+            ExteriorCondition = "Ngoại thất tốt",
+            TechnicalCondition = "Kỹ thuật tốt",
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = 2,
+            CreatedByName = "Trần Thị Điều Phối",
+            CreatedByRole = RoleNames.Dispatcher
+        });
+        db.SaveChanges();
+    }
+
+    /// <summary>Same through the API, as the dispatcher.</summary>
+    public static async Task EnsurePreHandoverHttpAsync(HttpClient client, string dispatcherToken, int bookingId)
+    {
+        var bookingResponse = await client.SendAsync(Authed(HttpMethod.Get, $"/api/bookings/{bookingId}", dispatcherToken));
+        bookingResponse.EnsureSuccessStatusCode();
+        var booking = await bookingResponse.Content.ReadFromJsonAsync<BookingResponse>();
+        var vehicle = await client.GetFromJsonAsync<VehicleResponse>($"/api/vehicles/{booking!.AssignedVehicle!.VehicleId}");
+        var saved = await client.SendAsync(Authed(HttpMethod.Post, $"/api/dispatch/bookings/{bookingId}/pre-handover",
+            dispatcherToken, JsonContent.Create(Inspection(vehicle!.CurrentKm))));
+        saved.EnsureSuccessStatusCode();
     }
 
     public static async Task EnsureSignedAndPaidHttpAsync(HttpClient client, string customerToken, int bookingId)

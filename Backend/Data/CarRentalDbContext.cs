@@ -25,6 +25,10 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<EmailOtp> EmailOtps => Set<EmailOtp>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ChatbotMessage> ChatbotMessages => Set<ChatbotMessage>();
+    public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
+    public DbSet<InspectionDispute> InspectionDisputes => Set<InspectionDispute>();
+    public DbSet<UserDocument> UserDocuments => Set<UserDocument>();
+    public DbSet<VehicleChange> VehicleChanges => Set<VehicleChange>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
     public DbSet<VehicleImage> VehicleImages => Set<VehicleImage>();
@@ -278,6 +282,59 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId);
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId);
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+        });
+
+        modelBuilder.Entity<VehicleChange>(e =>
+        {
+            e.ToTable("VehicleChanges");
+            e.HasKey(x => x.VehicleChangeId);
+            e.Property(x => x.Reason).HasMaxLength(20);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.PriceDifference).HasPrecision(18, 2);
+            e.HasIndex(x => x.BookingId);
+            e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.OldVehicle).WithMany().HasForeignKey(x => x.OldVehicleId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.NewVehicle).WithMany().HasForeignKey(x => x.NewVehicleId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserDocument>(e =>
+        {
+            e.ToTable("UserDocuments");
+            e.HasKey(x => x.UserDocumentId);
+            e.Property(x => x.DocumentType).HasMaxLength(20);
+            e.Property(x => x.FilePath).HasMaxLength(260);
+            e.Property(x => x.ContentType).HasMaxLength(50);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.RejectReason).HasMaxLength(500);
+            e.HasIndex(x => new { x.UserId, x.DocumentType });
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InspectionDispute>(e =>
+        {
+            e.ToTable("InspectionDisputes");
+            e.HasKey(x => x.InspectionDisputeId);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.ResolutionNote).HasMaxLength(500);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.HasIndex(x => x.BookingId);
+            e.HasOne(x => x.Booking).WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Inspection).WithMany().HasForeignKey(x => x.InspectionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FavoriteVehicle>(e =>
+        {
+            e.ToTable("FavoriteVehicles");
+            e.HasKey(x => x.FavoriteVehicleId);
+            e.HasIndex(x => new { x.CustomerId, x.VehicleId }).IsUnique();
+            e.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Vehicle)
+                .WithMany()
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ChatbotMessage>(e =>
@@ -1024,7 +1081,265 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     /// <summary>
     /// Creates IncidentReports on an existing SQLite database. No backfill.
     /// </summary>
-    /// <summary>Chat history of logged-in customers (chatbot widget), for databases created before it existed.</summary>
+    /// <summary>
+    /// "Who did it" columns on inspections, incidents and maintenance (plan1.md, Yêu cầu chung).
+    /// Old rows stay null and are shown as unknown; nothing is guessed.
+    /// </summary>
+    public void EnsureSqliteActorColumns()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        AddColumns("VehicleInspections",
+            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"),
+            ("UpdatedByUserId", "INTEGER"), ("UpdatedByName", "TEXT"), ("UpdatedByRole", "TEXT"), ("UpdatedAt", "TEXT"),
+            ("VerificationStatus", "TEXT"), ("VerificationNote", "TEXT"), ("VerifiedByUserId", "INTEGER"),
+            ("VerifiedByName", "TEXT"), ("VerifiedAt", "TEXT"));
+        AddColumns("IncidentReports",
+            ("ResolvedByUserId", "INTEGER"), ("ResolvedByName", "TEXT"), ("ResolvedByRole", "TEXT"),
+            ("ResolvedAt", "TEXT"), ("ResolutionNote", "TEXT"));
+        AddColumns("VehicleTypes", ("MinLicenseClass", "TEXT"));
+        AddColumns("Customers",
+            ("DriverLicenseIssueDate", "TEXT"), ("LicenseReviewedByUserId", "INTEGER"), ("LicenseReviewedByName", "TEXT"),
+            ("LicenseReviewedAt", "TEXT"), ("LicenseReviewNote", "TEXT"));
+        AddColumns("Bookings",
+            ("OriginalLicenseCheckedByUserId", "INTEGER"), ("OriginalLicenseCheckedByName", "TEXT"), ("OriginalLicenseCheckedAt", "TEXT"),
+            ("SettlementStatus", "TEXT"), ("SettledAt", "TEXT"), ("SettledByUserId", "INTEGER"), ("SettledByName", "TEXT"), ("SettlementNote", "TEXT"));
+        // Needs a NOT NULL default so existing customers start as "None" (no licence declared).
+        var customerColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Customers')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                customerColumns.Add(reader.GetString(1));
+        }
+        if (customerColumns.Count > 0 && !customerColumns.Contains("LicenseStatus"))
+            Database.ExecuteSqlRaw("ALTER TABLE Customers ADD COLUMN LicenseStatus TEXT NOT NULL DEFAULT 'None'");
+        AddColumns("Drivers",
+            ("VerifiedByUserId", "INTEGER"), ("VerifiedByName", "TEXT"), ("VerifiedAt", "TEXT"), ("VerificationNote", "TEXT"));
+        AddColumns("MaintenanceRecords",
+            ("CreatedByUserId", "INTEGER"), ("CreatedByName", "TEXT"), ("CreatedByRole", "TEXT"),
+            ("CompletedByUserId", "INTEGER"), ("CompletedByName", "TEXT"), ("CompletedByRole", "TEXT"));
+
+        void AddColumns(string table, params (string Name, string Type)[] wanted)
+        {
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = $"PRAGMA table_info('{table}')";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    columns.Add(reader.GetString(1));
+            }
+            if (columns.Count == 0)
+                return;
+            foreach (var (name, type) in wanted)
+                if (!columns.Contains(name))
+                    Database.ExecuteSqlRaw($"ALTER TABLE {table} ADD COLUMN {name} {type} NULL");
+        }
+    }
+
+    /// <summary>
+    /// Incidents of self-drive bookings have no trip assignment / driver, and every incident records who reported
+    /// it. SQLite cannot drop NOT NULL in place, so an old table is rebuilt once with the same rows (nothing deleted).
+    /// Runs after EnsureSqliteActorColumns (the Resolved* columns must exist).
+    /// </summary>
+    public void EnsureSqliteIncidentReportsOptionalDriver()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        var columns = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('IncidentReports')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns[reader.GetString(1)] = reader.GetInt32(3) == 1;
+        }
+        if (columns.Count == 0)
+            return;
+
+        if (columns.TryGetValue("DriverId", out var driverNotNull) && driverNotNull)
+        {
+            const string copied = "\"IncidentId\", \"BookingId\", \"AssignmentId\", \"DriverId\", \"IncidentType\", \"Description\", " +
+                "\"OccurredAt\", \"Status\", \"CreatedAt\", \"ResolvedByUserId\", \"ResolvedByName\", \"ResolvedByRole\", " +
+                "\"ResolvedAt\", \"ResolutionNote\"";
+            Database.ExecuteSqlRaw("PRAGMA foreign_keys = OFF");
+            using (var tx = Database.BeginTransaction())
+            {
+                Database.ExecuteSqlRaw("""
+                    CREATE TABLE "IncidentReports_new" (
+                        "IncidentId" INTEGER NOT NULL CONSTRAINT "PK_IncidentReports" PRIMARY KEY AUTOINCREMENT,
+                        "BookingId" INTEGER NOT NULL,
+                        "AssignmentId" INTEGER NULL,
+                        "DriverId" INTEGER NULL,
+                        "IncidentType" TEXT NOT NULL,
+                        "Description" TEXT NOT NULL,
+                        "OccurredAt" TEXT NOT NULL,
+                        "Status" TEXT NOT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "ResolvedByUserId" INTEGER NULL,
+                        "ResolvedByName" TEXT NULL,
+                        "ResolvedByRole" TEXT NULL,
+                        "ResolvedAt" TEXT NULL,
+                        "ResolutionNote" TEXT NULL,
+                        "ReportedByUserId" INTEGER NULL,
+                        "ReportedByName" TEXT NULL,
+                        "ReportedByRole" TEXT NULL,
+                        CONSTRAINT "FK_IncidentReports_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE RESTRICT,
+                        CONSTRAINT "FK_IncidentReports_TripAssignments_AssignmentId" FOREIGN KEY ("AssignmentId") REFERENCES "TripAssignments" ("AssignmentId") ON DELETE RESTRICT,
+                        CONSTRAINT "FK_IncidentReports_Drivers_DriverId" FOREIGN KEY ("DriverId") REFERENCES "Drivers" ("DriverId") ON DELETE RESTRICT
+                    )
+                    """);
+                Database.ExecuteSqlRaw($"INSERT INTO \"IncidentReports_new\" ({copied}) SELECT {copied} FROM \"IncidentReports\"");
+                Database.ExecuteSqlRaw("DROP TABLE \"IncidentReports\"");
+                Database.ExecuteSqlRaw("ALTER TABLE \"IncidentReports_new\" RENAME TO \"IncidentReports\"");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_BookingId\" ON \"IncidentReports\" (\"BookingId\")");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_DriverId\" ON \"IncidentReports\" (\"DriverId\")");
+                Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_IncidentReports_AssignmentId\" ON \"IncidentReports\" (\"AssignmentId\")");
+                // Rows from before: those written by the driver app (the return-check mismatch rows say "Điều phối …").
+                Database.ExecuteSqlRaw("""
+                    UPDATE "IncidentReports"
+                    SET "ReportedByUserId" = "DriverId", "ReportedByRole" = 'Driver',
+                        "ReportedByName" = (SELECT "FullName" FROM "Users" WHERE "Users"."UserId" = "IncidentReports"."DriverId")
+                    WHERE "ReportedByName" IS NULL AND "Description" NOT LIKE 'Điều phối %'
+                    """);
+                tx.Commit();
+            }
+            Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON");
+            return;
+        }
+
+        foreach (var (name, type) in new[] { ("ReportedByUserId", "INTEGER"), ("ReportedByName", "TEXT"), ("ReportedByRole", "TEXT") })
+            if (!columns.ContainsKey(name))
+                Database.ExecuteSqlRaw($"ALTER TABLE IncidentReports ADD COLUMN {name} {type} NULL");
+    }
+
+    /// <summary>Vehicle change appendix (plan1.md Phần I), for databases created before it existed.</summary>
+    public void EnsureSqliteVehicleChangesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "VehicleChanges" (
+                "VehicleChangeId" INTEGER NOT NULL CONSTRAINT "PK_VehicleChanges" PRIMARY KEY AUTOINCREMENT,
+                "BookingId" INTEGER NOT NULL,
+                "OldVehicleId" INTEGER NOT NULL,
+                "NewVehicleId" INTEGER NOT NULL,
+                "OldTypeId" INTEGER NOT NULL,
+                "NewTypeId" INTEGER NOT NULL,
+                "Reason" TEXT NOT NULL,
+                "Note" TEXT NULL,
+                "DuringTrip" INTEGER NOT NULL,
+                "OldOdometerKm" TEXT NULL,
+                "OldFuelLevel" TEXT NULL,
+                "NewOdometerKm" TEXT NULL,
+                "NewFuelLevel" TEXT NULL,
+                "RemainingDays" INTEGER NOT NULL,
+                "PriceDifference" TEXT NOT NULL,
+                "CustomerAgreed" INTEGER NOT NULL,
+                "ApprovedByUserId" INTEGER NULL,
+                "ApprovedByName" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_VehicleChanges_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE CASCADE,
+                CONSTRAINT "FK_VehicleChanges_Vehicles_OldVehicleId" FOREIGN KEY ("OldVehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_VehicleChanges_Vehicles_NewVehicleId" FOREIGN KEY ("NewVehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE RESTRICT
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_VehicleChanges_BookingId" ON "VehicleChanges" ("BookingId");""");
+    }
+
+    /// <summary>Licence / ID-card photos (plan1.md Phần F), for databases created before it existed.</summary>
+    public void EnsureSqliteUserDocumentsTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "UserDocuments" (
+                "UserDocumentId" INTEGER NOT NULL CONSTRAINT "PK_UserDocuments" PRIMARY KEY AUTOINCREMENT,
+                "UserId" INTEGER NOT NULL,
+                "DocumentType" TEXT NOT NULL,
+                "FilePath" TEXT NOT NULL,
+                "ContentType" TEXT NOT NULL,
+                "SizeBytes" INTEGER NOT NULL,
+                "Status" TEXT NOT NULL,
+                "ReviewedByUserId" INTEGER NULL,
+                "ReviewedByName" TEXT NULL,
+                "ReviewedAt" TEXT NULL,
+                "RejectReason" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_UserDocuments_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("UserId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_UserDocuments_UserId_DocumentType" ON "UserDocuments" ("UserId", "DocumentType");""");
+    }
+
+    /// <summary>Driver disputes of the dispatcher's pre-handover check (plan1.md Phần A), for older databases.</summary>
+    public void EnsureSqliteInspectionDisputesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "InspectionDisputes" (
+                "InspectionDisputeId" INTEGER NOT NULL CONSTRAINT "PK_InspectionDisputes" PRIMARY KEY AUTOINCREMENT,
+                "BookingId" INTEGER NOT NULL,
+                "InspectionId" INTEGER NOT NULL,
+                "RaisedByUserId" INTEGER NULL,
+                "RaisedByName" TEXT NULL,
+                "Note" TEXT NOT NULL,
+                "Status" TEXT NOT NULL,
+                "ResolvedByUserId" INTEGER NULL,
+                "ResolvedByName" TEXT NULL,
+                "ResolutionNote" TEXT NULL,
+                "ResolvedAt" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_InspectionDisputes_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("BookingId") ON DELETE RESTRICT,
+                CONSTRAINT "FK_InspectionDisputes_VehicleInspections_InspectionId" FOREIGN KEY ("InspectionId") REFERENCES "VehicleInspections" ("InspectionId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_InspectionDisputes_BookingId" ON "InspectionDisputes" ("BookingId");""");
+    }
+
+    /// <summary>Customers' favourite vehicles (heart button), for databases created before it existed.</summary>
+    public void EnsureSqliteFavoriteVehiclesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "FavoriteVehicles" (
+                "FavoriteVehicleId" INTEGER NOT NULL CONSTRAINT "PK_FavoriteVehicles" PRIMARY KEY AUTOINCREMENT,
+                "CustomerId" INTEGER NOT NULL,
+                "VehicleId" INTEGER NOT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_FavoriteVehicles_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("CustomerId") ON DELETE CASCADE,
+                CONSTRAINT "FK_FavoriteVehicles_Vehicles_VehicleId" FOREIGN KEY ("VehicleId") REFERENCES "Vehicles" ("VehicleId") ON DELETE CASCADE
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE UNIQUE INDEX IF NOT EXISTS "IX_FavoriteVehicles_CustomerId_VehicleId" ON "FavoriteVehicles" ("CustomerId", "VehicleId");""");
+    }
+
     public void EnsureSqliteChatbotMessagesTable()
     {
         if (Database.ProviderName is null ||

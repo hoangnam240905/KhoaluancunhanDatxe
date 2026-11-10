@@ -25,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<VehicleType> _types = [];
+  List<Vehicle> _vehicles = [];
   List<VehicleTypeRecommendation> _recommended = [];
   bool _loading = true;
   bool _recommendLoading = false;
@@ -50,7 +51,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      _types = await widget.api.getVehicleTypes();
+      final results = await Future.wait([
+        widget.api.getVehicleTypes(),
+        widget.api.getVehicles(status: 'Available'),
+      ]);
+      _types = results[0] as List<VehicleType>;
+      _vehicles = results[1] as List<Vehicle>;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -76,12 +82,20 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => VehicleDetailScreen(
           api: widget.api,
           vehicleType: type,
+          vehicleId: _vehicleIdForType(type.typeId),
           allTypes: _types,
           isLoggedIn: widget.isLoggedIn,
           initialRentalMode: _rentalMode,
         ),
       ),
     );
+  }
+
+  int? _vehicleIdForType(int typeId) {
+    for (final vehicle in _vehicles) {
+      if (vehicle.typeId == typeId) return vehicle.vehicleId;
+    }
+    return null;
   }
 
   void _openBooking({
@@ -333,24 +347,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.auto_awesome_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 7),
-                            const Text(
-                              'Trợ lý AI',
-                              style: TextStyle(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_rounded,
                                 color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
+                                size: 24,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 7),
+                              const Text(
+                                'Trợ lý AI',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

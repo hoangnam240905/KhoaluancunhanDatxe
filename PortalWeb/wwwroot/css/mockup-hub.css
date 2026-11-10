@@ -701,3 +701,6 @@ body.mk-body {
 .dx-board-title h2 { margin: 0; font-size: 1.02rem; }
 .dx-board-title p { margin: 0; }
 .dx-grid.is-day .dx-head .dx-name { font-size: 0.7rem; text-transform: none; letter-spacing: 0; color: var(--mk-text); }
+
+/* Disabled buttons look disabled (e.g. Đã xác minh before the photos are accepted). */
+.mk-btn:disabled, .mk-btn[disabled] { opacity: .45; cursor: not-allowed; filter: grayscale(.4); }

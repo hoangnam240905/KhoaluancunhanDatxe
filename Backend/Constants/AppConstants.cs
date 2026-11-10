@@ -215,6 +215,7 @@ public static class IncidentTypes
 public static class IncidentStatuses
 {
     public const string Open = "Open";
+    public const string Resolved = "Resolved";
 }
 
 public static class MaintenanceTypes
@@ -294,6 +295,8 @@ public static class ScheduleConflictTypes
 
 public static class VehicleInspectionTypes
 {
+    /// <summary>Dispatcher's check before a with-driver trip; the driver confirms it (→ Handover) or disputes it.</summary>
+    public const string PreHandover = "PreHandover";
     public const string Handover = "Handover";
     public const string Return = "Return";
 
@@ -306,7 +309,7 @@ public static class VehicleInspectionTypes
         }
 
         var trimmed = inspectionType.Trim();
-        if (trimmed is Handover or Return)
+        if (trimmed is PreHandover or Handover or Return)
         {
             resolved = trimmed;
             return true;
@@ -317,6 +320,83 @@ public static class VehicleInspectionTypes
     }
 }
 
+/// <summary>Dispatcher's check of a return report sent by the driver (stored codes; shown in Vietnamese).</summary>
+public static class InspectionVerificationStatuses
+{
+    public const string Pending = "Pending";
+    public const string Confirmed = "Confirmed";
+    public const string Mismatch = "Mismatch";
+}
+
+/// <summary>
+/// Self-drive customer's licence (plan1.md Phần E), approved once per customer, not per booking.
+/// None = not declared yet. A changed licence goes back to Pending.
+/// </summary>
+public static class CustomerLicenseStatuses
+{
+    public const string None = "None";
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
+}
+
+/// <summary>Why the dispatcher changed the car during a rental (plan1.md Phần I, contract terms 10–13).</summary>
+public static class SettlementStatuses
+{
+    public const string Pending = "Pending";
+    public const string Settled = "Settled";
+
+    public static bool IsSettled(string? value) => value == Settled;
+}
+
+public static class VehicleChangeReasons
+{
+    /// <summary>The car broke down / has a technical problem: the old car goes to maintenance.</summary>
+    public const string Breakdown = "Breakdown";
+    /// <summary>The customer's needs changed.</summary>
+    public const string NeedChange = "NeedChange";
+
+    public static bool IsValid(string? value) => value is Breakdown or NeedChange;
+}
+
+/// <summary>Driver licence check (plan1.md Phần D, step 2): only Verified drivers can be assigned.</summary>
+public static class DriverVerificationStatuses
+{
+    public const string Pending = "Pending";
+    public const string Verified = "Verified";
+    public const string Rejected = "Rejected";
+}
+
+/// <summary>Sides of the documents a driver / self-drive customer photographs (plan1.md Phần F).</summary>
+public static class UserDocumentTypes
+{
+    public const string LicenseFront = "LicenseFront";
+    public const string LicenseBack = "LicenseBack";
+    public const string IdCardFront = "IdCardFront";
+    public const string IdCardBack = "IdCardBack";
+
+    public static readonly IReadOnlyList<string> All = [LicenseFront, LicenseBack, IdCardFront, IdCardBack];
+
+    public static bool TryResolve(string? value, out string resolved)
+    {
+        resolved = All.FirstOrDefault(t => string.Equals(t, value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+        return resolved.Length > 0;
+    }
+}
+
+public static class UserDocumentStatuses
+{
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
+}
+
+public static class InspectionDisputeStatuses
+{
+    public const string Open = "Open";
+    public const string Resolved = "Resolved";
+}
+
 public static class BookingFeeTypes
 {
     public const string LateFee = "LateFee";
@@ -324,6 +404,8 @@ public static class BookingFeeTypes
     public const string Fuel = "Fuel";
     public const string Damage = "Damage";
     public const string Other = "Other";
+    /// <summary>Price difference when the car was changed to another type (plan1.md Phần I).</summary>
+    public const string VehicleChange = "VehicleChange";
 
     public static bool IsIncludedInBase(string? feeType) =>
         feeType == ExtraKm;
@@ -337,7 +419,7 @@ public static class BookingFeeTypes
         }
 
         var trimmed = feeType.Trim();
-        if (trimmed is LateFee or ExtraKm or Fuel or Damage or Other)
+        if (trimmed is LateFee or ExtraKm or Fuel or Damage or Other or VehicleChange)
         {
             resolved = trimmed;
             return true;

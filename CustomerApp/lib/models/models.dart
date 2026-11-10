@@ -143,6 +143,76 @@ class Vehicle {
   String get label => '$licensePlate · $brand $model';
 }
 
+class FavoriteVehicle {
+  final int vehicleId;
+  final int typeId;
+  final String typeName;
+  final String licensePlate;
+  final String brand;
+  final String model;
+  final int year;
+  final String? color;
+  final String status;
+  final int seatCapacity;
+  final double pricePerDay;
+  final String? primaryImageUrl;
+
+  FavoriteVehicle({
+    required this.vehicleId,
+    required this.typeId,
+    required this.typeName,
+    required this.licensePlate,
+    required this.brand,
+    required this.model,
+    required this.year,
+    required this.status,
+    required this.seatCapacity,
+    required this.pricePerDay,
+    this.color,
+    this.primaryImageUrl,
+  });
+
+  factory FavoriteVehicle.fromJson(Map<String, dynamic> json) =>
+      FavoriteVehicle(
+        vehicleId: json['vehicleId'] as int,
+        typeId: json['typeId'] as int,
+        typeName: json['typeName'] as String? ?? 'Xe',
+        licensePlate: json['licensePlate'] as String? ?? '',
+        brand: json['brand'] as String? ?? '',
+        model: json['model'] as String? ?? '',
+        year: json['year'] as int? ?? 0,
+        color: json['color'] as String?,
+        status: json['status'] as String? ?? '',
+        seatCapacity: json['seatCapacity'] as int? ?? 0,
+        pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
+        primaryImageUrl: json['primaryImageUrl'] as String?,
+      );
+}
+
+class UserDocument {
+  final int userDocumentId;
+  final String documentType;
+  final String status;
+  final String? rejectReason;
+  final DateTime createdAt;
+
+  UserDocument({
+    required this.userDocumentId,
+    required this.documentType,
+    required this.status,
+    required this.createdAt,
+    this.rejectReason,
+  });
+
+  factory UserDocument.fromJson(Map<String, dynamic> json) => UserDocument(
+        userDocumentId: json['userDocumentId'] as int,
+        documentType: json['documentType'] as String? ?? '',
+        status: json['status'] as String? ?? 'Pending',
+        rejectReason: json['rejectReason'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+}
+
 class DriverOption {
   final int driverId;
   final String fullName;

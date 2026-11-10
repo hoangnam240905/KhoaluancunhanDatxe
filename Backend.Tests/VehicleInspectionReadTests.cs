@@ -127,18 +127,27 @@ public class VehicleInspectionReadTests
     {
         var ctor = typeof(Backend.DTOs.Bookings.BookingResponse).GetConstructors().Single();
         var names = ctor.GetParameters().Select(p => p.Name).ToList();
-        Assert.Equal("CustomerCancelDeadline", names[^1]);
-        Assert.Equal("CustomerCanCancel", names[^2]);
-        Assert.Equal("RequestedDriverName", names[^3]);
-        Assert.Equal("RequestedDriverId", names[^4]);
-        Assert.Equal("CancellationReason", names[^5]);
-        Assert.Equal("HasActiveDeposit", names[^6]);
-        Assert.Equal("Review", names[^7]);
-        Assert.Equal("Inspections", names[^8]);
-        Assert.Equal("TotalFees", names[^9]);
-        Assert.Equal("FinalBaseAmount", names[^10]);
-        Assert.Equal("Fees", names[^11]);
-        Assert.Equal("FinalAmount", names[^12]);
+        // Settlement fields (plan quyết toán) come last, after the Phần E self-drive licence fields.
+        Assert.Equal("PaidAmount", names[^1]);
+        Assert.Equal("SettlementNote", names[^2]);
+        Assert.Equal("SettledByName", names[^3]);
+        Assert.Equal("SettledAt", names[^4]);
+        Assert.Equal("SettlementStatus", names[^5]);
+        Assert.Equal("OriginalLicenseCheckedAt", names[^6]);
+        Assert.Equal("OriginalLicenseCheckedByName", names[^7]);
+        Assert.Equal("CustomerLicenseStatus", names[^8]);
+        Assert.Equal("CustomerCancelDeadline", names[^9]);
+        Assert.Equal("CustomerCanCancel", names[^10]);
+        Assert.Equal("RequestedDriverName", names[^11]);
+        Assert.Equal("RequestedDriverId", names[^12]);
+        Assert.Equal("CancellationReason", names[^13]);
+        Assert.Equal("HasActiveDeposit", names[^14]);
+        Assert.Equal("Review", names[^15]);
+        Assert.Equal("Inspections", names[^16]);
+        Assert.Equal("TotalFees", names[^17]);
+        Assert.Equal("FinalBaseAmount", names[^18]);
+        Assert.Equal("Fees", names[^19]);
+        Assert.Equal("FinalAmount", names[^20]);
     }
 
     private static VehicleInspection Inspection(int id, string type) => new()

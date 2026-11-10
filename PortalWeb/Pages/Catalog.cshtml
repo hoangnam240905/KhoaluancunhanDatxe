@@ -53,6 +53,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                            <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                             <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                             <li><hr class="dropdown-divider" /></li>
                             <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -198,7 +199,10 @@
                     <article class="ch-card">
                         <div class="ch-card-media">
                             <img src="@t.ImageUrl" alt="@t.Name" />
-                            <button type="button" class="ch-fav" data-cc-fav title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            @if (t.VehicleId is int favId and > 0)
+                            {
+                                <button type="button" class="ch-fav" data-fav-vehicle="@favId" title="Yêu thích" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+                            }
                         </div>
                         <div class="ch-card-body">
                             <h3>@t.Name</h3>

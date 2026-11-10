@@ -13,19 +13,21 @@ public static class TripsUi
         IReadOnlyList<VehicleInspectionResponse> inspections,
         IncidentResponse? openIncident,
         DispatchDriverStatusResponse? fleetDriver,
-        decimal? lastKnownFuel = null)
+        decimal? lastKnownFuel = null,
+        InspectionDisputeResponse? openDispute = null)
     {
         var mode = string.IsNullOrWhiteSpace(b.RentalMode) ? "WithDriver" : b.RentalMode;
         var isSelf = string.Equals(mode, "SelfDrive", StringComparison.OrdinalIgnoreCase);
         var vehicle = FormatVehicle(b);
         var plate = b.AssignedVehicle?.LicensePlate ?? b.Assignment?.LicensePlate ?? "—";
         var driver = b.Assignment?.DriverName;
+        var preHandover = PickInspection(inspections, "PreHandover");
         var handover = PickInspection(inspections, "Handover");
         var ret = PickInspection(inspections, "Return");
         var status = MapUiStatus(b, isSelf, handover, openIncident);
         var settlement = MapSettlement(b, status);
         var progress = EstimateProgress(status);
-        var ops = BuildOps(b, handover, ret, openIncident);
+        var ops = BuildOps(b, handover, ret, openIncident, preHandover, openDispute);
 
         return new
         {
@@ -55,6 +57,13 @@ public static class TripsUi
             settlement,
             // No live GPS API — pins stay presentation-only / hidden.
             pin = new { x = 0, y = 0, show = false },
+            pre = ToCond(preHandover),
+            dispute = openDispute is null ? null : new
+            {
+                id = openDispute.InspectionDisputeId,
+                note = openDispute.Note,
+                by = UiDisplay.Actor(openDispute.RaisedByName, "Driver", openDispute.CreatedAt)
+            },
             handover = ToCond(handover),
             ret = ToCond(ret),
             incident = openIncident is null ? null : ToIncident(openIncident),
@@ -65,6 +74,8 @@ public static class TripsUi
             depositAmount = b.QuotedDepositAmount ?? 0m,
             depositAmountText = Money(b.QuotedDepositAmount ?? 0m),
             hasActiveDeposit = b.HasActiveDeposit,
+            settledBy = b.SettledAt is DateTime settledAt ? UiDisplay.Actor(b.SettledByName, "Dispatcher", settledAt) : null,
+            settlementNote = b.SettlementNote,
             ops,
             canHandoverApi = string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase),
             canCompleteApi = string.Equals(b.Status, "InProgress", StringComparison.OrdinalIgnoreCase)
@@ -135,10 +146,7 @@ public static class TripsUi
         if (!string.Equals(b.Status, "Completed", StringComparison.OrdinalIgnoreCase)
             && uiStatus != "completed")
             return "none";
-        // No dedicated settlement-close API — Completed trips show as pending until fees/payments imply settled.
-        if (b.FinalAmount is > 0 || (b.Fees?.Count ?? 0) > 0)
-            return "pending";
-        return "pending";
+        return string.Equals(b.SettlementStatus, "Settled", StringComparison.OrdinalIgnoreCase) ? "settled" : "pending";
     }
 
     private static int EstimateProgress(string status) => status switch
@@ -189,21 +197,26 @@ public static class TripsUi
             exterior = string.IsNullOrWhiteSpace(i.ExteriorCondition) ? (i.Condition ?? "—") : i.ExteriorCondition,
             tech = string.IsNullOrWhiteSpace(i.TechnicalCondition) ? "—" : i.TechnicalCondition,
             note = i.Notes ?? "",
-            at = FmtUtc(i.ActualAt)
+            at = FmtUtc(i.ActualAt),
+            by = UiDisplay.Actor(i.CreatedByName, i.CreatedByRole),
+            createdAt = FmtUtc(i.CreatedAt),
+            edited = i.UpdatedAt is null ? null : UiDisplay.Actor(i.UpdatedByName, i.UpdatedByRole, i.UpdatedAt)
         };
     }
 
     private static object ToIncident(IncidentResponse i) => new
     {
         id = i.IncidentId,
-        reporter = i.DriverName,
+        reporter = i.Reporter,
         time = FmtUtc(i.OccurredAt),
         type = i.IncidentType,
         severity = "—", // not in API
         status = MapIncidentStatus(i.Status),
         summary = Truncate(i.Description, 80),
         desc = i.Description,
-        apiStatus = i.Status
+        apiStatus = i.Status,
+        resolvedBy = i.ResolvedAt is null ? null : UiDisplay.Actor(i.ResolvedByName, i.ResolvedByRole, i.ResolvedAt),
+        resolutionNote = i.ResolutionNote
     };
 
     private static string MapIncidentStatus(string? s) => s?.Trim() switch
@@ -220,13 +233,16 @@ public static class TripsUi
             return null;
         var damage = b.Fees?.Where(f => f.FeeType.Contains("Damage", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
         var fuel = b.Fees?.Where(f => f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
+        // Extra km is already inside the base amount (see Backend BookingFeeTypes.IsIncludedInBase).
         var other = b.Fees?.Where(f =>
             !f.FeeType.Contains("Damage", StringComparison.OrdinalIgnoreCase)
-            && !f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
+            && !f.FeeType.Contains("Fuel", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(f.FeeType, "ExtraKm", StringComparison.OrdinalIgnoreCase)).Sum(f => f.Amount) ?? 0;
         return new Dictionary<string, object?>
         {
             ["base"] = b.FinalBaseAmount ?? b.TotalAmount,
             ["deposit"] = b.QuotedDepositAmount ?? 0m,
+            ["paid"] = b.PaidAmount,
             ["extraKm"] = 0,
             ["extraFuel"] = fuel,
             ["damage"] = damage,
@@ -238,14 +254,23 @@ public static class TripsUi
         BookingResponse b,
         VehicleInspectionResponse? handover,
         VehicleInspectionResponse? ret,
-        IncidentResponse? incident)
+        IncidentResponse? incident,
+        VehicleInspectionResponse? preHandover = null,
+        InspectionDisputeResponse? dispute = null)
     {
         var ops = new List<object>();
         if (string.Equals(b.Status, "Assigned", StringComparison.OrdinalIgnoreCase)
             || b.Assignment is not null)
             ops.Add(new { t = FmtUtc(b.Assignment?.AssignedAt ?? b.CreatedAt), text = "✓ Đã phân công", cls = "done" });
+        if (preHandover is not null)
+            ops.Add(new { t = FmtUtc(preHandover.CreatedAt), text = "✓ Điều phối kiểm tra trước giao", cls = "done" });
+        if (dispute is not null)
+            ops.Add(new { t = FmtUtc(dispute.CreatedAt), text = "⚠️ Tài xế báo sai lệch biên bản", cls = "warn" });
         if (handover is not null)
-            ops.Add(new { t = FmtUtc(handover.ActualAt), text = "✓ Giao xe (biên bản)", cls = "done" });
+            ops.Add(new { t = FmtUtc(handover.ActualAt),
+                text = string.Equals(handover.CreatedByRole, "Driver", StringComparison.Ordinal)
+                    ? "✓ Tài xế xác nhận tình trạng xe, bắt đầu chuyến"
+                    : "✓ Giao xe (biên bản)", cls = "done" });
         if (b.Assignment is not null
             && string.Equals(b.Assignment.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
             ops.Add(new { t = FmtUtc(b.Assignment.AssignedAt), text = "✓ Tài xế nhận chuyến", cls = "done" });

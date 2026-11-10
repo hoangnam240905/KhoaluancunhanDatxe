@@ -10,6 +10,13 @@ public class Customer
     public string? DriverLicenseClass { get; set; }
     public DateOnly? DriverLicenseExpiry { get; set; }
     public string VerificationStatus { get; set; } = "Pending";
+    /// <summary>Self-drive licence approval (plan1.md Phần E): None / Pending / Approved / Rejected.</summary>
+    public string LicenseStatus { get; set; } = "None";
+    public DateOnly? DriverLicenseIssueDate { get; set; }
+    public int? LicenseReviewedByUserId { get; set; }
+    public string? LicenseReviewedByName { get; set; }
+    public DateTime? LicenseReviewedAt { get; set; }
+    public string? LicenseReviewNote { get; set; }
     public string MembershipTier { get; set; } = "Standard";
     public DateTime? JoinedAt { get; set; }
     public string? Occupation { get; set; }

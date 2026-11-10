@@ -223,8 +223,10 @@
     drawerBackdrop?.classList.remove("is-on");
   }
 
-  function openDrawer({ title, subtitle, tabs, renderTab, footerHtml, bindFooter }) {
+  function openDrawer({ title, subtitle, tabs, renderTab, footerHtml, bindFooter, compact }) {
     if (!drawer) return;
+    // compact: short forms take only the height they need instead of the full screen.
+    drawer.classList.toggle("is-compact", !!compact);
     drawerTitle.textContent = title || "Details";
     drawerSub.textContent = subtitle || "";
     drawerTabs.innerHTML = "";
@@ -1876,19 +1878,42 @@
     function readDriverForm(includePassword) {
       const g = (name) => document.querySelector(`#auiDrawer [data-df="${name}"]`);
       const val = (name) => (g(name)?.value || "").trim();
+      const licence = {
+        licenseNumber: val("licenseNumber") || null,
+        licenseClass: val("licenseClass") || null,
+        licenseIssueDate: val("licenseIssueDate") || null,
+        licenseExpiry: val("licenseExpiry") || null
+      };
       if (includePassword) {
         return {
           fullName: val("fullName"),
           email: val("email"),
           phone: val("phone"),
-          password: val("password")
+          password: val("password"),
+          ...licence
         };
       }
       return {
         fullName: val("fullName") || null,
         phone: val("phone") || null,
-        status: val("status") || null
+        status: val("status") || null,
+        ...licence
       };
+    }
+
+    // Driver licence classes usable for company driving (Luật 36/2024 + old licences still valid).
+    const LICENSE_CLASSES = [
+      ["B", "B"], ["C1", "C1"], ["C", "C"], ["D1", "D1"], ["D2", "D2"], ["D", "D"],
+      ["B2", "B2 (cũ)"], ["C-cu", "C (cũ)"], ["D-cu", "D (cũ)"], ["E-cu", "E (cũ)"]
+    ];
+    function licenseClassOptions(current) {
+      return `<option value="">— Chưa khai —</option>` + LICENSE_CLASSES
+        .map(([code, label]) => `<option value="${code}"${code === current ? " selected" : ""}>${label}</option>`).join("");
+    }
+    // DateOnly from the API ("yyyy-MM-dd"); 0001-01-01 means "not entered".
+    function isoDay(v) {
+      const s = String(v || "").slice(0, 10);
+      return s && !s.startsWith("0001") ? s : "";
     }
 
     function driverFormHtml(d, mode) {
@@ -1903,6 +1928,15 @@
             <input class="aui-input" value="${esc(d?.email || "")}" readonly /></div>`}
           <div class="aui-field"><label>Số điện thoại *</label>
             <input class="aui-input" data-df="phone" value="${esc(d?.phone || "")}" /></div>
+          <div class="aui-field"><label>Số bằng lái</label>
+            <input class="aui-input" data-df="licenseNumber" value="${esc(d?.licenseNumber || "")}" maxlength="30" /></div>
+          <div class="aui-field"><label>Hạng bằng (Luật 36/2024)</label>
+            <select class="aui-select" data-df="licenseClass">${licenseClassOptions(d?.licenseClass)}</select></div>
+          <div class="aui-field"><label>Ngày cấp</label>
+            <input class="aui-input" type="date" data-df="licenseIssueDate" value="${esc(isoDay(d?.licenseIssueDate))}" /></div>
+          <div class="aui-field"><label>Ngày hết hạn</label>
+            <input class="aui-input" type="date" data-df="licenseExpiry" value="${esc(isoDay(d?.licenseExpiry))}" /></div>
+          <div class="aui-field" style="grid-column:1/-1"><small class="aui-muted">Tài xế chỉ được phân công sau khi điều phối xác minh bằng gốc (trang Xác minh tài xế).</small></div>
           ${isCreate ? `<div class="aui-field"><label>Mật khẩu *</label>
             <input class="aui-input" type="password" data-df="password" value="" autocomplete="new-password" /></div>` : `
           <div class="aui-field"><label>Trạng thái *</label>
@@ -1967,6 +2001,7 @@
       });
 
       let d = seed;
+      let docList = [];
       try {
         const res = await fetch(`/Admin/Drivers?handler=Detail&id=${encodeURIComponent(seed.driverId)}`, {
           headers: { Accept: "application/json" },
@@ -1975,6 +2010,7 @@
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json.message || "Không thể tải hồ sơ tài xế.");
         d = json.driver || seed;
+        docList = json.documents || [];
       } catch (err) {
         toast(err.message || "Không thể tải hồ sơ tài xế.");
       }
@@ -1991,11 +2027,21 @@
           return `<div class="aui-empty"><i class="bi bi-exclamation-triangle"></i>Chưa có API sự cố theo tài xế cho Admin.</div>`;
         }
         if (tab === "documents") {
+          const verify = { Pending: "Chờ xác minh", Verified: "Đã xác minh", Rejected: "Xác minh không thành công" };
+          const docs = Array.isArray(docList) ? docList : [];
           return `<dl class="aui-kv">
-            <div><dt>Số giấy phép</dt><dd>${esc(d.licenseNumber || "—")}</dd></div>
-            <div><dt>Hạn giấy phép</dt><dd>${esc(dayOnly(d.licenseExpiry))}</dd></div>
+            <div><dt>Số bằng lái</dt><dd>${esc(d.licenseNumber || "—")}</dd></div>
+            <div><dt>Hạng bằng</dt><dd>${esc((LICENSE_CLASSES.find(([c]) => c === d.licenseClass) || [null, d.licenseClass || "—"])[1])}</dd></div>
+            <div><dt>Hạn bằng lái</dt><dd>${esc(isoDay(d.licenseExpiry) ? dayOnly(d.licenseExpiry) : "—")}</dd></div>
+            <div><dt>Xác minh</dt><dd>${esc(verify[d.verificationStatus] || d.verificationStatus || "—")}</dd></div>
           </dl>
-          <p class="aui-muted" style="margin-top:1rem;font-size:.85rem">Hệ thống chưa hỗ trợ tài liệu đính kèm khác.</p>`;
+          <h4 style="margin:1rem 0 .5rem;font-size:.95rem">Ảnh giấy tờ</h4>
+          ${docs.length ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">${docs.map((x) => `
+            <a href="/Documents/File/${x.userDocumentId}" target="_blank" rel="noopener" style="display:block;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;text-decoration:none;color:inherit">
+              <img src="/Documents/File/${x.userDocumentId}" alt="${esc(x.label)}" style="width:100%;aspect-ratio:16/10;object-fit:cover" />
+              <small style="display:block;padding:.3rem .5rem">${esc(x.label)} · ${esc(x.status)}${x.rejectReason ? " — " + esc(x.rejectReason) : ""}</small>
+            </a>`).join("")}</div>` : `<p class="aui-muted" style="font-size:.85rem">Tài xế chưa gửi ảnh giấy tờ.</p>`}
+          <p class="aui-muted" style="margin-top:.8rem;font-size:.85rem">Điều phối viên duyệt ảnh và xác minh bằng gốc ở trang Xác minh tài xế.</p>`;
         }
         return `
           <div class="aui-person" style="margin-bottom:1rem">
@@ -2604,10 +2650,13 @@
       return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("vi-VN");
     };
 
+    // Incident times are stored in UTC; Backend sends them without a zone, so read them as UTC
+    // and show Vietnam time (otherwise 07:37 VN appears as 00:37).
     const when = (iso) => {
       if (!iso) return "—";
-      const dt = new Date(iso);
-      return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("vi-VN");
+      const s = String(iso);
+      const dt = new Date(/Z$|[+-]\d\d:?\d\d$/.test(s) ? s : s + "Z");
+      return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
     };
 
     const kmText = (n) => {
@@ -2878,11 +2927,18 @@
       });
     }
 
+    // Who opened / completed a maintenance record; old records without it say so instead of guessing.
+    function maintActor(name, role) {
+      if (!name) return "Không rõ (dữ liệu cũ)";
+      const roles = { Admin: "Quản trị", Dispatcher: "Điều phối", Driver: "Tài xế", Customer: "Khách hàng" };
+      return role ? `${name} (${roles[role] || role})` : name;
+    }
+
     function paintHistory() {
       if (!historyBody) return;
       const completed = historyRows.filter((h) => h.record.completedDate);
       if (!completed.length) {
-        historyBody.innerHTML = `<tr><td colspan="7"><div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div></td></tr>`;
+        historyBody.innerHTML = `<tr><td colspan="8"><div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div></td></tr>`;
         return;
       }
       historyBody.innerHTML = completed.map((h, i) => `
@@ -2893,6 +2949,7 @@
           <td>${esc(dayOnly(h.record.scheduledDate))}</td>
           <td>${esc(dayOnly(h.record.completedDate))}</td>
           <td>${esc(money(h.record.cost))}</td>
+          <td><small>Lập: ${esc(maintActor(h.record.createdByName, h.record.createdByRole))}<br>Hoàn thành: ${esc(maintActor(h.record.completedByName, h.record.completedByRole))}</small></td>
           <td>${badge("Completed")}</td>
         </tr>`).join("");
     }
@@ -2978,6 +3035,7 @@
         `<option value="${v.vehicleId}">${esc(v.licensePlate)} · ${esc((v.brand || "") + " " + (v.model || "")).trim()}</option>`
       ).join("");
       openDrawer({
+        compact: true,
         title: "Tạo phiếu bảo dưỡng",
         subtitle: "API bảo dưỡng xe",
         renderTab: () => `
@@ -3066,12 +3124,13 @@
       const open = p?.openMaintenance || null;
       const history = Array.isArray(detail.history) ? detail.history : [];
       const historyHtml = history.length
-        ? `<table class="aui-table"><thead><tr><th>Loại</th><th>Dự kiến</th><th>Hoàn thành</th><th>Chi phí</th></tr></thead><tbody>
+        ? `<table class="aui-table"><thead><tr><th>Loại</th><th>Dự kiến</th><th>Hoàn thành</th><th>Chi phí</th><th>Người thực hiện</th></tr></thead><tbody>
             ${history.map((h) => `<tr>
               <td>${esc(t(h.maintenanceType))}</td>
               <td>${esc(dayOnly(h.scheduledDate))}</td>
               <td>${esc(dayOnly(h.completedDate))}</td>
               <td>${esc(money(h.cost))}</td>
+              <td><small>Lập: ${esc(maintActor(h.createdByName, h.createdByRole))}${h.completedDate ? `<br>Hoàn thành: ${esc(maintActor(h.completedByName, h.completedByRole))}` : ""}</small></td>
             </tr>`).join("")}
           </tbody></table>`
         : `<div class="aui-empty"><p>Chưa có lịch sử bảo dưỡng.</p></div>`;
@@ -3224,14 +3283,17 @@
             <div><dt>Xe</dt><dd>${esc(detail.licensePlate || "—")}</dd></div>
             <div><dt>Mẫu / loại</dt><dd>${esc(detail.vehicleModel || "—")}</dd></div>
             <div><dt>Tài xế</dt><dd>${esc(inc.driverName || "—")}</dd></div>
+            <div><dt>Người báo</dt><dd>${esc(inc.reportedByName ? inc.reportedByName + (inc.reportedByRole === "Dispatcher" ? " (điều phối)" : inc.reportedByRole === "Driver" ? " (tài xế)" : "") : (inc.driverName || "—"))}</dd></div>
             <div><dt>Loại</dt><dd>${esc(t(inc.incidentType))}</dd></div>
             <div><dt>Mức độ</dt><dd>—</dd></div>
             <div><dt>Trạng thái</dt><dd>${badge(inc.status)}</dd></div>
             <div><dt>Thời điểm</dt><dd>${esc(when(inc.occurredAt))}</dd></div>
             <div><dt>Tạo lúc</dt><dd>${esc(when(inc.createdAt))}</dd></div>
+            ${inc.resolvedAt ? `<div><dt>Người xử lý</dt><dd>${esc(maintActor(inc.resolvedByName, inc.resolvedByRole))} · ${esc(when(inc.resolvedAt))}</dd></div>
+            <div><dt>Cách xử lý</dt><dd>${esc(inc.resolutionNote || "—")}</dd></div>` : ""}
             <div><dt>Mô tả</dt><dd>${esc(inc.description || "—")}</dd></div>
           </dl>
-          <p class="aui-muted" style="margin-top:1rem">Hành động giải quyết/đóng: chưa hỗ trợ trên backend.</p>`,
+          <p class="aui-muted" style="margin-top:1rem">Sự cố do điều phối viên đóng (ghi cách xử lý) trên trang Vận hành chuyến.</p>`,
         footerHtml: `<button type="button" class="aui-btn aui-btn-ghost" data-aui-drawer-close>Đóng</button>`
       });
     }

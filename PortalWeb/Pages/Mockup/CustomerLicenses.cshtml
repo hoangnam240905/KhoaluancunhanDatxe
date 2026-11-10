@@ -1,0 +1,113 @@
+@page
+@model PortalWeb.Pages.Mockup.CustomerLicensesModel
+@using PortalWeb.Display
+@{
+    Layout = Model.IsAdmin ? "_AdminUiLayout" : "_MockupLayout";
+    ViewData["Title"] = "Duyệt bằng lái khách";
+    ViewData["Nav"] = "customer-licenses";
+    string[] sides = ["LicenseFront", "LicenseBack"];
+}
+@section Styles {
+    @* Admin opens this page in the admin layout; the body uses the dispatcher workspace styles. *@
+    @if (Model.IsAdmin)
+    {
+        <link rel="stylesheet" href="~/css/mockup-hub.css" asp-append-version="true" />
+    }
+}
+
+<section class="mk-hub-head">
+    <div>
+        <h1>Duyệt bằng lái khách tự lái</h1>
+        <p>Duyệt một lần cho mỗi khách. Đơn tự lái của khách chưa duyệt bằng sẽ không xác nhận được. Lúc giao xe vẫn kiểm tra bằng gốc.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="mk-banner" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46">@Model.Message</div>
+}
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="mk-banner" style="background:#fef2f2;border-color:#fecaca;color:#991b1b">@Model.Error</div>
+}
+
+<section class="mk-card mk-toolbar">
+    <div class="mk-pills">
+        <a class="mk-pill @(Model.Tab == "Pending" ? "is-on" : "")" href="?tab=Pending">Chờ duyệt (@Model.PendingCount)</a>
+        <a class="mk-pill @(Model.Tab == "Approved" ? "is-on" : "")" href="?tab=Approved">Đã duyệt</a>
+        <a class="mk-pill @(Model.Tab == "Rejected" ? "is-on" : "")" href="?tab=Rejected">Chưa được chấp nhận</a>
+    </div>
+</section>
+
+@if (Model.Customers.Count == 0)
+{
+    <section class="mk-card"><p class="mk-empty">Không có khách nào trong mục này.</p></section>
+}
+
+@foreach (var c in Model.Customers)
+{
+    var photosReady = c.PhotoStatus is "Pending" or "Accepted";
+    <section class="mk-card" style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <div>
+                <h2 style="margin:0">@c.FullName <span class="mk-muted" style="font-size:.85rem">#@c.CustomerId</span></h2>
+                <p class="mk-muted" style="margin:.2rem 0">@c.Email · @(c.Phone ?? "—")</p>
+            </div>
+            <span class="mk-badge @(c.LicenseStatus == "Approved" ? "mk-badge-ok" : c.LicenseStatus == "Rejected" ? "mk-badge-incident" : "mk-badge-warn")">@CustomerLicensesModel.StatusLabel(c.LicenseStatus)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:1rem;margin-top:.8rem">
+            <dl class="mk-dl">
+                <div><dt>Số bằng</dt><dd>@(c.LicenseNumber ?? "—")</dd></div>
+                <div><dt>Hạng bằng</dt><dd>@(c.LicenseClassLabel ?? "—")</dd></div>
+                <div><dt>Ngày cấp</dt><dd>@CustomerLicensesModel.Day(c.LicenseIssueDate)</dd></div>
+                <div><dt>Hết hạn</dt><dd>@CustomerLicensesModel.Day(c.LicenseExpiry)@(c.LicenseExpired ? " (đã hết hạn)" : c.LicenseExpiringSoon ? " (sắp hết hạn)" : "")</dd></div>
+                <div><dt>Được tự lái</dt><dd>@string.Join(", ", c.VehicleTypes.Where(t => t.CanDrive).Select(t => t.TypeName).DefaultIfEmpty("—"))</dd></div>
+                @if (c.ReviewedAt is DateTime at)
+                {
+                    <div><dt>Người duyệt</dt><dd>@UiDisplay.Actor(c.ReviewedByName, "Dispatcher", at)</dd></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(c.ReviewNote))
+                {
+                    <div><dt>Lý do</dt><dd>@c.ReviewNote</dd></div>
+                }
+            </dl>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+                @foreach (var side in sides)
+                {
+                    var doc = c.Documents.FirstOrDefault(x => x.DocumentType == side);
+                    <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                        @if (doc is not null)
+                        {
+                            <a href="/Documents/File/@doc.UserDocumentId" target="_blank" rel="noopener">
+                                <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;aspect-ratio:16/10;object-fit:cover;display:block" />
+                            </a>
+                        }
+                        else
+                        {
+                            <div style="aspect-ratio:16/10;background:#f3f4f6;display:flex;align-items:center;justify-content:center" class="mk-muted">Chưa gửi</div>
+                        }
+                        <small style="display:block;padding:.3rem .5rem">@UiDisplay.DocumentType(side) · <strong>@UiDisplay.DocumentStatus(doc?.Status)</strong></small>
+                    </div>
+                }
+            </div>
+        </div>
+        @if (c.LicenseStatus != "Approved")
+        {
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem;align-items:center">
+                <form method="post" asp-page-handler="Review">
+                    <input type="hidden" name="id" value="@c.CustomerId" /><input type="hidden" name="approve" value="true" /><input type="hidden" name="tab" value="@Model.Tab" />
+                    <button type="submit" class="mk-btn mk-btn-success" @(photosReady ? "" : "disabled")>Duyệt bằng</button>
+                </form>
+                <form method="post" asp-page-handler="Review" style="display:flex;gap:.4rem;flex:1;min-width:260px">
+                    <input type="hidden" name="id" value="@c.CustomerId" /><input type="hidden" name="approve" value="false" /><input type="hidden" name="tab" value="@Model.Tab" />
+                    <input name="reason" required maxlength="500" placeholder="Lý do từ chối (ảnh mờ, hạng không đúng…)" class="mk-input" style="flex:1" />
+                    <button type="submit" class="mk-btn mk-btn-danger">Từ chối</button>
+                </form>
+                @if (!photosReady)
+                {
+                    <span class="mk-note">Khách chưa gửi đủ ảnh 2 mặt.</span>
+                }
+            </div>
+        }
+    </section>
+}

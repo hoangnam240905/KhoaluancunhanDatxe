@@ -11,6 +11,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     public List<PaymentResponse> Payments { get; set; } = [];
     public ContractResponse? Contract { get; set; }
     public IReadOnlyList<VehicleInspectionResponse> Inspections { get; set; } = [];
+    public IReadOnlyList<VehicleChangeResponse> VehicleChanges { get; set; } = [];
     /// <summary>Deposit receipts / trip invoice (same HTML as the emails).</summary>
     public IReadOnlyList<InvoiceDocumentResponse> Invoices { get; private set; } = [];
     public string? ErrorMessage { get; set; }
@@ -288,6 +289,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
             Payments = await api.GetBookingPaymentsAsync(id);
             Contract = await api.GetContractAsync(id);
             Invoices = await LoadInvoicesAsync(id);
+            VehicleChanges = await api.GetVehicleChangesAsync(id);
         }
         catch
         {
@@ -305,6 +307,7 @@ public class DetailsModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         Inspections = Booking.Inspections is { Count: > 0 }
             ? Booking.Inspections
             : await api.GetBookingInspectionsAsync(id);
+        VehicleChanges = await api.GetVehicleChangesAsync(id);
         Presentation = BookingDetailUi.FromBooking(Booking);
         return true;
     }

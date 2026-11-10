@@ -6,9 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Services;
 
 /// <summary>
-/// Driver eligibility (active, license valid through the rental end, not offline)
-/// and date-range availability (no occupying trip overlapping the request).
-/// License class is not checked: Driver and VehicleType have no class columns.
+/// Driver eligibility (active, not offline, verified, licence valid through the rental end and of a class
+/// that covers the vehicle type — plan1.md Phần D) and date-range availability.
 /// </summary>
 public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictService schedule)
 {
@@ -27,6 +26,7 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
         var typeId = await ResolveVehicleTypeIdAsync(vehicleId, vehicleTypeId);
         if (typeId is null)
             return [];
+        var type = await db.VehicleTypes.AsNoTracking().FirstAsync(t => t.TypeId == typeId.Value);
 
         var drivers = await db.Drivers
             .AsNoTracking()
@@ -38,7 +38,7 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
         var result = new List<CustomerDriverOptionResponse>();
         foreach (var driver in drivers)
         {
-            if (RejectReason(driver, end) is not null)
+            if (RejectReason(driver, end) is not null || DriverQualification.ReasonFor(driver, type, end) is not null)
                 continue;
 
             var conflict = await schedule.HasDriverConflictAsync(driver.DriverId, start, end);
@@ -91,12 +91,11 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
         if (driver is null)
             return Unavailable;
 
-        var typeExists = await db.VehicleTypes.AsNoTracking()
-            .AnyAsync(t => t.TypeId == vehicleTypeId);
-        if (!typeExists)
+        var type = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == vehicleTypeId);
+        if (type is null)
             return NotEligible;
 
-        var reason = RejectReason(driver, end);
+        var reason = RejectReason(driver, end) ?? DriverQualification.ReasonFor(driver, type, end);
         if (reason is not null)
             return reason;
 

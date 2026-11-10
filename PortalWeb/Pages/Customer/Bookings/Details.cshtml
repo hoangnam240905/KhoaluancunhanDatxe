@@ -46,6 +46,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                         <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -169,6 +170,14 @@
                                     }
                                 </div>
                             </div>
+                        </article>
+                    }
+
+                    @if (Model.VehicleChanges.Count > 0)
+                    {
+                        <article class="bd-card">
+                            <h2>Phụ lục đổi xe</h2>
+                            <partial name="_VehicleChangeAppendix" model="Model.VehicleChanges" />
                         </article>
                     }
 

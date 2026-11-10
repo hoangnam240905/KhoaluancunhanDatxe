@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Backend.Constants;
 using Backend.DTOs.Bookings;
+using Backend.DTOs.Dispatch;
 using Backend.DTOs.Drivers;
 using Backend.DTOs.Incidents;
 using Backend.Services;
@@ -16,8 +17,33 @@ namespace Backend.Controllers;
 public class DriversController(
     DriverService driverService,
     IncidentService incidentService,
-    DriverEligibilityService driverEligibility) : ControllerBase
+    DriverEligibilityService driverEligibility,
+    DriverVerificationService verification) : ControllerBase
 {
+    /// <summary>Licence classes the app/web offers (Luật 36/2024 + old licences still valid).</summary>
+    [AllowAnonymous]
+    [HttpGet("license-classes")]
+    public ActionResult<IReadOnlyList<LicenseClassOption>> LicenseClasses()
+        => Ok(DriverVerificationService.ClassOptions());
+
+    /// <summary>The signed-in driver's verification file: licence, photos and both review steps.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpGet("me/verification")]
+    public async Task<ActionResult<DriverVerificationResponse>> MyVerification()
+    {
+        var data = await verification.GetAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!));
+        return data is null ? NotFound(new { message = DriverVerificationService.NotFound }) : Ok(data);
+    }
+
+    /// <summary>The driver enters / corrects the licence (photos go to POST /api/documents).</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPut("me/license")]
+    public async Task<ActionResult<DriverVerificationResponse>> UpdateMyLicense(UpdateDriverLicenseRequest request)
+    {
+        var (data, error) = await verification.UpdateLicenseAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
     [HttpGet]
     public async Task<ActionResult<List<DriverResponse>>> GetAll([FromQuery] string? status)
@@ -90,11 +116,46 @@ public class DriversController(
 
     [Authorize(Roles = RoleNames.Driver)]
     [HttpPost("trips/{assignmentId:int}/start")]
-    public async Task<IActionResult> StartTrip(int assignmentId)
+    public async Task<IActionResult> StartTrip(
+        int assignmentId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VehicleConditionRequest? request)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var ok = await driverService.StartTripAsync(userId, assignmentId);
-        return ok ? Ok(new { message = "Đã bắt đầu chuyến." }) : BadRequest();
+        var (ok, error) = await driverService.StartTripAsync(userId, assignmentId, request);
+        return ok
+            ? Ok(new { message = request is null ? "Đã bắt đầu chuyến." : "Đã lưu biên bản đầu chuyến và bắt đầu chuyến." })
+            : BadRequest(new { message = error ?? "Không thể bắt đầu chuyến." });
+    }
+
+    /// <summary>"Báo sai lệch": the dispatcher's pre-handover record does not match the real car.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("trips/{assignmentId:int}/dispute")]
+    public async Task<IActionResult> RaiseDispute(int assignmentId, RaiseDisputeRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (dispute, error) = await driverService.RaiseDisputeAsync(userId, assignmentId, request.Note);
+        return dispute is null
+            ? BadRequest(new { message = error })
+            : Ok(new { message = "Đã báo sai lệch cho điều phối.", disputeId = dispute.InspectionDisputeId });
+    }
+
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpGet("trips/{assignmentId:int}/disputes")]
+    public async Task<ActionResult<List<InspectionDisputeResponse>>> MyTripDisputes(int assignmentId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var list = await driverService.GetDisputesAsync(userId, assignmentId);
+        return list is null ? NotFound(new { message = "Không tìm thấy chuyến của tài xế này." }) : Ok(list);
+    }
+
+    /// <summary>"Nhắc điều phối": no pre-handover record yet.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("trips/{assignmentId:int}/remind-dispatcher")]
+    public async Task<IActionResult> RemindDispatcher(int assignmentId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var error = await driverService.RemindDispatcherAsync(userId, assignmentId);
+        return error is null ? Ok(new { message = "Đã nhắc điều phối." }) : BadRequest(new { message = error });
     }
 
     [Authorize(Roles = RoleNames.Driver)]

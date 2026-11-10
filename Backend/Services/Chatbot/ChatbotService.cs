@@ -118,7 +118,9 @@ public class ChatbotService(
             quotedDays = quote.QuotedDays;
             if (MaxFor(query, quote.QuotedDays) is decimal max && quote.TotalAmount > max)
                 continue;
-            var free = await schedule.FindAvailableVehiclesAsync(type.TypeId, start, end);
+            // Same rule as the Search page: a car set to Maintenance is not offered, even without an open record.
+            var free = (await schedule.FindAvailableVehiclesAsync(type.TypeId, start, end))
+                .Where(v => v.Status != VehicleStatuses.Maintenance);
             found.AddRange(free.Select(v => new ChatbotVehicle(
                 v.VehicleId,
                 $"{v.Brand} {v.Model}".Trim(),

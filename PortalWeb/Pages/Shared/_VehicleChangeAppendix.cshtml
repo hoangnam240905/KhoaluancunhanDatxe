@@ -1,0 +1,49 @@
+@model IReadOnlyList<PortalWeb.Models.VehicleChangeResponse>
+@* "Phụ lục đổi xe" (plan1.md Phần I, contract terms 10–13): one block per change, shown to the customer. *@
+@{
+    static string Reason(string r) => r switch
+    {
+        "Breakdown" => "Xe gặp sự cố kỹ thuật",
+        "NeedChange" => "Khách hàng thay đổi nhu cầu",
+        _ => r
+    };
+    static string Vnd(decimal v) => v.ToString("#,0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) + " ₫";
+    var vn = TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "SE Asia Standard Time" : "Asia/Ho_Chi_Minh");
+}
+@if (Model.Count > 0)
+{
+    <div class="vc-appendix">
+        @for (var i = 0; i < Model.Count; i++)
+        {
+            var c = Model[i];
+            var at = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(c.CreatedAt, DateTimeKind.Utc), vn);
+            <div class="vc-item" style="border-left:3px solid #2563eb;padding:.4rem .8rem;margin-bottom:.8rem">
+                <strong>Phụ lục đổi xe số @(i + 1)</strong> <small class="text-muted">· @at.ToString("HH:mm dd/MM/yyyy")</small>
+                <dl class="mb-1" style="display:grid;grid-template-columns:max-content 1fr;gap:.15rem .8rem;margin:.4rem 0">
+                    <dt>Xe cũ</dt><dd class="mb-0">@c.OldVehicle (@c.OldTypeName)</dd>
+                    <dt>Xe thay thế</dt><dd class="mb-0">@c.NewVehicle (@c.NewTypeName)</dd>
+                    <dt>Lý do</dt><dd class="mb-0">@Reason(c.Reason)@(string.IsNullOrWhiteSpace(c.Note) ? "" : " — " + c.Note)</dd>
+                    <dt>Thời điểm</dt><dd class="mb-0">@(c.DuringTrip ? "Giữa chuyến" : "Trước khi giao xe")</dd>
+                    @if (c.DuringTrip)
+                    {
+                        <dt>Xe cũ khi đổi</dt><dd class="mb-0">@c.OldOdometerKm?.ToString("0.#") km · nhiên liệu @c.OldFuelLevel?.ToString("0.#")%</dd>
+                        <dt>Xe mới khi giao</dt><dd class="mb-0">@c.NewOdometerKm?.ToString("0.#") km · nhiên liệu @c.NewFuelLevel?.ToString("0.#")%</dd>
+                    }
+                    <dt>Chênh lệch giá</dt>
+                    <dd class="mb-0">
+                        @if (c.PriceDifference == 0)
+                        {
+                            <span>Không phát sinh (cùng loại xe)</span>
+                        }
+                        else
+                        {
+                            <span>@(c.PriceDifference > 0 ? "+" : "")@Vnd(c.PriceDifference) cho @c.RemainingDays ngày còn lại@(c.CustomerAgreed ? " · khách hàng đã đồng ý" : "")</span>
+                        }
+                    </dd>
+                    <dt>Người phê duyệt</dt><dd class="mb-0">@(c.ApprovedByName ?? "Điều phối viên")</dd>
+                </dl>
+            </div>
+        }
+        <p class="ct-note" style="font-size:.85rem;color:#6b7280">Phụ lục là một phần của hợp đồng và không làm mất hiệu lực hợp đồng gốc. Chênh lệch giá (nếu có) được cộng/trừ vào tiền thanh toán khi kết thúc chuyến.</p>
+    </div>
+}

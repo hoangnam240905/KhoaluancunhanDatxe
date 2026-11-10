@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>DriveX dùng camera để chụp bằng lái và CCCD gửi điều phối xác minh.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DriveX cần chọn ảnh bằng lái và CCCD để gửi điều phối xác minh.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

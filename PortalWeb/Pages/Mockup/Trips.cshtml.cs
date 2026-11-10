@@ -62,12 +62,28 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
 
         var (fleet, _) = await api.GetFleetStatusAsync();
         var fleetDriver = fleet?.Drivers.FirstOrDefault(d => d.DriverId == booking.Assignment?.DriverId);
+        var dispute = (await api.GetInspectionDisputesAsync(id, "Open")).FirstOrDefault();
 
         return new JsonResult(new
         {
             ok = true,
-            trip = TripsUi.ToTripRow(booking, inspections, open, fleetDriver)
+            trip = TripsUi.ToTripRow(booking, inspections, open, fleetDriver, null, dispute)
         });
+    }
+
+    /// <summary>Self-drive (plan1.md Phần E): the licence the customer declared, shown next to the "checked original" tick.</summary>
+    private async Task<object?> LicenceForHandoverAsync(BookingResponse booking)
+    {
+        if (booking.RentalMode != "SelfDrive") return null;
+        var l = await api.GetCustomerLicenseAsync(booking.CustomerId);
+        return l is null ? null : new
+        {
+            number = l.LicenseNumber,
+            cls = l.LicenseClassLabel,
+            expiry = l.LicenseExpiry?.ToString("dd/MM/yyyy"),
+            status = l.LicenseStatus,
+            expired = l.LicenseExpired
+        };
     }
 
     public async Task<IActionResult> OnGetHandoverInfoAsync(int id)
@@ -98,12 +114,13 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             fuelLevel = snap.FuelLevel,
             requiresFuelInput = snap.RequiresFuelInput,
             canConfirm = kmOk && !snap.RequiresFuelInput,
-            blockReason = snap.BlockReason
+            blockReason = snap.BlockReason,
+            licence = await LicenceForHandoverAsync(booking)
         });
     }
 
     public async Task<IActionResult> OnPostHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel,
-        string? exteriorCondition, string? technicalCondition, string? notes)
+        string? exteriorCondition, string? technicalCondition, string? notes, bool originalLicenseChecked = false)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
@@ -125,12 +142,117 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             FuelLevel = fuel,
             ExteriorCondition = exteriorCondition,
             TechnicalCondition = technicalCondition,
-            Notes = notes
+            Notes = notes,
+            OriginalLicenseChecked = originalLicenseChecked
         };
 
         var (data, error) = await api.HandoverBookingAsync(id, condition);
         if (data is null) return ActionFail(error ?? "Giao xe thất bại (SelfDrive).");
         return await ActionOkTripAsync(data);
+    }
+
+    /// <summary>
+    /// With-driver trip: dispatcher records (or corrects after a dispute) the car before handover.
+    /// The trip starts only when the driver confirms it in the app (plan1.md Phần A).
+    /// </summary>
+    public async Task<IActionResult> OnPostPreHandoverAsync(int id, decimal? odometerKm, decimal? fuelLevel,
+        string? exteriorCondition, string? technicalCondition, string? notes)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (odometerKm is null) return ActionFail("Vui lòng nhập số km hợp lệ.");
+        if (fuelLevel is null or < 0 or > 100) return ActionFail("Mức nhiên liệu phải từ 0 đến 100.");
+
+        var (_, error) = await api.SavePreHandoverAsync(id, new VehicleConditionRequest
+        {
+            OdometerKm = odometerKm,
+            FuelLevel = fuelLevel,
+            ExteriorCondition = exteriorCondition,
+            TechnicalCondition = technicalCondition,
+            Notes = notes
+        });
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
+    /// <summary>Dispatcher records an incident reported by phone (self-drive customer or the trip's driver).</summary>
+    public async Task<IActionResult> OnPostReportIncidentAsync(int id, string? incidentType, string? description, DateTime? occurredAt)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (string.IsNullOrWhiteSpace(description)) return ActionFail("Vui lòng mô tả sự cố.");
+        // The form sends Vietnam local time; the API stores UTC.
+        DateTime? utc = occurredAt is DateTime local
+            ? TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), UiDisplay.VietnamZone)
+            : null;
+        var (_, error) = await api.ReportIncidentAsDispatcherAsync(id, new CreateIncidentRequest(incidentType, description.Trim(), utc));
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
+    /// <summary>Dispatcher closes the settlement of a completed trip (extra fees + balance / refund).</summary>
+    public async Task<IActionResult> OnPostSettleAsync(int id, decimal? extraFuel, decimal? damage, decimal? other,
+        string? note, string? paymentMethod)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (new[] { extraFuel, damage, other }.Any(v => v is < 0)) return ActionFail("Phí nhập tay không được âm.");
+        var (data, error) = await api.SettleBookingAsync(id, new SettleBookingRequest(extraFuel, damage, other, note, paymentMethod));
+        if (error is not null || data is null) return ActionFail(error ?? "Không chốt được quyết toán.");
+        return await ActionOkTripAsync(data);
+    }
+
+    /// <summary>Free cars for a vehicle change (plan1.md Phần I): same type first, other types only when none.</summary>
+    public async Task<IActionResult> OnGetVehicleChangeOptionsAsync(int id)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        var (data, error) = await api.GetVehicleChangeOptionsAsync(id);
+        return data is null ? ActionFail(error ?? "Không tải được danh sách xe thay thế.") : new JsonResult(new { ok = true, options = data }, JsonOpts);
+    }
+
+    /// <summary>Dispatcher changes the car; Backend records the appendix with the dispatcher's name and notifies customer + driver.</summary>
+    public async Task<IActionResult> OnPostChangeVehicleAsync(int id, int newVehicleId, string? reason, string? note,
+        decimal? oldOdometerKm, decimal? oldFuelLevel, decimal? newOdometerKm, decimal? newFuelLevel, bool customerAgreed)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (newVehicleId <= 0) return ActionFail("Vui lòng chọn xe thay thế.");
+        var (_, error) = await api.ChangeVehicleAsync(id, new ChangeVehicleRequest(
+            newVehicleId, reason, note, oldOdometerKm, oldFuelLevel, newOdometerKm, newFuelLevel, customerAgreed));
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
+    /// <summary>Dispatcher marks the driver's dispute handled (after fixing the record); the driver is notified.</summary>
+    public async Task<IActionResult> OnPostResolveDisputeAsync(int id, int disputeId, string? note)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        var (_, error) = await api.ResolveInspectionDisputeAsync(disputeId, note);
+        if (error is not null) return ActionFail(error);
+        var booking = await api.GetBookingAsync(id);
+        return booking is null ? new JsonResult(new { ok = true }) : await ActionOkTripAsync(booking);
+    }
+
+    /// <summary>Dispatcher closes an open incident; Backend records who did it from the login token.</summary>
+    public async Task<IActionResult> OnPostResolveIncidentAsync(int id, int incidentId, string? note)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (string.IsNullOrWhiteSpace(note))
+            return ActionFail("Vui lòng ghi cách xử lý sự cố.");
+
+        var (_, error) = await api.ResolveIncidentAsync(incidentId, note.Trim());
+        if (error is not null) return ActionFail(error);
+
+        var booking = await api.GetBookingAsync(id);
+        return booking is null
+            ? new JsonResult(new { ok = true })
+            : await ActionOkTripAsync(booking);
     }
 
     public async Task<IActionResult> OnGetReturnInfoAsync(int id)
@@ -193,8 +315,12 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
             var inspectionsTask = api.GetDispatchInspectionsAsync();
             var fleetTask = api.GetFleetStatusAsync();
             var driversTask = api.GetDriversAsync(null);
+            var disputesTask = api.GetInspectionDisputesAsync(null, "Open");
 
-            await Task.WhenAll(bookingsTask, incidentsTask, inspectionsTask, fleetTask, driversTask);
+            await Task.WhenAll(bookingsTask, incidentsTask, inspectionsTask, fleetTask, driversTask, disputesTask);
+            var openDisputes = (await disputesTask)
+                .GroupBy(d => d.BookingId)
+                .ToDictionary(g => g.Key, g => g.First());
 
             var bookings = await bookingsTask;
             var (incidents, incErr) = await incidentsTask;
@@ -235,7 +361,8 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                     decimal? lastFuel = null;
                     if (vid is int vehicleId)
                         fuelByVehicle.TryGetValue(vehicleId, out lastFuel);
-                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd, lastFuel);
+                    openDisputes.TryGetValue(b.BookingId, out var dispute);
+                    return TripsUi.ToTripRow(b, insp ?? [], inc, fd, lastFuel, dispute);
                 })
                 .Cast<object>()
                 .ToList();
@@ -280,8 +407,6 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
                 missingApis = new[]
                 {
                     "Dispatcher WithDriver complete/return (chỉ SelfDrive: POST /api/dispatch/bookings/{id}/complete)",
-                    "Dispatcher create/update incident status (chỉ GET /api/dispatch/incidents)",
-                    "Settlement close / quyết toán chốt (không có endpoint)",
                     "Live GPS / map pins (không có endpoint)"
                 },
                 warnings
@@ -348,10 +473,11 @@ public class TripsModel(CarRentalApiClient api, AuthSession auth) : RolePageMode
         var (incidents, _) = await api.GetDispatchIncidentsAsync(data.BookingId);
         var open = incidents.FirstOrDefault(i =>
             string.Equals(i.Status, "Open", StringComparison.OrdinalIgnoreCase));
+        var dispute = (await api.GetInspectionDisputesAsync(data.BookingId, "Open")).FirstOrDefault();
         return new JsonResult(new
         {
             ok = true,
-            trip = TripsUi.ToTripRow(data, inspections, open, null)
+            trip = TripsUi.ToTripRow(data, inspections, open, null, null, dispute)
         });
     }
 

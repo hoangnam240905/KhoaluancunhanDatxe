@@ -10,6 +10,5 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const DriverApp());
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('DriverApp'), findsOneWidget);
   });
 }

@@ -14,15 +14,27 @@ public class BookingFeeService(CarRentalDbContext db, PricingService pricing)
         VehicleInspection? handover,
         VehicleInspection returnInspection)
     {
+        // Mid-trip vehicle change (plan1.md Phần I): km = sum of the legs, fuel compared with the last car at the change.
+        var startFuel = handover?.FuelLevel;
+        var changes = await db.VehicleChanges.AsNoTracking()
+            .Where(c => c.BookingId == booking.BookingId)
+            .Select(c => new { c.DuringTrip, c.PriceDifference })
+            .ToListAsync();
+        if (changes.Any(c => c.DuringTrip))
+            (actualKm, startFuel) = await VehicleChangeService.ResolveTripAsync(db, booking.BookingId, handover, returnInspection.OdometerKm);
+
         var breakdown = pricing.CalculateFinalBreakdown(
             booking,
             actualKm,
             handover?.ActualAt,
             returnInspection.ActualAt,
-            handover?.FuelLevel,
+            startFuel,
             returnInspection.FuelLevel);
 
-        booking.FinalAmount = breakdown.FinalAmount;
+        // Price difference of the vehicle changes the customer agreed to (positive = pays more, negative = refund).
+        booking.FinalAmount = breakdown.FinalAmount is decimal final
+            ? Math.Max(0, final + changes.Sum(c => c.PriceDifference))
+            : null;
 
         if (breakdown.ExtraKmAmount > 0)
         {

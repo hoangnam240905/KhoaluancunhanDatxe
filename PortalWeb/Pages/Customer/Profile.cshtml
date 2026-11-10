@@ -48,6 +48,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" asp-page="/Customer/Profile">Hồ sơ cá nhân</a></li>
+                        <li><a class="dropdown-item" asp-page="/Customer/Favorites">Xe yêu thích</a></li>
                         <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider" /></li>
                         <li><a class="dropdown-item" asp-page="/Account/Logout">Đăng xuất</a></li>
@@ -189,6 +190,89 @@
                         </form>
                     </article>
 
+                    <article class="pf-card pf-panel is-on" data-pf-panel="info" id="giay-to">
+                        <div class="pf-card-head">
+                            <h2>Bằng lái xe (thuê tự lái)</h2>
+                        </div>
+                        <p class="pf-help">Chỉ cần khi thuê <strong>xe tự lái</strong>. Khai thông tin bằng lái và gửi ảnh rõ nét cả 2 mặt (JPG hoặc PNG, tối đa 5 MB); điều phối viên duyệt một lần, các lần thuê sau không phải gửi lại. Lúc nhận xe vẫn cần mang bằng lái gốc để đối chiếu.</p>
+                        @{ var lic = Model.License; }
+                        <div class="pf-status-row"><span>Trạng thái duyệt</span><strong>@ProfileModel.LicenseStatusLabel(lic?.LicenseStatus)</strong></div>
+                        @if (lic?.LicenseStatus == "Rejected" && !string.IsNullOrWhiteSpace(lic.ReviewNote))
+                        {
+                            <p class="pf-help" style="color:#b91c1c">Lý do: @lic.ReviewNote</p>
+                        }
+                        @if (lic?.ReviewedAt is DateTime licReviewed)
+                        {
+                            <p class="pf-help">Người duyệt: @UiDisplay.Actor(lic.ReviewedByName, "Dispatcher", licReviewed)</p>
+                        }
+                        @if (lic is not null && (lic.LicenseExpired || lic.LicenseExpiringSoon))
+                        {
+                            <p class="pf-help" style="color:#b91c1c">@(lic.LicenseExpired ? "Bằng lái đã hết hạn — cập nhật bằng mới để thuê xe tự lái." : $"Bằng lái hết hạn ngày {lic.LicenseExpiry:dd/MM/yyyy}. Vui lòng cập nhật bằng mới.")</p>
+                        }
+                        @if (lic is not null && lic.LicenseStatus != "None")
+                        {
+                            <p class="pf-help">Loại xe được tự lái: @string.Join(", ", lic.VehicleTypes.Where(t => t.CanDrive).Select(t => t.TypeName).DefaultIfEmpty("chưa có"))</p>
+                        }
+                        <form method="post" asp-page-handler="SaveLicense" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0 1rem">
+                            <label class="pf-field"><span>Số bằng lái</span>
+                                <input name="licenseNumber" value="@lic?.LicenseNumber" maxlength="30" required class="form-control" /></label>
+                            <label class="pf-field"><span>Hạng bằng</span>
+                                <select name="licenseClass" required class="form-select">
+                                    <option value="">— Chọn hạng —</option>
+                                    @foreach (var c in Model.LicenseClasses)
+                                    {
+                                        <option value="@c.Code" selected="@(c.Code == lic?.LicenseClass ? "selected" : null)">@c.Label</option>
+                                    }
+                                </select></label>
+                            <label class="pf-field"><span>Ngày cấp</span>
+                                <input type="date" name="licenseIssueDate" value="@(lic?.LicenseIssueDate?.ToString("yyyy-MM-dd"))" class="form-control" /></label>
+                            <label class="pf-field"><span>Ngày hết hạn</span>
+                                <input type="date" name="licenseExpiry" value="@(lic?.LicenseExpiry?.ToString("yyyy-MM-dd"))" required class="form-control" /></label>
+                            <div style="grid-column:1/-1"><button type="submit" class="pf-btn">Lưu thông tin bằng lái</button>
+                                <span class="pf-help">Xe 4–9 chỗ cần bằng B trở lên (B1, B2 cũ còn hạn được chấp nhận); xe 16 chỗ cần D1 trở lên.</span></div>
+                        </form>
+                        @if (!string.IsNullOrEmpty(Model.DocumentMessage))
+                        {
+                            <p class="pf-ok is-on">@Model.DocumentMessage</p>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.DocumentError))
+                        {
+                            <p class="pf-error is-on" style="color:#b91c1c">@Model.DocumentError</p>
+                        }
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+                            @foreach (var side in new[] { "LicenseFront", "LicenseBack" })
+                            {
+                                var doc = Model.DocumentOf(side);
+                                <form method="post" asp-page-handler="UploadDocument" enctype="multipart/form-data"
+                                      style="border:1px solid #e5e7eb;border-radius:12px;padding:.8rem">
+                                    <input type="hidden" name="type" value="@side" />
+                                    <strong>@UiDisplay.DocumentType(side)</strong>
+                                    <div style="margin:.5rem 0;aspect-ratio:16/10;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                                        @if (doc is not null)
+                                        {
+                                            <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;height:100%;object-fit:cover" />
+                                        }
+                                        else
+                                        {
+                                            <span class="pf-help">Chưa có ảnh</span>
+                                        }
+                                    </div>
+                                    <div class="pf-status-row"><span>Trạng thái</span><strong>@UiDisplay.DocumentStatus(doc?.Status)</strong></div>
+                                    @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason))
+                                    {
+                                        <p class="pf-help" style="color:#b91c1c">Lý do: @doc.RejectReason</p>
+                                    }
+                                    @if (doc?.ReviewedAt is DateTime reviewedAt)
+                                    {
+                                        <p class="pf-help">Người duyệt: @UiDisplay.Actor(doc.ReviewedByName, "Dispatcher", reviewedAt)</p>
+                                    }
+                                    <input type="file" name="file" accept="image/jpeg,image/png" required class="form-control form-control-sm" style="margin:.4rem 0" />
+                                    <button type="submit" class="pf-btn">@(doc is null ? "Gửi ảnh" : "Gửi lại ảnh")</button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+
                     <article class="pf-card pf-panel" data-pf-panel="activity">
                         <h2>Hoạt động gần đây</h2>
                         <p class="pf-help">@ProfileUi.ActivityUnavailable</p>
@@ -214,13 +298,6 @@
                                 <strong class="pf-dots">••••••••••••</strong>
                             </div>
                             <button type="button" class="pf-btn-ghost" data-pf-password>Đổi mật khẩu</button>
-                        </div>
-                        <div class="pf-google">
-                            <span class="pf-google-ico"><i class="bi bi-google"></i></span>
-                            <div>
-                                <strong>Đăng nhập bằng Google</strong>
-                                <p>DriveX đã hỗ trợ đăng nhập Google cho khách hàng.</p>
-                            </div>
                         </div>
                         <form method="post" asp-page-handler="ChangePassword" data-pf-pass-form>
                             <div class="pf-pass @(Model.ShowPasswordPanel ? "is-on" : "")" data-pf-pass-panel>

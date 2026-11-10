@@ -3,6 +3,41 @@ namespace PortalWeb.Display;
 /// UI-only labels and date formatting. Does not change API/DB values.
 public static class UiDisplay
 {
+    public const string UnknownActor = "Không rõ (dữ liệu cũ)";
+
+    public static string DocumentType(string? type) => type switch
+    {
+        "LicenseFront" => "Bằng lái — mặt trước",
+        "LicenseBack" => "Bằng lái — mặt sau",
+        "IdCardFront" => "CCCD — mặt trước",
+        "IdCardBack" => "CCCD — mặt sau",
+        _ => type ?? ""
+    };
+
+    public static string DocumentStatus(string? status) => status switch
+    {
+        "Pending" => "Chờ duyệt",
+        "Approved" => "Đã duyệt",
+        "Rejected" => "Bị từ chối",
+        _ => "Chưa gửi"
+    };
+
+    public static string Role(string? role) => role switch
+    {
+        "Admin" => "Quản trị",
+        "Dispatcher" => "Điều phối",
+        "Driver" => "Tài xế",
+        "Customer" => "Khách hàng",
+        _ => role ?? ""
+    };
+
+    /// <summary>"Tên (Vai trò) · giờ VN" for who did something; old records without it show unknown, never a guess.</summary>
+    public static string Actor(string? name, string? role, DateTime? utc = null)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return UnknownActor;
+        var text = string.IsNullOrWhiteSpace(role) ? name.Trim() : $"{name.Trim()} ({Role(role)})";
+        return utc is DateTime at ? $"{text} · {ToVietnam(at):dd/MM/yyyy HH:mm}" : text;
+    }
     public static string RentalMode(string? mode) => mode switch
     {
         "SelfDrive" => "Tự lái",
@@ -155,7 +190,7 @@ public static class UiDisplay
         return TimeZoneInfo.ConvertTimeFromUtc(utc, VietnamZone);
     }
 
-    private static readonly TimeZoneInfo VietnamZone = ResolveVietnam();
+    public static readonly TimeZoneInfo VietnamZone = ResolveVietnam();
 
     private static TimeZoneInfo ResolveVietnam()
     {

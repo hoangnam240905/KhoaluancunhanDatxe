@@ -77,7 +77,9 @@ public record CreateAdminDriverRequest(
     double? ExperienceYears = null,
     double? OnTimeRate = null,
     double? TotalDistanceKm = null,
-    string? VerificationStatus = null);
+    string? VerificationStatus = null,
+    string? LicenseNumber = null,
+    DateOnly? LicenseExpiry = null);
 
 public record UpdateAdminDriverRequest(
     string? FullName,
@@ -92,4 +94,6 @@ public record UpdateAdminDriverRequest(
     double? ExperienceYears = null,
     double? OnTimeRate = null,
     double? TotalDistanceKm = null,
-    string? VerificationStatus = null);
+    string? VerificationStatus = null,
+    string? LicenseNumber = null,
+    DateOnly? LicenseExpiry = null);

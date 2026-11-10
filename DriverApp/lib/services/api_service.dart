@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+import 'timed_http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
@@ -123,6 +124,194 @@ class ApiService {
     return auth;
   }
 
+  /// Driver sign-up (plan1.md Phần D): the account starts "Chờ xác minh".
+  /// Sends an OTP by email when the account exists (the API never says whether it does).
+  Future<String> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/forgot-password'),
+      headers: await _headers(),
+      body: jsonEncode({'email': email}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return _successMessage(response, 'Nếu email tồn tại, mã OTP đã được gửi.');
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/reset-password'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(_errorMessage(response));
+    }
+  }
+
+  Future<AuthResponse> registerDriver({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/auth/register-driver'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'fullName': fullName,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final auth = AuthResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+    await authService.saveAuth(auth);
+    return auth;
+  }
+
+  // ---- Licence verification (plan1.md Phần D) + photos (Phần F) ----
+
+  Future<DriverVerification> getMyVerification() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/me/verification'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return DriverVerification.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<LicenseClassOption>> getLicenseClasses() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/license-classes'),
+      headers: await _headers(),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(LicenseClassOption.fromJson)
+        .toList();
+  }
+
+  Future<DriverVerification> updateMyLicense({
+    required String licenseNumber,
+    required String licenseClass,
+    DateTime? licenseIssueDate,
+    required DateTime licenseExpiry,
+    String? idNumber,
+  }) async {
+    String day(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/me/license'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({
+        'licenseNumber': licenseNumber,
+        'licenseClass': licenseClass,
+        'licenseIssueDate': licenseIssueDate == null ? null : day(licenseIssueDate),
+        'licenseExpiry': day(licenseExpiry),
+        'idNumber': (idNumber == null || idNumber.trim().isEmpty) ? null : idNumber.trim(),
+      }),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return DriverVerification.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Upload one side of the licence / ID card (JPG or PNG, max 5 MB — checked by the Backend).
+  Future<void> uploadDocument(String type, Uint8List bytes, String fileName) async {
+    final token = await authService.getToken();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/api/documents'),
+    );
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.fields['type'] = type;
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
+    final response = await http.Response.fromStream(await http.send(request));
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+  }
+
+  String documentFileUrl(int documentId) =>
+      '${ApiConfig.baseUrl}/api/documents/$documentId/file';
+
+  Future<Map<String, String>> authHeaders() async {
+    final token = await authService.getToken();
+    return token == null ? {} : {'Authorization': 'Bearer $token'};
+  }
+
+  // ---- Two-sided vehicle check (plan1.md Phần A) ----
+
+  Future<List<InspectionDispute>> getTripDisputes(int assignmentId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/disputes'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(InspectionDispute.fromJson)
+        .toList();
+  }
+
+  /// "Phụ lục đổi xe" of a trip (plan1.md Phần I); the trip's driver may read it.
+  Future<List<VehicleChange>> getVehicleChanges(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/vehicle-changes'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(VehicleChange.fromJson)
+        .toList();
+  }
+
+  Future<String> raiseDispute(int assignmentId, String note) async {
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/dispute'),
+      headers: await _headers(auth: true),
+      body: jsonEncode({'note': note}),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return _successMessage(response, 'Đã báo sai lệch cho điều phối.');
+  }
+
+  Future<String> remindDispatcher(int assignmentId) async {
+    final response = await http.post(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/remind-dispatcher',
+      ),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return _successMessage(response, 'Đã nhắc điều phối.');
+  }
+
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -158,6 +347,41 @@ class ApiService {
     return DriverProfile.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  // ---- Notifications (history; realtime only pushes new ones) ----
+
+  Future<List<DriverNotification>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(DriverNotification.fromJson)
+        .toList();
+  }
+
+  Future<DriverNotification> markNotificationRead(int id) async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/$id/read'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return DriverNotification.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/notifications/read-all'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
   }
 
   Future<List<DriverBooking>> getMyTrips() async {
@@ -198,13 +422,42 @@ class ApiService {
     return _successMessage(response, 'Đã nhận chuyến.');
   }
 
-  Future<String> startTrip(int assignmentId) async {
+  Future<String> startTrip(
+    int assignmentId, {
+    required double odometerKm,
+    required double fuelLevel,
+    String? exteriorCondition,
+    String? technicalCondition,
+    String? notes,
+  }) async {
+    final body = VehicleCondition.toJson(
+      odometerKm: odometerKm,
+      fuelLevel: fuelLevel,
+      exteriorCondition: exteriorCondition,
+      technicalCondition: technicalCondition,
+      notes: notes,
+    );
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/drivers/trips/$assignmentId/start'),
       headers: await _headers(auth: true),
+      body: jsonEncode(body),
     );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
-    return _successMessage(response, 'Đã bắt đầu chuyến.');
+    return _successMessage(response, 'Đã xác nhận tình trạng xe và bắt đầu chuyến.');
+  }
+
+  Future<List<VehicleInspection>> getBookingInspections(int bookingId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/inspections'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    final list = jsonDecode(response.body);
+    if (list is! List) return [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(VehicleInspection.fromJson)
+        .toList();
   }
 
   Future<String> completeTrip(

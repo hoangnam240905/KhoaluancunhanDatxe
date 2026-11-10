@@ -45,8 +45,12 @@
         return input ? input.value : "";
     }
 
-    function badge(status) {
-        return `<span class="mk-badge mk-badge-${String(status || "").toLowerCase()}">${STATUS_LABEL[status] || status}</span>`;
+    function badge(status, b) {
+        // plan1.md Phần E: a self-drive order whose customer licence is not approved yet.
+        const licence = b && b.licensePending && (status === "Pending" || status === "Confirmed")
+            ? ` <span class="mk-badge mk-badge-warn" title="Điều phối cần duyệt bằng lái của khách trước khi xác nhận">Chờ duyệt bằng lái</span>`
+            : "";
+        return `<span class="mk-badge mk-badge-${String(status || "").toLowerCase()}">${STATUS_LABEL[status] || status}</span>${licence}`;
     }
     function contractBadge(v) {
         const cls = v === "signed" ? "ok" : v === "issued" ? "warn" : "gray";
@@ -112,14 +116,19 @@
     function actions(b) {
         const bits = [`<button type="button" class="mk-btn mk-btn-ghost" data-act="detail" data-id="${b.id}">👁 Xem chi tiết</button>`];
         if (b.status === "Pending") {
-            bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="confirm" data-id="${b.id}">✓ Xác nhận đơn</button>`);
+            bits.push(b.licensePending
+                ? `<a class="mk-btn mk-btn-success" href="/DieuPhoi/CustomerLicenses" title="Duyệt bằng lái của khách trước">Duyệt bằng lái khách</a>`
+                : `<button type="button" class="mk-btn mk-btn-success" data-act="confirm" data-id="${b.id}">✓ Xác nhận đơn</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}">✕ Không duyệt</button>`);
         }
         if (b.status === "Confirmed") {
             bits.push(`<button type="button" class="mk-btn mk-btn-primary" data-act="assign" data-id="${b.id}">Phân công xe & tài xế</button>`);
         }
         if (b.status === "Assigned") {
-            bits.push(`<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
+            // With-driver: the dispatcher records the pre-handover check on Vận hành chuyến; the driver starts the trip (plan1.md Phần A).
+            bits.push(b.mode === "WithDriver"
+                ? `<a class="mk-btn mk-btn-info" href="/DieuPhoi/Trips">Kiểm tra trước giao</a>`
+                : `<button type="button" class="mk-btn mk-btn-info" data-act="handover" data-id="${b.id}">Giao xe</button>`);
             bits.push(`<button type="button" class="mk-btn mk-btn-success" data-act="complete" data-id="${b.id}">Tiếp nhận trả xe</button>`);
             // Backend rejects once the start time has passed; the message is shown as a toast.
             bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}" data-confirm="Hủy đơn #${b.id} đã phân công? Xe và tài xế sẽ được trả về, hợp đồng hết hiệu lực.">✕ Hủy đơn</button>`);
@@ -159,12 +168,12 @@
                 <td>${b.start}<div class="mk-muted">→ ${b.end}</div></td>
                 <td>${contractBadge(b.contract)}</td>
                 <td>${depositBadge(b.deposit)}</td>
-                <td>${badge(b.status)}</td>
+                <td>${badge(b.status, b)}</td>
                 <td>${actions(b)}</td>
             </tr>`).join("");
         els.cards.innerHTML = rows.map((b) => `
             <article class="mk-card mk-booking-card ${selectedId === b.id ? "is-on" : ""}">
-                <div class="d-flex justify-content-between gap-2"><strong>#${b.id} · ${escapeHtml(b.customer)}</strong>${badge(b.status)}</div>
+                <div class="d-flex justify-content-between gap-2"><strong>#${b.id} · ${escapeHtml(b.customer)}</strong>${badge(b.status, b)}</div>
                 <p class="mb-1">${MODE_LABEL[b.mode] || b.mode} · ${escapeHtml(b.vehicle)}</p>
                 <p class="mk-muted mb-2">${b.start} → ${b.end}</p>
                 ${holdText(b)}
@@ -210,7 +219,7 @@
             <div class="mk-drawer-head">
                 <div>
                     <h2 class="h5 mb-2">Đơn #${b.id}</h2>
-                    ${badge(b.status)}
+                    ${badge(b.status, b)}
                 </div>
                 <button type="button" class="mk-btn mk-btn-ghost" data-act="close">Đóng</button>
             </div>
@@ -361,6 +370,25 @@
         els.handoverConfirm.disabled = !isValidKm(handoverState.odometerKm) || fuel === null;
     }
 
+    // plan1.md Phần E: the customer's declared licence + the "original checked" tick required to hand over.
+    function licenceCheckBlock(l) {
+        if (!l) return "";
+        const status = { Approved: "Đã duyệt", Pending: "Chờ duyệt", Rejected: "Chưa được chấp nhận", None: "Chưa khai" }[l.status] || l.status;
+        return `<div class="mk-block" style="border-left:3px solid #2563eb;padding-left:.6rem;margin-top:.6rem">
+            <h3>Bằng lái của khách</h3>
+            <dl class="mk-dl">
+                <div><dt>Số bằng</dt><dd>${escapeHtml(l.number || "—")}</dd></div>
+                <div><dt>Hạng</dt><dd>${escapeHtml(l.cls || "—")}</dd></div>
+                <div><dt>Hết hạn</dt><dd>${escapeHtml(l.expiry || "—")}${l.expired ? " (đã hết hạn)" : ""}</dd></div>
+                <div><dt>Duyệt</dt><dd>${escapeHtml(status)}</dd></div>
+            </dl>
+            <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:600">
+                <input type="checkbox" data-handover-licence-check style="margin-top:.25rem" />
+                <span>Đã kiểm tra bằng lái gốc: khớp số bằng, hạng và ảnh đã duyệt, còn hạn.</span>
+            </label>
+            <p class="mk-note">Không khớp hoặc hết hạn thì không giao xe; chuyển đơn để điều phối xử lý (hủy, hoàn cọc theo quy định). Hệ thống lưu tên bạn là người kiểm tra.</p>
+        </div>`;
+    }
     function renderHandoverModal(info) {
         if (!els.handoverBody) return;
         const kmOk = isValidKm(info.currentKm) && !info.blockReason;
@@ -400,7 +428,8 @@
             ${!kmOk ? `<p class="mk-note" style="color:#b91c1c">${escapeHtml(info.blockReason || "Xe chưa có số KM hiện tại trong hệ thống.")}</p>` : ""}
             ${kmOk && !knownFuelOk ? `<p class="mk-note">Xe chưa có dữ liệu nhiên liệu, vui lòng nhập mức nhiên liệu thực tế.</p>` : ""}
             ${kmOk && knownFuelOk ? `<p class="mk-note">Nhiên liệu điền sẵn từ lần kiểm xe gần nhất (${escapeHtml(Number(info.fuelLevel).toLocaleString("vi-VN"))}%) — sửa lại nếu thực tế khác.</p>` : ""}
-            ${kmOk ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}`;
+            ${kmOk ? `<p class="mk-note">Số km lấy từ hồ sơ xe trên hệ thống — không thể chỉnh sửa tại đây.</p>` : ""}
+            ${licenceCheckBlock(info.licence)}`;
 
         if (els.handoverConfirm) {
             if (!kmOk) els.handoverConfirm.disabled = true;
@@ -667,12 +696,18 @@
             toast("Vui lòng nhập mức nhiên liệu từ 0 đến 100.");
             return;
         }
+        const licenceBox = els.handoverBody?.querySelector("[data-handover-licence-check]");
+        if (licenceBox && !licenceBox.checked) {
+            toast("Vui lòng kiểm tra bằng lái gốc của khách và tick ô xác nhận.");
+            return;
+        }
         busy = true;
         els.handoverConfirm.disabled = true;
         try {
             const data = await apiPost(boot.handlers.handover, handoverState.id, {
                 odometerKm: handoverState.odometerKm,
-                fuelLevel: handoverState.fuelLevel
+                fuelLevel: handoverState.fuelLevel,
+                originalLicenseChecked: licenceBox ? licenceBox.checked : false
             });
             if (!data.ok) {
                 toast(data.error || "Giao xe thất bại.");

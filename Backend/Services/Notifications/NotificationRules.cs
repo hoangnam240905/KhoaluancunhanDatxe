@@ -9,14 +9,16 @@ public enum NotificationRecipient
     /// <summary>Every user with the Dispatcher role.</summary>
     Dispatchers,
     /// <summary>The customer who owns the booking.</summary>
-    BookingCustomer
+    BookingCustomer,
+    /// <summary>The driver assigned to the booking's trip (with-driver bookings only).</summary>
+    TripDriver
 }
 
 public sealed record NotificationDraft(
     NotificationRecipient Recipient, string Title, string Message, string Type, int BookingId);
 
 /// <summary>Booking facts used in the message text (loaded by <see cref="NotificationFanout"/>).</summary>
-public sealed record NotificationBookingInfo(int BookingId, int CustomerId, string? CustomerName, DateTime StartDate, string? PickupAddress);
+public sealed record NotificationBookingInfo(int BookingId, int CustomerId, string? CustomerName, DateTime StartDate, string? PickupAddress, int? DriverId = null);
 
 /// <summary>
 /// Which realtime events become inbox notifications, for whom, with which text (plan1.md 3.2).
@@ -42,6 +44,8 @@ public static class NotificationRules
                 or BookingStatuses.InProgress or BookingStatuses.Completed,
             RealtimeEventTypes.TripStatusChanged => Payload(evt, "tripStatus") == TripAssignmentStatuses.Accepted,
             RealtimeEventTypes.IncidentReported => true,
+            RealtimeEventTypes.PreHandoverRecorded or RealtimeEventTypes.InspectionDisputeRaised
+                or RealtimeEventTypes.InspectionDisputeResolved or RealtimeEventTypes.DispatcherReminded => true,
             // AssignmentChanged duplicates BookingStatusChanged(Assigned); vehicle/driver/payment/contract are too noisy.
             _ => false
         };
@@ -68,6 +72,24 @@ public static class NotificationRules
                 return [new(NotificationRecipient.Dispatchers,
                     string.IsNullOrWhiteSpace(kind) ? $"Sự cố chuyến #{id}" : $"Sự cố chuyến #{id}: {kind}",
                     $"Tài xế vừa báo sự cố trên chuyến #{id} của {who}. Mở chuyến để xem chi tiết.", TypeAlert, id)];
+
+            // Two-sided vehicle check (plan1.md Phần A). "(lần n)" keeps a repeat from being dropped as a duplicate.
+            case RealtimeEventTypes.PreHandoverRecorded:
+                return [new(NotificationRecipient.TripDriver, $"Biên bản kiểm tra trước giao chuyến #{id}{Round(evt)}",
+                    $"Điều phối đã ghi tình trạng xe trước giao cho chuyến #{id} (đón lúc {when}). Kiểm tra xe thật rồi xác nhận để bắt đầu chuyến.",
+                    TypeDriver, id)];
+            case RealtimeEventTypes.InspectionDisputeRaised:
+                return [new(NotificationRecipient.Dispatchers, $"Tài xế báo sai lệch biên bản chuyến #{id}{Round(evt)}",
+                    $"Tài xế thấy tình trạng xe chuyến #{id} của {who} không khớp biên bản trước giao. Sửa biên bản rồi bấm Đã giải quyết.",
+                    TypeAlert, id)];
+            case RealtimeEventTypes.InspectionDisputeResolved:
+                return [new(NotificationRecipient.TripDriver, $"Điều phối đã xử lý sai lệch chuyến #{id}{Round(evt)}",
+                    $"Biên bản trước giao chuyến #{id} đã được cập nhật. Vui lòng kiểm tra lại và xác nhận để bắt đầu chuyến.",
+                    TypeDriver, id)];
+            case RealtimeEventTypes.DispatcherReminded:
+                return [new(NotificationRecipient.Dispatchers, $"Tài xế nhắc ghi biên bản trước giao chuyến #{id}",
+                    $"Tài xế chuyến #{id} của {who} (đón lúc {when}) đang chờ biên bản kiểm tra trước giao để bắt đầu chuyến.",
+                    TypeAlert, id)];
         }
 
         return Payload(evt, "status") switch
@@ -113,6 +135,9 @@ public static class NotificationRules
             _ => []
         };
     }
+
+    private static string Round(RealtimeEventDto evt)
+        => int.TryParse(Payload(evt, "round"), out var n) && n > 1 ? $" (lần {n})" : "";
 
     private static string? Payload(RealtimeEventDto evt, string key)
         => evt.Payload is not null && evt.Payload.TryGetValue(key, out var value) ? value?.ToString() : null;

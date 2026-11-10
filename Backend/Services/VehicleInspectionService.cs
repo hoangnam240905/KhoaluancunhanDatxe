@@ -17,7 +17,8 @@ public class VehicleInspectionService(CarRentalDbContext db)
         string? condition,
         string? notes,
         string? exteriorCondition = null,
-        string? technicalCondition = null)
+        string? technicalCondition = null,
+        int? actorUserId = null)
     {
         var error = VehicleInspectionRules.Validate(
             inspectionType, odometerKm, fuelLevel, condition, notes, out var resolvedType,
@@ -38,13 +39,23 @@ public class VehicleInspectionService(CarRentalDbContext db)
         var duplicate = await db.VehicleInspections.AnyAsync(i =>
             i.BookingId == bookingId && i.InspectionType == resolvedType);
         if (duplicate)
-            return (null, resolvedType == VehicleInspectionTypes.Handover
-                ? "Đơn này đã có biên bản giao xe."
-                : "Đơn này đã có biên bản trả xe.");
+            return (null, resolvedType switch
+            {
+                VehicleInspectionTypes.PreHandover => "Đơn này đã có biên bản kiểm tra trước giao.",
+                VehicleInspectionTypes.Handover => "Đơn này đã có biên bản giao xe.",
+                _ => "Đơn này đã có biên bản trả xe."
+            });
 
         var vehicle = await db.Vehicles.FindAsync(vehicleId.Value);
         if (vehicle is null)
             return (null, "Không tìm thấy xe đã gán.");
+
+        if (resolvedType == VehicleInspectionTypes.PreHandover)
+        {
+            error = ValidatePreHandover(odometerKm, exteriorCondition ?? condition, technicalCondition, vehicle.CurrentKm);
+            if (error is not null)
+                return (null, error);
+        }
 
         if (resolvedType == VehicleInspectionTypes.Return)
         {
@@ -56,7 +67,9 @@ public class VehicleInspectionService(CarRentalDbContext db)
                 .Where(i => i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.Handover)
                 .Select(i => i.OdometerKm)
                 .FirstOrDefaultAsync();
-            error = VehicleInspectionRules.ValidateReturnVsHandover(odometerKm, handoverOdo);
+            // After a mid-trip vehicle change the current car started at its reading at the change (plan1.md Phần I).
+            var segmentStart = await VehicleChangeService.SegmentStartKmAsync(db, bookingId, handoverOdo);
+            error = VehicleInspectionRules.ValidateReturnVsHandover(odometerKm, segmentStart);
             if (error is not null)
                 return (null, error);
 
@@ -69,6 +82,7 @@ public class VehicleInspectionService(CarRentalDbContext db)
             }
         }
 
+        var actor = await ActorLookup.FindAsync(db, actorUserId);
         var now = DateTime.UtcNow;
         var exterior = TrimOrNull(exteriorCondition) ?? TrimOrNull(condition);
         var technical = TrimOrNull(technicalCondition);
@@ -84,11 +98,61 @@ public class VehicleInspectionService(CarRentalDbContext db)
             ExteriorCondition = exterior,
             TechnicalCondition = technical,
             Notes = TrimOrNull(notes),
-            CreatedAt = now
+            CreatedAt = now,
+            CreatedByUserId = actor?.UserId,
+            CreatedByName = actor?.Name,
+            CreatedByRole = actor?.Role
         };
 
         db.VehicleInspections.Add(inspection);
         return (inspection, null);
+    }
+
+    /// <summary>
+    /// Dispatcher corrects a PreHandover after a driver dispute. Same rules as creating one;
+    /// records who edited it. The caller checks that the driver has not confirmed it yet.
+    /// </summary>
+    public async Task<string?> UpdatePreHandoverAsync(
+        VehicleInspection inspection, VehicleConditionRequest request, int? actorUserId)
+    {
+        var error = VehicleInspectionRules.Validate(
+            VehicleInspectionTypes.PreHandover, request.OdometerKm, request.FuelLevel, request.Condition, request.Notes,
+            out _, request.ExteriorCondition, request.TechnicalCondition);
+        if (error is not null)
+            return error;
+        var vehicle = await db.Vehicles.FindAsync(inspection.VehicleId);
+        error = ValidatePreHandover(
+            request.OdometerKm, request.ExteriorCondition ?? request.Condition, request.TechnicalCondition, vehicle?.CurrentKm ?? 0);
+        if (error is not null)
+            return error;
+
+        var actor = await ActorLookup.FindAsync(db, actorUserId);
+        var exterior = TrimOrNull(request.ExteriorCondition) ?? TrimOrNull(request.Condition);
+        inspection.OdometerKm = request.OdometerKm;
+        inspection.FuelLevel = request.FuelLevel;
+        inspection.Condition = TrimOrNull(request.Condition) ?? exterior;
+        inspection.ExteriorCondition = exterior;
+        inspection.TechnicalCondition = TrimOrNull(request.TechnicalCondition);
+        inspection.Notes = TrimOrNull(request.Notes);
+        inspection.ActualAt = DateTime.UtcNow;
+        inspection.UpdatedAt = DateTime.UtcNow;
+        inspection.UpdatedByUserId = actor?.UserId;
+        inspection.UpdatedByName = actor?.Name;
+        inspection.UpdatedByRole = actor?.Role;
+        return null;
+    }
+
+    public Task<VehicleInspection?> GetPreHandoverAsync(int bookingId)
+        => db.VehicleInspections.FirstOrDefaultAsync(i =>
+            i.BookingId == bookingId && i.InspectionType == VehicleInspectionTypes.PreHandover);
+
+    private static string? ValidatePreHandover(decimal? odometerKm, string? exterior, string? technical, int currentKm)
+    {
+        if (string.IsNullOrWhiteSpace(exterior) || string.IsNullOrWhiteSpace(technical))
+            return VehicleInspectionRules.PreHandoverConditionRequired;
+        if (odometerKm is not null && odometerKm < currentKm)
+            return VehicleInspectionRules.PreHandoverOdometerBelowCurrent;
+        return null;
     }
 
     public async Task<decimal?> GetHandoverOdometerAsync(int bookingId)
@@ -156,7 +220,17 @@ public class VehicleInspectionService(CarRentalDbContext db)
         i.Notes,
         i.CreatedAt,
         i.ExteriorCondition,
-        i.TechnicalCondition);
+        i.TechnicalCondition,
+        i.CreatedByUserId,
+        i.CreatedByName,
+        i.CreatedByRole,
+        i.UpdatedByName,
+        i.UpdatedByRole,
+        i.UpdatedAt,
+        i.VerificationStatus,
+        i.VerificationNote,
+        i.VerifiedByName,
+        i.VerifiedAt);
 
     private static string? TrimOrNull(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

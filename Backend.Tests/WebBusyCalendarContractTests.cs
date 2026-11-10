@@ -9,7 +9,7 @@ public class WebBusyCalendarContractTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "CustomerWeb", "wwwroot", "js", "catalog.js")))
+            if (File.Exists(Path.Combine(dir.FullName, "PortalWeb", "wwwroot", "js", "catalog.js")))
                 return dir.FullName;
             dir = dir.Parent;
         }
@@ -18,7 +18,6 @@ public class WebBusyCalendarContractTests
     }
 
     [Theory]
-    [InlineData("CustomerWeb")]
     [InlineData("PortalWeb")]
     public void Catalog_js_treats_empty_json_array_as_success_and_requests_visible_month(string web)
     {
@@ -36,7 +35,6 @@ public class WebBusyCalendarContractTests
     }
 
     [Theory]
-    [InlineData("CustomerWeb")]
     [InlineData("PortalWeb")]
     public void Busy_periods_proxy_and_handler_return_json(string web)
     {

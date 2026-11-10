@@ -5,14 +5,17 @@ using Xunit;
 
 namespace Backend.Tests;
 
-/// <summary>Dispatcher hands the car to the DRIVER of a with-driver trip, same flow as handing it to a self-drive customer.</summary>
+/// <summary>
+/// With-driver trips: the dispatcher no longer hands the car over directly (that started the trip twice).
+/// The dispatcher records the pre-handover check and the driver starts the trip from the app (plan1.md Phần A).
+/// </summary>
 public class PhaseWithDriverHandoverTests
 {
-    private static readonly DateTime Start = new(2026, 12, 24, 10, 0, 0);
-    private static readonly DateTime End = new(2026, 12, 24, 14, 0, 0);
+    private static readonly DateTime Start = DateTime.Today.AddDays(45).AddHours(10);
+    private static readonly DateTime End = Start.AddHours(4);
 
     [Fact]
-    public async Task With_driver_trip_can_be_handed_over_and_the_driver_finishes_it()
+    public async Task With_driver_trip_uses_pre_handover_and_the_driver_starts_and_finishes_it()
     {
         using var iso = new IsolatedCarRentalDb();
         var (bookings, dispatch, drivers) = Services(iso);
@@ -28,17 +31,21 @@ public class PhaseWithDriverHandoverTests
         Assert.True(assigned.Error is null, assigned.Error);
 
         var request = TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId);
-        var handover = await dispatch.HandoverSelfDriveAsync(created.BookingId, 2, request);
+        var direct = await dispatch.HandoverSelfDriveAsync(created.BookingId, 2, request);
+        Assert.Equal(DispatchService.WithDriverUsesPreHandover, direct.Error);
+        Assert.Equal(BookingStatuses.Assigned, iso.Db.Bookings.Find(created.BookingId)!.Status);
 
-        Assert.True(handover.Error is null, handover.Error);
-        Assert.Equal(BookingStatuses.InProgress, handover.Booking!.Status);
+        var (pre, preError) = await dispatch.SavePreHandoverAsync(created.BookingId, 2, request);
+        Assert.True(pre is not null, preError);
+        Assert.Equal(VehicleInspectionTypes.PreHandover, pre!.InspectionType);
+        Assert.Equal(BookingStatuses.Assigned, iso.Db.Bookings.Find(created.BookingId)!.Status);
+
         var assignment = iso.Db.TripAssignments.Single(t => t.BookingId == created.BookingId);
+        Assert.True(await drivers.AcceptTripAsync(5, assignment.AssignmentId));
+        Assert.True(await drivers.StartTripAsync(5, assignment.AssignmentId));
         iso.Db.Entry(assignment).Reload();
         Assert.Equal(TripAssignmentStatuses.InProgress, assignment.Status);
-        Assert.Single(iso.Db.VehicleInspections.Where(i => i.BookingId == created.BookingId
-            && i.InspectionType == VehicleInspectionTypes.Handover));
 
-        // The driver can still finish the trip (return inspection measured against this handover).
         var (ok, error) = await drivers.CompleteTripAsync(5, assignment.AssignmentId,
             new VehicleConditionRequest(OdometerKm: request.OdometerKm + 30, FuelLevel: 60));
         Assert.True(ok, error);

@@ -74,6 +74,19 @@ public class InspectionsModel(CarRentalApiClient api, AuthSession auth) : RolePa
         });
     }
 
+    /// <summary>Dispatcher checks a driver's return report: Confirmed, or Mismatch + note (opens an incident).</summary>
+    public async Task<IActionResult> OnPostVerifyAsync(int id, string? result, string? note)
+    {
+        var denied = RequireRole(auth, "Dispatcher");
+        if (denied is not null) return denied;
+        if (result is not ("Confirmed" or "Mismatch"))
+            return new JsonResult(new { ok = false, error = "Kết quả đối chiếu không hợp lệ." });
+        var (_, error) = await api.VerifyReturnAsync(id, result, note);
+        if (error is not null)
+            return new JsonResult(new { ok = false, error });
+        return await OnGetDetailAsync(id);
+    }
+
     private async Task<(object Payload, string? Error)> LoadBootstrapAsync()
     {
         try
@@ -124,7 +137,6 @@ public class InspectionsModel(CarRentalApiClient api, AuthSession auth) : RolePa
                 missingApis = new[]
                 {
                     "POST/PUT standalone inspection create/edit (inspections only created via handover/complete/driver flows)",
-                    "Inspector name on VehicleInspectionResponse",
                     "Interior / tires checklist items",
                     "Inspection photos / media"
                 }
