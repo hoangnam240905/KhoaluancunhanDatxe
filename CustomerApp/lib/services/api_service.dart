@@ -100,7 +100,7 @@ class ApiService {
         if (title != null && title.isNotEmpty) return title;
       }
     } catch (_) {}
-    return 'Lá»—i ${response.statusCode}';
+    return 'Lỗi ${response.statusCode}';
   }
 
   Future<AuthResponse> login(String email, String password) async {
@@ -113,7 +113,7 @@ class ApiService {
         .timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw Exception(
-            'KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n mÃ¡y chá»§ (quÃ¡ thá»i gian chá»). Vui lÃ²ng kiá»ƒm tra xem Backend Ä‘Ã£ báº­t chÆ°a.',
+            'Không thể kết nối đến máy chủ (quá thời gian chờ). Vui lòng kiểm tra xem Backend đã bật chưa.',
           ),
         );
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
@@ -203,7 +203,7 @@ class ApiService {
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return json['message'] as String? ??
-        'Náº¿u email tá»“n táº¡i, mÃ£ OTP Ä‘Ã£ Ä‘Æ°á»£c gá»­i.';
+        'Nếu email tồn tại, mã OTP đã được gửi.';
   }
 
   Future<void> resetPassword({
@@ -628,11 +628,16 @@ class ApiService {
     required int bookingId,
     required String reason,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel'),
-      headers: await _headers(auth: true),
-      body: jsonEncode({'reason': reason}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel'),
+          headers: await _headers(auth: true),
+          body: jsonEncode({
+            'cancellationReason': reason,
+            'reason': reason,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) throw Exception(_errorMessage(response));
     return Booking.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }

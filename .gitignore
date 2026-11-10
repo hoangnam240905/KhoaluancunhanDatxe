@@ -48,3 +48,7 @@ _build/
 # Archives
 *.rar
 *.zip
+
+# IDE / tool files (keep local, do not commit)
+.idea/
+**/.widget_preview/
