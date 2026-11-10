@@ -5,8 +5,8 @@ cd /d "%~dp0CustomerApp"
 echo ========================================================
 echo   KHOI DONG MAY AO ANDROID VA CHAY CUSTOMER APP
 echo ========================================================
-echo [1/2] Dang bat may ao Android Pixel_5 (neu chua mo)...
-call flutter emulators --launch Pixel_5
+echo [1/2] Dang bat may ao Android Pixel_5_2 (neu chua mo)...
+call flutter emulators --launch Pixel_5_2 2>nul || call flutter emulators --launch Pixel_5
 echo Dang cho may ao Android khoi dong...
 set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
 if not exist "%ADB%" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
