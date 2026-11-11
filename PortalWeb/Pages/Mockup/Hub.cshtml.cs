@@ -82,27 +82,19 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         var (assignable, aErr) = await api.GetAssignableAsync(id);
         if (assignable is null) return ActionFail(aErr ?? "Không tải được danh sách xe/tài xế.");
 
-        var vehicle = assignable.Vehicles.FirstOrDefault();
-        if (vehicle is null) return ActionFail("Không có xe khả dụng để phân công.");
+        var (pick, pickError) = AssignPick.For(booking, assignable);
+        if (pick is null) return ActionFail(pickError!);
 
-        int? driverId = null;
-        if (string.Equals(booking.RentalMode, "WithDriver", StringComparison.OrdinalIgnoreCase))
-        {
-            var driver = assignable.Drivers.FirstOrDefault();
-            if (driver is null) return ActionFail("Không có tài xế khả dụng để phân công.");
-            driverId = driver.DriverId;
-        }
-
-        var (data, error, conflict) = await api.AssignTripAsync(id, new AssignTripRequest(driverId, vehicle.VehicleId));
+        var (data, error, conflict) = await api.AssignTripAsync(id, new AssignTripRequest(pick.DriverId, pick.VehicleId));
         if (data is null)
         {
             var msg = conflict?.Message ?? error ?? "Phân công thất bại.";
             if (conflict?.VehicleAlternatives.Count > 0 || conflict?.DriverAlternatives.Count > 0)
-                msg += " Có phương án thay thế — dùng trang Phân công chi tiết nếu cần chọn thủ công.";
+                msg += " Có phương án thay thế — bấm \"Chọn thủ công\" để chọn xe / tài xế trên trang Lịch xe & tài xế.";
             return ActionFail(msg);
         }
 
-        return await ActionOkAsync(data);
+        return await ActionOkAsync(data, pick.Note);
     }
 
     /// <summary>Self-drive (plan1.md Phần E): the licence the customer declared, shown next to the "checked original" tick.</summary>
@@ -241,10 +233,10 @@ public class HubModel(CarRentalApiClient api, AuthSession auth) : RolePageModel
         }
     }
 
-    private async Task<IActionResult> ActionOkAsync(BookingResponse data)
+    private async Task<IActionResult> ActionOkAsync(BookingResponse data, string? message = null)
     {
         var contract = await api.GetContractAsync(data.BookingId);
-        return new JsonResult(new { ok = true, booking = HubBookingUi.ToHubRow(data, contract?.Status) });
+        return new JsonResult(new { ok = true, booking = HubBookingUi.ToHubRow(data, contract?.Status), message });
     }
 
     private static IActionResult ActionFail(string error) =>

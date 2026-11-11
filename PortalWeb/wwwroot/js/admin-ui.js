@@ -1929,7 +1929,7 @@
           <div class="aui-field"><label>Số điện thoại *</label>
             <input class="aui-input" data-df="phone" value="${esc(d?.phone || "")}" /></div>
           <div class="aui-field"><label>Số bằng lái</label>
-            <input class="aui-input" data-df="licenseNumber" value="${esc(d?.licenseNumber || "")}" maxlength="30" /></div>
+            <input class="aui-input" data-df="licenseNumber" value="${esc(d?.licenseNumber || "")}" maxlength="14" inputmode="numeric" placeholder="12 chữ số" title="Số bằng lái gồm đúng 12 chữ số" /></div>
           <div class="aui-field"><label>Hạng bằng (Luật 36/2024)</label>
             <select class="aui-select" data-df="licenseClass">${licenseClassOptions(d?.licenseClass)}</select></div>
           <div class="aui-field"><label>Ngày cấp</label>

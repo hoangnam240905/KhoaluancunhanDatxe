@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -251,9 +252,11 @@ class _LicenseScreenState extends State<LicenseScreen> {
         TextField(
           key: const Key('customer-license-number'),
           controller: _number,
-          maxLength: 30,
+          maxLength: 12,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(labelText: 'Số bằng lái'),
+          decoration: const InputDecoration(labelText: 'Số bằng lái', helperText: 'Đúng 12 chữ số, in ở mục "Số / No." trên bằng'),
         ),
         DropdownButtonFormField<String>(
           initialValue: _classes.any((c) => c.code == _licenseClass)

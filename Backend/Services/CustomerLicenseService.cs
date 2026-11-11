@@ -88,11 +88,14 @@ public class CustomerLicenseService(CarRentalDbContext db, UserDocumentService d
         var customer = await db.Customers.Include(c => c.User).FirstOrDefaultAsync(c => c.CustomerId == customerId);
         if (customer is null)
             return (null, NotFound);
-        var number = request.LicenseNumber?.Trim().ToUpperInvariant();
-        if (string.IsNullOrWhiteSpace(number))
+        var number = LicenseNumberRules.Normalize(request.LicenseNumber);
+        if (number is null)
             return (null, NumberRequired);
-        if (number.Length > 30)
-            return (null, NumberTooLong);
+        if (!LicenseNumberRules.IsValid(number))
+            return (null, LicenseNumberRules.Invalid);
+        if (number != customer.DriverLicenseNumber
+            && await db.Customers.AnyAsync(c => c.CustomerId != customerId && c.DriverLicenseNumber == number))
+            return (null, LicenseNumberRules.Taken);
         var cls = LicenseClasses.Find(request.LicenseClass);
         if (cls is null)
             return (null, ClassInvalid);

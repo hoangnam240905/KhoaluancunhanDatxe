@@ -23,4 +23,10 @@
     <ProjectReference Include="..\Backend\Backend.csproj" />
   </ItemGroup>
 
+  <!-- PortalWeb logic tested without referencing the web app (two Program classes would clash). -->
+  <ItemGroup>
+    <Compile Include="..\PortalWeb\Models\ApiModels.cs" Link="PortalWeb\ApiModels.cs" />
+    <Compile Include="..\PortalWeb\Display\AssignPick.cs" Link="PortalWeb\AssignPick.cs" />
+  </ItemGroup>
+
 </Project>

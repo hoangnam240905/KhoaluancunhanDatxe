@@ -88,8 +88,11 @@ public class PhaseDispatchFleetStatusTests
         foreach (var vehicle in assignable.Data.Vehicles)
             Assert.False(await schedule.HasVehicleConflictAsync(vehicle.VehicleId, Start, End, pending.BookingId));
 
-        Assert.DoesNotContain(assignable.Data.Drivers, d => d.Status != DriverStatuses.Available);
-        Assert.DoesNotContain(assignable.Data.Drivers, d => d.DriverId == 5);
+        // Offline drivers are never offered; a busy driver is, when the other trip does not overlap (2-hour buffer).
+        Assert.DoesNotContain(assignable.Data.Drivers, d => d.Status == DriverStatuses.Offline);
+        foreach (var d in assignable.Data.Drivers)
+            Assert.False(await schedule.HasDriverConflictAsync(d.DriverId, Start, End, pending.BookingId));
+        Assert.Contains(assignable.Data.Drivers, d => d.DriverId == 5);
     }
 
     [Fact]

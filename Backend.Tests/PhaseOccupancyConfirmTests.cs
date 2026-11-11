@@ -384,6 +384,7 @@ public class PhaseOccupancyConfirmTests
     {
         using var iso = new IsolatedCarRentalDb();
         iso.Db.Drivers.Find(6)!.Status = DriverStatuses.Offline;
+        iso.Db.Drivers.Find(5)!.Status = DriverStatuses.Offline;
         iso.Db.SaveChanges();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, WithDriver());
         var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
@@ -399,6 +400,7 @@ public class PhaseOccupancyConfirmTests
         using var iso = new IsolatedCarRentalDb();
         OccupyAssigned(iso, 4, Start, End, driverId: 6);
         iso.Db.Drivers.Find(6)!.Status = DriverStatuses.Available;
+        iso.Db.Drivers.Find(5)!.Status = DriverStatuses.Offline; // only driver 6 is a candidate
         iso.Db.SaveChanges();
         var created = await Bookings(iso.Db).CreateBookingAsync(3, WithDriver());
         var confirm = await Dispatch(iso.Db).ConfirmBookingAsync(created!.BookingId, 2);
@@ -413,6 +415,7 @@ public class PhaseOccupancyConfirmTests
         using var iso = new IsolatedCarRentalDb();
         OccupyAssigned(iso, 4, Start, End, driverId: 6);
         iso.Db.Drivers.Find(6)!.Status = DriverStatuses.Available;
+        iso.Db.Drivers.Find(5)!.Status = DriverStatuses.Offline; // only driver 6 is a candidate
         iso.Db.SaveChanges();
         var created = await Bookings(iso.Db).CreateBookingAsync(
             3, WithDriver(2, End.AddHours(1), End.AddHours(5)));
@@ -427,6 +430,7 @@ public class PhaseOccupancyConfirmTests
         using var iso = new IsolatedCarRentalDb();
         OccupyAssigned(iso, 4, Start, End, driverId: 6);
         iso.Db.Drivers.Find(6)!.Status = DriverStatuses.Available;
+        iso.Db.Drivers.Find(5)!.Status = DriverStatuses.Offline; // only driver 6 is a candidate
         iso.Db.SaveChanges();
         var created = await Bookings(iso.Db).CreateBookingAsync(
             3, WithDriver(2, End.AddHours(2), End.AddHours(6)));

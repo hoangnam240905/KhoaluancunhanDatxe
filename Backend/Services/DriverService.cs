@@ -369,6 +369,9 @@ public class DriverService(
             ?? ValidateLicence(request.LicenseClass, request.LicenseNumber);
         if (error is not null)
             return (null, error, StatusCodes.Status400BadRequest);
+        var newNumber = Validation.LicenseNumberRules.Normalize(request.LicenseNumber);
+        if (newNumber is not null && await db.Drivers.AnyAsync(d => d.LicenseNumber == newNumber))
+            return (null, Validation.LicenseNumberRules.Taken, StatusCodes.Status400BadRequest);
 
         if (await db.Users.AnyAsync(u => u.Email.ToLower() == email))
             return (null, CustomerRegistrationRules.EmailInUse, StatusCodes.Status400BadRequest);
@@ -429,8 +432,13 @@ public class DriverService(
             .FirstOrDefaultAsync(d => d.DriverId == driverId);
         if (driver is null)
             return (null, "Không tìm thấy tài xế.", StatusCodes.Status404NotFound);
-        if (ValidateLicence(request.LicenseClass, request.LicenseNumber) is string licenceError)
+        // Only a number that is typed or changed must follow the 12-digit rule (older numbers stay as stored).
+        var changedNumber = Validation.LicenseNumberRules.Normalize(request.LicenseNumber);
+        if (ValidateLicence(request.LicenseClass, changedNumber == driver.LicenseNumber ? null : request.LicenseNumber) is string licenceError)
             return (null, licenceError, StatusCodes.Status400BadRequest);
+        if (changedNumber is not null && changedNumber != driver.LicenseNumber
+            && await db.Drivers.AnyAsync(d => d.DriverId != driverId && d.LicenseNumber == changedNumber))
+            return (null, Validation.LicenseNumberRules.Taken, StatusCodes.Status400BadRequest);
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
             driver.User.FullName = CustomerRegistrationRules.NormalizeFullName(request.FullName);
@@ -495,8 +503,9 @@ public class DriverService(
     {
         if (!string.IsNullOrWhiteSpace(licenceClass) && Validation.LicenseClasses.Find(licenceClass) is null)
             return DriverVerificationService.LicenseClassInvalid;
-        if (licenceNumber is { Length: > 30 })
-            return DriverVerificationService.LicenseNumberTooLong;
+        var number = Validation.LicenseNumberRules.Normalize(licenceNumber);
+        if (number is not null && !Validation.LicenseNumberRules.IsValid(number))
+            return Validation.LicenseNumberRules.Invalid;
         return null;
     }
 
@@ -511,7 +520,7 @@ public class DriverService(
     private static void ApplyProfile(Driver driver, UpdateAdminDriverRequest request)
     {
         if (request.LicenseNumber is not null)
-            driver.LicenseNumber = request.LicenseNumber.Trim().ToUpperInvariant();
+            driver.LicenseNumber = Validation.LicenseNumberRules.Normalize(request.LicenseNumber) ?? string.Empty;
         if (request.LicenseExpiry is not null)
             driver.LicenseExpiry = request.LicenseExpiry.Value;
         if (request.LicenseClass is not null)

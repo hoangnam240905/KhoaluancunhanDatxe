@@ -88,8 +88,6 @@ public class DispatchService(
             qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
         foreach (var driver in drivers)
         {
-            if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
-                continue;
             return true;
         }
 
@@ -190,8 +188,6 @@ public class DispatchService(
                 qualifyFor: await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
-                if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
-                    continue;
                 driverRows.Add(new DriverResponse(
                     driver.DriverId,
                     driver.User.FullName,
@@ -451,22 +447,12 @@ public class DispatchService(
 
         var driver = await db.Drivers
             .Include(d => d.User)
-            .FirstOrDefaultAsync(d => d.DriverId == request.DriverId && d.IsActive && d.Status == DriverStatuses.Available);
+            .FirstOrDefaultAsync(d => d.DriverId == request.DriverId && d.IsActive && d.Status != DriverStatuses.Offline);
         if (driver is null)
             return AssignTripResult.Fail("Tài xế không khả dụng.");
         var vehicleType = await db.VehicleTypes.FindAsync(booking.VehicleTypeId);
         if (vehicleType is not null && DriverQualification.ReasonFor(driver, vehicleType, booking.EndDate) is string notQualified)
             return AssignTripResult.Fail(notQualified);
-        if (await driverService.HasOpenAssignmentAsync(request.DriverId.Value))
-        {
-            return AssignTripResult.FromConflict(await BuildConflictAsync(
-                booking,
-                "Tài xế đang có chuyến chưa hoàn thành.",
-                ScheduleConflictTypes.Driver,
-                excludeVehicleId: null,
-                excludeDriverId: request.DriverId.Value));
-        }
-
         if (await schedule.HasDriverConflictAsync(
             request.DriverId.Value, booking.StartDate, booking.EndDate, booking.BookingId))
         {
@@ -608,8 +594,6 @@ public class DispatchService(
                 await db.VehicleTypes.FindAsync(booking.VehicleTypeId));
             foreach (var driver in drivers)
             {
-                if (await driverService.HasOpenAssignmentAsync(driver.DriverId))
-                    continue;
                 driverAlts.Add(new DriverAlternativeResponse(
                     driver.DriverId, driver.User.FullName, driver.User.Phone, driver.Status));
             }

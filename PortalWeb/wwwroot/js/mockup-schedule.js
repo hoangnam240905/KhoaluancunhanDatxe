@@ -708,7 +708,9 @@
                 <span class="mk-badge mk-badge-ok">🟢 Khả dụng</span>
                 <button type="button" class="mk-btn mk-btn-primary" data-pick-vehicle="${x.id}" data-for="${bookingId}">Chọn xe</button></div>`).join("");
         }
-        return list.map((x) => `<div class="sch-alt"><div><strong>${x.name}</strong></div>
+        const wanted = (bookings.find((x) => x.id === Number(bookingId)) || {}).requestedDriverId;
+        const ordered = wanted ? [...list].sort((a, b) => (b.id === wanted) - (a.id === wanted)) : list;
+        return ordered.map((x) => `<div class="sch-alt"><div><strong>${x.name}</strong>${x.id === wanted ? ' <span class="mk-badge mk-badge-assigned">Khách chọn</span>' : ""}</div>
             <span class="mk-badge mk-badge-ok">🟢 Khả dụng</span>
             <button type="button" class="mk-btn mk-btn-primary" data-pick-driver="${x.id}" data-for="${bookingId}">Chọn tài xế</button></div>`).join("");
     }
@@ -737,6 +739,7 @@
                 <dl class="mk-dl">
                     <div><dt>Xe</dt><dd>${pickV.name}<br>${pickV.plate || ""}</dd></div>
                     <div><dt>Tài xế</dt><dd>${selfDrive ? "Tự lái — không gắn tài xế" : (pickD ? pickD.name : "Chưa chọn")}</dd></div>
+                    ${!selfDrive && b.requestedDriverName ? `<div><dt>Khách chọn</dt><dd>${b.requestedDriverName}</dd></div>` : ""}
                 </dl>
                 <ul class="sch-flow">
                     <li>${fmtTime(parse(b.start))} bắt đầu</li>
@@ -1043,5 +1046,16 @@
         }
     });
 
+    // "Chọn thủ công" on the Hub links here with ?booking=ID: show that day and open the booking ready to assign,
+    // with the customer's requested driver preselected (still changeable).
+    const deepId = Number(new URLSearchParams(window.location.search).get("booking"));
+    const deep = deepId ? bookings.find((x) => x.id === deepId) : null;
+    if (deep) state.focus = new Date(parse(deep.start).getFullYear(), parse(deep.start).getMonth(), parse(deep.start).getDate());
     render();
+    if (deep) {
+        state.selectedId = deep.id;
+        if (deep.mode !== "SelfDrive" && !deep.driverId && deep.requestedDriverId) state.pendingDriverId = deep.requestedDriverId;
+        state.panel = deep.vehicleId ? "dispatch" : "vehicle";
+        renderDrawer(deep, state.panel);
+    }
 })();

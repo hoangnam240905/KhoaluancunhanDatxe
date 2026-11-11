@@ -68,7 +68,8 @@ public class AdminCustomerService(CarRentalDbContext db)
             return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
 
         var profileError = ValidateProfileNumbers(
-            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax);
+            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax)
+            ?? await ValidateLicenceNumberAsync(request.DriverLicenseNumber, null, null);
         if (profileError is not null)
             return Fail(profileError, StatusCodes.Status400BadRequest);
 
@@ -132,7 +133,8 @@ public class AdminCustomerService(CarRentalDbContext db)
             return Fail(CustomerRegistrationRules.PhoneInUse, StatusCodes.Status400BadRequest);
 
         var profileError = ValidateProfileNumbers(
-            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax);
+            request.AnnualMileage, request.CommuteKmPerDay, request.BudgetMin, request.BudgetMax)
+            ?? await ValidateLicenceNumberAsync(request.DriverLicenseNumber, customer.CustomerId, customer.DriverLicenseNumber);
         if (profileError is not null)
             return Fail(profileError, StatusCodes.Status400BadRequest);
 
@@ -276,6 +278,19 @@ public class AdminCustomerService(CarRentalDbContext db)
             customer.AvatarUrl);
     }
 
+    /// <summary>A typed or changed licence number: 12 digits, not used by another customer.</summary>
+    private async Task<string?> ValidateLicenceNumberAsync(string? raw, int? customerId, string? current)
+    {
+        var number = LicenseNumberRules.Normalize(raw);
+        if (number is null || number == current)
+            return null;
+        if (!LicenseNumberRules.IsValid(number))
+            return LicenseNumberRules.Invalid;
+        return await db.Customers.AnyAsync(c => c.CustomerId != customerId && c.DriverLicenseNumber == number)
+            ? LicenseNumberRules.Taken
+            : null;
+    }
+
     private static string? ValidateProfileNumbers(
         int? annualMileage, double? commuteKmPerDay, double? budgetMin, double? budgetMax)
     {
@@ -336,7 +351,7 @@ public class AdminCustomerService(CarRentalDbContext db)
         string? preferencesText,
         string? avatarUrl)
     {
-        SetText(isCreate, driverLicenseNumber, value => customer.DriverLicenseNumber = value);
+        SetText(isCreate, LicenseNumberRules.Normalize(driverLicenseNumber) ?? driverLicenseNumber, value => customer.DriverLicenseNumber = value);
         SetText(isCreate, driverLicenseClass, value => customer.DriverLicenseClass = value);
         SetValue(isCreate, driverLicenseExpiry, value => customer.DriverLicenseExpiry = value);
         SetText(isCreate, occupation, value => customer.Occupation = value);

@@ -85,7 +85,9 @@ public static class ScheduleUi
             pickup = b.PickupAddress,
             dropoff = b.DropoffAddress,
             requestedTypeId = b.VehicleTypeId,
-            requestedTypeName = b.VehicleTypeName
+            requestedTypeName = b.VehicleTypeName,
+            requestedDriverId = b.RequestedDriverId is int rq ? DriverKey(rq) : null,
+            requestedDriverName = b.RequestedDriverName
         };
     }
 
@@ -127,7 +129,9 @@ public static class ScheduleUi
             pickup = b.PickupAddress,
             dropoff = b.DropoffAddress,
             requestedTypeId = b.VehicleTypeId,
-            requestedTypeName = b.VehicleTypeName
+            requestedTypeName = b.VehicleTypeName,
+            requestedDriverId = b.RequestedDriverId is int rq ? DriverKey(rq) : null,
+            requestedDriverName = b.RequestedDriverName
         };
 
     private static readonly Regex SeatsPattern = new(@"(\d+)\s*chỗ", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);

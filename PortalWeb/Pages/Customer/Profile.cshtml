@@ -215,7 +215,7 @@
                         }
                         <form method="post" asp-page-handler="SaveLicense" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0 1rem">
                             <label class="pf-field"><span>Số bằng lái</span>
-                                <input name="licenseNumber" value="@lic?.LicenseNumber" maxlength="30" required class="form-control" /></label>
+                                <input name="licenseNumber" value="@lic?.LicenseNumber" maxlength="14" inputmode="numeric" pattern="\s*(\d\s*){12}" title="Số bằng lái gồm đúng 12 chữ số" placeholder="12 chữ số, vd. 790123456789" required class="form-control" /></label>
                             <label class="pf-field"><span>Hạng bằng</span>
                                 <select name="licenseClass" required class="form-select">
                                     <option value="">— Chọn hạng —</option>

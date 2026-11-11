@@ -80,11 +80,14 @@ public class DriverVerificationService(
         if (driver is null)
             return (null, NotFound);
 
-        var number = request.LicenseNumber?.Trim().ToUpperInvariant();
-        if (string.IsNullOrWhiteSpace(number))
+        var number = LicenseNumberRules.Normalize(request.LicenseNumber);
+        if (number is null)
             return (null, LicenseNumberRequired);
-        if (number.Length > 30)
-            return (null, LicenseNumberTooLong);
+        if (!LicenseNumberRules.IsValid(number))
+            return (null, LicenseNumberRules.Invalid);
+        if (number != driver.LicenseNumber
+            && await db.Drivers.AnyAsync(d => d.DriverId != driverId && d.LicenseNumber == number))
+            return (null, LicenseNumberRules.Taken);
         var cls = LicenseClasses.Find(request.LicenseClass);
         if (cls is null)
             return (null, LicenseClassInvalid);

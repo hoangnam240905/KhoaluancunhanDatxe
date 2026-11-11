@@ -5,7 +5,7 @@
     ViewData["Title"] = "Đặt thuê & Xác nhận";
     ViewData["Nav"] = "hub";
 }
-<div class="mk-banner">Đơn thuê lấy từ hệ thống. Tìm kiếm/lọc trên trang (API list chỉ hỗ trợ lọc trạng thái). Phân công dùng xe/tài xế khả dụng đầu tiên từ API. Giao xe gọi API dispatcher cho cả tự lái (giao cho khách) và có tài xế (giao cho tài xế); trả xe tại điều phối chỉ cho tự lái. Số điện thoại &amp; email khách chưa có trên BookingResponse.</div>
+<div class="mk-banner">Đơn thuê lấy từ hệ thống. Tìm kiếm/lọc trên trang (API list chỉ hỗ trợ lọc trạng thái). Phân công ưu tiên xe và tài xế khách đã chọn lúc đặt đơn; nếu không còn khả dụng (bận, trùng lịch, không đủ điều kiện) thì lấy xe/tài xế khả dụng đầu tiên và ghi rõ lý do. Muốn chọn xe/tài xế khác: bấm "Chọn thủ công" để mở trang Lịch xe &amp; tài xế. Giao xe gọi API dispatcher cho cả tự lái (giao cho khách) và có tài xế (giao cho tài xế); trả xe tại điều phối chỉ cho tự lái. Số điện thoại &amp; email khách chưa có trên BookingResponse.</div>
 @if (!string.IsNullOrEmpty(Model.LoadError))
 {
     <div class="alert alert-warning">@Model.LoadError</div>

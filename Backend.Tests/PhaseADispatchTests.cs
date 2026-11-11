@@ -161,7 +161,8 @@ public class PhaseADispatchTests
         Assert.Equal("Tài xế đã có lịch chuyến khác trong khoảng thời gian này.", result.Conflict.Message);
         Assert.DoesNotContain(result.Conflict.DriverAlternatives, d => d.DriverId == 6);
         Assert.Contains(result.Conflict.DriverAlternatives, d => d.DriverId == 7);
-        Assert.DoesNotContain(result.Conflict.DriverAlternatives, d => d.DriverId == 5);
+        // Driver 5 is busy on another date only: a driver may hold several trips that do not overlap.
+        Assert.Contains(result.Conflict.DriverAlternatives, d => d.DriverId == 5);
         Assert.DoesNotContain(result.Conflict.VehicleAlternatives, v => v.VehicleId == 6);
         Assert.Contains(result.Conflict.VehicleAlternatives, v => v.VehicleId == 2);
     }

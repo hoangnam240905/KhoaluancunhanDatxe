@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/models.dart';
@@ -230,9 +231,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
           TextField(
             key: const Key('license-number'),
             controller: _number,
-            textCapitalization: TextCapitalization.characters,
-            maxLength: 30,
-            decoration: const InputDecoration(labelText: 'Số bằng lái'),
+            maxLength: 12,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(labelText: 'Số bằng lái', helperText: 'Đúng 12 chữ số, in ở mục "Số / No." trên bằng'),
           ),
           DropdownButtonFormField<String>(
             key: const Key('license-class'),

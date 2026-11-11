@@ -187,7 +187,8 @@ public class ScheduleConflictService(CarRentalDbContext db)
     }
 
     /// <summary>
-    /// Drivers Assign can accept: IsActive, Status=Available, no calendar+buffer conflict.
+    /// Drivers Assign can accept: IsActive, not Offline, no calendar+buffer conflict (a driver may hold several
+    /// trips at different times).
     /// </summary>
     public async Task<List<Driver>> FindAssignableDriversAsync(
         DateTime start,
@@ -198,7 +199,9 @@ public class ScheduleConflictService(CarRentalDbContext db)
     {
         var query = db.Drivers
             .Include(d => d.User)
-            .Where(d => d.IsActive && d.Status == DriverStatuses.Available);
+            // Busy = has another open trip; that only matters when the times overlap (checked below with the
+            // 2-hour buffer). Offline drivers (not working) are not offered.
+            .Where(d => d.IsActive && d.Status != DriverStatuses.Offline);
         if (excludeDriverId is int skipDriver)
             query = query.Where(d => d.DriverId != skipDriver);
 

@@ -122,7 +122,8 @@
             bits.push(`<button type="button" class="mk-btn mk-btn-danger" data-act="reject" data-id="${b.id}">✕ Không duyệt</button>`);
         }
         if (b.status === "Confirmed") {
-            bits.push(`<button type="button" class="mk-btn mk-btn-primary" data-act="assign" data-id="${b.id}">Phân công xe & tài xế</button>`);
+            bits.push(`<button type="button" class="mk-btn mk-btn-primary" data-act="assign" data-id="${b.id}" title="Ưu tiên xe và tài xế khách đã chọn; không được thì lấy xe / tài xế khả dụng đầu tiên">Phân công xe & tài xế</button>`);
+            bits.push(`<a class="mk-btn mk-btn-ghost" href="/DieuPhoi/Schedule?booking=${b.id}" title="Chọn xe và tài xế bất kỳ trên lịch">Chọn thủ công</a>`);
         }
         if (b.status === "Assigned") {
             // With-driver: the dispatcher records the pre-handover check on Vận hành chuyến; the driver starts the trip (plan1.md Phần A).
@@ -284,7 +285,8 @@
         els.toast.textContent = msg;
         els.toast.classList.add("is-on");
         clearTimeout(toast._t);
-        toast._t = setTimeout(() => els.toast.classList.remove("is-on"), 3200);
+        // Long messages (e.g. why the customer's driver was not used) stay long enough to read.
+        toast._t = setTimeout(() => els.toast.classList.remove("is-on"), Math.max(3200, String(msg || "").length * 60));
     }
 
     function upsertBooking(row) {
@@ -621,7 +623,8 @@
                 reject: "Đã hủy / không duyệt đơn.",
                 assign: "Đã phân công xe" + (data.booking.mode === "WithDriver" ? " & tài xế." : ".")
             };
-            toast(labels[act] || "Đã cập nhật.");
+            // Assign: say when the customer's car / driver could not be used, and why.
+            toast(data.message ? (labels[act] || "Đã cập nhật.") + " " + data.message : (labels[act] || "Đã cập nhật."));
             renderList();
             renderDrawer(data.booking);
         } catch (e) {
