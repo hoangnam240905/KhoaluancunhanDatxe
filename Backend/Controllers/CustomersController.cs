@@ -28,6 +28,22 @@ public class CustomersController(CustomerProfileService profiles, CustomerLicens
         return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
+    /// <summary>Phase 9: add another licence (e.g. D1 next to B); photos go to POST /api/documents with licenseId.</summary>
+    [HttpPost("me/licenses")]
+    public async Task<ActionResult<CustomerLicenseResponse>> AddMyLicence(UpdateCustomerLicenseRequest request)
+    {
+        var (data, error) = await licences.AddLicenceAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    /// <summary>Phase 9: correct one licence; only that licence is reviewed again.</summary>
+    [HttpPut("me/licenses/{licenseId:int}")]
+    public async Task<ActionResult<CustomerLicenseResponse>> UpdateMyLicence(int licenseId, UpdateCustomerLicenseRequest request)
+    {
+        var (data, error) = await licences.UpdateLicenceAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), licenseId, request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [HttpGet("me")]
     public async Task<ActionResult<CustomerProfileResponse>> GetMe()
     {

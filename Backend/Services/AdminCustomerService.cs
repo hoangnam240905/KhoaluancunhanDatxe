@@ -146,6 +146,7 @@ public class AdminCustomerService(CarRentalDbContext db)
         customer.IdNumber = TrimOrNull(request.IdNumber);
         customer.DateOfBirth = request.DateOfBirth;
         ApplyProfile(customer, request, isCreate: false);
+        await LicenceBook.SyncPrimaryFromColumnsAsync(db, customer);
         await db.SaveChangesAsync();
         var names = await ActorNamesAsync([customer]);
         return (Map(customer, names), null, StatusCodes.Status200OK);
@@ -286,7 +287,11 @@ public class AdminCustomerService(CarRentalDbContext db)
             return null;
         if (!LicenseNumberRules.IsValid(number))
             return LicenseNumberRules.Invalid;
-        return await db.Customers.AnyAsync(c => c.CustomerId != customerId && c.DriverLicenseNumber == number)
+        if (customerId is int id)
+            return await LicenceBook.NumberProblemAsync(db, number, LicenceOwnerKinds.Customer, id, null) is null ? null : LicenseNumberRules.Taken;
+        return await db.Customers.AnyAsync(c => c.DriverLicenseNumber == number)
+            || await db.Drivers.AnyAsync(d => d.LicenseNumber == number)
+            || await db.PersonLicenses.AnyAsync(l => l.Number == number)
             ? LicenseNumberRules.Taken
             : null;
     }

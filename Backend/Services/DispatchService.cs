@@ -37,6 +37,8 @@ public class DispatchService(
             // plan1.md Phần E: self-drive is confirmed only once the customer's licence is approved.
             var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == booking.CustomerId);
             var type = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == booking.VehicleTypeId);
+            if (customer is not null)
+                await LicenceBook.LoadAsync(db, customer);
             if (customer is not null && type is not null
                 && CustomerLicenseService.ConfirmBlockReason(customer, type, booking.EndDate) is string licenceBlock)
                 return AssignTripResult.Fail(licenceBlock);
@@ -265,6 +267,8 @@ public class DispatchService(
         // replaced by a lower class or expired since, and older bookings were confirmed before the rule existed.
         var licenceHolder = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == booking.CustomerId);
         var bookedType = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == booking.VehicleTypeId);
+        if (licenceHolder is not null)
+            await LicenceBook.LoadAsync(db, licenceHolder);
         if (licenceHolder is not null && bookedType is not null
             && CustomerLicenseService.ConfirmBlockReason(licenceHolder, bookedType, booking.EndDate) is string licenceBlock)
             return Fail(LicenceBlocksHandoverPrefix + licenceBlock);
@@ -451,6 +455,7 @@ public class DispatchService(
         if (driver is null)
             return AssignTripResult.Fail("Tài xế không khả dụng.");
         var vehicleType = await db.VehicleTypes.FindAsync(booking.VehicleTypeId);
+        await LicenceBook.LoadAsync(db, driver);
         if (vehicleType is not null && DriverQualification.ReasonFor(driver, vehicleType, booking.EndDate) is string notQualified)
             return AssignTripResult.Fail(notQualified);
         if (await schedule.HasDriverConflictAsync(

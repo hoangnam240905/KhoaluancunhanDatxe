@@ -196,6 +196,7 @@ using (var scope = app.Services.CreateScope())
     db.EnsureSqliteActorColumns();
     db.EnsureSqliteInspectionDisputesTable();
     db.EnsureSqliteUserDocumentsTable();
+    db.EnsureSqlitePersonLicensesTable();
     db.EnsureSqliteVehicleChangesTable();
     db.EnsureSqliteIncidentReportsOptionalDriver();
     db.EnsureSqliteReviewsOptionalDriver();
@@ -204,6 +205,7 @@ using (var scope = app.Services.CreateScope())
     if (ShouldSeedDemoRich(app.Configuration, connectionString))
         DemoRichSeeder.Seed(db);
     DriverLicenseBackfill.Run(db); // plan1.md Phần D: licence classes + verification for existing data (idempotent)
+    PersonLicenseBackfill.Run(db); // Phase 9: copy each single licence into PersonLicenses (idempotent)
     db.FillVehicleTypePricingDefaults();
     db.ReconcileOpenAssignmentResourceStatus();
 

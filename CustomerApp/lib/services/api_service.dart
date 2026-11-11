@@ -347,6 +347,40 @@ class ApiService {
     );
   }
 
+  /// Phase 9: add a licence (licenseId null) or correct one licence.
+  Future<CustomerLicense> saveMyLicence({
+    int? licenseId,
+    required String licenseNumber,
+    required String licenseClass,
+    DateTime? licenseIssueDate,
+    required DateTime licenseExpiry,
+  }) async {
+    String day(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final body = jsonEncode({
+      'licenseNumber': licenseNumber,
+      'licenseClass': licenseClass,
+      'licenseIssueDate': licenseIssueDate == null ? null : day(licenseIssueDate),
+      'licenseExpiry': day(licenseExpiry),
+    });
+    final headers = await _headers(auth: true);
+    final response = licenseId == null
+        ? await http.post(
+            Uri.parse('${ApiConfig.baseUrl}/api/customers/me/licenses'),
+            headers: headers,
+            body: body,
+          )
+        : await http.put(
+            Uri.parse('${ApiConfig.baseUrl}/api/customers/me/licenses/$licenseId'),
+            headers: headers,
+            body: body,
+          );
+    if (response.statusCode != 200) throw Exception(_errorMessage(response));
+    return CustomerLicense.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<List<LicenseClassOption>> getLicenseClasses() async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/drivers/license-classes'),
@@ -363,8 +397,9 @@ class ApiService {
   Future<void> uploadDocument(
     String type,
     Uint8List bytes,
-    String fileName,
-  ) async {
+    String fileName, {
+    int? licenseId,
+  }) async {
     final token = await authService.getToken();
     final request = http.MultipartRequest(
       'POST',
@@ -372,6 +407,7 @@ class ApiService {
     );
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.fields['type'] = type;
+    if (licenseId != null) request.fields['licenseId'] = '$licenseId';
     request.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: fileName),
     );

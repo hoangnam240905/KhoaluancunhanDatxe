@@ -2,6 +2,7 @@ using Backend.Constants;
 using Backend.Data;
 using Backend.DTOs.Documents;
 using Backend.DTOs.Drivers;
+using Backend.DTOs.Licences;
 using Backend.Entities;
 using Backend.Services.Notifications;
 using Backend.Validation;
@@ -56,38 +57,73 @@ public class DriverVerificationService(
     public async Task<DriverVerificationResponse?> GetAsync(int driverId)
     {
         var driver = await db.Drivers.AsNoTracking().Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
-        return driver is null ? null : await ToResponseAsync(driver);
+        if (driver is null)
+            return null;
+        await LicenceBook.LoadAsync(db, driver);
+        return await ToResponseAsync(driver);
     }
 
-    /// <summary>Dispatcher list; status "Pending" = still to verify (the default), "Verified", "Rejected", or "All".</summary>
+    /// <summary>Dispatcher list; status "Pending" = a licence still to verify (the default), "Verified", "Rejected", or "All".</summary>
     public async Task<List<DriverVerificationResponse>> ListAsync(string? status)
     {
-        var query = db.Drivers.AsNoTracking().Include(d => d.User).Where(d => d.IsActive);
+        var rows = await db.Drivers.AsNoTracking().Include(d => d.User).Where(d => d.IsActive).OrderBy(d => d.DriverId).ToListAsync();
+        await LicenceBook.LoadAsync(db, rows);
         var wanted = string.IsNullOrWhiteSpace(status) ? DriverVerificationStatuses.Pending : status.Trim();
-        if (!string.Equals(wanted, "All", StringComparison.OrdinalIgnoreCase))
-            query = query.Where(d => d.VerificationStatus == wanted);
-        var rows = await query.OrderBy(d => d.DriverId).ToListAsync();
+        var all = string.Equals(wanted, "All", StringComparison.OrdinalIgnoreCase);
         var result = new List<DriverVerificationResponse>();
         foreach (var driver in rows)
-            result.Add(await ToResponseAsync(driver));
+        {
+            var match = all || driver.VerificationStatus == wanted
+                || (wanted == DriverVerificationStatuses.Pending
+                    && LicenceBook.Of(driver).Any(l => l.Status == PersonLicenseStatuses.Pending));
+            if (match)
+                result.Add(await ToResponseAsync(driver));
+        }
         return result;
     }
 
-    /// <summary>The driver enters or corrects their licence. Changing a verified licence sends it back to "Chờ xác minh".</summary>
+    /// <summary>Declare the first licence or correct the primary one (older single-licence screens).</summary>
     public async Task<(DriverVerificationResponse? Data, string? Error)> UpdateLicenseAsync(int driverId, UpdateDriverLicenseRequest request)
     {
         var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
         if (driver is null)
             return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        return await SaveAsync(driver, rows, rows.FirstOrDefault(), request);
+    }
 
+    /// <summary>Phase 9: add another licence (e.g. D1 next to B). Other licences keep their status.</summary>
+    public async Task<(DriverVerificationResponse? Data, string? Error)> AddLicenceAsync(int driverId, UpdateDriverLicenseRequest request)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        return await SaveAsync(driver, rows, null, request);
+    }
+
+    /// <summary>Phase 9: correct one licence; only that licence goes back to "Chờ xác minh".</summary>
+    public async Task<(DriverVerificationResponse? Data, string? Error)> UpdateLicenceAsync(int driverId, int licenseId, UpdateDriverLicenseRequest request)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        var licence = rows.FirstOrDefault(l => l.PersonLicenseId == licenseId);
+        return licence is null ? (null, LicenceBook.NotFound) : await SaveAsync(driver, rows, licence, request);
+    }
+
+    private async Task<(DriverVerificationResponse? Data, string? Error)> SaveAsync(
+        Driver driver, List<PersonLicense> rows, PersonLicense? licence, UpdateDriverLicenseRequest request)
+    {
         var number = LicenseNumberRules.Normalize(request.LicenseNumber);
         if (number is null)
             return (null, LicenseNumberRequired);
         if (!LicenseNumberRules.IsValid(number))
             return (null, LicenseNumberRules.Invalid);
-        if (number != driver.LicenseNumber
-            && await db.Drivers.AnyAsync(d => d.DriverId != driverId && d.LicenseNumber == number))
-            return (null, LicenseNumberRules.Taken);
+        if (number != licence?.Number
+            && await LicenceBook.NumberProblemAsync(db, number, LicenceOwnerKinds.Driver, driver.DriverId, licence?.PersonLicenseId) is string numberError)
+            return (null, numberError);
         var cls = LicenseClasses.Find(request.LicenseClass);
         if (cls is null)
             return (null, LicenseClassInvalid);
@@ -109,37 +145,53 @@ public class DriverVerificationService(
         if (idNumber is not null && (idNumber.Length != 12 || !idNumber.All(char.IsDigit)))
             return (null, IdNumberInvalid);
 
-        var changed = driver.LicenseNumber != number || driver.LicenseClass != cls.Code
-            || driver.LicenseExpiry != expiry || driver.LicenseIssueDate != request.LicenseIssueDate
+        if (licence is null)
+        {
+            licence = new PersonLicense
+            {
+                OwnerKind = LicenceOwnerKinds.Driver, OwnerId = driver.DriverId,
+                Status = PersonLicenseStatuses.Pending, CreatedAt = DateTime.UtcNow
+            };
+            db.PersonLicenses.Add(licence);
+            rows.Add(licence);
+        }
+        var changed = licence.Number != number || licence.Class != cls.Code
+            || licence.Expiry != expiry || licence.IssueDate != request.LicenseIssueDate
             || (idNumber is not null && driver.IdNumber != idNumber);
-        driver.LicenseNumber = number;
-        driver.LicenseClass = cls.Code;
-        driver.LicenseExpiry = expiry;
-        driver.LicenseIssueDate = request.LicenseIssueDate;
+        licence.Number = number;
+        licence.Class = cls.Code;
+        licence.Expiry = expiry;
+        licence.IssueDate = request.LicenseIssueDate;
         if (idNumber is not null)
             driver.IdNumber = idNumber;
-        if (changed && driver.VerificationStatus != DriverVerificationStatuses.Pending)
+        if (changed && licence.Status != PersonLicenseStatuses.Pending)
         {
-            // A new or corrected licence must be checked again before the next assignment.
-            driver.VerificationStatus = DriverVerificationStatuses.Pending;
-            driver.VerifiedByUserId = null;
-            driver.VerifiedByName = null;
-            driver.VerifiedAt = null;
+            // A new or corrected licence must be checked again before it counts for an assignment.
+            licence.Status = PersonLicenseStatuses.Pending;
+            licence.ReviewedByUserId = null;
+            licence.ReviewedByName = null;
+            licence.ReviewedAt = null;
         }
+        LicenceBook.Mirror(driver, rows);
         driver.User.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        await NotifyDispatchersIfReadyAsync(driverId);
+        await NotifyDispatchersIfReadyAsync(driver.DriverId);
         return (await ToResponseAsync(driver), null);
     }
 
-    /// <summary>DP-1: once a pending driver has declared the licence and sent every photo, tell the dispatchers.</summary>
+    /// <summary>DP-1: once a pending licence is declared and every photo sent, tell the dispatchers.</summary>
     public async Task NotifyDispatchersIfReadyAsync(int driverId)
     {
         var driver = await db.Drivers.AsNoTracking().Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
-        if (driver is null || driver.VerificationStatus != DriverVerificationStatuses.Pending || !InfoComplete(driver))
+        if (driver is null)
             return;
-        var current = await documents.GetCurrentAsync(driverId);
-        if (PhotoStatusOf(current, out _) != PhotoPending)
+        await LicenceBook.LoadAsync(db, driver);
+        var licences = LicenceBook.Of(driver);
+        var ready = false;
+        foreach (var l in licences.Where(l => l.Status == PersonLicenseStatuses.Pending && InfoComplete(l)))
+            if (PhotoStatusOf(await PhotosOfAsync(driverId, licences, l), out _) == PhotoPending)
+                ready = true;
+        if (!ready)
             return;
 
         var message = $"Tài xế {driver.User.FullName} vừa gửi ảnh bằng lái, cần xác minh.";
@@ -150,25 +202,50 @@ public class DriverVerificationService(
         await db.SaveChangesAsync();
     }
 
-    /// <summary>Step 1 (online): accept every pending photo (TX-1) or reject them with a reason (TX-2).</summary>
+    /// <summary>Step 1 for the first licence still waiting (else the primary) — older single-licence pages.</summary>
     public async Task<(DriverVerificationResponse? Data, string? Error)> ReviewPhotosAsync(
         int driverId, int dispatcherId, bool accept, string? reason)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        var target = rows.FirstOrDefault(l => l.Status == PersonLicenseStatuses.Pending) ?? rows.FirstOrDefault();
+        return await ReviewPhotosCoreAsync(driver, rows, target, dispatcherId, accept, reason);
+    }
+
+    /// <summary>Phase 9: step 1 for one licence.</summary>
+    public async Task<(DriverVerificationResponse? Data, string? Error)> ReviewLicencePhotosAsync(
+        int driverId, int licenseId, int dispatcherId, bool accept, string? reason)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        var target = rows.FirstOrDefault(l => l.PersonLicenseId == licenseId);
+        return target is null
+            ? (null, LicenceBook.NotFound)
+            : await ReviewPhotosCoreAsync(driver, rows, target, dispatcherId, accept, reason);
+    }
+
+    /// <summary>Step 1 (online): accept every pending photo of the licence (TX-1) or reject them with a reason (TX-2).</summary>
+    private async Task<(DriverVerificationResponse? Data, string? Error)> ReviewPhotosCoreAsync(
+        Driver driver, List<PersonLicense> rows, PersonLicense? licence, int dispatcherId, bool accept, string? reason)
     {
         var text = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if (!accept && text is null)
             return (null, ReasonRequired);
         if (text is { Length: > 500 })
             return (null, ReasonTooLong);
-        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
-        if (driver is null)
-            return (null, NotFound);
-        if (driver.VerificationStatus == DriverVerificationStatuses.Verified)
+        if (licence is null)
+            return (null, InfoIncomplete);
+        if (licence.Status == PersonLicenseStatuses.Approved)
             return (null, AlreadyVerified);
 
-        var current = await documents.GetCurrentAsync(driverId);
+        var current = await PhotosOfAsync(driver.DriverId, rows, licence);
         if (accept)
         {
-            if (!InfoComplete(driver))
+            if (!InfoComplete(licence))
                 return (null, InfoIncomplete);
             if (PhotoStatusOf(current, out _) is PhotoMissing or PhotoRejected)
                 return (null, PhotosIncomplete);
@@ -184,52 +261,87 @@ public class DriverVerificationService(
                 return (null, error);
         }
 
+        var label = rows.Count > 1 ? $" hạng {LicenseClasses.Label(licence.Class)}" : "";
         if (accept)
-            UserNotifications.Add(db, driverId, "Bằng lái đã được chấp nhận",
+            UserNotifications.Add(db, driver.DriverId, $"Bằng lái{label} đã được chấp nhận",
                 $"Vui lòng lên văn phòng trong vòng {OfficeVisitDays} ngày tới để xác nhận bằng gốc. Mang theo bằng lái và CCCD. Sau khi xác minh xong, bạn sẽ được phân công chuyến.");
         else
-            UserNotifications.Add(db, driverId, "Ảnh bằng lái chưa đạt",
+            UserNotifications.Add(db, driver.DriverId, $"Ảnh bằng lái{label} chưa đạt",
                 $"Lý do: {text}. Vui lòng chụp lại ảnh rõ hơn và gửi lại.");
         await db.SaveChangesAsync();
         return (await ToResponseAsync(driver), null);
     }
 
-    /// <summary>Step 2 (at the office): the original licence matches → Verified (TX-3); otherwise Rejected with a reason (TX-4).</summary>
+    /// <summary>Step 2 for the licence whose photos were accepted (else the first waiting, else the primary).</summary>
     public async Task<(DriverVerificationResponse? Data, string? Error)> VerifyAsync(
         int driverId, int dispatcherId, bool verified, string? reason)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        PersonLicense? target = null;
+        foreach (var l in rows.Where(l => l.Status == PersonLicenseStatuses.Pending))
+            if (PhotoStatusOf(await PhotosOfAsync(driverId, rows, l), out _) == PhotoAccepted)
+            {
+                target = l;
+                break;
+            }
+        target ??= rows.FirstOrDefault(l => l.Status == PersonLicenseStatuses.Pending) ?? rows.FirstOrDefault();
+        return await VerifyCoreAsync(driver, rows, target, dispatcherId, verified, reason);
+    }
+
+    /// <summary>Phase 9: step 2 for one licence.</summary>
+    public async Task<(DriverVerificationResponse? Data, string? Error)> VerifyLicenceAsync(
+        int driverId, int licenseId, int dispatcherId, bool verified, string? reason)
+    {
+        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
+        if (driver is null)
+            return (null, NotFound);
+        var rows = await LicenceBook.EnsureRowsAsync(db, driver);
+        var target = rows.FirstOrDefault(l => l.PersonLicenseId == licenseId);
+        return target is null
+            ? (null, LicenceBook.NotFound)
+            : await VerifyCoreAsync(driver, rows, target, dispatcherId, verified, reason);
+    }
+
+    /// <summary>Step 2 (at the office): the original licence matches → Approved (TX-3); otherwise Rejected with a reason (TX-4).</summary>
+    private async Task<(DriverVerificationResponse? Data, string? Error)> VerifyCoreAsync(
+        Driver driver, List<PersonLicense> rows, PersonLicense? licence, int dispatcherId, bool verified, string? reason)
     {
         var text = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
         if (!verified && text is null)
             return (null, ReasonRequired);
         if (text is { Length: > 500 })
             return (null, ReasonTooLong);
-        var driver = await db.Drivers.Include(d => d.User).FirstOrDefaultAsync(d => d.DriverId == driverId);
-        if (driver is null)
-            return (null, NotFound);
+        if (licence is null)
+            return (null, InfoIncomplete);
 
         if (verified)
         {
-            if (driver.VerificationStatus == DriverVerificationStatuses.Verified)
+            if (licence.Status == PersonLicenseStatuses.Approved)
                 return (null, AlreadyVerified);
-            if (!InfoComplete(driver))
+            if (!InfoComplete(licence))
                 return (null, InfoIncomplete);
-            if (driver.LicenseExpiry < DateOnly.FromDateTime(DateTime.Today))
+            if (licence.Expiry < DateOnly.FromDateTime(DateTime.Today))
                 return (null, LicenseAlreadyExpired);
-            if (PhotoStatusOf(await documents.GetCurrentAsync(driverId), out _) != PhotoAccepted)
+            if (PhotoStatusOf(await PhotosOfAsync(driver.DriverId, rows, licence), out _) != PhotoAccepted)
                 return (null, PhotosNotAccepted);
         }
 
         var actor = await ActorLookup.FindAsync(db, dispatcherId);
-        driver.VerificationStatus = verified ? DriverVerificationStatuses.Verified : DriverVerificationStatuses.Rejected;
-        driver.VerificationNote = verified ? null : text;
-        driver.VerifiedByUserId = actor?.UserId;
-        driver.VerifiedByName = actor?.Name;
-        driver.VerifiedAt = DateTime.UtcNow;
+        licence.Status = verified ? PersonLicenseStatuses.Approved : PersonLicenseStatuses.Rejected;
+        licence.ReviewNote = verified ? null : text;
+        licence.ReviewedByUserId = actor?.UserId;
+        licence.ReviewedByName = actor?.Name;
+        licence.ReviewedAt = DateTime.UtcNow;
+        LicenceBook.Mirror(driver, rows);
+        var label = rows.Count > 1 ? $" hạng {LicenseClasses.Label(licence.Class)}" : "";
         if (verified)
-            UserNotifications.Add(db, driverId, "Bạn đã được xác minh",
-                "Bằng lái của bạn đã được xác nhận. Bạn đã có thể nhận chuyến.");
+            UserNotifications.Add(db, driver.DriverId, rows.Count > 1 ? $"Bằng lái{label} đã được xác minh" : "Bạn đã được xác minh",
+                $"Bằng lái{label} của bạn đã được xác nhận. Bạn đã có thể nhận chuyến.");
         else
-            UserNotifications.Add(db, driverId, "Xác minh bằng lái không thành công",
+            UserNotifications.Add(db, driver.DriverId, $"Xác minh bằng lái{label} không thành công",
                 $"Lý do: {text}. Vui lòng cập nhật lại thông tin bằng lái.");
         await db.SaveChangesAsync();
         return (await ToResponseAsync(driver), null);
@@ -240,15 +352,34 @@ public class DriverVerificationService(
             && LicenseClasses.Find(d.LicenseClass) is { Professional: true, MaxSeats: > 0 }
             && d.LicenseExpiry > DateOnly.MinValue;
 
+    public static bool InfoComplete(PersonLicense l)
+        => !string.IsNullOrWhiteSpace(l.Number)
+            && LicenseClasses.Find(l.Class) is { Professional: true, MaxSeats: > 0 }
+            && l.Expiry > DateOnly.MinValue;
+
     /// <summary>Step-1 state of the four required photos, looking only at the newest of each side.</summary>
     public static string PhotoStatusOf(IReadOnlyList<UserDocumentResponse> current, out List<string> missing)
         => UserDocumentService.PhotoStatus(current, UserDocumentService.RequiredFor(RoleNames.Driver), out missing);
 
+    /// <summary>The current photos of one licence plus the ID card (untagged licence photos belong to the primary licence).</summary>
+    private Task<List<UserDocumentResponse>> PhotosOfAsync(int driverId, IReadOnlyList<PersonLicense> rows, PersonLicense licence)
+        => documents.GetCurrentAsync(driverId, licence.PersonLicenseId == 0 ? null : licence.PersonLicenseId, LicenceBook.IsPrimary(rows, licence));
+
     private async Task<DriverVerificationResponse> ToResponseAsync(Driver d)
     {
-        var current = await documents.GetCurrentAsync(d.DriverId);
-        var photoStatus = PhotoStatusOf(current, out var missing);
+        var licences = LicenceBook.Of(d);
         var today = DateOnly.FromDateTime(DateTime.Today);
+        var items = new List<PersonLicenseResponse>();
+        foreach (var l in licences)
+        {
+            var docs = await PhotosOfAsync(d.DriverId, licences, l);
+            var ps = PhotoStatusOf(docs, out var miss);
+            items.Add(new PersonLicenseResponse(l.PersonLicenseId, l.Number, l.Class, LicenseClasses.Label(l.Class), l.IssueDate,
+                l.Expiry, l.Status, ps, miss, docs, l.ReviewedByName, l.ReviewedAt, l.ReviewNote, LicenceBook.IsPrimary(licences, l),
+                l.Expiry >= today && l.Expiry < today.AddDays(30), l.Expiry < today));
+        }
+        var current = items.FirstOrDefault()?.Documents.ToList() ?? await documents.GetCurrentAsync(d.DriverId);
+        var photoStatus = PhotoStatusOf(current, out var missing);
         var hasExpiry = d.LicenseExpiry > DateOnly.MinValue;
         return new DriverVerificationResponse(
             d.DriverId, d.User.FullName, d.User.Email, d.User.Phone,
@@ -259,6 +390,6 @@ public class DriverVerificationService(
             d.VerifiedByName, d.VerifiedAt, d.VerificationNote,
             hasExpiry && d.LicenseExpiry >= today && d.LicenseExpiry < today.AddDays(30),
             hasExpiry && d.LicenseExpiry < today,
-            InfoComplete(d), d.IsActive);
+            InfoComplete(d), d.IsActive, items);
     }
 }

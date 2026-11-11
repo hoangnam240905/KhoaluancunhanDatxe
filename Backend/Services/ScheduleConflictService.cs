@@ -206,6 +206,8 @@ public class ScheduleConflictService(CarRentalDbContext db)
             query = query.Where(d => d.DriverId != skipDriver);
 
         var candidates = await query.OrderBy(d => d.DriverId).ToListAsync();
+        if (qualifyFor is not null)
+            await LicenceBook.LoadAsync(db, candidates); // Phase 9: any verified licence may cover the type
         var available = new List<Driver>();
         foreach (var driver in candidates)
         {

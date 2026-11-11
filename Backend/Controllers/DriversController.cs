@@ -44,6 +44,24 @@ public class DriversController(
         return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
+    /// <summary>Phase 9: add another licence (e.g. D1 next to B); photos go to POST /api/documents with licenseId.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPost("me/licenses")]
+    public async Task<ActionResult<DriverVerificationResponse>> AddMyLicence(UpdateDriverLicenseRequest request)
+    {
+        var (data, error) = await verification.AddLicenceAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    /// <summary>Phase 9: correct one licence; only that licence is verified again.</summary>
+    [Authorize(Roles = RoleNames.Driver)]
+    [HttpPut("me/licenses/{licenseId:int}")]
+    public async Task<ActionResult<DriverVerificationResponse>> UpdateMyLicence(int licenseId, UpdateDriverLicenseRequest request)
+    {
+        var (data, error) = await verification.UpdateLicenceAsync(int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!), licenseId, request);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [Authorize(Roles = $"{RoleNames.Admin},{RoleNames.Dispatcher}")]
     [HttpGet]
     public async Task<ActionResult<List<DriverResponse>>> GetAll([FromQuery] string? status)

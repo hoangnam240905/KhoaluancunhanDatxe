@@ -44,6 +44,15 @@ public class DispatchController(
         return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
+    /// <summary>Phase 9: approve / reject one licence of the customer.</summary>
+    [HttpPost("customer-licenses/{customerId:int}/licenses/{licenseId:int}/review")]
+    public async Task<ActionResult<Backend.DTOs.Customers.CustomerLicenseResponse>> ReviewCustomerLicence(
+        int customerId, int licenseId, Backend.DTOs.Customers.ReviewCustomerLicenseRequest request)
+    {
+        var (data, error) = await customerLicences.ReviewLicenceAsync(customerId, licenseId, CurrentUserId(), request.Approve, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     // ---- Driver licence verification (plan1.md Phần D) ----
 
     /// <summary>status: Pending (default) / Verified / Rejected / All.</summary>
@@ -73,6 +82,24 @@ public class DispatchController(
         int driverId, Backend.DTOs.Drivers.VerifyDriverRequest request)
     {
         var (data, error) = await driverVerification.VerifyAsync(driverId, CurrentUserId(), request.Verified, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    /// <summary>Phase 9: step 1 for one licence of the driver.</summary>
+    [HttpPost("driver-verifications/{driverId:int}/licenses/{licenseId:int}/photos")]
+    public async Task<ActionResult<Backend.DTOs.Drivers.DriverVerificationResponse>> ReviewDriverLicencePhotos(
+        int driverId, int licenseId, Backend.DTOs.Drivers.ReviewDriverPhotosRequest request)
+    {
+        var (data, error) = await driverVerification.ReviewLicencePhotosAsync(driverId, licenseId, CurrentUserId(), request.Accept, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
+    /// <summary>Phase 9: step 2 for one licence of the driver.</summary>
+    [HttpPost("driver-verifications/{driverId:int}/licenses/{licenseId:int}/verify")]
+    public async Task<ActionResult<Backend.DTOs.Drivers.DriverVerificationResponse>> VerifyDriverLicence(
+        int driverId, int licenseId, Backend.DTOs.Drivers.VerifyDriverRequest request)
+    {
+        var (data, error) = await driverVerification.VerifyLicenceAsync(driverId, licenseId, CurrentUserId(), request.Verified, request.Reason);
         return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 

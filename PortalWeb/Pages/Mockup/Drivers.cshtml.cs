@@ -40,11 +40,13 @@ public class DriversModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         return Page();
     }
 
-    public async Task<IActionResult> OnPostPhotosAsync(int id, bool accept, string? reason, string? tab)
+    public async Task<IActionResult> OnPostPhotosAsync(int id, int? licenseId, bool accept, string? reason, string? tab)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
-        var (data, error) = await api.ReviewDriverPhotosAsync(id, accept, reason);
+        var (data, error) = licenseId is int lid
+            ? await api.ReviewDriverLicenceAsync(id, lid, photosStep: true, accept, reason)
+            : await api.ReviewDriverPhotosAsync(id, accept, reason);
         if (data is null) Error = error;
         else Message = accept
             ? $"Đã chấp nhận ảnh của {data.FullName}. Tài xế được báo lên văn phòng để xác nhận bằng gốc."
@@ -52,14 +54,16 @@ public class DriversModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         return RedirectToPage(new { tab });
     }
 
-    public async Task<IActionResult> OnPostVerifyAsync(int id, bool verified, string? reason, string? tab)
+    public async Task<IActionResult> OnPostVerifyAsync(int id, int? licenseId, bool verified, string? reason, string? tab)
     {
         var denied = RequireRole(auth, "Dispatcher");
         if (denied is not null) return denied;
-        var (data, error) = await api.VerifyDriverAsync(id, verified, reason);
+        var (data, error) = licenseId is int lid
+            ? await api.ReviewDriverLicenceAsync(id, lid, photosStep: false, verified, reason)
+            : await api.VerifyDriverAsync(id, verified, reason);
         if (data is null) Error = error;
         else Message = verified
-            ? $"{data.FullName} đã được xác minh và có thể được phân công."
+            ? $"Đã xác minh bằng lái của {data.FullName}; tài xế được phân công các loại xe bằng này cho phép."
             : $"Đã ghi nhận xác minh không thành công cho {data.FullName}.";
         return RedirectToPage(new { tab });
     }

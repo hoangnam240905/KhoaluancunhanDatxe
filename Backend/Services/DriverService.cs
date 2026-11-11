@@ -370,7 +370,9 @@ public class DriverService(
         if (error is not null)
             return (null, error, StatusCodes.Status400BadRequest);
         var newNumber = Validation.LicenseNumberRules.Normalize(request.LicenseNumber);
-        if (newNumber is not null && await db.Drivers.AnyAsync(d => d.LicenseNumber == newNumber))
+        if (newNumber is not null && (await db.Drivers.AnyAsync(d => d.LicenseNumber == newNumber)
+                || await db.Customers.AnyAsync(c => c.DriverLicenseNumber == newNumber)
+                || await db.PersonLicenses.AnyAsync(l => l.Number == newNumber)))
             return (null, Validation.LicenseNumberRules.Taken, StatusCodes.Status400BadRequest);
 
         if (await db.Users.AnyAsync(u => u.Email.ToLower() == email))
@@ -437,7 +439,7 @@ public class DriverService(
         if (ValidateLicence(request.LicenseClass, changedNumber == driver.LicenseNumber ? null : request.LicenseNumber) is string licenceError)
             return (null, licenceError, StatusCodes.Status400BadRequest);
         if (changedNumber is not null && changedNumber != driver.LicenseNumber
-            && await db.Drivers.AnyAsync(d => d.DriverId != driverId && d.LicenseNumber == changedNumber))
+            && await LicenceBook.NumberProblemAsync(db, changedNumber, LicenceOwnerKinds.Driver, driverId, null) is not null)
             return (null, Validation.LicenseNumberRules.Taken, StatusCodes.Status400BadRequest);
 
         if (!string.IsNullOrWhiteSpace(request.FullName))
@@ -469,6 +471,7 @@ public class DriverService(
         }
 
         ApplyProfile(driver, request);
+        await LicenceBook.SyncPrimaryFromColumnsAsync(db, driver, NormalizeVerification(request.VerificationStatus) is not null);
         driver.User.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         if (!string.IsNullOrWhiteSpace(request.Status))

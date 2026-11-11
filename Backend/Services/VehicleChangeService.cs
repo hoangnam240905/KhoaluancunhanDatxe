@@ -258,6 +258,9 @@ public class VehicleChangeService(CarRentalDbContext db, VehicleInspectionServic
             return (null, NoCurrentVehicle);
         var current = await db.Vehicles.AsNoTracking().Include(v => v.VehicleType).FirstAsync(v => v.VehicleId == currentId.Value);
         var customer = await db.Customers.AsNoTracking().FirstAsync(c => c.CustomerId == booking.CustomerId);
+        await LicenceBook.LoadAsync(db, customer);
+        if (booking.TripAssignment?.Driver is { } assignedDriver)
+            await LicenceBook.LoadAsync(db, assignedDriver);
         var duringTrip = booking.Status == BookingStatuses.InProgress;
         var now = VietnamTime.Now;
         var from = now > booking.StartDate ? now : booking.StartDate;
@@ -275,7 +278,9 @@ public class VehicleChangeService(CarRentalDbContext db, VehicleInspectionServic
     {
         var selfDrive = RentalModes.TryResolve(c.Booking.RentalMode, out var mode) && mode == RentalModes.SelfDrive;
         // The new type must suit the person driving: the customer's licence (self-drive) or the driver's.
-        if (selfDrive && LicenseClasses.CannotDrive(c.Customer.DriverLicenseClass, type.MinLicenseClass, type.SeatCapacity, professional: false) is not null)
+        // Phase 9: any of the customer's licences (not rejected) whose class covers the new type.
+        if (selfDrive && !LicenceBook.Of(c.Customer).Any(l => l.Status != PersonLicenseStatuses.Rejected
+                && LicenseClasses.CannotDrive(l.Class, type.MinLicenseClass, type.SeatCapacity, professional: false) is null))
             return [];
         if (!selfDrive && c.Driver is not null && DriverQualification.ReasonFor(c.Driver, type, c.Until) is not null)
             return [];

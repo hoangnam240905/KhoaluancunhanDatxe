@@ -360,6 +360,21 @@ public static class VehicleChangeReasons
 }
 
 /// <summary>Driver licence check (plan1.md Phần D, step 2): only Verified drivers can be assigned.</summary>
+/// <summary>Who holds a <see cref="Entities.PersonLicense"/> (Phase 9).</summary>
+public static class LicenceOwnerKinds
+{
+    public const string Driver = "Driver";
+    public const string Customer = "Customer";
+}
+
+/// <summary>Review state of one licence (Phase 9): Pending / Approved / Rejected.</summary>
+public static class PersonLicenseStatuses
+{
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
+}
+
 public static class DriverVerificationStatuses
 {
     public const string Pending = "Pending";
@@ -376,6 +391,9 @@ public static class UserDocumentTypes
     public const string IdCardBack = "IdCardBack";
 
     public static readonly IReadOnlyList<string> All = [LicenseFront, LicenseBack, IdCardFront, IdCardBack];
+
+    /// <summary>Licence sides belong to one licence (Phase 9); ID-card sides belong to the person.</summary>
+    public static bool IsLicence(string type) => type is LicenseFront or LicenseBack;
 
     public static bool TryResolve(string? value, out string resolved)
     {

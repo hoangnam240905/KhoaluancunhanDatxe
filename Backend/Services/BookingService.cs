@@ -82,6 +82,8 @@ public class BookingService(
                 return (null, DriverEligibilityService.SelfDriveDriverNotAllowed);
             // plan1.md Phần E: a declared licence of a class that covers the type, valid through the return date.
             var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == customerId);
+            if (customer is not null)
+                await LicenceBook.LoadAsync(db, customer);
             if (customer is not null
                 && CustomerLicenseService.SelfDriveBlockReason(customer, vehicleType, request.EndDate) is string licenceError)
                 return (null, licenceError);

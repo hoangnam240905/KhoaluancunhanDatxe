@@ -637,12 +637,15 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
     }
 
     public async Task<(UserDocumentResponse? Data, string? Error)> UploadDocumentAsync(
-        string type, Stream file, string fileName, string? contentType)
+        string type, Stream file, string fileName, string? contentType, int? licenseId = null)
     {
         using var request = CreateRequest(HttpMethod.Post, "/api/documents");
         var content = new StreamContent(file);
         content.Headers.ContentType = new MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
-        request.Content = new MultipartFormDataContent { { new StringContent(type), "type" }, { content, "file", fileName } };
+        var form = new MultipartFormDataContent { { new StringContent(type), "type" }, { content, "file", fileName } };
+        if (licenseId is int lid)
+            form.Add(new StringContent(lid.ToString()), "licenseId");
+        request.Content = form;
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không tải được ảnh lên.");
         return (await response.Content.ReadFromJsonAsync<UserDocumentResponse>(JsonOptions), null);
@@ -684,6 +687,44 @@ public class CarRentalApiClient(HttpClient http, AuthSession auth)
         var response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được thông tin bằng lái.");
         return (await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions), null);
+    }
+
+    /// <summary>Phase 9: add a licence (licenseId null) or correct one licence of the signed-in customer.</summary>
+    public async Task<(CustomerLicenseResponse? Data, string? Error)> SaveMyLicenceAsync(
+        int? licenseId, string? number, string? licenseClass, DateOnly? issueDate, DateOnly? expiry)
+    {
+        using var request = licenseId is int id
+            ? CreateRequest(HttpMethod.Put, $"/api/customers/me/licenses/{id}")
+            : CreateRequest(HttpMethod.Post, "/api/customers/me/licenses");
+        request.Content = JsonContent.Create(new { licenseNumber = number, licenseClass, licenseIssueDate = issueDate, licenseExpiry = expiry });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không lưu được bằng lái.");
+        return (await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions), null);
+    }
+
+    /// <summary>Phase 9: approve / reject one licence of a customer (dispatcher or admin).</summary>
+    public async Task<(CustomerLicenseResponse? Data, string? Error)> ReviewCustomerLicenceAsync(
+        int customerId, int licenseId, bool approve, string? reason, bool asAdmin = false)
+    {
+        using var request = CreateRequest(HttpMethod.Post, asAdmin
+            ? $"/api/admin/customers/{customerId}/licenses/{licenseId}/review"
+            : $"/api/dispatch/customer-licenses/{customerId}/licenses/{licenseId}/review");
+        request.Content = JsonContent.Create(new { approve, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không duyệt được bằng lái.");
+        return (await response.Content.ReadFromJsonAsync<CustomerLicenseResponse>(JsonOptions), null);
+    }
+
+    /// <summary>Phase 9: step 1 (photos) or step 2 (original) for one licence of a driver.</summary>
+    public async Task<(DriverVerificationResponse? Data, string? Error)> ReviewDriverLicenceAsync(
+        int driverId, int licenseId, bool photosStep, bool ok, string? reason)
+    {
+        using var request = CreateRequest(HttpMethod.Post,
+            $"/api/dispatch/driver-verifications/{driverId}/licenses/{licenseId}/{(photosStep ? "photos" : "verify")}");
+        request.Content = photosStep ? JsonContent.Create(new { accept = ok, reason }) : JsonContent.Create(new { verified = ok, reason });
+        var response = await http.SendAsync(request);
+        if (!response.IsSuccessStatusCode) return (null, await GetErrorAsync(response) ?? "Không duyệt được bằng lái.");
+        return (await response.Content.ReadFromJsonAsync<DriverVerificationResponse>(JsonOptions), null);
     }
 
     public async Task<List<LicenseClassOption>> GetLicenseClassesAsync()

@@ -34,6 +34,14 @@ public class AdminCustomersController(AdminCustomerService customers, CustomerLi
         return data is null ? BadRequest(new { message = error }) : Ok(data);
     }
 
+    [HttpPost("{id:int}/licenses/{licenseId:int}/review")]
+    public async Task<ActionResult<CustomerLicenseResponse>> ReviewLicence(int id, int licenseId, ReviewCustomerLicenseRequest request)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (data, error) = await licences.ReviewLicenceAsync(id, licenseId, userId, request.Approve, request.Reason);
+        return data is null ? BadRequest(new { message = error }) : Ok(data);
+    }
+
     [HttpGet]
     public async Task<ActionResult<AdminCustomerListResponse>> GetAll(
         [FromQuery] string? keyword,

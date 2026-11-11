@@ -417,11 +417,15 @@ class DriverVerification {
   final bool licenseExpiringSoon;
   final bool licenseExpired;
 
+  /// Phase 9: every licence of the driver (B2, D1…); each is verified on its own.
+  final List<PersonLicense> licences;
+
   const DriverVerification({
     required this.verificationStatus,
     required this.photoStatus,
     required this.missingDocuments,
     required this.documents,
+    this.licences = const [],
     this.licenseNumber,
     this.licenseClass,
     this.licenseClassLabel,
@@ -466,7 +470,73 @@ class DriverVerification {
         verificationNote: json['verificationNote'] as String?,
         licenseExpiringSoon: json['licenseExpiringSoon'] as bool? ?? false,
         licenseExpired: json['licenseExpired'] as bool? ?? false,
+        licences: (json['licences'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(PersonLicense.fromJson)
+            .toList(),
       );
+}
+
+/// Phase 9: one driving licence; status Pending / Approved / Rejected, photoStatus Missing / Pending / Accepted / Rejected.
+class PersonLicense {
+  final int licenseId;
+  final String number;
+  final String licenseClass;
+  final String classLabel;
+  final DateTime? issueDate;
+  final DateTime? expiry;
+  final String status;
+  final String photoStatus;
+  final List<UserDocument> documents;
+  final String? reviewedByName;
+  final String? reviewNote;
+  final bool isPrimary;
+  final bool expiringSoon;
+  final bool expired;
+
+  const PersonLicense({
+    required this.licenseId,
+    required this.number,
+    required this.licenseClass,
+    required this.classLabel,
+    required this.status,
+    required this.photoStatus,
+    required this.documents,
+    this.issueDate,
+    this.expiry,
+    this.reviewedByName,
+    this.reviewNote,
+    this.isPrimary = false,
+    this.expiringSoon = false,
+    this.expired = false,
+  });
+
+  UserDocument? documentOf(String type) {
+    for (final d in documents) {
+      if (d.documentType == type) return d;
+    }
+    return null;
+  }
+
+  factory PersonLicense.fromJson(Map<String, dynamic> json) => PersonLicense(
+    licenseId: json['licenseId'] as int? ?? 0,
+    number: json['number'] as String? ?? '',
+    licenseClass: json['class'] as String? ?? '',
+    classLabel: json['classLabel'] as String? ?? '',
+    issueDate: DateTime.tryParse(json['issueDate']?.toString() ?? ''),
+    expiry: DateTime.tryParse(json['expiry']?.toString() ?? ''),
+    status: json['status'] as String? ?? 'Pending',
+    photoStatus: json['photoStatus'] as String? ?? 'Missing',
+    documents: (json['documents'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(UserDocument.fromJson)
+        .toList(),
+    reviewedByName: json['reviewedByName'] as String?,
+    reviewNote: json['reviewNote'] as String?,
+    isPrimary: json['isPrimary'] as bool? ?? false,
+    expiringSoon: json['expiringSoon'] as bool? ?? false,
+    expired: json['expired'] as bool? ?? false,
+  );
 }
 
 class IncidentReport {

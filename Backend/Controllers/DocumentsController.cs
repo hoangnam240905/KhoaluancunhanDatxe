@@ -17,10 +17,10 @@ public class DocumentsController(UserDocumentService documents, DriverVerificati
     [HttpPost]
     [Authorize(Roles = $"{RoleNames.Driver},{RoleNames.Customer}")]
     [RequestSizeLimit(UserDocumentService.MaxBytes + 256 * 1024)]
-    public async Task<ActionResult<UserDocumentResponse>> Upload([FromForm] string? type, IFormFile? file)
+    public async Task<ActionResult<UserDocumentResponse>> Upload([FromForm] string? type, IFormFile? file, [FromForm] int? licenseId)
     {
         await using var stream = file?.OpenReadStream();
-        var (document, error) = await documents.UploadAsync(CurrentUserId(), type, stream, file?.Length ?? 0);
+        var (document, error) = await documents.UploadAsync(CurrentUserId(), type, stream, file?.Length ?? 0, licenseId);
         if (document is null)
             return BadRequest(new { message = error });
         if (User.IsInRole(RoleNames.Driver))

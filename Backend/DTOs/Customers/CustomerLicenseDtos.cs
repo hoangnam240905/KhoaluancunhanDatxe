@@ -41,6 +41,7 @@ public record CustomerLicenseResponse(
     string? ReviewNote,
     bool LicenseExpiringSoon,
     bool LicenseExpired,
-    IReadOnlyList<SelfDriveTypeEligibility> VehicleTypes);
+    IReadOnlyList<SelfDriveTypeEligibility> VehicleTypes,
+    IReadOnlyList<Backend.DTOs.Licences.PersonLicenseResponse>? Licences = null);
 
 public record ReviewCustomerLicenseRequest(bool Approve, string? Reason);

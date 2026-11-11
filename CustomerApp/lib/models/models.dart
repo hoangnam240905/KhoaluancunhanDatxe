@@ -964,11 +964,15 @@ class CustomerLicense {
   final bool licenseExpired;
   final List<SelfDriveTypeEligibility> vehicleTypes;
 
+  /// Phase 9: every licence of the customer (B, D1…); each is reviewed on its own.
+  final List<PersonLicense> licences;
+
   const CustomerLicense({
     required this.licenseStatus,
     required this.photoStatus,
     required this.documents,
     required this.vehicleTypes,
+    this.licences = const [],
     this.licenseNumber,
     this.licenseClass,
     this.licenseClassLabel,
@@ -1021,7 +1025,73 @@ class CustomerLicense {
             .whereType<Map<String, dynamic>>()
             .map(SelfDriveTypeEligibility.fromJson)
             .toList(),
+        licences: (json['licences'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(PersonLicense.fromJson)
+            .toList(),
       );
+}
+
+/// Phase 9: one driving licence of a person; status Pending / Approved / Rejected.
+class PersonLicense {
+  final int licenseId;
+  final String number;
+  final String licenseClass;
+  final String classLabel;
+  final DateTime? issueDate;
+  final DateTime? expiry;
+  final String status;
+  final String photoStatus;
+  final List<UserDocument> documents;
+  final String? reviewedByName;
+  final String? reviewNote;
+  final bool isPrimary;
+  final bool expiringSoon;
+  final bool expired;
+
+  const PersonLicense({
+    required this.licenseId,
+    required this.number,
+    required this.licenseClass,
+    required this.classLabel,
+    required this.status,
+    required this.photoStatus,
+    required this.documents,
+    this.issueDate,
+    this.expiry,
+    this.reviewedByName,
+    this.reviewNote,
+    this.isPrimary = false,
+    this.expiringSoon = false,
+    this.expired = false,
+  });
+
+  UserDocument? documentOf(String type) {
+    for (final d in documents) {
+      if (d.documentType == type) return d;
+    }
+    return null;
+  }
+
+  factory PersonLicense.fromJson(Map<String, dynamic> json) => PersonLicense(
+    licenseId: json['licenseId'] as int? ?? 0,
+    number: json['number'] as String? ?? '',
+    licenseClass: json['class'] as String? ?? '',
+    classLabel: json['classLabel'] as String? ?? '',
+    issueDate: DateTime.tryParse(json['issueDate']?.toString() ?? ''),
+    expiry: DateTime.tryParse(json['expiry']?.toString() ?? ''),
+    status: json['status'] as String? ?? 'Pending',
+    photoStatus: json['photoStatus'] as String? ?? 'Missing',
+    documents: (json['documents'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(UserDocument.fromJson)
+        .toList(),
+    reviewedByName: json['reviewedByName'] as String?,
+    reviewNote: json['reviewNote'] as String?,
+    isPrimary: json['isPrimary'] as bool? ?? false,
+    expiringSoon: json['expiringSoon'] as bool? ?? false,
+    expired: json['expired'] as bool? ?? false,
+  );
 }
 
 /// One "Phụ lục đổi xe" entry (plan1.md Phần I): the dispatcher replaced the car of the booking.

@@ -11,7 +11,7 @@
 <section class="mk-hub-head">
     <div>
         <h1>Xác minh tài xế</h1>
-        <p>Bước 1: duyệt ảnh bằng lái và CCCD. Bước 2: đối chiếu bằng gốc khi tài xế lên văn phòng. Chỉ tài xế đã xác minh mới được phân công.</p>
+        <p>Bước 1: duyệt ảnh bằng lái và CCCD. Bước 2: đối chiếu bằng gốc khi tài xế lên văn phòng. Tài xế có thể khai nhiều bằng (ví dụ B2 và D1), mỗi bằng xác minh riêng; tài xế được nhận loại xe mà ít nhất một bằng đã xác minh, đủ hạng và còn hạn bao phủ.</p>
     </div>
 </section>
 
@@ -55,103 +55,112 @@
 
 @foreach (var d in Model.Drivers)
 {
-    var photosAccepted = d.PhotoStatus == "Accepted";
-    var hasPending = d.Documents.Any(x => x.Status == "Pending");
     <section class="mk-card" style="margin-bottom:1rem">
         <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
             <div>
                 <h2 style="margin:0">@d.FullName <span class="mk-muted" style="font-size:.85rem">#@d.DriverId</span></h2>
-                <p class="mk-muted" style="margin:.2rem 0">@d.Email · @(d.Phone ?? "—")</p>
+                <p class="mk-muted" style="margin:.2rem 0">@d.Email · @(d.Phone ?? "—") · CCCD @(d.IdNumber ?? "—")</p>
             </div>
-            <div style="text-align:right">
-                <span class="mk-badge @(d.VerificationStatus == "Verified" ? "mk-badge-ok" : d.VerificationStatus == "Rejected" ? "mk-badge-incident" : "mk-badge-warn")">@DriversModel.VerificationLabel(d.VerificationStatus)</span>
-                <div class="mk-muted" style="font-size:.85rem;margin-top:.3rem">@DriversModel.PhotoLabel(d.PhotoStatus)</div>
-            </div>
+            <span class="mk-badge @(d.VerificationStatus == "Verified" ? "mk-badge-ok" : d.VerificationStatus == "Rejected" ? "mk-badge-incident" : "mk-badge-warn")">@DriversModel.VerificationLabel(d.VerificationStatus)</span>
         </div>
+        @if ((d.Licences ?? []).Count == 0)
+        {
+            <p class="mk-note" style="margin-top:.6rem">Tài xế chưa khai bằng lái.</p>
+        }
+        @foreach (var l in d.Licences ?? [])
+        {
+            var photosAccepted = l.PhotoStatus == "Accepted";
+            var hasPending = l.Documents.Any(x => x.Status == "Pending");
+            var lStatus = l.Status == "Approved" ? "Verified" : l.Status;
+            <div style="border-top:1px solid #e5e7eb;margin-top:.8rem;padding-top:.8rem">
+                <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">
+                    <strong>Bằng @l.ClassLabel · số @l.Number</strong>
+                    <div style="text-align:right">
+                        <span class="mk-badge @(l.Status == "Approved" ? "mk-badge-ok" : l.Status == "Rejected" ? "mk-badge-incident" : "mk-badge-warn")">@DriversModel.VerificationLabel(lStatus)</span>
+                        @if (l.Status != "Approved")
+                        {
+                            <div class="mk-muted" style="font-size:.85rem;margin-top:.3rem">@DriversModel.PhotoLabel(l.PhotoStatus)</div>
+                        }
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:1rem;margin-top:.6rem">
+                    <dl class="mk-dl">
+                        <div><dt>Ngày cấp</dt><dd>@DriversModel.Day(l.IssueDate)</dd></div>
+                        <div><dt>Hết hạn</dt><dd>@DriversModel.Day(l.Expiry)@(l.Expired ? " (đã hết hạn)" : l.ExpiringSoon ? " (sắp hết hạn)" : "")</dd></div>
+                        @if (l.ReviewedAt is DateTime at)
+                        {
+                            <div><dt>@(l.Status == "Approved" ? "Người xác minh" : "Người đối chiếu")</dt><dd>@UiDisplay.Actor(l.ReviewedByName, "Dispatcher", at)</dd></div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(l.ReviewNote))
+                        {
+                            <div><dt>Lý do</dt><dd>@l.ReviewNote</dd></div>
+                        }
+                    </dl>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem">
+                        @foreach (var side in sides)
+                        {
+                            var doc = l.Documents.FirstOrDefault(x => x.DocumentType == side);
+                            <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                                @if (doc is not null)
+                                {
+                                    <a href="/Documents/File/@doc.UserDocumentId" target="_blank" rel="noopener">
+                                        <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;aspect-ratio:16/10;object-fit:cover;display:block" />
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div style="aspect-ratio:16/10;background:#f3f4f6;display:flex;align-items:center;justify-content:center" class="mk-muted">Chưa gửi</div>
+                                }
+                                <small style="display:block;padding:.3rem .5rem">
+                                    @UiDisplay.DocumentType(side) · <strong>@UiDisplay.DocumentStatus(doc?.Status)</strong>
+                                    @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason)) { <br /><span style="color:#b91c1c">@doc.RejectReason</span> }
+                                    @if (doc?.ReviewedByName is not null) { <br /><span class="mk-muted">Duyệt: @doc.ReviewedByName</span> }
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
 
-        <div style="display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:1rem;margin-top:.8rem">
-            <dl class="mk-dl">
-                <div><dt>Số bằng</dt><dd>@(d.LicenseNumber ?? "Chưa khai")</dd></div>
-                <div><dt>Hạng bằng</dt><dd>@(d.LicenseClassLabel ?? "Chưa khai")</dd></div>
-                <div><dt>Ngày cấp</dt><dd>@DriversModel.Day(d.LicenseIssueDate)</dd></div>
-                <div><dt>Hết hạn</dt><dd>@DriversModel.Day(d.LicenseExpiry)@(d.LicenseExpired ? " (đã hết hạn)" : d.LicenseExpiringSoon ? " (sắp hết hạn)" : "")</dd></div>
-                <div><dt>CCCD</dt><dd>@(d.IdNumber ?? "—")</dd></div>
-                @if (d.VerifiedAt is DateTime at)
+                @if (l.Status != "Approved")
                 {
-                    <div><dt>@(d.VerificationStatus == "Verified" ? "Người xác minh" : "Người đối chiếu")</dt><dd>@UiDisplay.Actor(d.VerifiedByName, "Dispatcher", at)</dd></div>
-                }
-                @if (!string.IsNullOrWhiteSpace(d.VerificationNote))
-                {
-                    <div><dt>Lý do</dt><dd>@d.VerificationNote</dd></div>
-                }
-            </dl>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.6rem">
-                @foreach (var side in sides)
-                {
-                    var doc = d.Documents.FirstOrDefault(x => x.DocumentType == side);
-                    <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-                        @if (doc is not null)
-                        {
-                            <a href="/Documents/File/@doc.UserDocumentId" target="_blank" rel="noopener">
-                                <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;aspect-ratio:16/10;object-fit:cover;display:block" />
-                            </a>
-                        }
-                        else
-                        {
-                            <div style="aspect-ratio:16/10;background:#f3f4f6;display:flex;align-items:center;justify-content:center" class="mk-muted">Chưa gửi</div>
-                        }
-                        <small style="display:block;padding:.3rem .5rem">
-                            @UiDisplay.DocumentType(side) · <strong>@UiDisplay.DocumentStatus(doc?.Status)</strong>
-                            @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason)) { <br /><span style="color:#b91c1c">@doc.RejectReason</span> }
-                            @if (doc?.ReviewedByName is not null) { <br /><span class="mk-muted">Duyệt: @doc.ReviewedByName</span> }
-                        </small>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.8rem">
+                        <div class="mk-block">
+                            <h3>Bước 1 — Duyệt ảnh</h3>
+                            @if (hasPending)
+                            {
+                                <form method="post" asp-page-handler="Photos" style="display:inline">
+                                    <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="licenseId" value="@l.LicenseId" /><input type="hidden" name="accept" value="true" /><input type="hidden" name="tab" value="@Model.Tab" />
+                                    <button type="submit" class="mk-btn mk-btn-success" @(l.MissingDocuments.Count == 0 ? "" : "disabled")>Chấp nhận ảnh</button>
+                                </form>
+                                <form method="post" asp-page-handler="Photos" style="margin-top:.5rem;display:flex;gap:.4rem">
+                                    <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="licenseId" value="@l.LicenseId" /><input type="hidden" name="accept" value="false" /><input type="hidden" name="tab" value="@Model.Tab" />
+                                    <input name="reason" required maxlength="500" placeholder="Lý do từ chối ảnh" class="mk-input" style="flex:1" />
+                                    <button type="submit" class="mk-btn mk-btn-danger">Từ chối ảnh</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <p class="mk-note">@(photosAccepted ? "Ảnh đã được chấp nhận." : "Không có ảnh nào đang chờ duyệt.")</p>
+                            }
+                        </div>
+                        <div class="mk-block">
+                            <h3>Bước 2 — Đối chiếu bằng gốc</h3>
+                            <form method="post" asp-page-handler="Verify" style="display:inline">
+                                <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="licenseId" value="@l.LicenseId" /><input type="hidden" name="verified" value="true" /><input type="hidden" name="tab" value="@Model.Tab" />
+                                <button type="submit" class="mk-btn mk-btn-success" @(photosAccepted ? "" : "disabled")>Đã xác minh bằng @l.Class</button>
+                            </form>
+                            @if (!photosAccepted)
+                            {
+                                <p class="mk-note">Chấp nhận ảnh trước khi xác minh bằng gốc.</p>
+                            }
+                            <form method="post" asp-page-handler="Verify" style="margin-top:.5rem;display:flex;gap:.4rem">
+                                <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="licenseId" value="@l.LicenseId" /><input type="hidden" name="verified" value="false" /><input type="hidden" name="tab" value="@Model.Tab" />
+                                <input name="reason" required maxlength="500" placeholder="Lý do (bằng gốc không khớp…)" class="mk-input" style="flex:1" />
+                                <button type="submit" class="mk-btn mk-btn-danger">Xác minh không thành công</button>
+                            </form>
+                        </div>
                     </div>
                 }
-            </div>
-        </div>
-
-        @if (d.VerificationStatus != "Verified")
-        {
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
-                <div class="mk-block">
-                    <h3>Bước 1 — Duyệt ảnh</h3>
-                    @if (!d.LicenseInfoComplete)
-                    {
-                        <p class="mk-note">Tài xế chưa khai đủ thông tin bằng lái.</p>
-                    }
-                    @if (hasPending)
-                    {
-                        <form method="post" asp-page-handler="Photos" style="display:inline">
-                            <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="accept" value="true" /><input type="hidden" name="tab" value="@Model.Tab" />
-                            <button type="submit" class="mk-btn mk-btn-success" @(d.LicenseInfoComplete && d.MissingDocuments.Count == 0 ? "" : "disabled")>Chấp nhận ảnh</button>
-                        </form>
-                        <form method="post" asp-page-handler="Photos" style="margin-top:.5rem;display:flex;gap:.4rem">
-                            <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="accept" value="false" /><input type="hidden" name="tab" value="@Model.Tab" />
-                            <input name="reason" required maxlength="500" placeholder="Lý do từ chối ảnh" class="mk-input" style="flex:1" />
-                            <button type="submit" class="mk-btn mk-btn-danger">Từ chối ảnh</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <p class="mk-note">@(photosAccepted ? "Ảnh đã được chấp nhận." : "Không có ảnh nào đang chờ duyệt.")</p>
-                    }
-                </div>
-                <div class="mk-block">
-                    <h3>Bước 2 — Đối chiếu bằng gốc</h3>
-                    <form method="post" asp-page-handler="Verify" style="display:inline">
-                        <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="verified" value="true" /><input type="hidden" name="tab" value="@Model.Tab" />
-                        <button type="submit" class="mk-btn mk-btn-success" @(photosAccepted ? "" : "disabled")>Đã xác minh</button>
-                    </form>
-                    @if (!photosAccepted)
-                    {
-                        <p class="mk-note">Chấp nhận ảnh trước khi xác minh bằng gốc.</p>
-                    }
-                    <form method="post" asp-page-handler="Verify" style="margin-top:.5rem;display:flex;gap:.4rem">
-                        <input type="hidden" name="id" value="@d.DriverId" /><input type="hidden" name="verified" value="false" /><input type="hidden" name="tab" value="@Model.Tab" />
-                        <input name="reason" required maxlength="500" placeholder="Lý do (bằng gốc không khớp…)" class="mk-input" style="flex:1" />
-                        <button type="submit" class="mk-btn mk-btn-danger">Xác minh không thành công</button>
-                    </form>
-                </div>
             </div>
         }
     </section>

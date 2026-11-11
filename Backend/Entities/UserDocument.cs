@@ -20,6 +20,8 @@ public class UserDocument
     public DateTime? ReviewedAt { get; set; }
     public string? RejectReason { get; set; }
     public DateTime CreatedAt { get; set; }
+    /// <summary>Phase 9: the licence a licence photo belongs to; null = the primary licence (older photos) or an ID card.</summary>
+    public int? LicenseId { get; set; }
 
     public User User { get; set; } = null!;
 }

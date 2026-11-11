@@ -28,6 +28,7 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
     public DbSet<FavoriteVehicle> FavoriteVehicles => Set<FavoriteVehicle>();
     public DbSet<InspectionDispute> InspectionDisputes => Set<InspectionDispute>();
     public DbSet<UserDocument> UserDocuments => Set<UserDocument>();
+    public DbSet<PersonLicense> PersonLicenses => Set<PersonLicense>();
     public DbSet<VehicleChange> VehicleChanges => Set<VehicleChange>();
     public DbSet<VehicleStatusHistory> VehicleStatusHistories => Set<VehicleStatusHistory>();
     public DbSet<RecommendationLog> RecommendationLogs => Set<RecommendationLog>();
@@ -308,6 +309,19 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             e.Property(x => x.RejectReason).HasMaxLength(500);
             e.HasIndex(x => new { x.UserId, x.DocumentType });
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PersonLicense>(e =>
+        {
+            e.ToTable("PersonLicenses");
+            e.HasKey(x => x.PersonLicenseId);
+            e.Property(x => x.OwnerKind).HasMaxLength(10);
+            e.Property(x => x.Number).HasMaxLength(30);
+            e.Property(x => x.Class).HasMaxLength(10);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.ReviewNote).HasMaxLength(500);
+            e.HasIndex(x => new { x.OwnerKind, x.OwnerId });
+            e.HasIndex(x => x.Number);
         });
 
         modelBuilder.Entity<InspectionDispute>(e =>
@@ -1347,6 +1361,47 @@ public class CarRentalDbContext(DbContextOptions<CarRentalDbContext> options) : 
             """);
         Database.ExecuteSqlRaw(
             """CREATE INDEX IF NOT EXISTS "IX_UserDocuments_UserId_DocumentType" ON "UserDocuments" ("UserId", "DocumentType");""");
+    }
+
+    /// <summary>Phase 9: several licences per driver / customer, and the licence a photo belongs to.</summary>
+    public void EnsureSqlitePersonLicensesTable()
+    {
+        if (Database.ProviderName is null ||
+            !Database.ProviderName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Database.OpenConnection();
+        Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS "PersonLicenses" (
+                "PersonLicenseId" INTEGER NOT NULL CONSTRAINT "PK_PersonLicenses" PRIMARY KEY AUTOINCREMENT,
+                "OwnerKind" TEXT NOT NULL,
+                "OwnerId" INTEGER NOT NULL,
+                "Number" TEXT NOT NULL,
+                "Class" TEXT NOT NULL,
+                "IssueDate" TEXT NULL,
+                "Expiry" TEXT NOT NULL,
+                "Status" TEXT NOT NULL,
+                "ReviewedByUserId" INTEGER NULL,
+                "ReviewedByName" TEXT NULL,
+                "ReviewedAt" TEXT NULL,
+                "ReviewNote" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL
+            );
+            """);
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_PersonLicenses_OwnerKind_OwnerId" ON "PersonLicenses" ("OwnerKind", "OwnerId");""");
+        Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_PersonLicenses_Number" ON "PersonLicenses" ("Number");""");
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('UserDocuments')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                columns.Add(reader.GetString(1));
+        }
+        if (!columns.Contains("LicenseId"))
+            Database.ExecuteSqlRaw("""ALTER TABLE "UserDocuments" ADD COLUMN "LicenseId" INTEGER NULL;""");
     }
 
     /// <summary>Driver disputes of the dispatcher's pre-handover check (plan1.md Phần A), for older databases.</summary>

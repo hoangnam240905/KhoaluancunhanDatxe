@@ -42,13 +42,15 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         _ => "Chưa khai"
     };
 
-    /// <summary>Save the declared licence; a change sends it back for approval.</summary>
-    public async Task<IActionResult> OnPostSaveLicenseAsync(string? licenseNumber, string? licenseClass, DateOnly? licenseIssueDate, DateOnly? licenseExpiry)
+    /// <summary>Phase 9: add a licence (no licenseId) or correct one; only that licence goes back for approval.</summary>
+    public async Task<IActionResult> OnPostSaveLicenseAsync(int? licenseId, string? licenseNumber, string? licenseClass, DateOnly? licenseIssueDate, DateOnly? licenseExpiry)
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
-        var (_, error) = await api.UpdateMyLicenseAsync(licenseNumber, licenseClass, licenseIssueDate, licenseExpiry);
-        if (error is null) DocumentMessage = "Đã lưu thông tin bằng lái. Gửi đủ ảnh 2 mặt để điều phối duyệt.";
+        var (_, error) = await api.SaveMyLicenceAsync(licenseId, licenseNumber, licenseClass, licenseIssueDate, licenseExpiry);
+        if (error is null) DocumentMessage = licenseId is null
+            ? "Đã thêm bằng lái. Gửi đủ ảnh 2 mặt của bằng này để điều phối duyệt."
+            : "Đã lưu thông tin bằng lái. Gửi đủ ảnh 2 mặt để điều phối duyệt.";
         else DocumentError = error;
         return RedirectToPage(null, null, "giay-to");
     }
@@ -121,7 +123,7 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
     }
 
     /// <summary>Upload one side of the driver's licence; the dispatcher reviews it.</summary>
-    public async Task<IActionResult> OnPostUploadDocumentAsync(string? type, IFormFile? file)
+    public async Task<IActionResult> OnPostUploadDocumentAsync(string? type, IFormFile? file, int? licenseId)
     {
         var denied = RequireRole(auth, "Customer");
         if (denied is not null) return denied;
@@ -134,7 +136,7 @@ public class ProfileModel(CarRentalApiClient api, AuthSession auth) : RolePageMo
         else
         {
             await using var stream = file.OpenReadStream();
-            var (_, error) = await api.UploadDocumentAsync(type, stream, file.FileName, file.ContentType);
+            var (_, error) = await api.UploadDocumentAsync(type, stream, file.FileName, file.ContentType, licenseId);
             if (error is null) DocumentMessage = $"Đã gửi ảnh {UiDisplay.DocumentType(type).ToLowerInvariant()}, chờ điều phối duyệt.";
             else DocumentError = error;
         }

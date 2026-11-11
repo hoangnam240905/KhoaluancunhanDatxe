@@ -195,42 +195,35 @@
                             <h2>Bằng lái xe (thuê tự lái)</h2>
                         </div>
                         <p class="pf-help">Chỉ cần khi thuê <strong>xe tự lái</strong>. Khai thông tin bằng lái và gửi ảnh rõ nét cả 2 mặt (JPG hoặc PNG, tối đa 5 MB); điều phối viên duyệt một lần, các lần thuê sau không phải gửi lại. Lúc nhận xe vẫn cần mang bằng lái gốc để đối chiếu.</p>
-                        @{ var lic = Model.License; }
-                        <div class="pf-status-row"><span>Trạng thái duyệt</span><strong>@ProfileModel.LicenseStatusLabel(lic?.LicenseStatus)</strong></div>
-                        @if (lic?.LicenseStatus == "Rejected" && !string.IsNullOrWhiteSpace(lic.ReviewNote))
-                        {
-                            <p class="pf-help" style="color:#b91c1c">Lý do: @lic.ReviewNote</p>
-                        }
-                        @if (lic?.ReviewedAt is DateTime licReviewed)
-                        {
-                            <p class="pf-help">Người duyệt: @UiDisplay.Actor(lic.ReviewedByName, "Dispatcher", licReviewed)</p>
-                        }
-                        @if (lic is not null && (lic.LicenseExpired || lic.LicenseExpiringSoon))
-                        {
-                            <p class="pf-help" style="color:#b91c1c">@(lic.LicenseExpired ? "Bằng lái đã hết hạn — cập nhật bằng mới để thuê xe tự lái." : $"Bằng lái hết hạn ngày {lic.LicenseExpiry:dd/MM/yyyy}. Vui lòng cập nhật bằng mới.")</p>
-                        }
-                        @if (lic is not null && lic.LicenseStatus != "None")
-                        {
-                            <p class="pf-help">Loại xe được tự lái: @string.Join(", ", lic.VehicleTypes.Where(t => t.CanDrive).Select(t => t.TypeName).DefaultIfEmpty("chưa có"))</p>
-                        }
-                        <form method="post" asp-page-handler="SaveLicense" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0 1rem">
-                            <label class="pf-field"><span>Số bằng lái</span>
-                                <input name="licenseNumber" value="@lic?.LicenseNumber" maxlength="14" inputmode="numeric" pattern="\s*(\d\s*){12}" title="Số bằng lái gồm đúng 12 chữ số" placeholder="12 chữ số, vd. 790123456789" required class="form-control" /></label>
-                            <label class="pf-field"><span>Hạng bằng</span>
-                                <select name="licenseClass" required class="form-select">
-                                    <option value="">— Chọn hạng —</option>
-                                    @foreach (var c in Model.LicenseClasses)
+                        @{
+                            var lic = Model.License;
+                            var licences = lic?.Licences ?? [];
+                            async Task LicenceForm(int? id, string? number, string? cls, DateOnly? issue, DateOnly? expiry, string button)
+                            {
+                                <form method="post" asp-page-handler="SaveLicense" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0">
+                                    @if (id is int licId)
                                     {
-                                        <option value="@c.Code" selected="@(c.Code == lic?.LicenseClass ? "selected" : null)">@c.Label</option>
+                                        <input type="hidden" name="licenseId" value="@licId" />
                                     }
-                                </select></label>
-                            <label class="pf-field"><span>Ngày cấp</span>
-                                <input type="date" name="licenseIssueDate" value="@(lic?.LicenseIssueDate?.ToString("yyyy-MM-dd"))" class="form-control" /></label>
-                            <label class="pf-field"><span>Ngày hết hạn</span>
-                                <input type="date" name="licenseExpiry" value="@(lic?.LicenseExpiry?.ToString("yyyy-MM-dd"))" required class="form-control" /></label>
-                            <div style="grid-column:1/-1"><button type="submit" class="pf-btn">Lưu thông tin bằng lái</button>
-                                <span class="pf-help">Xe 4–9 chỗ cần bằng B trở lên (B1, B2 cũ còn hạn được chấp nhận); xe 16 chỗ cần D1 trở lên.</span></div>
-                        </form>
+                                    <label class="pf-field"><span>Số bằng lái</span>
+                                        <input name="licenseNumber" value="@number" maxlength="14" inputmode="numeric" pattern="\s*(\d\s*){12}" title="Số bằng lái gồm đúng 12 chữ số" placeholder="12 chữ số, vd. 790123456789" required class="form-control" /></label>
+                                    <label class="pf-field"><span>Hạng bằng</span>
+                                        <select name="licenseClass" required class="form-select">
+                                            <option value="">— Chọn hạng —</option>
+                                            @foreach (var c in Model.LicenseClasses)
+                                            {
+                                                <option value="@c.Code" selected="@(c.Code == cls ? "selected" : null)">@c.Label</option>
+                                            }
+                                        </select></label>
+                                    <label class="pf-field"><span>Ngày cấp</span>
+                                        <input type="date" name="licenseIssueDate" value="@(issue?.ToString("yyyy-MM-dd"))" class="form-control" /></label>
+                                    <label class="pf-field"><span>Ngày hết hạn</span>
+                                        <input type="date" name="licenseExpiry" value="@(expiry?.ToString("yyyy-MM-dd"))" required class="form-control" /></label>
+                                    <div style="grid-column:1/-1"><button type="submit" class="pf-btn">@button</button>
+                                        <span class="pf-help">Xe 4–9 chỗ cần bằng B trở lên (B1, B2 cũ còn hạn được chấp nhận); xe 16 chỗ cần D1 trở lên.</span></div>
+                                </form>
+                            }
+                        }
                         @if (!string.IsNullOrEmpty(Model.DocumentMessage))
                         {
                             <p class="pf-ok is-on">@Model.DocumentMessage</p>
@@ -239,38 +232,71 @@
                         {
                             <p class="pf-error is-on" style="color:#b91c1c">@Model.DocumentError</p>
                         }
-                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
-                            @foreach (var side in new[] { "LicenseFront", "LicenseBack" })
-                            {
-                                var doc = Model.DocumentOf(side);
-                                <form method="post" asp-page-handler="UploadDocument" enctype="multipart/form-data"
-                                      style="border:1px solid #e5e7eb;border-radius:12px;padding:.8rem">
-                                    <input type="hidden" name="type" value="@side" />
-                                    <strong>@UiDisplay.DocumentType(side)</strong>
-                                    <div style="margin:.5rem 0;aspect-ratio:16/10;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                                        @if (doc is not null)
-                                        {
-                                            <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;height:100%;object-fit:cover" />
-                                        }
-                                        else
-                                        {
-                                            <span class="pf-help">Chưa có ảnh</span>
-                                        }
-                                    </div>
-                                    <div class="pf-status-row"><span>Trạng thái</span><strong>@UiDisplay.DocumentStatus(doc?.Status)</strong></div>
-                                    @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason))
+                        @if (lic is not null && licences.Count > 0)
+                        {
+                            <p class="pf-help">Loại xe được tự lái (theo bất kỳ bằng nào của bạn): <strong>@string.Join(", ", lic.VehicleTypes.Where(t => t.CanDrive).Select(t => t.TypeName).DefaultIfEmpty("chưa có"))</strong></p>
+                        }
+                        <p class="pf-help">Có thể khai <strong>nhiều bằng lái</strong> (ví dụ B và D1). Mỗi bằng được duyệt riêng; chỉ cần một bằng đã duyệt, đủ hạng và còn hạn tới ngày trả xe là thuê được loại xe đó.</p>
+                        @foreach (var l in licences)
+                        {
+                            <div style="border:1px solid #e5e7eb;border-radius:12px;padding:.8rem;margin:.8rem 0">
+                                <div style="display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;align-items:baseline">
+                                    <strong>Bằng @l.ClassLabel</strong>
+                                    <span>Số @l.Number</span>
+                                    <span>Hết hạn @l.Expiry.ToString("dd/MM/yyyy")</span>
+                                    <span style="font-weight:600;color:@(l.Status == "Approved" ? "#047857" : l.Status == "Rejected" ? "#b91c1c" : "#b45309")">@ProfileModel.LicenseStatusLabel(l.Status)</span>
+                                </div>
+                                @if (l.Status == "Rejected" && !string.IsNullOrWhiteSpace(l.ReviewNote))
+                                {
+                                    <p class="pf-help" style="color:#b91c1c">Lý do: @l.ReviewNote</p>
+                                }
+                                @if (l.ReviewedAt is DateTime licReviewed)
+                                {
+                                    <p class="pf-help">Người duyệt: @UiDisplay.Actor(l.ReviewedByName, "Dispatcher", licReviewed)</p>
+                                }
+                                @if (l.Expired || l.ExpiringSoon)
+                                {
+                                    <p class="pf-help" style="color:#b91c1c">@(l.Expired ? "Bằng này đã hết hạn — cập nhật bằng mới." : $"Bằng này hết hạn ngày {l.Expiry:dd/MM/yyyy}.")</p>
+                                }
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:.6rem">
+                                    @foreach (var side in new[] { "LicenseFront", "LicenseBack" })
                                     {
-                                        <p class="pf-help" style="color:#b91c1c">Lý do: @doc.RejectReason</p>
+                                        var doc = l.Documents.FirstOrDefault(d => d.DocumentType == side);
+                                        <form method="post" asp-page-handler="UploadDocument" enctype="multipart/form-data"
+                                              style="border:1px solid #e5e7eb;border-radius:12px;padding:.8rem">
+                                            <input type="hidden" name="type" value="@side" />
+                                            <input type="hidden" name="licenseId" value="@l.LicenseId" />
+                                            <strong>@UiDisplay.DocumentType(side)</strong>
+                                            <div style="margin:.5rem 0;aspect-ratio:16/10;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                                                @if (doc is not null)
+                                                {
+                                                    <img src="/Documents/File/@doc.UserDocumentId" alt="@UiDisplay.DocumentType(side)" style="width:100%;height:100%;object-fit:cover" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="pf-help">Chưa có ảnh</span>
+                                                }
+                                            </div>
+                                            <div class="pf-status-row"><span>Trạng thái</span><strong>@UiDisplay.DocumentStatus(doc?.Status)</strong></div>
+                                            @if (doc?.Status == "Rejected" && !string.IsNullOrWhiteSpace(doc.RejectReason))
+                                            {
+                                                <p class="pf-help" style="color:#b91c1c">Lý do: @doc.RejectReason</p>
+                                            }
+                                            <input type="file" name="file" accept="image/jpeg,image/png" required class="form-control form-control-sm" style="margin:.4rem 0" />
+                                            <button type="submit" class="pf-btn">@(doc is null ? "Gửi ảnh" : "Gửi lại ảnh")</button>
+                                        </form>
                                     }
-                                    @if (doc?.ReviewedAt is DateTime reviewedAt)
-                                    {
-                                        <p class="pf-help">Người duyệt: @UiDisplay.Actor(doc.ReviewedByName, "Dispatcher", reviewedAt)</p>
-                                    }
-                                    <input type="file" name="file" accept="image/jpeg,image/png" required class="form-control form-control-sm" style="margin:.4rem 0" />
-                                    <button type="submit" class="pf-btn">@(doc is null ? "Gửi ảnh" : "Gửi lại ảnh")</button>
-                                </form>
-                            }
-                        </div>
+                                </div>
+                                <details style="margin-top:.6rem">
+                                    <summary class="pf-help" style="cursor:pointer">Sửa thông tin bằng này</summary>
+                                    @{ await LicenceForm(l.LicenseId, l.Number, l.Class, l.IssueDate, l.Expiry, "Lưu bằng này"); }
+                                </details>
+                            </div>
+                        }
+                        <details open="@(licences.Count == 0 ? "open" : null)" style="margin:.8rem 0">
+                            <summary class="pf-btn" style="display:inline-block;cursor:pointer">@(licences.Count == 0 ? "Khai bằng lái" : "+ Thêm bằng lái")</summary>
+                            @{ await LicenceForm(null, null, null, null, null, licences.Count == 0 ? "Lưu bằng lái" : "Thêm bằng lái"); }
+                        </details>
                     </article>
 
                     <article class="pf-card pf-panel" data-pf-panel="activity">

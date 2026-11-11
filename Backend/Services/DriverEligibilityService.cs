@@ -34,6 +34,7 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
             .Where(d => d.IsActive && d.Status != DriverStatuses.Offline)
             .OrderBy(d => d.DriverId)
             .ToListAsync();
+        await LicenceBook.LoadAsync(db, drivers);
 
         var result = new List<CustomerDriverOptionResponse>();
         foreach (var driver in drivers)
@@ -90,6 +91,7 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
             .FirstOrDefaultAsync(d => d.DriverId == driverId);
         if (driver is null)
             return Unavailable;
+        await LicenceBook.LoadAsync(db, driver);
 
         var type = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == vehicleTypeId);
         if (type is null)
@@ -111,7 +113,9 @@ public class DriverEligibilityService(CarRentalDbContext db, ScheduleConflictSer
             return Unavailable;
         if (driver.Status == DriverStatuses.Offline)
             return NotEligible;
-        if (driver.LicenseExpiry < DateOnly.FromDateTime(end))
+        // Phase 9: expired only when every verified licence ends before the return date.
+        var approved = LicenceBook.Of(driver).Where(l => l.Status == PersonLicenseStatuses.Approved).ToList();
+        if (approved.Count > 0 && approved.All(l => l.Expiry < DateOnly.FromDateTime(end)))
             return LicenseExpired;
         return null;
     }

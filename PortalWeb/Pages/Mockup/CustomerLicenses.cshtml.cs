@@ -29,11 +29,13 @@ public class CustomerLicensesModel(CarRentalApiClient api, AuthSession auth) : R
         return Page();
     }
 
-    public async Task<IActionResult> OnPostReviewAsync(int id, bool approve, string? reason, string? tab)
+    public async Task<IActionResult> OnPostReviewAsync(int id, int? licenseId, bool approve, string? reason, string? tab)
     {
         var denied = RequireRole(auth, "Dispatcher", "Admin");
         if (denied is not null) return denied;
-        var (data, error) = await api.ReviewCustomerLicenseAsync(id, approve, reason, IsAdmin);
+        var (data, error) = licenseId is int lid
+            ? await api.ReviewCustomerLicenceAsync(id, lid, approve, reason, IsAdmin)
+            : await api.ReviewCustomerLicenseAsync(id, approve, reason, IsAdmin);
         if (data is null) Error = error;
         else Message = approve
             ? $"Đã duyệt bằng lái của {data.FullName}. Các đơn tự lái của khách giờ xác nhận được."

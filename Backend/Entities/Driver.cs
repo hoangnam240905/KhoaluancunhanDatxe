@@ -26,6 +26,10 @@ public class Driver
     /// <summary>Why the original-licence check failed (shown to the driver).</summary>
     public string? VerificationNote { get; set; }
 
+    /// <summary>Phase 9: licences loaded by <see cref="Services.LicenceBook"/>; null = not loaded (fall back to the columns above).</summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public List<PersonLicense>? Licences { get; set; }
+
     public User User { get; set; } = null!;
     public ICollection<TripAssignment> TripAssignments { get; set; } = [];
 }

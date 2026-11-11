@@ -45,11 +45,18 @@ public class UserDocumentService(CarRentalDbContext db, DocumentStorage storage)
         _ => []
     };
 
+    public const string LicenceNotFound = "Không tìm thấy bằng lái này trong hồ sơ của bạn.";
+
+    /// <summary>Upload one side; a licence side may name the licence it belongs to (Phase 9; null = primary).</summary>
     public async Task<(UserDocumentResponse? Document, string? Error)> UploadAsync(
-        int userId, string? documentType, Stream? content, long length)
+        int userId, string? documentType, Stream? content, long length, int? licenseId = null)
     {
         if (!UserDocumentTypes.TryResolve(documentType, out var type))
             return (null, InvalidType);
+        if (!UserDocumentTypes.IsLicence(type))
+            licenseId = null;
+        if (licenseId is int lid && !await db.PersonLicenses.AnyAsync(l => l.PersonLicenseId == lid && l.OwnerId == userId))
+            return (null, LicenceNotFound);
         if (content is null || length <= 0)
             return (null, FileRequired);
         if (length > MaxBytes)
@@ -79,22 +86,30 @@ public class UserDocumentService(CarRentalDbContext db, DocumentStorage storage)
             ContentType = kind.Value.ContentType,
             SizeBytes = bytes.LongLength,
             Status = UserDocumentStatuses.Pending,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            LicenseId = licenseId
         };
         db.UserDocuments.Add(doc);
         await db.SaveChangesAsync();
         return (await ToResponseAsync(doc), null);
     }
 
-    /// <summary>The newest photo of each type for one user (what counts now).</summary>
-    public async Task<List<UserDocumentResponse>> GetCurrentAsync(int userId)
+    /// <summary>
+    /// The newest photo of each type for one user (what counts now). Licence sides are those of one licence
+    /// (Phase 9): photos tagged with <paramref name="licenseId"/>, plus untagged ones when it is the primary
+    /// licence (photos sent before several licences existed). ID-card sides belong to the person.
+    /// </summary>
+    public async Task<List<UserDocumentResponse>> GetCurrentAsync(int userId, int? licenseId = null, bool primary = true)
     {
         var rows = await db.UserDocuments.AsNoTracking()
             .Include(d => d.User)
             .Where(d => d.UserId == userId)
             .OrderByDescending(d => d.UserDocumentId)
             .ToListAsync();
-        return rows.GroupBy(d => d.DocumentType).Select(g => ToResponse(g.First())).ToList();
+        return rows
+            .Where(d => !UserDocumentTypes.IsLicence(d.DocumentType)
+                || (d.LicenseId is null ? primary : d.LicenseId == licenseId))
+            .GroupBy(d => d.DocumentType).Select(g => ToResponse(g.First())).ToList();
     }
 
     /// <summary>Staff list: newest first, optionally one user's or one status.</summary>
@@ -193,5 +208,5 @@ public class UserDocumentService(CarRentalDbContext db, DocumentStorage storage)
 
     private static UserDocumentResponse ToResponse(UserDocument d) => new(
         d.UserDocumentId, d.UserId, d.User?.FullName, d.DocumentType, d.ContentType, d.SizeBytes, d.Status,
-        d.ReviewedByName, d.ReviewedAt, d.RejectReason, d.CreatedAt);
+        d.ReviewedByName, d.ReviewedAt, d.RejectReason, d.CreatedAt, d.LicenseId);
 }

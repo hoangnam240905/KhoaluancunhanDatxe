@@ -38,6 +38,10 @@ public class Customer
     public string? PreferencesText { get; set; }
     public string? AvatarUrl { get; set; }
 
+    /// <summary>Phase 9: licences loaded by <see cref="Services.LicenceBook"/>; null = not loaded (fall back to the columns above).</summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public List<PersonLicense>? Licences { get; set; }
+
     public User User { get; set; } = null!;
     public ICollection<Booking> Bookings { get; set; } = [];
     public ICollection<RecommendationLog> RecommendationLogs { get; set; } = [];

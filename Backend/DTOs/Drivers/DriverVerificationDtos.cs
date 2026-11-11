@@ -45,7 +45,8 @@ public record DriverVerificationResponse(
     bool LicenseExpiringSoon,
     bool LicenseExpired,
     bool LicenseInfoComplete,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<Backend.DTOs.Licences.PersonLicenseResponse>? Licences = null);
 
 public record ReviewDriverPhotosRequest(bool Accept, string? Reason);
 
