@@ -485,6 +485,8 @@
     color: #64748b;
     pointer-events: none;
 }
+/* Must beat `.ax-field input[type="email"]` (padding: 0 0.95rem), otherwise the text runs under the icon. */
+.ax-field .ax-icon-field input,
 .ax-icon-field input { padding-left: 2.55rem; }
 
 .ax-otp-mail {

@@ -12,14 +12,6 @@ public static class CreateBookingUi
     public const string SameReturnPlace = "Giống địa điểm nhận xe";
     public const decimal DepositPercent = 50;
 
-    public static IReadOnlyList<CreateBookingAddon> Addons { get; } =
-    [
-        new("insurance", "bi-shield-check", "Bảo hiểm bổ sung", "Bảo vệ thêm cho chuyến đi của bạn.", 150_000m),
-        new("gps", "bi-geo-alt", "GPS / Dẫn đường", "Hỗ trợ dẫn đường trên hành trình.", 50_000m),
-        new("child-seat", "bi-emoji-smile", "Ghế trẻ em", "Ghế an toàn cho trẻ nhỏ.", 80_000m),
-        new("extra-driver", "bi-person-plus", "Tài xế bổ sung", "Thêm người lái luân phiên cho hành trình dài.", 200_000m),
-    ];
-
     /// Maps the presentation catalog card onto an existing API VehicleTypeId.
     /// Does not invent IDs — returns 0 when the type list is empty.
     public static int ResolveTypeId(
@@ -221,10 +213,3 @@ public static class CreateBookingUi
         return seats >= 9 ? "Van" : seats >= 6 ? "SUV" : "Sedan";
     }
 }
-
-public sealed record CreateBookingAddon(
-    string Id,
-    string Icon,
-    string Title,
-    string Description,
-    decimal Price);

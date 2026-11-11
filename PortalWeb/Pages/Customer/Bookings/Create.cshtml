@@ -23,6 +23,7 @@
 <div class="ch-page"
      data-cb-page
      data-cb-quote-url="@Url.Page("Create", "QuoteJson")"
+     data-cb-licence-url="@Url.Page("Create", "LicenceJson")"
      data-cb-availability-url="@Url.Page("Create", "AvailabilityJson")"
      data-cb-drivers-url="@Url.Page("Create", "DriversJson")"
      data-cb-schedule-url="@Url.Page("Create", "DriverScheduleJson")"
@@ -124,12 +125,12 @@
                         }
                     </div>
                 }
-                @if (Model.LicenceWarning is not null)
-                {
-                    <p class="cb-note" role="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.6rem .8rem;border-radius:10px">
-                        @Model.LicenceWarning <a href="/Customer/Profile#giay-to">Cập nhật bằng lái</a>
-                    </p>
-                }
+                @* Self-drive licence check (plan1.md Phần E, KH-0). Also refreshed by booking-create.js when the
+                   customer switches to "Tự lái" or changes the return date, not only on page load. *@
+                <p class="cb-note" role="alert" data-cb-licence-warning @(Model.LicenceWarning is null ? "hidden" : null)
+                   style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:.6rem .8rem;border-radius:10px">
+                    <span data-cb-licence-text>@Model.LicenceWarning</span> <a href="/Customer/Profile#giay-to">Cập nhật bằng lái</a>
+                </p>
                 <form method="post" asp-page="/Customer/Bookings/Create" asp-route-slug="@v.Slug" data-cb-form>
                 <input type="hidden" asp-for="Input.VehicleTypeId" />
                 <input type="hidden" asp-for="Input.VehicleId" />
@@ -225,24 +226,6 @@
                             <p class="cb-note">Địa điểm nhận và trả xe được lưu cùng đơn thuê.</p>
                         </div>
 
-                        <div class="cb-card cb-section">
-                            <h3>4. Dịch vụ bổ sung (Tùy chọn)</h3>
-                            <div class="cb-addons">
-                                @foreach (var a in CreateBookingUi.Addons)
-                                {
-                                    <label class="cb-addon">
-                                        <i class="bi @a.Icon"></i>
-                                        <span>
-                                            <strong>@a.Title</strong>
-                                            <span>@a.Description</span>
-                                        </span>
-                                        <em>@CreateBookingUi.Money(a.Price)</em>
-                                        <input type="checkbox" data-cb-addon data-cb-addon-price="@a.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
-                                    </label>
-                                }
-                            </div>
-                            <p class="cb-note">Dịch vụ bổ sung là minh họa giao diện — chưa phải hạng mục thanh toán thật.</p>
-                        </div>
                     </div>
 
                     <aside class="cb-card cb-quote">
@@ -258,14 +241,6 @@
                         <div class="cb-line" data-cb-distance-row @(quote is null || quote.DistanceAmount <= 0 ? "hidden" : null)>
                             <span>Phụ phí km</span>
                             <span data-cb-distance>@(quote is null ? "—" : CreateBookingUi.Money(quote.DistanceAmount))</span>
-                        </div>
-                        <div class="cb-line">
-                            <span>Dịch vụ bổ sung</span>
-                            <span data-cb-addons-total>0 VNĐ</span>
-                        </div>
-                        <div class="cb-line">
-                            <span>Phí dịch vụ</span>
-                            <span>0 VNĐ</span>
                         </div>
                         <div class="cb-line">
                             <span>Tiền cọc</span>

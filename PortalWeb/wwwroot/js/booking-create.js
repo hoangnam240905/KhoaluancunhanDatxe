@@ -5,6 +5,7 @@
     if (!root || !form) return;
 
     const quoteUrl = root.getAttribute("data-cb-quote-url") || "";
+    const licenceUrl = root.getAttribute("data-cb-licence-url") || "";
     const availabilityUrl = root.getAttribute("data-cb-availability-url") || "";
     const driversUrl = root.getAttribute("data-cb-drivers-url") || "";
     const scheduleUrl = root.getAttribute("data-cb-schedule-url") || "";
@@ -396,7 +397,30 @@
         }
     };
 
+    // Self-drive licence warning (KH-0): ask the server whenever the mode or return date changes.
+    let licenceSeq = 0;
+    const refreshLicence = async () => {
+        const box = document.querySelector("[data-cb-licence-warning]");
+        const text = document.querySelector("[data-cb-licence-text]");
+        if (!box || !text || !licenceUrl) return;
+        if (currentMode() !== "SelfDrive") { box.hidden = true; return; }
+        const seq = ++licenceSeq;
+        try {
+            const url = new URL(licenceUrl, window.location.origin);
+            url.searchParams.set("vehicleTypeId", typeInput?.value || "0");
+            url.searchParams.set("rentalMode", "SelfDrive");
+            if (dropoff?.value) url.searchParams.set("endDate", dropoff.value);
+            const res = await fetch(url.toString(), { credentials: "same-origin", headers: { Accept: "application/json" } });
+            if (!res.ok || seq !== licenceSeq) return;
+            const data = await res.json();
+            const warning = data.warning ?? data.Warning ?? null;
+            text.textContent = warning || "";
+            box.hidden = !warning;
+        } catch { /* the server still checks the licence when the booking is sent */ }
+    };
+
     const scheduleQuote = () => {
+        refreshLicence();
         clearQuote();
         availabilityOk = true;
         window.clearTimeout(quoteTimer);
@@ -412,12 +436,6 @@
             syncDriverVisibility();
             scheduleQuote();
             loadDrivers();
-        });
-    });
-
-    document.querySelectorAll("[data-cb-addon]").forEach((box) => {
-        box.addEventListener("change", () => {
-            box.closest(".cb-addon")?.classList.toggle("is-on", box.checked);
         });
     });
 

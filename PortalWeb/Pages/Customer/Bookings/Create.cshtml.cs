@@ -108,15 +108,28 @@ public class CreateModel(CarRentalApiClient api, AuthSession auth) : RolePageMod
     }
 
     private async Task LoadLicenceWarningAsync()
+        => LicenceWarning = await LicenceWarningForAsync(Input.RentalMode, Input.VehicleTypeId, Input.EndDate);
+
+    /// <summary>Why this customer cannot (yet) rent the type self-drive; null when nothing to say.</summary>
+    private async Task<string?> LicenceWarningForAsync(string? rentalMode, int vehicleTypeId, DateTime? endDate)
     {
-        if (!IsSelfDrive(Input.RentalMode) || Input.VehicleTypeId <= 0)
-            return;
-        var licence = await api.GetMyLicenseAsync(Input.EndDate);
-        var type = licence?.VehicleTypes.FirstOrDefault(t => t.TypeId == Input.VehicleTypeId);
+        if (!IsSelfDrive(rentalMode) || vehicleTypeId <= 0)
+            return null;
+        var licence = await api.GetMyLicenseAsync(endDate);
+        var type = licence?.VehicleTypes.FirstOrDefault(t => t.TypeId == vehicleTypeId);
         if (type is { CanDrive: false })
-            LicenceWarning = type.Reason;
-        else if (licence?.LicenseStatus == "Pending")
-            LicenceWarning = "Bằng lái đang chờ điều phối duyệt — đơn tự lái sẽ được xác nhận sau khi bằng lái được duyệt.";
+            return type.Reason;
+        if (licence?.LicenseStatus == "Pending")
+            return "Bằng lái đang chờ điều phối duyệt — đơn tự lái sẽ được xác nhận sau khi bằng lái được duyệt.";
+        return null;
+    }
+
+    /// <summary>Called by booking-create.js when the customer picks "Tự lái" or changes the return date.</summary>
+    public async Task<IActionResult> OnGetLicenceJsonAsync(int vehicleTypeId, string? rentalMode, DateTime? endDate)
+    {
+        if (!auth.IsLoggedIn) return Unauthorized();
+        if (auth.Role != "Customer") return Forbid();
+        return new JsonResult(new { warning = await LicenceWarningForAsync(rentalMode, vehicleTypeId, endDate) });
     }
 
     public async Task<IActionResult> OnGetAvailabilityJsonAsync(
