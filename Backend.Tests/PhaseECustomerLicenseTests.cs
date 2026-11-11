@@ -119,6 +119,49 @@ public sealed class PhaseECustomerLicenseTests : IDisposable
     }
 
     [Fact]
+    public async Task E06b_handover_checks_the_licence_again_rejected_or_expired_since_confirm_blocks_it()
+    {
+        using var iso = new IsolatedCarRentalDb();
+        var s = Services(iso);
+        var (created, error) = await s.Bookings.TryCreateBookingAsync(3, SelfDrive());
+        Assert.True(created is not null, error);
+        Assert.Null((await s.Dispatch.ConfirmBookingAsync(created!.BookingId, DispatcherId)).Error);
+        TestDispatchReady.EnsureSignedAndPaid(iso.Db, created.BookingId);
+        Assert.Null((await s.Dispatch.AssignTripAsync(created.BookingId, new AssignTripRequest(null, 2), DispatcherId)).Error);
+        var customer = iso.Db.Customers.Single(c => c.CustomerId == 3);
+
+        // Rejected after the booking was confirmed → no handover, nothing recorded.
+        customer.LicenseStatus = CustomerLicenseStatuses.Rejected;
+        iso.Db.SaveChanges();
+        var (blocked, blockedError) = await s.Dispatch.HandoverSelfDriveAsync(
+            created.BookingId, DispatcherId, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId));
+        Assert.Null(blocked);
+        Assert.StartsWith(DispatchService.LicenceBlocksHandoverPrefix, blockedError);
+        iso.Db.ChangeTracker.Clear();
+        Assert.Equal(BookingStatuses.Assigned, iso.Db.Bookings.Find(created.BookingId)!.Status);
+        Assert.DoesNotContain(iso.Db.VehicleInspections, i =>
+            i.BookingId == created.BookingId && i.InspectionType == VehicleInspectionTypes.Handover);
+
+        // Approved again but the licence now ends before the return date → still no handover.
+        customer = iso.Db.Customers.Single(c => c.CustomerId == 3);
+        customer.LicenseStatus = CustomerLicenseStatuses.Approved;
+        customer.DriverLicenseExpiry = DateOnly.FromDateTime(Start.AddDays(-1));
+        iso.Db.SaveChanges();
+        Assert.Equal(DispatchService.LicenceBlocksHandoverPrefix + CustomerLicenseService.ExpiresBeforeReturn,
+            (await s.Dispatch.HandoverSelfDriveAsync(created.BookingId, DispatcherId,
+                TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId))).Error);
+
+        // Valid licence → handover goes through.
+        customer.DriverLicenseExpiry = DateOnly.FromDateTime(End.AddYears(5));
+        iso.Db.SaveChanges();
+        iso.Db.ChangeTracker.Clear();
+        var (handed, handError) = await s.Dispatch.HandoverSelfDriveAsync(
+            created.BookingId, DispatcherId, TestDispatchReady.InspectionForBooking(iso.Db, created.BookingId));
+        Assert.True(handed is not null, handError);
+        Assert.Equal(BookingStatuses.InProgress, handed!.Status);
+    }
+
+    [Fact]
     public async Task E06_handover_requires_the_original_licence_check_and_records_who_did_it()
     {
         using var iso = new IsolatedCarRentalDb();

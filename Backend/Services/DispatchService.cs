@@ -265,6 +265,13 @@ public class DispatchService(
         if (readiness is not null)
             return Fail(readiness);
 
+        // plan1.md Phần E: check the licence again at handover, not only at confirm — it may have been rejected,
+        // replaced by a lower class or expired since, and older bookings were confirmed before the rule existed.
+        var licenceHolder = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == booking.CustomerId);
+        var bookedType = await db.VehicleTypes.AsNoTracking().FirstOrDefaultAsync(t => t.TypeId == booking.VehicleTypeId);
+        if (licenceHolder is not null && bookedType is not null
+            && CustomerLicenseService.ConfirmBlockReason(licenceHolder, bookedType, booking.EndDate) is string licenceBlock)
+            return Fail(LicenceBlocksHandoverPrefix + licenceBlock);
 
         // Prefer request fuel; else reuse last known level from vehicle inspections.
         // Do not invent 0 — if neither source has a valid level, inspection rules reject as before.
@@ -637,6 +644,7 @@ public class DispatchService(
 
     public const string WithDriverUsesPreHandover =
         "Đơn có tài xế: điều phối ghi \"Kiểm tra trước giao\", tài xế xác nhận trên app để bắt đầu chuyến.";
+    public const string LicenceBlocksHandoverPrefix = "Không giao xe được — bằng lái của khách: ";
     public const string OriginalLicenceNotChecked =
         "Vui lòng kiểm tra bằng lái gốc của khách (đối chiếu thông tin và ảnh đã duyệt) rồi tick \"Đã kiểm tra bằng lái\". Không khớp hoặc hết hạn thì không giao xe.";
     public const string PreHandoverSelfDrive = "Đơn tự lái giao xe trực tiếp cho khách, không cần kiểm tra trước giao.";
