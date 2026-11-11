@@ -66,6 +66,10 @@ public static class TripsUi
             },
             handover = ToCond(handover),
             ret = ToCond(ret),
+            // With-driver trip: the driver's return report the dispatcher still has to check (plan1.md Phần A).
+            returnCheck = !isSelf && ret is not null && ret.VerificationStatus is string check
+                ? new { inspectionId = ret.InspectionId, status = check, pending = check == "Pending" }
+                : null,
             incident = openIncident is null ? null : ToIncident(openIncident),
             charges = ToCharges(b),
             fees = (b.Fees ?? []).Select(f => new { f.FeeType, f.Description, amount = f.Amount, amountText = Money(f.Amount) }).ToList(),

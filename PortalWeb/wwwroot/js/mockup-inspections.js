@@ -191,7 +191,7 @@
         const typeLabel = r.type === "precheck" ? "Điều phối kiểm tra trước giao, chờ tài xế xác nhận"
             : r.type === "checkout" ? "Kiểm tra lúc bàn giao xe"
             : (r.verificationLabel ? `Kiểm tra khi trả xe · ${r.verificationLabel}` : "Kiểm tra khi trả xe");
-        return `<tr>
+        return `<tr${r.canVerify ? ' class="insp-row-pending"' : ""}>
             <td>${stt}</td>
             <td><strong>${r.booking}</strong></td>
             <td>${r.plate}</td>
@@ -405,6 +405,13 @@
 
     fillVehicles();
     render();
+    // Deep link from Vận hành chuyến: /DieuPhoi/Inspections?open={inspectionId} opens that report.
+    const openParam = new URLSearchParams(location.search).get("open");
+    if (openParam && /^\d+$/.test(openParam)) {
+        const target = records.find((x) => x.id === Number(openParam));
+        if (target?.canVerify) { filters.type = "pendingReturn"; render(); }
+        openById(openParam);
+    }
 
     els.form.addEventListener("submit", (e) => {
         e.preventDefault();

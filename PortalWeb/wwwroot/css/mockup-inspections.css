@@ -213,3 +213,7 @@
     }
     .insp-print h1 { font-size: 1.3rem; }
 }
+
+/* Driver return report the dispatcher still has to check (opened from Vận hành chuyến). */
+.insp-row-pending td { background: var(--mk-warning-soft, #fff7e6); }
+.insp-row-pending td:first-child { box-shadow: inset 3px 0 0 var(--mk-warning, #d97706); }

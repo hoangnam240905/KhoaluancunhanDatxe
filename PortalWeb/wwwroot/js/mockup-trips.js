@@ -318,6 +318,16 @@
                 action: btn("mk-btn-outline", "data-open", "Chuẩn bị")
             };
         }
+        if (t.returnCheck?.pending) {
+            const end = parseNaive(t.endIso);
+            return {
+                sev: 1, rank: 4, at: end, icon: "bi-clipboard-check",
+                title: "Chờ đối chiếu phiếu trả xe",
+                sub: itemHead(t) + `<span class="mk-muted">Tài xế: ${t.driver || "—"} đã gửi phiếu trả</span>`,
+                time: dayText(end, now), note: "",
+                action: returnReportLink(t, "mk-btn-primary")
+            };
+        }
         if (t.settlement === "pending") {
             const end = parseNaive(t.endIso);
             return {
@@ -413,6 +423,20 @@
         return `${t.driver} ${chip}`;
     }
 
+    /** Link to the driver's return report on the Inspections page (opens its detail there). */
+    function returnReportLink(t, cls) {
+        if (!t.returnCheck) return "";
+        const label = t.returnCheck.pending ? "Đối chiếu biên bản" : "Biên bản trả xe";
+        return `<a class="mk-btn ${cls || "mk-btn-outline"}" data-nav href="/DieuPhoi/Inspections?open=${t.returnCheck.inspectionId}"><i class="bi bi-clipboard-check"></i> ${label}</a>`;
+    }
+
+    function returnCheckBadge(t) {
+        if (!t.returnCheck) return "";
+        if (t.returnCheck.pending) return `<span class="mk-badge mk-badge-pending" title="Tài xế đã gửi phiếu trả, điều phối chưa đối chiếu">● Chờ đối chiếu biên bản</span>`;
+        if (t.returnCheck.status === "Mismatch") return `<span class="mk-badge mk-badge-incident">Biên bản có lệch</span>`;
+        return "";
+    }
+
     function statusCell(t, now) {
         if (hasIncident(t)) return `<span class="mk-badge mk-badge-incident">Có sự cố</span>`;
         const ts = timeState(t, now);
@@ -430,7 +454,7 @@
         els.meta.textContent = `${list.length} chuyến từ Backend · trang ${state.page}/${pages}`;
         els.table.innerHTML = slice.map((t) => `
             <tr data-open="${t.id}">
-                <td><strong>#${t.id}</strong></td>
+                <td><strong>#${t.id}</strong>${returnCheckBadge(t) ? "<br>" + returnCheckBadge(t) : ""}</td>
                 <td>${t.customer}</td>
                 <td>${t.vehicle}<br><span class="mk-muted">${t.plate}</span></td>
                 <td>${driverCell(t)}</td>
@@ -440,7 +464,7 @@
                 <td>${tableTime(t.endIso, now)}</td>
                 <td>${statusCell(t, now)}</td>
                 <td>${settleBadge(t.settlement)}</td>
-                <td><button type="button" class="mk-btn mk-btn-outline" data-open="${t.id}">Xem</button></td>
+                <td><div class="mk-actions"><button type="button" class="mk-btn mk-btn-outline" data-open="${t.id}">Xem</button>${returnReportLink(t)}</div></td>
             </tr>`).join("") || `<tr><td colspan="11">Không có chuyến khớp bộ lọc.</td></tr>`;
         els.pager.innerHTML = Array.from({ length: pages }, (_, i) =>
             `<button type="button" class="mk-btn mk-btn-ghost ${state.page === i + 1 ? "is-on" : ""}" data-page="${i + 1}">${i + 1}</button>`
@@ -477,6 +501,7 @@
         if (t.bookingStatus === "Assigned" || t.bookingStatus === "InProgress") {
             a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-vehicle-change="${t.id}">🔁 Đổi xe</button>`);
         }
+        if (t.returnCheck) a.push(returnReportLink(t, t.returnCheck.pending ? "mk-btn-primary" : "mk-btn-ghost"));
         if (t.settlement === "pending" || t.status === "completed") {
             a.push(`<button type="button" class="mk-btn mk-btn-ghost" data-settle="${t.id}">💰 Quyết toán</button>`);
         }
@@ -496,7 +521,7 @@
             <div class="mk-drawer-head">
                 <div>
                     <h2 class="h5 mb-2">Đơn #${t.id}</h2>
-                    ${badge(t.status)} ${t.mode === "WithDriver" ? '<span class="mk-badge mk-badge-assigned">Có tài xế</span>' : '<span class="mk-badge mk-badge-gray">Tự lái</span>'}
+                    ${badge(t.status)} ${t.mode === "WithDriver" ? '<span class="mk-badge mk-badge-assigned">Có tài xế</span>' : '<span class="mk-badge mk-badge-gray">Tự lái</span>'} ${returnCheckBadge(t)}
                     <span class="mk-badge mk-badge-ok">API</span>
                 </div>
                 <button type="button" class="mk-btn mk-btn-ghost" data-close>Đóng</button>
@@ -1027,6 +1052,7 @@
     });
 
     document.body.addEventListener("click", async (e) => {
+        if (e.target.closest("a[data-nav]")) return; // e.g. "Đối chiếu biên bản" → Inspections page
         if (e.target.closest("[data-close]")) {
             state.selectedId = null;
             els.drawer.classList.remove("is-open");
