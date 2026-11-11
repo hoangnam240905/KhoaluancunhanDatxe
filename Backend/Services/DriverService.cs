@@ -110,7 +110,11 @@ public class DriverService(
     /// Driver says the dispatcher's pre-handover record does not match the real car: opens a dispute,
     /// tells the dispatchers. The trip does not start and the assignment stays as it is.
     /// </summary>
-    public async Task<(InspectionDispute? Dispute, string? Error)> RaiseDisputeAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(InspectionDispute? Dispute, string? Error)> RaiseDisputeAsync(int driverId, int assignmentId, string? note)
+        => SqliteWriteLock.ExecuteAsync(db, () => RaiseDisputeCoreAsync(driverId, assignmentId, note));
+
+    private async Task<(InspectionDispute? Dispute, string? Error)> RaiseDisputeCoreAsync(
         int driverId, int assignmentId, string? note)
     {
         var text = note?.Trim();
@@ -191,7 +195,11 @@ public class DriverService(
         return ok;
     }
 
-    public async Task<(bool Ok, string? Error)> StartTripAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(bool Ok, string? Error)> StartTripAsync(int driverId, int assignmentId, VehicleConditionRequest? request)
+        => SqliteWriteLock.ExecuteAsync(db, () => StartTripCoreAsync(driverId, assignmentId, request));
+
+    private async Task<(bool Ok, string? Error)> StartTripCoreAsync(
         int driverId, int assignmentId, VehicleConditionRequest? request)
     {
         var assignment = await db.TripAssignments
@@ -253,7 +261,11 @@ public class DriverService(
             driverId);
         return (true, null);
     }
-    public async Task<(bool Ok, string? Error)> CompleteTripAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(bool Ok, string? Error)> CompleteTripAsync(int driverId, int assignmentId, VehicleConditionRequest? request)
+        => SqliteWriteLock.ExecuteAsync(db, () => CompleteTripCoreAsync(driverId, assignmentId, request));
+
+    private async Task<(bool Ok, string? Error)> CompleteTripCoreAsync(
         int driverId, int assignmentId, VehicleConditionRequest? request)
     {
         var assignment = await db.TripAssignments

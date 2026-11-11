@@ -1,3 +1,13 @@
+**************************************************
+CẬP NHẬT 11/11/2026 — TÀI LIỆU MỚI (dùng các file này):
+  docs/HUONG_DAN_CAI_DAT.md   cài đặt, thư viện, cách chạy, tài khoản demo
+  docs/HUONG_DAN_SU_DUNG.md   hướng dẫn sử dụng cho khách, điều phối, admin, tài xế
+  docs/KICH_BAN_KIEM_THU.md   dữ liệu kiểm thử, đối chiếu test với yêu cầu đề cương
+Phần bên dưới là ghi chép cũ thời Tuần 4 (code freeze), giữ lại để tham khảo;
+nhiều chức năng đã được bổ sung sau đó (kiểm tra xe 2 phía, xác minh bằng lái,
+đổi xe, quyết toán, điều phối báo sự cố, realtime...).
+**************************************************
+
 ==================================================
 HƯỚNG DẪN CHẠY CAR RENTAL SYSTEM
 ==================================================

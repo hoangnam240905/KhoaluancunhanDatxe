@@ -26,7 +26,11 @@ public class BookingService(
         return booking;
     }
 
-    public async Task<(BookingResponse? Booking, string? Error)> TryCreateBookingAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(BookingResponse? Booking, string? Error)> TryCreateBookingAsync(int customerId, CreateBookingRequest request, bool fromRecommendation = false)
+        => SqliteWriteLock.ExecuteAsync(db, () => TryCreateBookingCoreAsync(customerId, request, fromRecommendation));
+
+    private async Task<(BookingResponse? Booking, string? Error)> TryCreateBookingCoreAsync(
         int customerId, CreateBookingRequest request, bool fromRecommendation = false)
     {
         if (BookingDateRules.ValidateNewRental(request.StartDate, request.EndDate) is string dateError)

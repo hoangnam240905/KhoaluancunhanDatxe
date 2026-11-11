@@ -10,7 +10,25 @@ namespace Backend.Data;
 /// </summary>
 internal static class SqliteWriteLock
 {
+    // DbContext already holding the lock in this async flow: nested calls just run inside it.
+    private static readonly AsyncLocal<DbContext?> Holder = new();
+
     public static async Task<T> ExecuteAsync<T>(DbContext db, Func<Task<T>> work)
+    {
+        if (ReferenceEquals(Holder.Value, db))
+            return await work();
+        Holder.Value = db;
+        try
+        {
+            return await ExecuteOuterAsync(db, work);
+        }
+        finally
+        {
+            Holder.Value = null;
+        }
+    }
+
+    private static async Task<T> ExecuteOuterAsync<T>(DbContext db, Func<Task<T>> work)
     {
         var provider = db.Database.ProviderName ?? string.Empty;
         if (provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))

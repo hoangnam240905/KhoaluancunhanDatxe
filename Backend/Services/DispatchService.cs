@@ -238,7 +238,11 @@ public class DispatchService(
             : await AssignWithDriverAsync(booking, request, dispatcherId);
     }
 
-    public async Task<(BookingResponse? Booking, string? Error)> HandoverSelfDriveAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(BookingResponse? Booking, string? Error)> HandoverSelfDriveAsync(int bookingId, int dispatcherId, VehicleConditionRequest? request)
+        => SqliteWriteLock.ExecuteAsync(db, () => HandoverSelfDriveCoreAsync(bookingId, dispatcherId, request));
+
+    private async Task<(BookingResponse? Booking, string? Error)> HandoverSelfDriveCoreAsync(
         int bookingId, int dispatcherId, VehicleConditionRequest? request)
     {
         var booking = await db.Bookings
@@ -311,7 +315,11 @@ public class DispatchService(
         return result is null ? Fail("Không thể giao xe.") : Ok(result);
     }
 
-    public async Task<(BookingResponse? Booking, string? Error)> CompleteSelfDriveAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(BookingResponse? Booking, string? Error)> CompleteSelfDriveAsync(int bookingId, int dispatcherId, VehicleConditionRequest? request)
+        => SqliteWriteLock.ExecuteAsync(db, () => CompleteSelfDriveCoreAsync(bookingId, dispatcherId, request));
+
+    private async Task<(BookingResponse? Booking, string? Error)> CompleteSelfDriveCoreAsync(
         int bookingId, int dispatcherId, VehicleConditionRequest? request)
     {
         var booking = await db.Bookings
@@ -645,7 +653,11 @@ public class DispatchService(
     /// Dispatcher records the car before a with-driver trip (km, fuel, exterior, technical), or corrects it
     /// after a dispute — only until the driver confirms it. Never starts the trip.
     /// </summary>
-    public async Task<(VehicleInspectionResponse? Inspection, string? Error)> SavePreHandoverAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(VehicleInspectionResponse? Inspection, string? Error)> SavePreHandoverAsync(int bookingId, int dispatcherId, VehicleConditionRequest? request)
+        => SqliteWriteLock.ExecuteAsync(db, () => SavePreHandoverCoreAsync(bookingId, dispatcherId, request));
+
+    private async Task<(VehicleInspectionResponse? Inspection, string? Error)> SavePreHandoverCoreAsync(
         int bookingId, int dispatcherId, VehicleConditionRequest? request)
     {
         var booking = await db.Bookings
@@ -685,7 +697,11 @@ public class DispatchService(
         return (VehicleInspectionService.ToResponse(existing), null);
     }
 
-    public async Task<(InspectionDisputeResponse? Dispute, string? Error)> ResolveDisputeAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(InspectionDisputeResponse? Dispute, string? Error)> ResolveDisputeAsync(int disputeId, int dispatcherId, string? note)
+        => SqliteWriteLock.ExecuteAsync(db, () => ResolveDisputeCoreAsync(disputeId, dispatcherId, note));
+
+    private async Task<(InspectionDisputeResponse? Dispute, string? Error)> ResolveDisputeCoreAsync(
         int disputeId, int dispatcherId, string? note)
     {
         var text = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
@@ -734,7 +750,11 @@ public class DispatchService(
     /// Dispatcher checks a driver's return report once the car is back: "Confirmed" or "Mismatch" (+ note,
     /// opens an incident). The booking stays Completed and fees are not recalculated (handled manually in v1).
     /// </summary>
-    public async Task<(VehicleInspectionResponse? Inspection, string? Error)> VerifyReturnAsync(
+    /// <summary>Runs under the write lock (SqliteWriteLock): check + write cannot interleave with another request.</summary>
+    public Task<(VehicleInspectionResponse? Inspection, string? Error)> VerifyReturnAsync(int inspectionId, int dispatcherId, string? result, string? note)
+        => SqliteWriteLock.ExecuteAsync(db, () => VerifyReturnCoreAsync(inspectionId, dispatcherId, result, note));
+
+    private async Task<(VehicleInspectionResponse? Inspection, string? Error)> VerifyReturnCoreAsync(
         int inspectionId, int dispatcherId, string? result, string? note)
     {
         var text = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
